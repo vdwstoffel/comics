@@ -38,31 +38,29 @@ export default function Library() {
   }
 
   return (
-    <div>
-      <h1 className="page-title">Library</h1>
-      <div className="library-layout">
-        {sidebarItems.length > 0 && (
-          <FilterSidebar
-            title="Publishers"
-            items={sidebarItems}
-            active={selectedPublisher}
-            onSelect={setSelectedPublisher}
-          />
+    <>
+      <nav className="library-rail">
+        <FilterSidebar
+          title="Publishers"
+          items={sidebarItems}
+          active={selectedPublisher}
+          onSelect={setSelectedPublisher}
+        />
+      </nav>
+      <div className="library-content">
+        <h1 className="page-title">Library</h1>
+        {isLoading && <p>Loading…</p>}
+        {error && <p>Failed to load library.</p>}
+        {data && (
+          <div className="tile-grid">
+            {data.series.map((s) => (
+              <CoverTile key={s.id} to={`/series/${s.id}`}
+                img={`/api/series/${s.id}/thumbnail`} title={s.name}
+                subtitle={`${s.bookCount} issue${s.bookCount === 1 ? '' : 's'}`} />
+            ))}
+          </div>
         )}
-        <div className="library-grid-area">
-          {isLoading && <p>Loading…</p>}
-          {error && <p>Failed to load library.</p>}
-          {data && (
-            <div className="tile-grid">
-              {data.series.map((s) => (
-                <CoverTile key={s.id} to={`/series/${s.id}`}
-                  img={`/api/series/${s.id}/thumbnail`} title={s.name}
-                  subtitle={`${s.bookCount} issue${s.bookCount === 1 ? '' : 's'}`} />
-              ))}
-            </div>
-          )}
-        </div>
       </div>
-    </div>
+    </>
   )
 }

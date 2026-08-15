@@ -26,6 +26,17 @@ function Layout({ children }: { children: ReactNode }) {
   )
 }
 
+function LibraryLayout() {
+  return (
+    <>
+      <Header />
+      <div className="library-shell">
+        <Library />
+      </div>
+    </>
+  )
+}
+
 function ReaderLayout({ children }: { children: ReactNode }) {
   return <>{children}</>
 }
@@ -33,7 +44,7 @@ function ReaderLayout({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<Layout><Library /></Layout>} />
+      <Route path="/" element={<LibraryLayout />} />
       <Route path="/series/:id" element={<Layout><Series /></Layout>} />
       <Route path="/book/:id" element={<Layout><BookDetail /></Layout>} />
       <Route path="/read/:id" element={<ReaderLayout><Reader /></ReaderLayout>} />

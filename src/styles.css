@@ -847,29 +847,44 @@ textarea.input:hover:not(:focus) {
 }
 
 /* ============================================================
-   Library layout (sidebar + grid)
+   Library app-shell (full-width two-column layout)
    ============================================================ */
-.library-layout {
+
+/* Wrapper that sits directly under the sticky header and fills the
+   remaining viewport height as a side-by-side flex container.      */
+.library-shell {
   display: flex;
-  gap: 24px;
-  align-items: flex-start;
+  height: calc(100vh - 56px); /* 56px = .app-header height */
 }
 
-.library-grid-area {
+/* Left sidebar rail */
+.library-rail {
+  width: 230px;
+  flex-shrink: 0;
+  height: 100%;
+  overflow-y: auto;
+  background: var(--surface);
+  border-right: 1px solid var(--border);
+}
+
+/* Right content area — scrolls independently */
+.library-content {
   flex: 1;
   min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  padding: 36px 32px;
+}
+
+.library-content .page-title {
+  margin-bottom: 24px;
 }
 
 /* ============================================================
-   Filter sidebar
+   Filter sidebar (inside the rail)
    ============================================================ */
 .filter-sidebar {
-  width: 200px;
-  flex-shrink: 0;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  padding: 16px 0;
+  padding: 20px 0 16px;
 }
 
 .filter-sidebar__title {
@@ -878,9 +893,9 @@ textarea.input:hover:not(:focus) {
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--muted);
-  padding: 0 16px 10px;
+  padding: 0 20px 10px;
   border-bottom: 1px solid var(--border);
-  margin-bottom: 6px;
+  margin-bottom: 4px;
 }
 
 .filter-sidebar__list {
@@ -896,7 +911,7 @@ textarea.input:hover:not(:focus) {
   color: var(--text);
   font-size: 0.875rem;
   font-family: inherit;
-  padding: 8px 16px;
+  padding: 9px 20px;
   cursor: pointer;
   border-radius: 0;
   transition: background 0.12s, color 0.12s;
@@ -911,19 +926,33 @@ textarea.input:hover:not(:focus) {
   color: var(--accent);
   font-weight: 600;
   background: var(--elevated);
+  border-left: 3px solid var(--accent);
+  padding-left: 17px; /* compensate for the 3px left border */
 }
 
 .filter-sidebar__item--active:hover {
   background: var(--elevated);
 }
 
+/* Narrow screens: stack rail above content */
 @media (max-width: 640px) {
-  .library-layout {
+  .library-shell {
     flex-direction: column;
+    height: auto;
   }
 
-  .filter-sidebar {
+  .library-rail {
     width: 100%;
+    height: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    overflow-y: visible;
+  }
+
+  .library-content {
+    height: auto;
+    overflow-y: visible;
+    padding: 24px 16px;
   }
 }
 
