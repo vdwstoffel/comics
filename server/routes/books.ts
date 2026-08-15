@@ -6,6 +6,7 @@ import { readPage } from '../lib/cbz.js'
 import { buildComicInfo } from '../lib/comicinfo.js'
 import { embedComicInfo } from '../lib/embed.js'
 import { getSeries } from '../models/series.js'
+import { moveBookToSeries } from '../services/library.js'
 import type { App, Book } from '../types.js'
 
 const MIME: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' }
@@ -18,6 +19,7 @@ interface IdParams { id: string }
 interface PageParams { id: string; n: string }
 interface ProgressBody { lastPage?: number; completed?: boolean }
 type MetadataBody = Record<string, unknown>
+interface MoveSeriesBody { name?: string }
 
 export default async function booksRoutes(app: App) {
   app.get<{ Params: IdParams }>('/api/books/:id', async (req, reply) => {
@@ -74,5 +76,14 @@ export default async function booksRoutes(app: App) {
     })
     await embedComicInfo(absCbz(app, book), xml)
     return { book: updateBook(app.db, book.id, { comicinfoSynced: true }) }
+  })
+
+  app.put<{ Params: IdParams; Body: MoveSeriesBody }>('/api/books/:id/series', async (req, reply) => {
+    const name = (req.body?.name ?? '').trim()
+    if (!name) return reply.code(400).send({ error: 'name is required' })
+    const book = getBook(app.db, Number(req.params.id))
+    if (!book) return reply.code(404).send({ error: 'book not found' })
+    const result = await moveBookToSeries({ db: app.db, config: app.config }, book.id, name)
+    return { book: result.book, series: result.series }
   })
 }

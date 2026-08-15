@@ -55,3 +55,11 @@ export function updateSeries(db: Db, id: number, fields: SeriesUpdate): Series |
   if (sets.length) db.prepare(`UPDATE series SET ${sets.join(', ')} WHERE id = ?`).run(...vals, id)
   return getSeries(db, id)
 }
+
+export function getSeriesByName(db: Db, name: string): Series | undefined {
+  return toSeries(db.prepare('SELECT * FROM series WHERE name = ?').get(name) as SeriesRow | undefined)
+}
+
+export function deleteSeries(db: Db, id: number): void {
+  db.prepare('DELETE FROM series WHERE id = ?').run(id)
+}

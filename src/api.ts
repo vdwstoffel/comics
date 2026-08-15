@@ -47,6 +47,8 @@ export interface SeriesDetailResponse { series: ApiSeries; books: ApiBook[] }
 export interface BookResponse { book: ApiBook; progress: ApiProgress }
 export interface ProgressResponse { progress: ApiProgress }
 export interface CvSearchResponse { results: CvSearchResult[] }
+export interface RenameSeriesResponse { series: ApiSeries }
+export interface MoveBookSeriesResponse { book: ApiBook; series: ApiSeries }
 
 async function json<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, opts)
@@ -72,5 +74,13 @@ export const api = {
   applyIssue: (id: string | number, issueId: number) =>
     json<BookResponse>(`/api/books/${id}/comicvine`, {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ issueId }),
+    }),
+  renameSeries: (id: string | number, name: string) =>
+    json<RenameSeriesResponse>(`/api/series/${id}`, {
+      method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }),
+    }),
+  moveBookSeries: (id: string | number, name: string) =>
+    json<MoveBookSeriesResponse>(`/api/books/${id}/series`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }),
     }),
 }

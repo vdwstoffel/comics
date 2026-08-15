@@ -100,3 +100,8 @@ export function updateBook(db: Db, id: number | bigint, fields: BookUpdate): Boo
   if (sets.length) db.prepare(`UPDATE book SET ${sets.join(', ')} WHERE id = ?`).run(...vals, id)
   return getBook(db, id)
 }
+
+export function setBookSeries(db: Db, bookId: number, seriesId: number, filePath: string): Book {
+  db.prepare('UPDATE book SET series_id = ?, file_path = ? WHERE id = ?').run(seriesId, filePath, bookId)
+  return getBook(db, bookId) as Book
+}
