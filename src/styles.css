@@ -847,6 +847,87 @@ textarea.input:hover:not(:focus) {
 }
 
 /* ============================================================
+   Library layout (sidebar + grid)
+   ============================================================ */
+.library-layout {
+  display: flex;
+  gap: 24px;
+  align-items: flex-start;
+}
+
+.library-grid-area {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ============================================================
+   Filter sidebar
+   ============================================================ */
+.filter-sidebar {
+  width: 200px;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 16px 0;
+}
+
+.filter-sidebar__title {
+  font-size: 0.6875rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--muted);
+  padding: 0 16px 10px;
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 6px;
+}
+
+.filter-sidebar__list {
+  list-style: none;
+}
+
+.filter-sidebar__item {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 0.875rem;
+  font-family: inherit;
+  padding: 8px 16px;
+  cursor: pointer;
+  border-radius: 0;
+  transition: background 0.12s, color 0.12s;
+  line-height: 1.4;
+}
+
+.filter-sidebar__item:hover {
+  background: var(--elevated);
+}
+
+.filter-sidebar__item--active {
+  color: var(--accent);
+  font-weight: 600;
+  background: var(--elevated);
+}
+
+.filter-sidebar__item--active:hover {
+  background: var(--elevated);
+}
+
+@media (max-width: 640px) {
+  .library-layout {
+    flex-direction: column;
+  }
+
+  .filter-sidebar {
+    width: 100%;
+  }
+}
+
+/* ============================================================
    Misc utilities
    ============================================================ */
 .error-text {

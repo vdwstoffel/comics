@@ -1,6 +1,6 @@
 import { createReadStream, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { listSeries, getSeries } from '../models/series.js'
+import { listSeries, getSeries, listPublishers } from '../models/series.js'
 import { listBooksBySeries } from '../models/books.js'
 import { getProgress } from '../models/progress.js'
 import { renameSeries } from '../services/library.js'
@@ -8,6 +8,7 @@ import type { App, Book } from '../types.js'
 
 interface IdParams { id: string }
 interface RenameBody { name?: string }
+interface SeriesQuery { publisher?: string }
 
 type ReadState = 'unread' | 'reading' | 'read'
 
@@ -35,7 +36,12 @@ function deriveReadState(db: App['db'], book: Book): BookWithProgress {
 }
 
 export default async function seriesRoutes(app: App) {
-  app.get('/api/series', async () => ({ series: listSeries(app.db) }))
+  app.get<{ Querystring: SeriesQuery }>('/api/series', async (req) => {
+    const { publisher } = req.query
+    return { series: listSeries(app.db, publisher ? { publisher } : undefined) }
+  })
+
+  app.get('/api/publishers', async () => ({ publishers: listPublishers(app.db) }))
 
   app.get<{ Params: IdParams }>('/api/series/:id', async (req, reply) => {
     const series = getSeries(app.db, Number(req.params.id))

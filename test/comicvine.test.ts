@@ -43,6 +43,36 @@ test('getIssue maps fields and strips html', async () => {
   })
 })
 
+test('getIssue returns volumeId from volume.id', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([
+      ['/issue/', { results: {
+        name: 'Year One', issue_number: '1', cover_date: '2011-11-01',
+        description: null,
+        volume: { name: 'Batman', id: 7890 },
+      } }],
+    ]),
+  })
+  const issue = await cv.getIssue(42)
+  expect(issue.volumeId).toBe(7890)
+})
+
+test('getIssue volumeId is undefined when volume has no id', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([
+      ['/issue/', { results: {
+        name: 'Year One', issue_number: '1', cover_date: '2011-11-01',
+        description: null,
+        volume: { name: 'Batman' },
+      } }],
+    ]),
+  })
+  const issue = await cv.getIssue(42)
+  expect(issue.volumeId).toBeUndefined()
+})
+
 test('getIssue maps rich fields: multi-role credits, characters, teams, arcs, year, siteUrl', async () => {
   const cv = createComicVine({
     apiKey: 'k', now: () => 0,
@@ -104,8 +134,15 @@ test('getIssue returns empty arrays when no credits/tags', async () => {
 })
 
 import Fastify from 'fastify'
+import { mkdtempSync, rmSync, mkdirSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import comicvineRoutes from '../server/routes/comicvine.js'
 import { openDb } from '../server/db.js'
+import { upsertSeries } from '../server/models/series.js'
+import { insertBook, getBook } from '../server/models/books.js'
+import { getSeries } from '../server/models/series.js'
+import { makeCbz } from './helpers/makeCbz.js'
 import type { Config } from '../server/config.js'
 
 test('search route 400s when no API key configured', async () => {
@@ -116,4 +153,57 @@ test('search route 400s when no API key configured', async () => {
   const res = await app.inject({ url: '/api/comicvine/search?q=batman' })
   expect(res.statusCode).toBe(400)
   await app.close()
+})
+
+test('apply route stores publisher on book and series when getVolume returns one', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cv-apply-'))
+  mkdirSync(join(dir, 'Batman'), { recursive: true })
+  await makeCbz(join(dir, 'Batman'), ['p1.png'], '001.cbz')
+
+  // Mock fetch: issue returns volumeId 7890; volume returns publisher "DC"
+  const mockFetchImpl = mockFetch([
+    ['/issue/', { results: {
+      name: 'Year One', issue_number: '1', cover_date: '2011-11-01',
+      description: null,
+      volume: { name: 'Batman', id: 7890 },
+      person_credits: [],
+    } }],
+    ['/volume/', { results: {
+      name: 'Batman',
+      publisher: { name: 'DC' },
+      description: null,
+    } }],
+  ])
+
+  const app = Fastify()
+  const db = openDb(':memory:')
+  const config = { comicVineApiKey: 'test-key', comicsDir: dir, thumbsDir: dir } as Config
+  app.decorate('db', db)
+  app.decorate('config', config)
+  // Override fetch in the module by injecting via the client — we pass a mock fetch to the route
+  // by replacing globalThis.fetch before the module uses it
+  const origFetch = globalThis.fetch
+  globalThis.fetch = mockFetchImpl as unknown as typeof fetch
+
+  await app.register(comicvineRoutes)
+
+  const series = upsertSeries(db, { name: 'Batman', folder: 'Batman' })
+  const book = insertBook(db, { seriesId: series.id, filePath: 'Batman/001.cbz', pageCount: 1, fileSize: 100 })!
+
+  try {
+    const res = await app.inject({
+      method: 'POST',
+      url: `/api/books/${book.id}/comicvine`,
+      payload: { issueId: 42 },
+    })
+    expect(res.statusCode).toBe(200)
+    const updatedBook = getBook(db, book.id)!
+    expect(updatedBook.publisher).toBe('DC')
+    const updatedSeries = getSeries(db, series.id)!
+    expect(updatedSeries.publisher).toBe('DC')
+  } finally {
+    globalThis.fetch = origFetch
+    await app.close()
+    rmSync(dir, { recursive: true, force: true })
+  }
 })

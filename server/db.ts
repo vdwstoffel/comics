@@ -65,6 +65,7 @@ export function openDb(dbPath: string): Db {
   if (!bookCols.includes('year')) db.exec('ALTER TABLE book ADD COLUMN year INTEGER')
   if (!bookCols.includes('cover_url')) db.exec('ALTER TABLE book ADD COLUMN cover_url TEXT')
   if (!bookCols.includes('cv_site_url')) db.exec('ALTER TABLE book ADD COLUMN cv_site_url TEXT')
+  if (!bookCols.includes('publisher')) db.exec('ALTER TABLE book ADD COLUMN publisher TEXT')
 
   db.exec(MIGRATION)
   return db

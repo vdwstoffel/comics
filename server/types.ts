@@ -35,6 +35,7 @@ export interface Book {
   year: number | null
   coverUrl: string | null
   cvSiteUrl: string | null
+  publisher: string | null
 }
 
 export interface Progress {

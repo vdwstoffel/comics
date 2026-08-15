@@ -23,7 +23,7 @@ interface CvResult {
   start_year?: string
   description?: string
   image?: CvImage
-  volume?: { name?: string }
+  volume?: { name?: string; id?: number }
   publisher?: { name?: string }
   person_credits?: CvPerson[]
   character_credits?: CvNamedItem[]
@@ -62,6 +62,7 @@ export interface CvIssue {
   storyArcs: string[]
   coverUrl?: string
   siteUrl?: string
+  volumeId?: number
 }
 export interface CvVolume {
   name?: string
@@ -152,6 +153,7 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         storyArcs: names(r.story_arc_credits),
         coverUrl: r.image?.original_url,
         siteUrl: r.site_detail_url,
+        volumeId: r.volume?.id,
       }
     },
     async getVolume(id) {

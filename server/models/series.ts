@@ -34,13 +34,46 @@ export function getSeries(db: Db, id: number): Series | undefined {
   return toSeries(db.prepare('SELECT * FROM series WHERE id = ?').get(id) as SeriesRow | undefined)
 }
 
-export function listSeries(db: Db): Series[] {
+export function listSeries(db: Db, opts?: { publisher?: string }): Series[] {
+  if (opts?.publisher === '__unknown__') {
+    return (db
+      .prepare(`SELECT s.*, COUNT(b.id) AS book_count
+                FROM series s LEFT JOIN book b ON b.series_id = s.id
+                WHERE s.publisher IS NULL
+                GROUP BY s.id ORDER BY s.name COLLATE NOCASE`)
+      .all() as SeriesRow[])
+      .map((r) => toSeries(r) as Series)
+  }
+  if (opts?.publisher) {
+    return (db
+      .prepare(`SELECT s.*, COUNT(b.id) AS book_count
+                FROM series s LEFT JOIN book b ON b.series_id = s.id
+                WHERE s.publisher = ?
+                GROUP BY s.id ORDER BY s.name COLLATE NOCASE`)
+      .all(opts.publisher) as SeriesRow[])
+      .map((r) => toSeries(r) as Series)
+  }
   return (db
     .prepare(`SELECT s.*, COUNT(b.id) AS book_count
               FROM series s LEFT JOIN book b ON b.series_id = s.id
               GROUP BY s.id ORDER BY s.name COLLATE NOCASE`)
     .all() as SeriesRow[])
     .map((r) => toSeries(r) as Series)
+}
+
+export interface PublisherFacet {
+  name: string
+  count: number
+}
+
+export function listPublishers(db: Db): PublisherFacet[] {
+  return (db
+    .prepare(`SELECT publisher AS name, COUNT(*) AS count
+              FROM series
+              WHERE publisher IS NOT NULL
+              GROUP BY publisher
+              ORDER BY publisher COLLATE NOCASE`)
+    .all() as Array<{ name: string; count: number }>)
 }
 
 // WARNING: Do NOT use updateSeries/SERIES_FIELDS to change a series' `name`.

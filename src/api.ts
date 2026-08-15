@@ -57,6 +57,11 @@ export interface CvSearchResult {
   thumbnail?: string
 }
 
+export interface PublisherFacet {
+  name: string
+  count: number
+}
+
 export interface SeriesListResponse { series: ApiSeries[] }
 export interface SeriesDetailResponse { series: ApiSeries; books: ApiBook[] }
 export interface BookResponse { book: ApiBook; progress: ApiProgress; credits?: ApiCredit[]; tags?: ApiTag[] }
@@ -64,6 +69,7 @@ export interface ProgressResponse { progress: ApiProgress }
 export interface CvSearchResponse { results: CvSearchResult[] }
 export interface RenameSeriesResponse { series: ApiSeries }
 export interface MoveBookSeriesResponse { book: ApiBook; series: ApiSeries }
+export interface PublishersResponse { publishers: PublisherFacet[] }
 
 async function json<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, opts)
@@ -72,7 +78,11 @@ async function json<T>(url: string, opts?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  getSeries: () => json<SeriesListResponse>('/api/series'),
+  getSeries: (publisher?: string) => {
+    const url = publisher ? `/api/series?publisher=${encodeURIComponent(publisher)}` : '/api/series'
+    return json<SeriesListResponse>(url)
+  },
+  getPublishers: () => json<PublishersResponse>('/api/publishers'),
   getSeriesDetail: (id: string | number) => json<SeriesDetailResponse>(`/api/series/${id}`),
   getBook: (id: string | number) => json<BookResponse>(`/api/books/${id}`),
   putProgress: (id: string | number, body: { lastPage: number; completed: boolean }) =>

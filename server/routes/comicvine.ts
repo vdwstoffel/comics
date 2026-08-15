@@ -24,12 +24,20 @@ export default async function comicvineRoutes(app: App) {
     if (!issueId) return reply.code(400).send({ error: 'missing issueId' })
     const meta = await cv.getIssue(issueId)
 
+    // Best-effort: fetch publisher from the volume BEFORE opening the transaction
+    // (better-sqlite3 transactions must be synchronous; no async calls inside)
+    let publisher: string | undefined
+    try {
+      if (meta.volumeId) publisher = (await cv.getVolume(meta.volumeId)).publisher
+    } catch { /* best-effort; don't fail the match */ }
+
     const updatedBook = app.db.transaction(() => {
       const b = updateBook(app.db, book.id, {
         title: meta.title ?? null, number: meta.number ?? null, date: meta.date ?? null,
         summary: meta.summary ?? null, writer: meta.writer ?? null, penciller: meta.penciller ?? null,
         comicvineId: Number(issueId),
         year: meta.year ?? null, coverUrl: meta.coverUrl ?? null, cvSiteUrl: meta.siteUrl ?? null,
+        publisher: publisher ?? null,
       })
       replaceBookCredits(app.db, book.id, meta.credits)
       const tags = [
@@ -38,6 +46,13 @@ export default async function comicvineRoutes(app: App) {
         ...meta.storyArcs.map((value) => ({ kind: 'story_arc', value })),
       ]
       replaceBookTags(app.db, book.id, tags)
+      // Propagate publisher to series if series doesn't have one yet
+      if (publisher && book.seriesId) {
+        const series = getSeries(app.db, book.seriesId)
+        if (series && !series.publisher) {
+          updateSeries(app.db, book.seriesId, { publisher })
+        }
+      }
       return b
     })()
 
