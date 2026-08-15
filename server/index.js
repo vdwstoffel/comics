@@ -1,10 +1,15 @@
 import Fastify from 'fastify'
 import { loadConfig } from './config.js'
+import { openDb } from './db.js'
 
 export async function buildServer() {
   const config = loadConfig()
   const app = Fastify({ logger: false })
   app.decorate('config', config)
+
+  const db = openDb(config.dbPath)
+  app.decorate('db', db)
+  app.addHook('onClose', async () => db.close())
 
   app.get('/api/health', async () => ({ status: 'ok' }))
 
