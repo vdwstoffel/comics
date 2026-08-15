@@ -1,6 +1,7 @@
 import Fastify from 'fastify'
 import { loadConfig } from './config.js'
 import { openDb } from './db.js'
+import scanRoutes from './routes/scan.js'
 
 export async function buildServer() {
   const config = loadConfig()
@@ -12,6 +13,8 @@ export async function buildServer() {
   app.addHook('onClose', async () => db.close())
 
   app.get('/api/health', async () => ({ status: 'ok' }))
+
+  await app.register(scanRoutes)
 
   return app
 }
