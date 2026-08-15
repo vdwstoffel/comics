@@ -66,7 +66,7 @@ export async function readPage(cbzPath, index) {
       }
     })
     zip.on('end', () => reject(new Error(`entry ${targetName} not found`)))
-    zip.on('error', reject)
+    zip.on('error', (err) => { zip.close(); reject(err) })
     zip.readEntry()
   })
   stream.on('end', () => zip.close())
