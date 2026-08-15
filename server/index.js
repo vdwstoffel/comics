@@ -1,5 +1,8 @@
 import Fastify from 'fastify'
 import multipart from '@fastify/multipart'
+import fastifyStatic from '@fastify/static'
+import { join } from 'node:path'
+import { existsSync } from 'node:fs'
 import { loadConfig } from './config.js'
 import { openDb } from './db.js'
 import scanRoutes from './routes/scan.js'
@@ -7,6 +10,13 @@ import seriesRoutes from './routes/series.js'
 import booksRoutes from './routes/books.js'
 import uploadRoutes from './routes/upload.js'
 import comicvineRoutes from './routes/comicvine.js'
+
+export function registerSpa(app, distDir) {
+  app.setNotFoundHandler((req, reply) => {
+    if (req.raw.url && req.raw.url.startsWith('/api')) return reply.code(404).send({ error: 'not found' })
+    return reply.type('text/html').sendFile('index.html')
+  })
+}
 
 export async function buildServer() {
   const config = loadConfig()
@@ -25,6 +35,12 @@ export async function buildServer() {
   await app.register(booksRoutes)
   await app.register(uploadRoutes)
   await app.register(comicvineRoutes)
+
+  const distDir = join(process.cwd(), 'dist')
+  if (existsSync(distDir)) {
+    await app.register(fastifyStatic, { root: distDir })
+    registerSpa(app, distDir)
+  }
 
   return app
 }

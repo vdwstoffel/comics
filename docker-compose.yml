@@ -1,0 +1,14 @@
+services:
+  comic-app:
+    build: .
+    container_name: comic-app
+    environment:
+      - DATA_DIR=/data
+      - PORT=3000
+      - COMIC_VINE_API_KEY=${COMIC_VINE_API_KEY:-}
+      - MAX_UPLOAD_BYTES=5368709120
+    volumes:
+      - ./data:/data
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
