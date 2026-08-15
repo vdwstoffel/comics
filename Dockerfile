@@ -14,7 +14,7 @@ ENV NODE_ENV=production
 COPY package*.json ./
 # NOTE: --legacy-peer-deps required due to vite@8 / @vitejs/plugin-react@4 peer conflict
 RUN npm ci --omit=dev --legacy-peer-deps
-COPY server ./server
+COPY --from=build /app/build ./build
 COPY --from=build /app/dist ./dist
 EXPOSE 3000
-CMD ["node", "server/index.js"]
+CMD ["node", "build/server/index.js"]

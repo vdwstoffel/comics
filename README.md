@@ -3,11 +3,15 @@
 Self-hosted comic library: upload `.cbz`, browse, read in the browser with saved
 progress, edit metadata, and fetch metadata from Comic Vine on demand.
 
+Written in **TypeScript** (strict). Backend is Fastify + better-sqlite3 (compiled
+with `tsc`, NodeNext); frontend is React + Vite (bundler resolution).
+
 ## Develop
 
 - `npm install --legacy-peer-deps`
-- Terminal 1: `npm run dev:server`  (Fastify on :3000)
+- Terminal 1: `npm run dev:server`  (Fastify on :3000, via `tsx watch`)
 - Terminal 2: `npm run dev:web`      (Vite dev server, proxies /api)
+- Type-check everything with `npm run typecheck`.
 - Seed from an existing folder of comics: put `.cbz` files under
   `data/comics/<Series>/` and `curl -X POST localhost:3000/api/scan`.
 
@@ -19,11 +23,13 @@ progress, edit metadata, and fetch metadata from Comic Vine on demand.
 
 - `npm test`
 
-## Build (static assets)
+## Build
 
 - `npm run build`  (requires `--legacy-peer-deps` on a fresh install)
-- Produces `dist/` which is served automatically by the Fastify server in
-  production.
+- Compiles the backend with `tsc -p tsconfig.server.json` into `build/`
+  (runnable Node output) and bundles the frontend with Vite into `dist/`.
+- Start the compiled server with `npm start`
+  (`node build/server/index.js`); it serves `dist/` automatically in production.
 
 ## Run (Docker)
 
