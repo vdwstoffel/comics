@@ -1,10 +1,14 @@
 import { Routes, Route } from 'react-router-dom'
 import Library from './pages/Library.jsx'
+import Series from './pages/Series.jsx'
+import BookDetail from './pages/BookDetail.jsx'
 
 export default function App() {
   return (
     <Routes>
       <Route path="/" element={<Library />} />
+      <Route path="/series/:id" element={<Series />} />
+      <Route path="/book/:id" element={<BookDetail />} />
     </Routes>
   )
 }
