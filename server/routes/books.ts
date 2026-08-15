@@ -68,7 +68,8 @@ export default async function booksRoutes(app: App) {
     const body = req.body || {}
     const fields: Record<string, unknown> = {}
     for (const k of EDITABLE) if (k in body) fields[k] = body[k]
-    return { book: updateBook(app.db, book.id, fields) }
+    const updatedBook = updateBook(app.db, book.id, fields)
+    return { book: updatedBook, credits: getBookCredits(app.db, book.id), tags: getBookTags(app.db, book.id) }
   })
 
   app.post<{ Params: IdParams }>('/api/books/:id/embed', async (req, reply) => {
@@ -81,7 +82,8 @@ export default async function booksRoutes(app: App) {
       publisher: series?.publisher ?? undefined, date: book.date ?? undefined,
     })
     await embedComicInfo(absCbz(app, book), xml)
-    return { book: updateBook(app.db, book.id, { comicinfoSynced: true }) }
+    const updatedBook = updateBook(app.db, book.id, { comicinfoSynced: true })
+    return { book: updatedBook, credits: getBookCredits(app.db, book.id), tags: getBookTags(app.db, book.id) }
   })
 
   app.put<{ Params: IdParams; Body: MoveSeriesBody }>('/api/books/:id/series', async (req, reply) => {
