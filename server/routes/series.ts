@@ -2,11 +2,37 @@ import { createReadStream, existsSync } from 'node:fs'
 import { join } from 'node:path'
 import { listSeries, getSeries } from '../models/series.js'
 import { listBooksBySeries } from '../models/books.js'
+import { getProgress } from '../models/progress.js'
 import { renameSeries } from '../services/library.js'
-import type { App } from '../types.js'
+import type { App, Book } from '../types.js'
 
 interface IdParams { id: string }
 interface RenameBody { name?: string }
+
+type ReadState = 'unread' | 'reading' | 'read'
+
+interface BookWithProgress extends Book {
+  readState: ReadState
+  percent: number
+}
+
+function deriveReadState(db: App['db'], book: Book): BookWithProgress {
+  const progress = getProgress(db, book.id)
+  let readState: ReadState
+  let percent: number
+  if (progress.completed) {
+    readState = 'read'
+    percent = 100
+  } else if (progress.lastPage > 0) {
+    readState = 'reading'
+    const divisor = Math.max(book.pageCount - 1, 1)
+    percent = Math.min(Math.max(Math.round(progress.lastPage / divisor * 100), 1), 99)
+  } else {
+    readState = 'unread'
+    percent = 0
+  }
+  return { ...book, readState, percent }
+}
 
 export default async function seriesRoutes(app: App) {
   app.get('/api/series', async () => ({ series: listSeries(app.db) }))
@@ -14,7 +40,8 @@ export default async function seriesRoutes(app: App) {
   app.get<{ Params: IdParams }>('/api/series/:id', async (req, reply) => {
     const series = getSeries(app.db, Number(req.params.id))
     if (!series) return reply.code(404).send({ error: 'series not found' })
-    return { series, books: listBooksBySeries(app.db, series.id) }
+    const books = listBooksBySeries(app.db, series.id).map((b) => deriveReadState(app.db, b))
+    return { series, books }
   })
 
   app.get<{ Params: IdParams }>('/api/series/:id/thumbnail', async (req, reply) => {

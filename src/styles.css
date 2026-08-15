@@ -254,13 +254,14 @@ img {
 }
 
 .cover-tile__image-box {
+  position: relative;
   aspect-ratio: 2 / 3;
   background: var(--elevated);
   border-radius: var(--radius);
   overflow: hidden;
   border: 1px solid var(--border);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
-  transition: box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease, filter 0.2s ease;
 }
 
 .cover-tile__image-box img {
@@ -736,6 +737,38 @@ textarea.input:hover:not(:focus) {
   margin-top: 8px;
   font-size: 0.875rem;
   color: var(--muted);
+}
+
+/* ============================================================
+   Read-state indicators (on CoverTile)
+   ============================================================ */
+
+/* Circular check badge (top-right corner) for "read" state */
+.tile-check {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  background: var(--accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.5);
+  z-index: 2;
+}
+
+/* Thin progress bar pinned to the bottom edge for "reading" state */
+.tile-progress {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  height: 4px;
+  background: var(--accent);
+  z-index: 2;
+  min-width: 4px;
+  border-radius: 0 2px 0 0;
 }
 
 /* ============================================================

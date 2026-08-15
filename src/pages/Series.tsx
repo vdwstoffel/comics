@@ -76,6 +76,8 @@ export default function Series() {
             img={`/api/books/${b.id}/thumbnail`}
             title={b.title || `#${b.number ?? '?'}`}
             subtitle={b.number ? `#${b.number}` : ''}
+            readState={b.readState}
+            percent={b.percent}
           />
         ))}
       </div>

@@ -24,6 +24,8 @@ export interface ApiBook {
   comicvineId?: number | null
   comicinfoSynced: boolean
   addedAt?: string
+  readState?: 'unread' | 'reading' | 'read'
+  percent?: number
 }
 
 export interface ApiProgress {
