@@ -15,25 +15,27 @@ export default function ComicVineMatchDialog({ defaultQuery, onPick, onClose }) 
   }
 
   return (
-    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', display: 'grid', placeItems: 'center' }}>
-      <div style={{ background: '#fff', color: '#000', padding: 16, width: 480, maxHeight: '80vh', overflow: 'auto', borderRadius: 8 }}>
+    <div className="cv-backdrop">
+      <div className="cv-panel">
         <h3>Fetch from Comic Vine</h3>
-        <div style={{ display: 'flex', gap: 8 }}>
-          <input placeholder="Search Comic Vine" value={q} onChange={(e) => setQ(e.target.value)} style={{ flex: 1 }} />
-          <button onClick={doSearch}>Search</button>
+        <div className="cv-search-row">
+          <input placeholder="Search Comic Vine" value={q} onChange={(e) => setQ(e.target.value)} />
+          <button className="btn" onClick={doSearch}>Search</button>
         </div>
-        {loading && <p>Searching…</p>}
-        {err && <p style={{ color: 'red' }}>{err}</p>}
-        <ul style={{ listStyle: 'none', padding: 0 }}>
+        {loading && <p className="cv-status">Searching…</p>}
+        {err && <p className="cv-error">{err}</p>}
+        <ul className="cv-results">
           {results.map((r) => (
             <li key={r.id}>
-              <button style={{ display: 'block', width: '100%', textAlign: 'left', padding: 8 }} onClick={() => onPick(r)}>
+              <button className="cv-candidate" onClick={() => onPick(r)}>
                 {r.name} #{r.issueNumber} {r.year ? `(${r.year})` : ''}
               </button>
             </li>
           ))}
         </ul>
-        <button onClick={onClose}>Close</button>
+        <div className="cv-close-row">
+          <button className="btn-ghost" onClick={onClose}>Close</button>
+        </div>
       </div>
     </div>
   )

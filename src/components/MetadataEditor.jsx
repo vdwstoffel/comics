@@ -7,14 +7,14 @@ export default function MetadataEditor({ book, onSave }) {
   return (
     <div>
       {FIELDS.map((f) => (
-        <div key={f} style={{ marginBottom: 8 }}>
-          <label style={{ display: 'block', fontSize: 12, opacity: 0.7 }}>{f}</label>
+        <div key={f} className="field">
+          <label>{f}</label>
           {f === 'summary'
-            ? <textarea value={form[f]} onChange={(e) => setForm({ ...form, [f]: e.target.value })} rows={4} style={{ width: '100%' }} />
-            : <input value={form[f]} onChange={(e) => setForm({ ...form, [f]: e.target.value })} style={{ width: '100%' }} />}
+            ? <textarea value={form[f]} onChange={(e) => setForm({ ...form, [f]: e.target.value })} rows={4} />
+            : <input value={form[f]} onChange={(e) => setForm({ ...form, [f]: e.target.value })} />}
         </div>
       ))}
-      <button onClick={() => onSave(form)}>Save metadata</button>
+      <button className="btn" onClick={() => onSave(form)}>Save metadata</button>
     </div>
   )
 }

@@ -21,18 +21,24 @@ export default function Upload() {
   }
 
   return (
-    <div style={{ padding: 16, maxWidth: 480 }}>
-      <h1>Upload a comic</h1>
-      <form onSubmit={submit}>
-        <input placeholder="Series name" value={series} onChange={(e) => setSeries(e.target.value)} style={{ width: '100%', marginBottom: 8 }} />
-        <label style={{ display: 'block', marginBottom: 8 }}>
-          Comic file (.cbz)
-          <input type="file" accept=".cbz" onChange={(e) => setFile(e.target.files[0])} />
-        </label>
-        <button type="submit" disabled={!file || pct !== null}>Upload</button>
-      </form>
-      {pct !== null && <p>Uploading… {pct}%</p>}
-      {msg && <p>{msg}</p>}
+    <div className="upload-wrap">
+      <div className="upload-card">
+        <h1>Upload a comic</h1>
+        <form onSubmit={submit}>
+          <div className="field">
+            <input className="input" placeholder="Series name" value={series} onChange={(e) => setSeries(e.target.value)} />
+          </div>
+          <div className="field">
+            <label className="file-label">
+              Comic file (.cbz)
+              <input className="file-input" type="file" accept=".cbz" onChange={(e) => setFile(e.target.files[0])} />
+            </label>
+          </div>
+          <button className="btn" type="submit" disabled={!file || pct !== null}>Upload</button>
+        </form>
+        {pct !== null && <p className="upload-progress">Uploading… {pct}%</p>}
+        {msg && <p className="upload-msg">{msg}</p>}
+      </div>
     </div>
   )
 }

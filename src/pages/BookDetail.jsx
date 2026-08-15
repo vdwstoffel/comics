@@ -28,18 +28,22 @@ export default function BookDetail() {
   const { book } = data
   const metadataKey = [book.title, book.number, book.writer, book.penciller, book.date, book.summary].join('|')
   return (
-    <div style={{ padding: 16, display: 'flex', gap: 24 }}>
-      <img src={`/api/books/${id}/thumbnail`} alt="" width={240} style={{ borderRadius: 8, alignSelf: 'flex-start' }} />
-      <div style={{ flex: 1 }}>
-        <h1>{book.title || '(untitled)'}</h1>
-        <p>{book.pageCount} pages{book.comicinfoSynced ? ' · metadata embedded' : ''}</p>
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
-          <Link to={`/read/${id}`}><button>Read</button></Link>
-          <button onClick={() => setDialog(true)}>Fetch metadata</button>
-          <button onClick={() => embed.mutate()} disabled={embed.isPending}>Embed into file</button>
+    <div className="book-detail">
+      <img src={`/api/books/${id}/thumbnail`} alt="" className="book-detail__cover" />
+      <div className="book-detail__info">
+        <h1 className="book-detail__title">{book.title || '(untitled)'}</h1>
+        <p className="book-detail__meta">
+          {book.pageCount} pages{book.comicinfoSynced ? ' · metadata embedded' : ''}
+        </p>
+        <div className="btn-row">
+          <Link to={`/read/${id}`}><button className="btn">Read</button></Link>
+          <button className="btn-ghost" onClick={() => setDialog(true)}>Fetch metadata</button>
+          <button className="btn-ghost" onClick={() => embed.mutate()} disabled={embed.isPending}>Embed into file</button>
         </div>
-        {embed.isError && <p style={{ color: 'red' }}>Embed failed: {embed.error?.message ?? 'Unknown error'}</p>}
-        <MetadataEditor key={metadataKey} book={book} onSave={(form) => save.mutate(form)} />
+        {embed.isError && <p className="book-detail__error">Embed failed: {embed.error?.message ?? 'Unknown error'}</p>}
+        <div className="metadata-section">
+          <MetadataEditor key={metadataKey} book={book} onSave={(form) => save.mutate(form)} />
+        </div>
       </div>
       {dialog && (
         <ComicVineMatchDialog

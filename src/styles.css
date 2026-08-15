@@ -1,0 +1,554 @@
+/* ============================================================
+   Design tokens
+   ============================================================ */
+:root {
+  --bg: #0e0f13;
+  --surface: #171921;
+  --elevated: #20232d;
+  --border: #2c303b;
+  --text: #e8eaed;
+  --muted: #9aa0aa;
+  --accent: #e5484d;
+  --accent-hover: #f2555a;
+  --radius: 10px;
+  --shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+}
+
+/* ============================================================
+   Reset / global
+   ============================================================ */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html,
+body {
+  height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+/* ============================================================
+   Layout
+   ============================================================ */
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  height: 56px;
+  display: flex;
+  align-items: center;
+}
+
+.app-header__inner {
+  width: 100%;
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 0 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.app-header__brand {
+  font-size: 1.2rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text);
+}
+
+.app-header__upload {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: var(--accent);
+  border: 1px solid var(--accent);
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  transition: background 0.15s, color 0.15s;
+}
+
+.app-header__upload:hover {
+  background: var(--accent);
+  color: #fff;
+}
+
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 28px 20px;
+}
+
+/* ============================================================
+   Typography helpers
+   ============================================================ */
+.page-title {
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin-bottom: 20px;
+}
+
+.page-subtitle {
+  color: var(--muted);
+  max-width: 640px;
+  margin-bottom: 24px;
+}
+
+/* ============================================================
+   Grid (cover tiles)
+   ============================================================ */
+.tile-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 20px;
+}
+
+/* ============================================================
+   CoverTile card
+   ============================================================ */
+.cover-tile {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  border-radius: var(--radius);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+}
+
+.cover-tile:hover {
+  transform: translateY(-4px);
+  box-shadow: var(--shadow), 0 0 0 2px var(--accent);
+  outline-color: transparent;
+}
+
+.cover-tile__image-box {
+  aspect-ratio: 2 / 3;
+  background: var(--elevated);
+  border-radius: var(--radius);
+  overflow: hidden;
+}
+
+.cover-tile__image-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.cover-tile__title {
+  margin-top: 8px;
+  font-weight: 700;
+  font-size: 0.875rem;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cover-tile__subtitle {
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* ============================================================
+   Buttons
+   ============================================================ */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--accent);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius);
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, opacity 0.15s;
+  font-family: inherit;
+}
+
+.btn:hover:not(:disabled) {
+  background: var(--accent-hover);
+}
+
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 8px 16px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+}
+
+.btn-ghost:hover:not(:disabled) {
+  background: var(--elevated);
+  border-color: var(--muted);
+}
+
+.btn-ghost:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.btn-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+/* ============================================================
+   Inputs / textarea
+   ============================================================ */
+.field {
+  margin-bottom: 14px;
+}
+
+.field label,
+.field-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.field input,
+.field textarea,
+.field select,
+input.input,
+textarea.input {
+  width: 100%;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  line-height: 1.5;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.field input:focus,
+.field textarea:focus,
+.field select:focus,
+input.input:focus,
+textarea.input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.18);
+}
+
+.field textarea {
+  resize: vertical;
+  min-height: 100px;
+}
+
+/* ============================================================
+   BookDetail
+   ============================================================ */
+.book-detail {
+  display: flex;
+  gap: 32px;
+  align-items: flex-start;
+}
+
+.book-detail__cover {
+  width: 240px;
+  flex-shrink: 0;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+}
+
+.book-detail__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.book-detail__title {
+  font-size: 2rem;
+  font-weight: 800;
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+
+.book-detail__meta {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin-bottom: 20px;
+}
+
+.book-detail__error {
+  color: var(--accent);
+  font-size: 0.875rem;
+  margin-bottom: 12px;
+}
+
+.metadata-section {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+@media (max-width: 640px) {
+  .book-detail {
+    flex-direction: column;
+  }
+
+  .book-detail__cover {
+    width: 100%;
+    max-width: 240px;
+  }
+}
+
+/* ============================================================
+   Comic Vine dialog
+   ============================================================ */
+.cv-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.65);
+  backdrop-filter: blur(4px);
+  display: grid;
+  place-items: center;
+  z-index: 200;
+}
+
+.cv-panel {
+  background: var(--surface);
+  color: var(--text);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  width: 500px;
+  max-width: calc(100vw - 32px);
+  max-height: 80vh;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.cv-panel h3 {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.cv-search-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.cv-search-row input {
+  flex: 1;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.cv-search-row input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.18);
+}
+
+.cv-results {
+  list-style: none;
+  margin: 0 0 16px;
+}
+
+.cv-results li + li {
+  border-top: 1px solid var(--border);
+}
+
+.cv-candidate {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 8px;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-size: 0.875rem;
+  font-family: inherit;
+  cursor: pointer;
+  border-radius: 6px;
+  transition: background 0.12s;
+}
+
+.cv-candidate:hover {
+  background: var(--elevated);
+}
+
+.cv-status {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin-bottom: 10px;
+}
+
+.cv-error {
+  color: var(--accent);
+  font-size: 0.875rem;
+  margin-bottom: 10px;
+}
+
+.cv-close-row {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+
+/* ============================================================
+   Reader
+   ============================================================ */
+.reader-root {
+  position: fixed;
+  inset: 0;
+  background: #000;
+  display: grid;
+  grid-template-rows: 1fr auto;
+}
+
+.reader-viewport {
+  position: relative;
+  overflow: hidden;
+}
+
+.reader-viewport img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.reader-zone {
+  position: absolute;
+  top: 0;
+  height: 100%;
+  width: 35%;
+  opacity: 0;
+  border: none;
+  background: transparent;
+}
+
+.reader-zone--prev {
+  left: 0;
+  cursor: w-resize;
+}
+
+.reader-zone--next {
+  right: 0;
+  cursor: e-resize;
+}
+
+.reader-counter {
+  color: var(--muted);
+  text-align: center;
+  padding: 10px;
+  font-size: 0.8125rem;
+  letter-spacing: 0.04em;
+  background: #000;
+}
+
+/* ============================================================
+   Upload
+   ============================================================ */
+.upload-wrap {
+  display: flex;
+  justify-content: center;
+  padding: 48px 20px;
+}
+
+.upload-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 32px;
+  width: 100%;
+  max-width: 480px;
+}
+
+.upload-card h1 {
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 24px;
+}
+
+.upload-progress {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin-top: 12px;
+}
+
+.upload-msg {
+  font-size: 0.875rem;
+  margin-top: 12px;
+  color: var(--text);
+}
+
+/* file input wrapper */
+.file-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--muted);
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  margin-bottom: 4px;
+}
+
+.file-input {
+  display: block;
+  margin-top: 6px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* ============================================================
+   Misc utilities
+   ============================================================ */
+.error-text {
+  color: var(--accent);
+}

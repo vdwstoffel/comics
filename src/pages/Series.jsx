@@ -8,10 +8,10 @@ export default function Series() {
   const { data, isLoading } = useQuery({ queryKey: ['series', id], queryFn: () => api.getSeriesDetail(id) })
   if (isLoading) return <p>Loading…</p>
   return (
-    <div style={{ padding: 16 }}>
-      <h1>{data.series.name}</h1>
-      {data.series.summary && <p style={{ maxWidth: 640 }}>{data.series.summary}</p>}
-      <div style={{ display: 'flex', flexWrap: 'wrap', gap: 16 }}>
+    <div>
+      <h1 className="page-title">{data.series.name}</h1>
+      {data.series.summary && <p className="page-subtitle">{data.series.summary}</p>}
+      <div className="tile-grid">
         {data.books.map((b) => (
           <CoverTile key={b.id} to={`/book/${b.id}`}
             img={`/api/books/${b.id}/thumbnail`}
