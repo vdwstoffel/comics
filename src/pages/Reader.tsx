@@ -7,6 +7,7 @@ export default function Reader() {
   const { id } = useParams()
   const { data } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
   const [page, setPage] = useState<number | null>(null)
+  const [scrubbing, setScrubbing] = useState<number | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
 
   // Resume at last-read page once the book loads.
@@ -36,6 +37,7 @@ export default function Reader() {
 
   if (!data || page === null) return <p>Loading…</p>
   const total = data.book.pageCount
+  const displayPage = scrubbing ?? page
   return (
     <div className="reader-root">
       <div className="reader-viewport">
@@ -46,7 +48,24 @@ export default function Reader() {
         <button aria-label="next" onClick={() => setPage((p) => Math.min((p ?? 0) + 1, total - 1))}
           className="reader-zone reader-zone--next" />
       </div>
-      <div className="reader-counter">{page + 1} / {total}</div>
+      <div className="reader-bottom-bar">
+        <input
+          type="range"
+          className="reader-scrubber"
+          min={0}
+          max={total - 1}
+          step={1}
+          value={displayPage}
+          aria-label="Go to page"
+          onInput={(e) => setScrubbing(Number((e.target as HTMLInputElement).value))}
+          onChange={(e) => {
+            const v = Number(e.target.value)
+            setPage(v)
+            setScrubbing(null)
+          }}
+        />
+        <span className="reader-counter">{displayPage + 1} / {total}</span>
+      </div>
     </div>
   )
 }

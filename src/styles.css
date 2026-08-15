@@ -666,14 +666,89 @@ textarea.input:hover:not(:focus) {
   cursor: e-resize;
 }
 
+.reader-bottom-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 16px;
+  background: #000;
+}
+
 .reader-counter {
   color: rgba(255, 255, 255, 0.35);
-  text-align: center;
-  padding: 10px;
   font-size: 0.8125rem;
   letter-spacing: 0.08em;
-  background: #000;
   font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+/* ── Range scrubber ── */
+.reader-scrubber {
+  flex: 1;
+  -webkit-appearance: none;
+  appearance: none;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  outline: none;
+  cursor: pointer;
+}
+
+/* Webkit track */
+.reader-scrubber::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--elevated);
+}
+
+/* Webkit thumb */
+.reader-scrubber::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #000;
+  margin-top: -7px;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.reader-scrubber::-webkit-slider-thumb:hover {
+  background: var(--accent-hover);
+  transform: scale(1.15);
+}
+
+/* Firefox track */
+.reader-scrubber::-moz-range-track {
+  height: 4px;
+  border-radius: 2px;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+}
+
+/* Firefox thumb */
+.reader-scrubber::-moz-range-thumb {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: 2px solid #000;
+  cursor: pointer;
+  transition: background 0.15s, transform 0.1s;
+}
+
+.reader-scrubber::-moz-range-thumb:hover {
+  background: var(--accent-hover);
+  transform: scale(1.15);
+}
+
+.reader-scrubber:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 3px;
 }
 
 /* ============================================================
