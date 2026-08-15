@@ -19,9 +19,14 @@ export default function BookDetail() {
     mutationFn: (issueId) => api.applyIssue(id, issueId),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['book', id] }); setDialog(false) },
   })
+  const embed = useMutation({
+    mutationFn: () => api.embed(id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['book', id] }),
+  })
 
   if (isLoading) return <p>Loading…</p>
   const { book } = data
+  const metadataKey = [book.title, book.number, book.writer, book.penciller, book.date, book.summary].join('|')
   return (
     <div style={{ padding: 16, display: 'flex', gap: 24 }}>
       <img src={`/api/books/${id}/thumbnail`} alt="" width={240} style={{ borderRadius: 8, alignSelf: 'flex-start' }} />
@@ -31,9 +36,10 @@ export default function BookDetail() {
         <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
           <Link to={`/read/${id}`}><button>Read</button></Link>
           <button onClick={() => setDialog(true)}>Fetch metadata</button>
-          <button onClick={() => api.embed(id).then(() => qc.invalidateQueries({ queryKey: ['book', id] }))}>Embed into file</button>
+          <button onClick={() => embed.mutate()} disabled={embed.isPending}>Embed into file</button>
         </div>
-        <MetadataEditor book={book} onSave={(form) => save.mutate(form)} />
+        {embed.isError && <p style={{ color: 'red' }}>Embed failed: {embed.error?.message ?? 'Unknown error'}</p>}
+        <MetadataEditor key={metadataKey} book={book} onSave={(form) => save.mutate(form)} />
       </div>
       {dialog && (
         <ComicVineMatchDialog
