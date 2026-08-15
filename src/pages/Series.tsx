@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import CoverTile from '../components/CoverTile'
@@ -43,6 +43,7 @@ export default function Series() {
 
   return (
     <div>
+      <Link to="/" className="back-link">← Library</Link>
       <div className="series-header">
         {editing ? (
           <div className="series-edit-row">

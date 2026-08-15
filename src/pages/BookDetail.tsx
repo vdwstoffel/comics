@@ -58,6 +58,7 @@ export default function BookDetail() {
     <div className="book-detail">
       <img src={`/api/books/${id}/thumbnail`} alt="" className="book-detail__cover" />
       <div className="book-detail__info">
+        <Link to={`/series/${book.seriesId}`} className="back-link">← Back to series</Link>
         <h1 className="book-detail__title">{book.title || '(untitled)'}</h1>
         <p className="book-detail__meta">
           {book.pageCount} pages{book.comicinfoSynced ? ' · metadata embedded' : ''}

@@ -983,6 +983,46 @@ textarea.input:hover:not(:focus) {
 }
 
 /* ============================================================
+   Back navigation
+   ============================================================ */
+.back-link {
+  display: inline-block;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-bottom: 12px;
+  transition: color 0.15s;
+  text-decoration: none;
+}
+
+.back-link:hover {
+  color: var(--text);
+}
+
+.reader-back {
+  position: absolute;
+  top: 14px;
+  left: 14px;
+  z-index: 50;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.55);
+  color: rgba(255, 255, 255, 0.75);
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  transition: background 0.15s, color 0.15s;
+  line-height: 1;
+}
+
+.reader-back:hover {
+  background: rgba(0, 0, 0, 0.8);
+  color: #fff;
+}
+
+/* ============================================================
    Misc utilities
    ============================================================ */
 .error-text {

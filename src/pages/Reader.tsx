@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams } from 'react-router-dom'
+import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
 
@@ -40,6 +40,7 @@ export default function Reader() {
   const displayPage = scrubbing ?? page
   return (
     <div className="reader-root">
+      <Link to={`/book/${id}`} className="reader-back" aria-label="Back">←</Link>
       <div className="reader-viewport">
         <img src={`/api/books/${id}/pages/${page}`} alt={`page ${page + 1}`} />
         {page + 1 < total && <img src={`/api/books/${id}/pages/${page + 1}`} alt="" style={{ display: 'none' }} />}
