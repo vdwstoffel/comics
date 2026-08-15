@@ -5,11 +5,14 @@ import { api } from '../api'
 import MetadataEditor from '../components/MetadataEditor'
 import ComicVineMatchDialog from '../components/ComicVineMatchDialog'
 
+const CHARACTER_SHOW_THRESHOLD = 40
+
 export default function BookDetail() {
   const { id } = useParams()
   const qc = useQueryClient()
   const [dialog, setDialog] = useState(false)
   const [moveTarget, setMoveTarget] = useState<string | null>(null)
+  const [showAllCharacters, setShowAllCharacters] = useState(false)
 
   const { data, isLoading } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
   const { data: seriesData, isLoading: seriesLoading } = useQuery({ queryKey: ['series'], queryFn: () => api.getSeries() })
@@ -54,22 +57,42 @@ export default function BookDetail() {
   const moveValue = moveTarget ?? currentSeriesName
   const metadataKey = [book.title, book.number, book.writer, book.penciller, book.date, book.summary].join('|')
 
+  const visibleCharacters = showAllCharacters ? characters : characters.slice(0, CHARACTER_SHOW_THRESHOLD)
+  const hasMoreCharacters = characters.length > CHARACTER_SHOW_THRESHOLD
+
+  // Build a readable subtitle line from issue number, year, publisher
+  const subtitleParts: string[] = []
+  if (book.number) subtitleParts.push(`#${book.number}`)
+  if (book.date) subtitleParts.push(book.date.slice(0, 4))
+  if ((book as unknown as Record<string, string>).publisher) subtitleParts.push((book as unknown as Record<string, string>).publisher)
+
   return (
     <div className="book-detail">
-      <img src={`/api/books/${id}/thumbnail`} alt="" className="book-detail__cover" />
-      <div className="book-detail__info">
-        <Link to={`/series/${book.seriesId}`} className="back-link">← Back to series</Link>
-        <h1 className="book-detail__title">{book.title || '(untitled)'}</h1>
-        <p className="book-detail__meta">
-          {book.pageCount} pages{book.comicinfoSynced ? ' · metadata embedded' : ''}
-        </p>
-        <div className="btn-row">
+      {/* LEFT COLUMN: cover + actions + back link */}
+      <div className="book-detail__left">
+        <div className="book-detail__cover-frame">
+          <img src={`/api/books/${id}/thumbnail`} alt="" className="book-detail__cover" />
+        </div>
+        <div className="btn-row book-detail__actions">
           <Link to={`/read/${id}`}><button className="btn">Read</button></Link>
           <button className="btn-ghost" onClick={() => setDialog(true)}>Fetch metadata</button>
           <button className="btn-ghost" onClick={() => embed.mutate()} disabled={embed.isPending}>Embed into file</button>
         </div>
         {embed.isError && <p className="book-detail__error">Embed failed: {embed.error?.message ?? 'Unknown error'}</p>}
+        <Link to={`/series/${book.seriesId}`} className="back-link">← Back to series</Link>
+      </div>
 
+      {/* RIGHT COLUMN: title, meta, series move, editor, creators, tags */}
+      <div className="book-detail__main">
+        <h1 className="book-detail__title">{book.title || '(untitled)'}</h1>
+        {subtitleParts.length > 0 && (
+          <p className="book-detail__subline">{subtitleParts.join(' · ')}</p>
+        )}
+        <p className="book-detail__meta">
+          {book.pageCount} pages{book.comicinfoSynced ? ' · metadata embedded' : ''}
+        </p>
+
+        {/* Series move */}
         <div className="field">
           <label>Series</label>
           <div className="move-series-row">
@@ -94,48 +117,66 @@ export default function BookDetail() {
           {moveSeries.isError && <p className="book-detail__move-error">Move failed: {moveSeries.error?.message}</p>}
         </div>
 
+        {/* Metadata editor */}
         <div className="metadata-section">
+          <h3 className="metadata-section__heading">Edit metadata</h3>
           <MetadataEditor key={metadataKey} book={book} onSave={(form) => save.mutate(form)} />
         </div>
 
+        {/* Creators */}
         {Object.keys(creditsByRole).length > 0 && (
-          <div className="book-detail__credits">
-            <h3>Creators</h3>
+          <div className="book-detail__section">
+            <h3 className="book-detail__section-heading">Creators</h3>
             {Object.entries(creditsByRole).map(([role, names]) => (
-              <p key={role} className="book-detail__credit-row">
-                <strong>{role}:</strong> {names.join(', ')}
-              </p>
+              <div key={role} className="creator-row">
+                <span className="creator-row__role">{role}</span>
+                <span className="creator-row__names">{names.join(', ')}</span>
+              </div>
             ))}
           </div>
         )}
 
+        {/* Characters */}
         {characters.length > 0 && (
-          <div className="book-detail__tags">
-            <h3>Characters</h3>
-            <div className="book-detail__chips">
-              {characters.map((c) => <span key={c} className="chip">{c}</span>)}
+          <div className="book-detail__section">
+            <h3 className="book-detail__section-heading">Characters</h3>
+            <div className="chip-row">
+              {visibleCharacters.map((c) => <span key={c} className="chip">{c}</span>)}
             </div>
+            {hasMoreCharacters && (
+              <button
+                className="btn-ghost book-detail__show-toggle"
+                onClick={() => setShowAllCharacters((v) => !v)}
+              >
+                {showAllCharacters
+                  ? 'Show less'
+                  : `Show all (${characters.length})`}
+              </button>
+            )}
           </div>
         )}
 
+        {/* Teams */}
         {teams.length > 0 && (
-          <div className="book-detail__tags">
-            <h3>Teams</h3>
-            <div className="book-detail__chips">
+          <div className="book-detail__section">
+            <h3 className="book-detail__section-heading">Teams</h3>
+            <div className="chip-row">
               {teams.map((t) => <span key={t} className="chip">{t}</span>)}
             </div>
           </div>
         )}
 
+        {/* Story Arcs */}
         {storyArcs.length > 0 && (
-          <div className="book-detail__tags">
-            <h3>Story Arcs</h3>
-            <div className="book-detail__chips">
+          <div className="book-detail__section">
+            <h3 className="book-detail__section-heading">Story Arcs</h3>
+            <div className="chip-row">
               {storyArcs.map((a) => <span key={a} className="chip">{a}</span>)}
             </div>
           </div>
         )}
       </div>
+
       {dialog && (
         <ComicVineMatchDialog
           defaultQuery={book.title}
