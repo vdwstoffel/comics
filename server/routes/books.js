@@ -65,7 +65,7 @@ export default async function booksRoutes(app) {
       writer: book.writer, penciller: book.penciller, summary: book.summary,
       publisher: series?.publisher, date: book.date,
     })
-    await embedComicInfo(join(app.config.comicsDir, book.filePath), xml)
+    await embedComicInfo(absCbz(app, book), xml)
     return { book: updateBook(app.db, book.id, { comicinfoSynced: true }) }
   })
 }
