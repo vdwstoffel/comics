@@ -2,6 +2,7 @@ import { Routes, Route } from 'react-router-dom'
 import Library from './pages/Library.jsx'
 import Series from './pages/Series.jsx'
 import BookDetail from './pages/BookDetail.jsx'
+import Reader from './pages/Reader.jsx'
 
 export default function App() {
   return (
@@ -9,6 +10,7 @@ export default function App() {
       <Route path="/" element={<Library />} />
       <Route path="/series/:id" element={<Series />} />
       <Route path="/book/:id" element={<BookDetail />} />
+      <Route path="/read/:id" element={<Reader />} />
     </Routes>
   )
 }
