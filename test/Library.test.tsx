@@ -47,8 +47,8 @@ test('Library shows publisher sidebar items when publishers exist', async () => 
   renderWithProviders(<Library />)
 
   expect(await screen.findByText('Publishers')).toBeInTheDocument()
-  expect(await screen.findByText('DC 2')).toBeInTheDocument()
-  expect(await screen.findByText('Marvel 1')).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: /DC/ })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Marvel/ })).toBeInTheDocument()
   expect(screen.getByText('All')).toBeInTheDocument()
 })
 
@@ -72,10 +72,10 @@ test('Library filters series when a publisher is clicked', async () => {
 
   // Initially shows all series and publisher sidebar
   expect(await screen.findByText('Batman')).toBeInTheDocument()
-  expect(await screen.findByText('Marvel 1')).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: /Marvel/ })).toBeInTheDocument()
 
   // Click on "Marvel" publisher filter
-  fireEvent.click(screen.getByText('Marvel 1'))
+  fireEvent.click(screen.getByRole('button', { name: /Marvel/ }))
 
   // After filtering, Batman should disappear and X-Men should appear
   await waitFor(() => {

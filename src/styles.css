@@ -903,7 +903,10 @@ textarea.input:hover:not(:focus) {
 }
 
 .filter-sidebar__item {
-  display: block;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
   width: 100%;
   text-align: left;
   background: transparent;
@@ -916,6 +919,29 @@ textarea.input:hover:not(:focus) {
   border-radius: 0;
   transition: background 0.12s, color 0.12s;
   line-height: 1.4;
+}
+
+.filter-sidebar__label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.filter-sidebar__count {
+  flex-shrink: 0;
+  min-width: 1.5rem;
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--elevated);
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-align: center;
+}
+
+.filter-sidebar__item--active .filter-sidebar__count {
+  background: var(--accent);
+  color: #fff;
 }
 
 .filter-sidebar__item:hover {

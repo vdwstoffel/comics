@@ -25,16 +25,20 @@ export default function Library() {
 
   const publishers = publishersData?.publishers ?? []
 
-  // Build sidebar items: named publishers
-  const sidebarItems = publishers.map((p) => ({ key: p.name, label: `${p.name} ${p.count}` }))
+  // Build sidebar items: named publishers (label = name, count shown as a separate badge)
+  const sidebarItems: { key: string; label: string; count?: number }[] = publishers.map((p) => ({
+    key: p.name,
+    label: p.name,
+    count: p.count,
+  }))
 
   // Show "Unknown" item if any series lack a publisher
   const totalWithPublisher = publishers.reduce((sum, p) => sum + p.count, 0)
   const totalSeries = allSeriesData?.series.length ?? 0
-  const hasUnknown = totalSeries > totalWithPublisher
+  const unknownCount = totalSeries - totalWithPublisher
 
-  if (hasUnknown) {
-    sidebarItems.push({ key: '__unknown__', label: 'Unknown' })
+  if (unknownCount > 0) {
+    sidebarItems.push({ key: '__unknown__', label: 'Unknown', count: unknownCount })
   }
 
   return (

@@ -1,6 +1,7 @@
 interface FilterItem {
   key: string
   label: string
+  count?: number
 }
 
 interface FilterSidebarProps {
@@ -20,7 +21,7 @@ export default function FilterSidebar({ title, items, active, onSelect }: Filter
             className={`filter-sidebar__item${active === null ? ' filter-sidebar__item--active' : ''}`}
             onClick={() => onSelect(null)}
           >
-            All
+            <span className="filter-sidebar__label">All</span>
           </button>
         </li>
         {items.map((item) => (
@@ -29,7 +30,8 @@ export default function FilterSidebar({ title, items, active, onSelect }: Filter
               className={`filter-sidebar__item${active === item.key ? ' filter-sidebar__item--active' : ''}`}
               onClick={() => onSelect(item.key)}
             >
-              {item.label}
+              <span className="filter-sidebar__label">{item.label}</span>
+              {item.count != null && <span className="filter-sidebar__count">{item.count}</span>}
             </button>
           </li>
         ))}
