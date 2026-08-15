@@ -2,6 +2,7 @@ import { createReadStream, existsSync } from 'node:fs'
 import { join, extname } from 'node:path'
 import { getBook, updateBook } from '../models/books.js'
 import { getProgress, setProgress } from '../models/progress.js'
+import { getBookCredits, getBookTags } from '../models/metadata.js'
 import { readPage } from '../lib/cbz.js'
 import { buildComicInfo } from '../lib/comicinfo.js'
 import { embedComicInfo } from '../lib/embed.js'
@@ -25,7 +26,12 @@ export default async function booksRoutes(app: App) {
   app.get<{ Params: IdParams }>('/api/books/:id', async (req, reply) => {
     const book = getBook(app.db, Number(req.params.id))
     if (!book) return reply.code(404).send({ error: 'book not found' })
-    return { book, progress: getProgress(app.db, book.id) }
+    return {
+      book,
+      progress: getProgress(app.db, book.id),
+      credits: getBookCredits(app.db, book.id),
+      tags: getBookTags(app.db, book.id),
+    }
   })
 
   app.get<{ Params: PageParams }>('/api/books/:id/pages/:n', async (req, reply) => {

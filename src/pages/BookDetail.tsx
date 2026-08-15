@@ -37,7 +37,18 @@ export default function BookDetail() {
 
   if (isLoading) return <p>Loading…</p>
   if (!data) return null
-  const { book } = data
+  const { book, credits = [], tags = [] } = data
+
+  // Group credits by role
+  const creditsByRole = credits.reduce<Record<string, string[]>>((acc, c) => {
+    const key = c.role.charAt(0).toUpperCase() + c.role.slice(1)
+    ;(acc[key] = acc[key] || []).push(c.name)
+    return acc
+  }, {})
+
+  const characters = tags.filter((t) => t.kind === 'character').map((t) => t.value)
+  const teams = tags.filter((t) => t.kind === 'team').map((t) => t.value)
+  const storyArcs = tags.filter((t) => t.kind === 'story_arc').map((t) => t.value)
 
   const currentSeriesName = seriesData?.series?.find((s) => s.id === book.seriesId)?.name ?? `Series #${book.seriesId}`
   const moveValue = moveTarget ?? currentSeriesName
@@ -85,6 +96,44 @@ export default function BookDetail() {
         <div className="metadata-section">
           <MetadataEditor key={metadataKey} book={book} onSave={(form) => save.mutate(form)} />
         </div>
+
+        {Object.keys(creditsByRole).length > 0 && (
+          <div className="book-detail__credits">
+            <h3>Creators</h3>
+            {Object.entries(creditsByRole).map(([role, names]) => (
+              <p key={role} className="book-detail__credit-row">
+                <strong>{role}:</strong> {names.join(', ')}
+              </p>
+            ))}
+          </div>
+        )}
+
+        {characters.length > 0 && (
+          <div className="book-detail__tags">
+            <h3>Characters</h3>
+            <div className="book-detail__chips">
+              {characters.map((c) => <span key={c} className="chip">{c}</span>)}
+            </div>
+          </div>
+        )}
+
+        {teams.length > 0 && (
+          <div className="book-detail__tags">
+            <h3>Teams</h3>
+            <div className="book-detail__chips">
+              {teams.map((t) => <span key={t} className="chip">{t}</span>)}
+            </div>
+          </div>
+        )}
+
+        {storyArcs.length > 0 && (
+          <div className="book-detail__tags">
+            <h3>Story Arcs</h3>
+            <div className="book-detail__chips">
+              {storyArcs.map((a) => <span key={a} className="chip">{a}</span>)}
+            </div>
+          </div>
+        )}
       </div>
       {dialog && (
         <ComicVineMatchDialog

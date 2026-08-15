@@ -32,6 +32,9 @@ export interface Book {
   comicvineId: number | null
   comicinfoSynced: boolean
   addedAt: string
+  year: number | null
+  coverUrl: string | null
+  cvSiteUrl: string | null
 }
 
 export interface Progress {

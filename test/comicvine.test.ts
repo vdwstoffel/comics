@@ -43,6 +43,66 @@ test('getIssue maps fields and strips html', async () => {
   })
 })
 
+test('getIssue maps rich fields: multi-role credits, characters, teams, arcs, year, siteUrl', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([
+      ['/issue/', { results: {
+        name: 'Year One', issue_number: '1', cover_date: '2011-11-01',
+        description: '<p>Bruce returns.</p>',
+        person_credits: [
+          { name: 'Scott Snyder', role: 'writer, cover' },
+          { name: 'Greg Capullo', role: 'penciler' },
+          { name: 'Jonathan Glapion', role: 'inker' },
+        ],
+        character_credits: [{ name: 'Batman' }, { name: 'The Joker' }],
+        team_credits: [{ name: 'Justice League' }],
+        story_arc_credits: [{ name: 'Court of Owls' }],
+        image: { original_url: 'https://example.com/cover.jpg' },
+        site_detail_url: 'https://comicvine.gamespot.com/batman-1/4000-12345/',
+      } }],
+    ]),
+  })
+  const issue = await cv.getIssue(42)
+
+  // Basic fields
+  expect(issue.title).toBe('Year One')
+  expect(issue.year).toBe(2011)
+  expect(issue.coverUrl).toBe('https://example.com/cover.jpg')
+  expect(issue.siteUrl).toBe('https://comicvine.gamespot.com/batman-1/4000-12345/')
+
+  // Multi-role split: "writer, cover" → two separate entries
+  expect(issue.credits).toContainEqual({ name: 'Scott Snyder', role: 'writer' })
+  expect(issue.credits).toContainEqual({ name: 'Scott Snyder', role: 'cover' })
+  expect(issue.credits).toContainEqual({ name: 'Greg Capullo', role: 'penciler' })
+  expect(issue.credits).toContainEqual({ name: 'Jonathan Glapion', role: 'inker' })
+  // 4 entries total: 2 from Snyder + 1 each from Capullo and Glapion
+  expect(issue.credits).toHaveLength(4)
+
+  // Arrays
+  expect(issue.characters).toEqual(['Batman', 'The Joker'])
+  expect(issue.teams).toEqual(['Justice League'])
+  expect(issue.storyArcs).toEqual(['Court of Owls'])
+})
+
+test('getIssue returns empty arrays when no credits/tags', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([
+      ['/issue/', { results: {
+        name: 'Empty Issue', issue_number: '2', cover_date: '2020-01-01',
+        description: null,
+      } }],
+    ]),
+  })
+  const issue = await cv.getIssue(99)
+  expect(issue.credits).toEqual([])
+  expect(issue.characters).toEqual([])
+  expect(issue.teams).toEqual([])
+  expect(issue.storyArcs).toEqual([])
+  expect(issue.year).toBe(2020)
+})
+
 import Fastify from 'fastify'
 import comicvineRoutes from '../server/routes/comicvine.js'
 import { openDb } from '../server/db.js'

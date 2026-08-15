@@ -12,6 +12,9 @@ interface CvPerson {
   name?: string
   role?: string
 }
+interface CvNamedItem {
+  name?: string
+}
 interface CvResult {
   id?: number
   name?: string
@@ -23,6 +26,10 @@ interface CvResult {
   volume?: { name?: string }
   publisher?: { name?: string }
   person_credits?: CvPerson[]
+  character_credits?: CvNamedItem[]
+  team_credits?: CvNamedItem[]
+  story_arc_credits?: CvNamedItem[]
+  site_detail_url?: string
 }
 interface CvResponse {
   results?: CvResult | CvResult[]
@@ -36,14 +43,25 @@ export interface CvSearchResult {
   year?: string
   thumbnail?: string
 }
+export interface CvCredit {
+  name: string
+  role: string
+}
+
 export interface CvIssue {
   title?: string
   number?: string
   date?: string
+  year?: number
   summary?: string
   writer?: string
   penciller?: string
+  credits: CvCredit[]
+  characters: string[]
+  teams: string[]
+  storyArcs: string[]
   coverUrl?: string
+  siteUrl?: string
 }
 export interface CvVolume {
   name?: string
@@ -101,14 +119,39 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
       }))
     },
     async getIssue(id) {
-      const data = await get(`/issue/${TYPE_PREFIX.issue}-${id}/`, {})
+      const data = await get(`/issue/${TYPE_PREFIX.issue}-${id}/`, {
+        field_list: 'name,issue_number,cover_date,description,person_credits,character_credits,team_credits,story_arc_credits,image,site_detail_url,volume',
+      })
       const r = (data.results || {}) as CvResult
+
+      // Expand multi-role strings like "writer, cover" into one entry per role
+      const credits: CvCredit[] = []
+      for (const p of r.person_credits || []) {
+        if (!p.name) continue
+        const roles = (p.role || 'unknown').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean)
+        for (const role of roles) {
+          credits.push({ name: p.name, role })
+        }
+      }
+
+      const names = (list: CvNamedItem[] | undefined) =>
+        (list || []).map((x) => x.name).filter((n): n is string => !!n)
+
+      const coverDate = r.cover_date
+      const yearNum = coverDate ? parseInt(String(coverDate).slice(0, 4), 10) : undefined
+
       return {
         title: r.name, number: r.issue_number, date: ym(r.cover_date),
+        year: yearNum && !isNaN(yearNum) ? yearNum : undefined,
         summary: stripHtml(r.description),
         writer: credit(r.person_credits, /writer/i),
         penciller: credit(r.person_credits, /pencil/i),
+        credits,
+        characters: names(r.character_credits),
+        teams: names(r.team_credits),
+        storyArcs: names(r.story_arc_credits),
         coverUrl: r.image?.original_url,
+        siteUrl: r.site_detail_url,
       }
     },
     async getVolume(id) {

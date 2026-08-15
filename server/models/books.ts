@@ -15,6 +15,9 @@ interface BookRow {
   comicvine_id: number | null
   comicinfo_synced: number
   added_at: string
+  year: number | null
+  cover_url: string | null
+  cv_site_url: string | null
 }
 
 function toBook(row: BookRow | undefined): Book | undefined {
@@ -27,6 +30,7 @@ function toBook(row: BookRow | undefined): Book | undefined {
     summary: row.summary ?? null, date: row.date ?? null,
     comicvineId: row.comicvine_id ?? null,
     comicinfoSynced: !!row.comicinfo_synced, addedAt: row.added_at,
+    year: row.year ?? null, coverUrl: row.cover_url ?? null, cvSiteUrl: row.cv_site_url ?? null,
   }
 }
 
@@ -76,6 +80,7 @@ export function listBooksBySeries(db: Db, seriesId: number): Book[] {
 const BOOK_FIELDS: Record<string, string> = {
   title: 'title', number: 'number', writer: 'writer', penciller: 'penciller',
   summary: 'summary', date: 'date', comicvineId: 'comicvine_id', comicinfoSynced: 'comicinfo_synced',
+  year: 'year', coverUrl: 'cover_url', cvSiteUrl: 'cv_site_url',
 }
 
 export type BookUpdate = Partial<{
@@ -87,6 +92,9 @@ export type BookUpdate = Partial<{
   date: string | null
   comicvineId: number | null
   comicinfoSynced: boolean
+  year: number | null
+  coverUrl: string | null
+  cvSiteUrl: string | null
 }>
 
 export function updateBook(db: Db, id: number | bigint, fields: BookUpdate): Book | undefined {

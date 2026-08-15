@@ -26,6 +26,19 @@ export interface ApiBook {
   addedAt?: string
   readState?: 'unread' | 'reading' | 'read'
   percent?: number
+  year?: number | null
+  coverUrl?: string | null
+  cvSiteUrl?: string | null
+}
+
+export interface ApiCredit {
+  name: string
+  role: string
+}
+
+export interface ApiTag {
+  kind: string
+  value: string
 }
 
 export interface ApiProgress {
@@ -46,7 +59,7 @@ export interface CvSearchResult {
 
 export interface SeriesListResponse { series: ApiSeries[] }
 export interface SeriesDetailResponse { series: ApiSeries; books: ApiBook[] }
-export interface BookResponse { book: ApiBook; progress: ApiProgress }
+export interface BookResponse { book: ApiBook; progress: ApiProgress; credits?: ApiCredit[]; tags?: ApiTag[] }
 export interface ProgressResponse { progress: ApiProgress }
 export interface CvSearchResponse { results: CvSearchResult[] }
 export interface RenameSeriesResponse { series: ApiSeries }
