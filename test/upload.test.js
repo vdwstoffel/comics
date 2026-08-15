@@ -49,3 +49,27 @@ test('rejecting a non-cbz upload', async () => {
   const res = await app.inject({ method: 'POST', url: '/api/upload', payload: form })
   expect(res.statusCode).toBe(400)
 })
+
+test('path traversal in series field is neutralised', async () => {
+  const srcDir = mkdtempSync(join(tmpdir(), 'src-'))
+  const cbz = await makeCbz(srcDir, ['p1.png'], 'evil.cbz')
+
+  const form = new FormData()
+  form.set('series', '../../evil')
+  form.set('file', new Blob([readFileSync(cbz)]), 'evil.cbz')
+
+  const res = await app.inject({ method: 'POST', url: '/api/upload', payload: form })
+  expect(res.statusCode).toBe(200)
+
+  const { book } = res.json()
+  // book.filePath is relative to comicsDir; reconstruct absolute path
+  const absFilePath = join(app.config.comicsDir, book.filePath)
+  // The file must exist inside comicsDir
+  expect(absFilePath.startsWith(app.config.comicsDir)).toBe(true)
+  expect(existsSync(absFilePath)).toBe(true)
+  // No file should exist at the traversal target (two levels above comicsDir)
+  const escapedPath = join(app.config.comicsDir, '..', '..', 'evil', 'evil.cbz')
+  expect(existsSync(escapedPath)).toBe(false)
+
+  rmSync(srcDir, { recursive: true, force: true })
+})

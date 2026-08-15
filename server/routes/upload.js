@@ -36,7 +36,8 @@ export default async function uploadRoutes(app) {
       return reply.code(400).send({ error: 'not a valid .cbz (no image pages)' })
     }
 
-    const finalSeries = seriesName || 'Unsorted'
+    const finalSeries =
+      (seriesName || 'Unsorted').replace(/[\\/]+/g, '_').replace(/\.\.+/g, '_').trim() || 'Unsorted'
     const destDir = join(app.config.comicsDir, finalSeries)
     await mkdir(destDir, { recursive: true })
     const destPath = join(destDir, originalName)
