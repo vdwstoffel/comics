@@ -1,9 +1,11 @@
 import Fastify from 'fastify'
+import multipart from '@fastify/multipart'
 import { loadConfig } from './config.js'
 import { openDb } from './db.js'
 import scanRoutes from './routes/scan.js'
 import seriesRoutes from './routes/series.js'
 import booksRoutes from './routes/books.js'
+import uploadRoutes from './routes/upload.js'
 
 export async function buildServer() {
   const config = loadConfig()
@@ -16,9 +18,11 @@ export async function buildServer() {
 
   app.get('/api/health', async () => ({ status: 'ok' }))
 
+  await app.register(multipart, { limits: { fileSize: config.maxUploadBytes } })
   await app.register(scanRoutes)
   await app.register(seriesRoutes)
   await app.register(booksRoutes)
+  await app.register(uploadRoutes)
 
   return app
 }
