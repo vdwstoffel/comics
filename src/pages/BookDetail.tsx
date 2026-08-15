@@ -60,7 +60,7 @@ export default function BookDetail() {
 
         <div className="field">
           <label>Series</label>
-          <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+          <div className="move-series-row">
             <input
               list="series-list"
               value={moveValue}
@@ -79,7 +79,7 @@ export default function BookDetail() {
               Move
             </button>
           </div>
-          {moveSeries.isError && <p style={{ color: 'red' }}>Move failed: {moveSeries.error?.message}</p>}
+          {moveSeries.isError && <p className="book-detail__move-error">Move failed: {moveSeries.error?.message}</p>}
         </div>
 
         <div className="metadata-section">

@@ -38,13 +38,16 @@ export default function Series() {
   if (isLoading) return <p>Loading…</p>
   if (!data) return null
 
+  const bookCount = data.books.length
+  const bookLabel = `${bookCount} book${bookCount === 1 ? '' : 's'}`
+
   return (
     <div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div className="series-header">
         {editing ? (
-          <>
+          <div className="series-edit-row">
             <input
-              className="field-input"
+              className="series-edit-input"
               value={nameInput}
               onChange={(e) => setNameInput(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') handleSave() }}
@@ -52,16 +55,19 @@ export default function Series() {
             />
             <button className="btn" onClick={handleSave} disabled={rename.isPending}>Save</button>
             <button className="btn-ghost" onClick={() => setEditing(false)}>Cancel</button>
-          </>
+          </div>
         ) : (
-          <>
+          <div className="series-header__title-row">
             <h1 className="page-title">{data.series.name}</h1>
-            <button className="btn-ghost" onClick={handleEditClick} title="Edit series name">✏️</button>
-          </>
+            <button className="btn-icon" onClick={handleEditClick} title="Edit series name" aria-label="Edit series name">
+              ✏
+            </button>
+          </div>
         )}
+        <p className="series-header__count">{bookLabel}</p>
+        {rename.isError && <p className="series-header__error">Rename failed: {rename.error?.message}</p>}
+        {data.series.summary && <p className="series-header__summary">{data.series.summary}</p>}
       </div>
-      {rename.isError && <p style={{ color: 'red' }}>Rename failed: {rename.error?.message}</p>}
-      {data.series.summary && <p className="page-subtitle">{data.series.summary}</p>}
       <div className="tile-grid">
         {data.books.map((b) => (
           <CoverTile
