@@ -1,9 +1,9 @@
 import { test, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, mkdirSync, existsSync } from 'node:fs'
+import { mkdtempSync, rmSync, mkdirSync, existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openDb } from '../server/db.js'
-import { scanLibrary } from '../server/services/indexer.js'
+import { scanLibrary, walkComics } from '../server/services/indexer.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import type { Ctx } from '../server/types.js'
 import type { Config } from '../server/config.js'
@@ -39,4 +39,23 @@ test('scanLibrary is idempotent (no duplicate ingest)', async () => {
   await scanLibrary(ctx)
   const second = await scanLibrary(ctx)
   expect(second.added).toBe(0)
+})
+
+test('walkComics finds both .cbz and .cbr files', () => {
+  const walkDir = mkdtempSync(join(tmpdir(), 'walk-'))
+  try {
+    const subDir = join(walkDir, 'Series')
+    mkdirSync(subDir)
+    writeFileSync(join(subDir, 'issue1.cbz'), 'dummy')
+    writeFileSync(join(subDir, 'issue2.cbr'), 'dummy')
+    writeFileSync(join(subDir, 'readme.txt'), 'ignore')
+
+    const found = walkComics(walkDir)
+    const names = found.map((f) => f.replace(subDir + '/', ''))
+    expect(names).toContain('issue1.cbz')
+    expect(names).toContain('issue2.cbr')
+    expect(names).not.toContain('readme.txt')
+  } finally {
+    rmSync(walkDir, { recursive: true, force: true })
+  }
 })

@@ -31,8 +31,8 @@ export default function Upload() {
           </div>
           <div className="field">
             <label className="file-label">
-              Comic file (.cbz)
-              <input className="file-input" type="file" accept=".cbz" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
+              Comic file (.cbz or .cbr)
+              <input className="file-input" type="file" accept=".cbz,.cbr" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
             </label>
           </div>
           <button className="btn" type="submit" disabled={!file || pct !== null}>Upload</button>
