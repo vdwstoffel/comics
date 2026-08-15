@@ -71,6 +71,8 @@ test('collision de-dupe: two files with same basename get numeric suffix', async
   expect(existsSync(join(ctx.config.comicsDir, 'Target', 'issue.cbz'))).toBe(true)
   expect(existsSync(join(ctx.config.comicsDir, 'Target', 'issue (2).cbz'))).toBe(true)
   expect(result.book.filePath).toBe('Target/issue (2).cbz')
+  // Source was moved (renamed), not copied — original is gone
+  expect(existsSync(join(ctx.config.comicsDir, 'Source', 'issue.cbz'))).toBe(false)
 })
 
 test('renameSeries MERGE: rename B to existing A name moves all books under A, deletes B', async () => {
@@ -116,6 +118,38 @@ test('renameSeries pure rename: moves folder + files, old series/folder gone', a
   expect(existsSync(join(ctx.config.comicsDir, 'OldName', 'issue.cbz'))).toBe(false)
   expect(existsSync(oldDir)).toBe(false)
   expect(getSeriesByName(ctx.db, 'OldName')).toBeUndefined()
+})
+
+test('same-series move is a no-op: file keeps its exact original name, no (2) suffix', async () => {
+  const seriesDir = join(ctx.config.comicsDir, 'MySeries')
+  mkdirSync(seriesDir, { recursive: true })
+  await makeCbz(seriesDir, ['p1.png'], 'issue.cbz')
+  const series = upsertSeries(ctx.db, { name: 'MySeries', folder: 'MySeries' })
+  const book = insertBook(ctx.db, { seriesId: series.id, filePath: 'MySeries/issue.cbz', pageCount: 1, fileSize: 100 })!
+
+  const result = await moveBookToSeries(ctx, book.id, 'MySeries')
+
+  // File is still at the original path — no (2) suffix was introduced
+  expect(existsSync(join(ctx.config.comicsDir, 'MySeries', 'issue.cbz'))).toBe(true)
+  expect(existsSync(join(ctx.config.comicsDir, 'MySeries', 'issue (2).cbz'))).toBe(false)
+  expect(result.book.filePath).toBe('MySeries/issue.cbz')
+  expect(result.series.name).toBe('MySeries')
+})
+
+test('same-name renameSeries is a no-op: returns unchanged series, no files touched', async () => {
+  const seriesDir = join(ctx.config.comicsDir, 'StableSeries')
+  mkdirSync(seriesDir, { recursive: true })
+  await makeCbz(seriesDir, ['p1.png'], 'issue.cbz')
+  const series = upsertSeries(ctx.db, { name: 'StableSeries', folder: 'StableSeries' })
+  insertBook(ctx.db, { seriesId: series.id, filePath: 'StableSeries/issue.cbz', pageCount: 1, fileSize: 100 })
+
+  const result = await renameSeries(ctx, series.id, 'StableSeries')
+
+  expect(result.series.name).toBe('StableSeries')
+  expect(result.series.id).toBe(series.id)
+  // File untouched at original path, no spurious (2) suffix
+  expect(existsSync(join(ctx.config.comicsDir, 'StableSeries', 'issue.cbz'))).toBe(true)
+  expect(existsSync(join(ctx.config.comicsDir, 'StableSeries', 'issue (2).cbz'))).toBe(false)
 })
 
 test('reorganizeLibrary moves a book whose folder does not match its series folder', async () => {

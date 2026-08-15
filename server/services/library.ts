@@ -7,13 +7,17 @@ import { getBook, listBooksBySeries, setBookSeries } from '../models/books.js'
 import type { Ctx } from '../types.js'
 import type { Series, Book } from '../types.js'
 
-/** Returns a dest path that does not yet exist, de-duping with (2), (3), … suffixes. */
-function dedupeDestPath(destDir: string, filename: string): string {
+/**
+ * Returns a dest path that does not yet exist, de-duping with (2), (3), … suffixes.
+ * Pass srcAbsPath to exclude the source file itself from collision detection (self-move guard).
+ */
+function dedupeDestPath(destDir: string, filename: string, srcAbsPath?: string): string {
   const ext = extname(filename)
   const base = filename.slice(0, filename.length - ext.length)
   let candidate = join(destDir, filename)
   let n = 2
-  while (existsSync(candidate)) {
+  while (existsSync(candidate) && candidate !== srcAbsPath) {
+    if (n > 9999) throw new Error('too many filename collisions')
     candidate = join(destDir, `${base} (${n})${ext}`)
     n++
   }
@@ -34,14 +38,20 @@ export async function moveBookToSeries(
 
   const currentAbsPath = join(config.comicsDir, book.filePath)
   const destDir = join(config.comicsDir, targetFolder)
-  const destAbsPath = dedupeDestPath(destDir, basename(book.filePath))
+  // Pass currentAbsPath so dedupeDestPath skips the source file when checking collisions
+  const destAbsPath = dedupeDestPath(destDir, basename(book.filePath), currentAbsPath)
   const destRelPath = `${targetFolder}/${basename(destAbsPath)}`
 
-  // Only move if path actually changes
-  if (destAbsPath !== currentAbsPath) {
-    await mkdir(destDir, { recursive: true })
-    await rename(currentAbsPath, destAbsPath)
+  // Explicit no-op: file is already at the computed destination (same series, same name)
+  if (destAbsPath === currentAbsPath) {
+    // Ensure DB is consistent (series_id and file_path match) but skip rename and pruning
+    const updatedBook = setBookSeries(db, bookId, targetSeries.id, destRelPath)
+    const series = getSeries(db, targetSeries.id) as Series
+    return { book: updatedBook, series }
   }
+
+  await mkdir(destDir, { recursive: true })
+  await rename(currentAbsPath, destAbsPath)
 
   const updatedBook = setBookSeries(db, bookId, targetSeries.id, destRelPath)
 
@@ -69,6 +79,14 @@ export async function renameSeries(
   newName: string,
 ): Promise<{ series: Series }> {
   const { db } = ctx
+
+  // No-op: if the trimmed new name equals the current name, return unchanged
+  const currentSeries = getSeries(db, seriesId)
+  if (!currentSeries) throw new Error(`Series ${seriesId} not found`)
+  if (newName.trim() === currentSeries.name) {
+    return { series: currentSeries }
+  }
+
   const targetExisting = getSeriesByName(db, newName)
 
   if (targetExisting && targetExisting.id !== seriesId) {

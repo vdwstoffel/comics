@@ -12,7 +12,7 @@ export default function BookDetail() {
   const [moveTarget, setMoveTarget] = useState<string | null>(null)
 
   const { data, isLoading } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
-  const { data: seriesData } = useQuery({ queryKey: ['series'], queryFn: () => api.getSeries() })
+  const { data: seriesData, isLoading: seriesLoading } = useQuery({ queryKey: ['series'], queryFn: () => api.getSeries() })
 
   const save = useMutation({
     mutationFn: (form: Record<string, unknown>) => api.patchMetadata(id!, form),
@@ -73,7 +73,7 @@ export default function BookDetail() {
             </datalist>
             <button
               className="btn-ghost"
-              disabled={moveSeries.isPending || moveValue.trim() === currentSeriesName}
+              disabled={moveSeries.isPending || seriesLoading || moveValue.trim() === currentSeriesName}
               onClick={() => { const t = moveValue.trim(); if (t) moveSeries.mutate(t) }}
             >
               Move

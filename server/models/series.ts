@@ -43,6 +43,10 @@ export function listSeries(db: Db): Series[] {
     .map((r) => toSeries(r) as Series)
 }
 
+// WARNING: Do NOT use updateSeries/SERIES_FIELDS to change a series' `name`.
+// Name changes must go through renameSeries() in services/library.ts, which also
+// moves the files on disk and updates the `folder` column. Updating `name` directly
+// here will leave files in the old folder and break the path invariant.
 const SERIES_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name' }
 
 export type SeriesUpdate = Partial<Pick<Series, 'publisher' | 'summary' | 'comicvineId' | 'name'>>
