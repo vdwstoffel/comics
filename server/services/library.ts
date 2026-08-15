@@ -2,7 +2,7 @@ import { mkdir, rename, rmdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join, basename, extname, dirname } from 'node:path'
 import { sanitizeSeriesFolder } from '../lib/paths.js'
-import { upsertSeries, getSeries, getSeriesByName, deleteSeries } from '../models/series.js'
+import { upsertSeries, getSeries, getSeriesByName, deleteSeries, updateSeries } from '../models/series.js'
 import { getBook, listBooksBySeries, setBookSeries } from '../models/books.js'
 import type { Ctx } from '../types.js'
 import type { Series, Book } from '../types.js'
@@ -87,6 +87,14 @@ export async function renameSeries(
     return { series: currentSeries }
   }
 
+  // Metadata to preserve across the rename/merge (the moves create/keep a
+  // different series row, so we must carry these forward explicitly).
+  const carry = {
+    publisher: currentSeries.publisher,
+    summary: currentSeries.summary,
+    comicvineId: currentSeries.comicvineId,
+  }
+
   const targetExisting = getSeriesByName(db, newName)
 
   if (targetExisting && targetExisting.id !== seriesId) {
@@ -95,17 +103,36 @@ export async function renameSeries(
     for (const book of books) {
       await moveBookToSeries(ctx, book.id, newName)
     }
-    return { series: getSeries(db, targetExisting.id) as Series }
+    // Backfill the target's metadata from the source only where the target lacks it
+    const target = getSeries(db, targetExisting.id) as Series
+    const patch: { publisher?: string | null; summary?: string | null; comicvineId?: number | null } = {}
+    if (!target.publisher && carry.publisher) patch.publisher = carry.publisher
+    if (!target.summary && carry.summary) patch.summary = carry.summary
+    if (target.comicvineId == null && carry.comicvineId != null) patch.comicvineId = carry.comicvineId
+    if (Object.keys(patch).length > 0) updateSeries(db, target.id, patch)
+    return { series: getSeries(db, target.id) as Series }
   }
 
-  // Pure rename path: move all books to new name (upserts the new series)
+  // Pure rename path.
   const books = listBooksBySeries(db, seriesId)
+  if (books.length === 0) {
+    // No files to move — rename the row in place, preserving all its metadata.
+    updateSeries(db, seriesId, { name: newName })
+    return { series: getSeries(db, seriesId) as Series }
+  }
+  // Move all books to the new name (upserts a fresh series + moves files, then
+  // deletes the emptied source). The fresh series only has name/folder, so we
+  // carry over the source's publisher/summary/comicvineId afterwards.
   for (const book of books) {
     await moveBookToSeries(ctx, book.id, newName)
   }
-  // seriesId was emptied and deleted by moveBookToSeries
   const renamed = getSeriesByName(db, newName) as Series
-  return { series: renamed }
+  updateSeries(db, renamed.id, {
+    publisher: carry.publisher,
+    summary: carry.summary,
+    comicvineId: carry.comicvineId,
+  })
+  return { series: getSeries(db, renamed.id) as Series }
 }
 
 export async function reorganizeLibrary(ctx: Ctx): Promise<{ moved: number }> {

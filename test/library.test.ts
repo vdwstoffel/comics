@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, mkdirSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openDb } from '../server/db.js'
-import { upsertSeries, getSeriesByName } from '../server/models/series.js'
+import { upsertSeries, getSeriesByName, updateSeries } from '../server/models/series.js'
 import { insertBook } from '../server/models/books.js'
 import { moveBookToSeries, renameSeries, reorganizeLibrary } from '../server/services/library.js'
 import { makeCbz } from './helpers/makeCbz.js'
@@ -166,4 +166,43 @@ test('reorganizeLibrary moves a book whose folder does not match its series fold
   expect(result.moved).toBe(1)
   expect(existsSync(join(ctx.config.comicsDir, 'CorrectName', 'issue.cbz'))).toBe(true)
   expect(existsSync(join(ctx.config.comicsDir, 'wrong-folder', 'issue.cbz'))).toBe(false)
+})
+
+test('renameSeries (pure rename) preserves publisher/summary/comicvineId', async () => {
+  const srcDir = join(ctx.config.comicsDir, 'DC')
+  mkdirSync(srcDir, { recursive: true })
+  await makeCbz(srcDir, ['p1.png'], 'issue1.cbz')
+  const s = upsertSeries(ctx.db, { name: 'DC', folder: 'DC' })
+  updateSeries(ctx.db, s.id, { publisher: 'DC Comics', summary: 'The DC universe', comicvineId: 42 })
+  insertBook(ctx.db, { seriesId: s.id, filePath: 'DC/issue1.cbz', pageCount: 1, fileSize: 100 })
+
+  const result = await renameSeries(ctx, s.id, 'Detective Comics')
+
+  expect(result.series.name).toBe('Detective Comics')
+  expect(result.series.publisher).toBe('DC Comics')
+  expect(result.series.summary).toBe('The DC universe')
+  expect(result.series.comicvineId).toBe(42)
+  expect(existsSync(join(ctx.config.comicsDir, 'Detective Comics', 'issue1.cbz'))).toBe(true)
+  expect(getSeriesByName(ctx.db, 'DC')).toBeUndefined()
+})
+
+test('renameSeries (merge) backfills the target publisher when it lacks one', async () => {
+  const tDir = join(ctx.config.comicsDir, 'Big Two')
+  mkdirSync(tDir, { recursive: true })
+  await makeCbz(tDir, ['p1.png'], 't.cbz')
+  const target = upsertSeries(ctx.db, { name: 'Big Two', folder: 'Big Two' })
+  insertBook(ctx.db, { seriesId: target.id, filePath: 'Big Two/t.cbz', pageCount: 1, fileSize: 1 })
+
+  const sDir = join(ctx.config.comicsDir, 'DC')
+  mkdirSync(sDir, { recursive: true })
+  await makeCbz(sDir, ['p1.png'], 's.cbz')
+  const src = upsertSeries(ctx.db, { name: 'DC', folder: 'DC' })
+  updateSeries(ctx.db, src.id, { publisher: 'DC Comics' })
+  insertBook(ctx.db, { seriesId: src.id, filePath: 'DC/s.cbz', pageCount: 1, fileSize: 1 })
+
+  const result = await renameSeries(ctx, src.id, 'Big Two') // merge DC → Big Two
+
+  expect(result.series.id).toBe(target.id)
+  expect(result.series.publisher).toBe('DC Comics')
+  expect(getSeriesByName(ctx.db, 'DC')).toBeUndefined()
 })
