@@ -1,0 +1,11 @@
+node_modules
+data
+dist
+build
+.git
+.gitignore
+.superpowers
+.claude
+docs
+.env
+*.md

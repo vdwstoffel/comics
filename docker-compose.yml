@@ -2,6 +2,7 @@ services:
   comic-app:
     build: .
     container_name: comic-app
+    user: "1000:1000"          # write files into ./data as the host user, not root
     environment:
       - DATA_DIR=/data
       - PORT=3000
@@ -10,5 +11,5 @@ services:
     volumes:
       - ./data:/data
     ports:
-      - "3000:3000"
+      - "8090:3000"          # browse at http://<host>:8090 (host 3000 is taken by Guitar Assistant)
     restart: unless-stopped
