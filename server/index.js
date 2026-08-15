@@ -6,6 +6,7 @@ import scanRoutes from './routes/scan.js'
 import seriesRoutes from './routes/series.js'
 import booksRoutes from './routes/books.js'
 import uploadRoutes from './routes/upload.js'
+import comicvineRoutes from './routes/comicvine.js'
 
 export async function buildServer() {
   const config = loadConfig()
@@ -23,6 +24,7 @@ export async function buildServer() {
   await app.register(seriesRoutes)
   await app.register(booksRoutes)
   await app.register(uploadRoutes)
+  await app.register(comicvineRoutes)
 
   return app
 }
