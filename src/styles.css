@@ -486,12 +486,24 @@ textarea.input:hover:not(:focus) {
   min-width: 0;
 }
 
+.book-detail__title-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
 .book-detail__title {
   font-size: 2rem;
   font-weight: 800;
-  margin-bottom: 4px;
   line-height: 1.2;
   letter-spacing: -0.02em;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.book-detail__title-row .btn-icon {
+  margin-top: 6px;
 }
 
 .book-detail__subline {
@@ -503,7 +515,7 @@ textarea.input:hover:not(:focus) {
 .book-detail__meta {
   color: var(--muted);
   font-size: 0.875rem;
-  margin-bottom: 24px;
+  margin-bottom: 8px;
 }
 
 .book-detail__error {
@@ -534,8 +546,13 @@ textarea.input:hover:not(:focus) {
   border: 1px solid var(--border);
   border-radius: var(--radius);
   padding: 24px;
-  margin-top: 8px;
+  margin-top: 20px;
   margin-bottom: 24px;
+}
+
+.metadata-section__actions {
+  margin-top: 4px;
+  margin-bottom: 0;
 }
 
 .metadata-section__heading {
@@ -580,6 +597,25 @@ textarea.input:hover:not(:focus) {
 
 .creator-row__names {
   color: var(--text);
+}
+
+.creator-row__names a {
+  border-bottom: 1px solid var(--border);
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.creator-row__names a:hover {
+  color: var(--accent);
+  border-bottom-color: var(--accent);
+}
+
+/* Read-mode summary paragraph */
+.book-detail__summary {
+  font-size: 0.9375rem;
+  line-height: 1.7;
+  color: var(--text);
+  max-width: 72ch;
+  white-space: pre-wrap;
 }
 
 /* Chips: flex-wrapped pill tags */

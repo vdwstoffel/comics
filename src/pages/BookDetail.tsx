@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import type { ReactNode } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
@@ -13,13 +14,14 @@ export default function BookDetail() {
   const [dialog, setDialog] = useState(false)
   const [moveTarget, setMoveTarget] = useState<string | null>(null)
   const [showAllCharacters, setShowAllCharacters] = useState(false)
+  const [editing, setEditing] = useState(false)
 
   const { data, isLoading } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
   const { data: seriesData, isLoading: seriesLoading } = useQuery({ queryKey: ['series'], queryFn: () => api.getSeries() })
 
   const save = useMutation({
     mutationFn: (form: Record<string, unknown>) => api.patchMetadata(id!, form),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['book', id] }),
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['book', id] }); setEditing(false) },
   })
   const apply = useMutation({
     mutationFn: (issueId: number) => api.applyIssue(id!, issueId),
@@ -66,6 +68,40 @@ export default function BookDetail() {
   if (book.date) subtitleParts.push(book.date.slice(0, 4))
   if ((book as unknown as Record<string, string>).publisher) subtitleParts.push((book as unknown as Record<string, string>).publisher)
 
+  // Read-mode detail rows: the editable metadata, minus what the header already shows
+  const details: { label: string; value: ReactNode }[] = [
+    { label: 'Series', value: <Link to={`/series/${book.seriesId}`}>{currentSeriesName}</Link> },
+  ]
+  if (book.writer) details.push({ label: 'Writer', value: book.writer })
+  if (book.penciller) details.push({ label: 'Penciller', value: book.penciller })
+  if (book.date) details.push({ label: 'Date', value: book.date })
+
+  const seriesMoveField = (
+    <div className="field">
+      <label>Series</label>
+      <div className="move-series-row">
+        <input
+          list="series-list"
+          value={moveValue}
+          onChange={(e) => setMoveTarget(e.target.value)}
+        />
+        <datalist id="series-list">
+          {seriesData?.series?.map((s) => (
+            <option key={s.id} value={s.name} />
+          ))}
+        </datalist>
+        <button
+          className="btn-ghost"
+          disabled={moveSeries.isPending || seriesLoading || moveValue.trim() === currentSeriesName}
+          onClick={() => { const t = moveValue.trim(); if (t) moveSeries.mutate(t) }}
+        >
+          Move
+        </button>
+      </div>
+      {moveSeries.isError && <p className="book-detail__move-error">Move failed: {moveSeries.error?.message}</p>}
+    </div>
+  )
+
   return (
     <div className="book-detail">
       {/* LEFT COLUMN: cover + actions + back link */}
@@ -82,9 +118,21 @@ export default function BookDetail() {
         <Link to={`/series/${book.seriesId}`} className="back-link">← Back to series</Link>
       </div>
 
-      {/* RIGHT COLUMN: title, meta, series move, editor, creators, tags */}
+      {/* RIGHT COLUMN: title, summary + details (or the editor), creators, tags */}
       <div className="book-detail__main">
-        <h1 className="book-detail__title">{book.title || '(untitled)'}</h1>
+        <div className="book-detail__title-row">
+          <h1 className="book-detail__title">{book.title || '(untitled)'}</h1>
+          {!editing && (
+            <button
+              className="btn-icon"
+              onClick={() => setEditing(true)}
+              title="Edit metadata"
+              aria-label="Edit metadata"
+            >
+              ✏
+            </button>
+          )}
+        </div>
         {subtitleParts.length > 0 && (
           <p className="book-detail__subline">{subtitleParts.join(' · ')}</p>
         )}
@@ -92,36 +140,41 @@ export default function BookDetail() {
           {book.pageCount} pages{book.comicinfoSynced ? ' · metadata embedded' : ''}
         </p>
 
-        {/* Series move */}
-        <div className="field">
-          <label>Series</label>
-          <div className="move-series-row">
-            <input
-              list="series-list"
-              value={moveValue}
-              onChange={(e) => setMoveTarget(e.target.value)}
-            />
-            <datalist id="series-list">
-              {seriesData?.series?.map((s) => (
-                <option key={s.id} value={s.name} />
-              ))}
-            </datalist>
-            <button
-              className="btn-ghost"
-              disabled={moveSeries.isPending || seriesLoading || moveValue.trim() === currentSeriesName}
-              onClick={() => { const t = moveValue.trim(); if (t) moveSeries.mutate(t) }}
+        {editing ? (
+          /* Metadata editor */
+          <div className="metadata-section">
+            <h3 className="metadata-section__heading">Edit metadata</h3>
+            <MetadataEditor
+              key={metadataKey}
+              book={book}
+              onSave={(form) => save.mutate(form)}
+              onCancel={() => setEditing(false)}
             >
-              Move
-            </button>
+              {seriesMoveField}
+            </MetadataEditor>
           </div>
-          {moveSeries.isError && <p className="book-detail__move-error">Move failed: {moveSeries.error?.message}</p>}
-        </div>
+        ) : (
+          <>
+            {/* Summary first — the thing you actually want to read */}
+            {book.summary && (
+              <div className="book-detail__section">
+                <h3 className="book-detail__section-heading">Summary</h3>
+                <p className="book-detail__summary">{book.summary}</p>
+              </div>
+            )}
 
-        {/* Metadata editor */}
-        <div className="metadata-section">
-          <h3 className="metadata-section__heading">Edit metadata</h3>
-          <MetadataEditor key={metadataKey} book={book} onSave={(form) => save.mutate(form)} />
-        </div>
+            {/* Details */}
+            <div className="book-detail__section">
+              <h3 className="book-detail__section-heading">Details</h3>
+              {details.map((d) => (
+                <div key={d.label} className="creator-row">
+                  <span className="creator-row__role">{d.label}</span>
+                  <span className="creator-row__names">{d.value}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
 
         {/* Creators */}
         {Object.keys(creditsByRole).length > 0 && (
