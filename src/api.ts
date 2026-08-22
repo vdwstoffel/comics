@@ -78,6 +78,40 @@ export interface RenameSeriesResponse { series: ApiSeries }
 export interface MoveBookSeriesResponse { book: ApiBook; series: ApiSeries }
 export interface PublishersResponse { publishers: PublisherFacet[] }
 
+export interface ComicIndexResult {
+  id: number
+  title: string
+  url: string
+  category: string
+  number: string | null
+  year: number | null
+  importedAt?: string
+}
+
+export interface ComicIndexCategory {
+  name: string
+  count: number
+}
+
+export interface ComicIndexSearchResponse { results: ComicIndexResult[]; total: number }
+
+export interface ScrapeStatus {
+  running: boolean
+  mode: 'quick' | 'full' | null
+  page: number
+  totalPages: number
+  inserted: number
+  updated: number
+  unchanged: number
+  failedPages: number
+  error: string | null
+  startedAt: string | null
+  finishedAt: string | null
+}
+
+export interface StartScrapeResponse { started: boolean; status: ScrapeStatus }
+export interface ComicIndexCategoriesResponse { categories: ComicIndexCategory[]; indexed: number }
+
 async function json<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, opts)
   if (!res.ok) throw new Error(`${res.status}`)
@@ -118,5 +152,21 @@ export const api = {
   moveBookSeries: (id: string | number, name: string) =>
     json<MoveBookSeriesResponse>(`/api/books/${id}/series`, {
       method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }),
+    }),
+  searchComicIndex: ({ q, category, yearFrom, yearTo, limit = 50, offset = 0 }: {
+    q: string; category?: string; yearFrom?: number; yearTo?: number
+    limit?: number; offset?: number
+  }) => {
+    const params = new URLSearchParams({ q, limit: String(limit), offset: String(offset) })
+    if (category) params.set('category', category)
+    if (yearFrom !== undefined) params.set('yearFrom', String(yearFrom))
+    if (yearTo !== undefined) params.set('yearTo', String(yearTo))
+    return json<ComicIndexSearchResponse>(`/api/comic-index/search?${params}`)
+  },
+  getComicIndexCategories: () => json<ComicIndexCategoriesResponse>('/api/comic-index/categories'),
+  getScrapeStatus: () => json<ScrapeStatus>('/api/comic-index/scrape'),
+  startScrape: (mode: 'quick' | 'full') =>
+    json<StartScrapeResponse>('/api/comic-index/scrape', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode }),
     }),
 }

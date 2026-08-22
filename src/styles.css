@@ -1210,3 +1210,200 @@ textarea.input:hover:not(:focus) {
 .error-text {
   color: var(--accent);
 }
+
+/* ============================================================
+   Search comics (scraped index)
+   ============================================================ */
+.app-header__nav {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.app-header__link {
+  color: var(--muted);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  transition: color 0.15s ease;
+}
+
+.app-header__link:hover {
+  color: var(--text);
+}
+
+.search-comics__input {
+  width: 100%;
+  margin-top: 4px;
+  padding: 11px 14px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 1rem;
+  font-family: inherit;
+}
+
+.search-comics__input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.search-comics__filters {
+  margin-top: 12px;
+}
+
+.search-comics__filter {
+  cursor: pointer;
+  font-family: inherit;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+
+.search-comics__filter:hover {
+  color: var(--text);
+}
+
+.search-comics__filter--on {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.search-comics__filter-count {
+  margin-left: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+}
+
+.search-comics__hint,
+.search-comics__count,
+.search-comics__error {
+  margin-top: 16px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.search-comics__error {
+  color: var(--accent);
+}
+
+.search-comics__results {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  border-top: 1px solid var(--border);
+}
+
+.search-comics__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 2px;
+  border-bottom: 1px solid var(--border);
+}
+
+.search-comics__link {
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.9375rem;
+  line-height: 1.4;
+}
+
+.search-comics__link:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+.search-comics__category {
+  flex-shrink: 0;
+  font-size: 0.75rem;
+}
+
+.search-comics__more {
+  margin-top: 16px;
+}
+
+@media (max-width: 560px) {
+  .search-comics__row {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+}
+
+.search-comics__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.search-comics__number {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+  min-width: 3.5em;
+  text-align: right;
+}
+
+.search-comics__year {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.search-comics__years {
+  display: flex;
+  align-items: flex-end;
+  gap: 12px;
+  margin-top: 14px;
+  flex-wrap: wrap;
+}
+
+.search-comics__year-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.search-comics__year-field span {
+  color: var(--muted);
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.search-comics__year-field input {
+  width: 6.5em;
+  padding: 7px 10px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  font-variant-numeric: tabular-nums;
+}
+
+.search-comics__year-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.search-comics__year-clear {
+  padding: 7px 14px;
+  font-size: 0.8125rem;
+}
+
+.search-comics__scrape {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 4px 0 14px;
+}
+
+.search-comics__scrape-status {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}

@@ -5,13 +5,17 @@ import Series from './pages/Series'
 import BookDetail from './pages/BookDetail'
 import Reader from './pages/Reader'
 import Upload from './pages/Upload'
+import SearchComics from './pages/SearchComics'
 
 function Header() {
   return (
     <header className="app-header">
       <div className="app-header__inner">
         <Link to="/" className="app-header__brand">Comics</Link>
-        <Link to="/upload" className="app-header__upload">+ Upload</Link>
+        <nav className="app-header__nav">
+          <Link to="/search" className="app-header__link">Search</Link>
+          <Link to="/upload" className="app-header__upload">+ Upload</Link>
+        </nav>
       </div>
     </header>
   )
@@ -49,6 +53,7 @@ export default function App() {
       <Route path="/book/:id" element={<Layout><BookDetail /></Layout>} />
       <Route path="/read/:id" element={<ReaderLayout><Reader /></ReaderLayout>} />
       <Route path="/upload" element={<Layout><Upload /></Layout>} />
+      <Route path="/search" element={<Layout><SearchComics /></Layout>} />
     </Routes>
   )
 }

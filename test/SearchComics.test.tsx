@@ -1,0 +1,293 @@
+import { test, expect, vi, beforeEach, afterEach } from 'vitest'
+import type { ReactNode } from 'react'
+import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { MemoryRouter } from 'react-router-dom'
+import SearchComics from '../src/pages/SearchComics'
+
+const CATEGORIES = {
+  categories: [{ name: 'Marvel Comics', count: 20800 }, { name: 'DC Comics', count: 16312 }],
+  indexed: 37112,
+}
+
+function result(id: number, title: string, category = 'DC Comics') {
+  return { id, title, url: `https://x.test/${id}/`, category }
+}
+
+const IDLE_SCRAPE = {
+  running: false, mode: null, page: 0, totalPages: 0,
+  inserted: 0, updated: 0, unchanged: 0, failedPages: 0,
+  error: null, startedAt: null, finishedAt: null,
+}
+
+let calls: string[]
+let posted: { url: string; body: string }[]
+
+function mockFetch(handler: (url: string, init?: RequestInit) => unknown) {
+  calls = []
+  posted = []
+  globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    calls.push(String(url))
+    if (init?.method === 'POST') posted.push({ url: String(url), body: String(init.body ?? '') })
+    return { ok: true, json: async () => handler(String(url), init) }
+  }) as unknown as typeof fetch
+}
+
+beforeEach(() => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return IDLE_SCRAPE
+    return { results: [result(1, 'Batman (2011) #1'), result(2, 'Batman (2016) #1')], total: 2 }
+  })
+})
+afterEach(() => { cleanup() })
+
+function renderPage() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  const ui: ReactNode = (
+    <QueryClientProvider client={qc}>
+      <MemoryRouter><SearchComics /></MemoryRouter>
+    </QueryClientProvider>
+  )
+  return render(ui)
+}
+
+function typeQuery(text: string) {
+  fireEvent.change(screen.getByRole('searchbox'), { target: { value: text } })
+}
+
+test('typing a query lists matching comic names', async () => {
+  renderPage()
+  typeQuery('batman')
+  expect(await screen.findByText('Batman (2011) #1')).toBeInTheDocument()
+  expect(screen.getByText('Batman (2016) #1')).toBeInTheDocument()
+})
+
+test('each result links to its source page in a new tab', async () => {
+  renderPage()
+  typeQuery('batman')
+  const link = await screen.findByRole('link', { name: /Batman \(2011\) #1/ })
+  expect(link).toHaveAttribute('href', 'https://x.test/1/')
+  expect(link).toHaveAttribute('target', '_blank')
+  expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+})
+
+test('the query is sent url-encoded to the search endpoint', async () => {
+  renderPage()
+  typeQuery('batman year one')
+  await waitFor(() => {
+    expect(calls.some((c) => c.includes('q=batman+year+one') || c.includes('q=batman%20year%20one')))
+      .toBe(true)
+  })
+})
+
+test('shows how many matches were found', async () => {
+  renderPage()
+  typeQuery('batman')
+  expect(await screen.findByText(/2 matches/i)).toBeInTheDocument()
+})
+
+test('an empty query searches nothing and prompts instead', async () => {
+  renderPage()
+  await waitFor(() => expect(calls.some((c) => c.includes('/categories'))).toBe(true))
+  expect(calls.some((c) => c.includes('/search'))).toBe(false)
+  expect(screen.getByText(/type to search/i)).toBeInTheDocument()
+})
+
+test('a query with no matches says so', async () => {
+  mockFetch((url) => (url.includes('/categories') ? CATEGORIES : { results: [], total: 0 }))
+  renderPage()
+  typeQuery('zzzz')
+  expect(await screen.findByText(/no matches/i)).toBeInTheDocument()
+})
+
+test('choosing a category sends it as a filter', async () => {
+  renderPage()
+  const chip = await screen.findByRole('button', { name: /DC Comics/ })
+  fireEvent.click(chip)
+  typeQuery('batman')
+  await waitFor(() => {
+    expect(calls.some((c) => c.includes('/search') && c.includes('category=DC+Comics')
+      || c.includes('/search') && c.includes('category=DC%20Comics'))).toBe(true)
+  })
+})
+
+test('load more fetches the next page and appends to the list', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('offset=50')) return { results: [result(99, 'Batman Page Two')], total: 51 }
+    return { results: Array.from({ length: 50 }, (_, i) => result(i + 1, `Batman #${i + 1}`)), total: 51 }
+  })
+  renderPage()
+  typeQuery('batman')
+  const more = await screen.findByRole('button', { name: /load more/i })
+  fireEvent.click(more)
+  expect(await screen.findByText('Batman Page Two')).toBeInTheDocument()
+  expect(screen.getByText('Batman #1')).toBeInTheDocument()
+})
+
+test('no load more button when everything is already shown', async () => {
+  renderPage()
+  typeQuery('batman')
+  await screen.findByText('Batman (2011) #1')
+  expect(screen.queryByRole('button', { name: /load more/i })).not.toBeInTheDocument()
+})
+
+test('a row shows the padded issue number and the year alongside the title', async () => {
+  mockFetch((url) => (url.includes('/categories') ? CATEGORIES : {
+    results: [{ id: 1, title: 'Spider-Man #10 (2016)', url: 'https://x.test/1/',
+                category: 'Marvel Comics', number: '010', year: 2016 }],
+    total: 1,
+  }))
+  renderPage()
+  typeQuery('spider')
+  expect(await screen.findByText('#010')).toBeInTheDocument()
+  expect(screen.getByText('2016')).toBeInTheDocument()
+  // the link text stays exactly as scraped
+  expect(screen.getByRole('link', { name: 'Spider-Man #10 (2016)' })).toBeInTheDocument()
+})
+
+test('a row with no issue number or year renders without empty columns', async () => {
+  mockFetch((url) => (url.includes('/categories') ? CATEGORIES : {
+    results: [{ id: 2, title: 'Big Omnibus', url: 'https://x.test/2/',
+                category: 'DC Comics', number: null, year: null }],
+    total: 1,
+  }))
+  renderPage()
+  typeQuery('omnibus')
+  expect(await screen.findByRole('link', { name: 'Big Omnibus' })).toBeInTheDocument()
+  expect(screen.queryByText('#null')).not.toBeInTheDocument()
+  expect(screen.queryByText('#')).not.toBeInTheDocument()
+})
+
+function typeYear(label: RegExp, value: string) {
+  fireEvent.change(screen.getByLabelText(label), { target: { value } })
+}
+
+test('year bounds are sent as yearFrom and yearTo', async () => {
+  renderPage()
+  typeQuery('spider-man')
+  typeYear(/year from/i, '2015')
+  typeYear(/year to/i, '2018')
+  await waitFor(() => {
+    expect(calls.some((c) => c.includes('yearFrom=2015') && c.includes('yearTo=2018'))).toBe(true)
+  })
+})
+
+test('a single bound is sent on its own', async () => {
+  renderPage()
+  typeQuery('spider-man')
+  typeYear(/year from/i, '2015')
+  await waitFor(() => {
+    expect(calls.some((c) => c.includes('yearFrom=2015'))).toBe(true)
+  })
+  expect(calls.every((c) => !c.includes('yearTo='))).toBe(true)
+})
+
+test('a partly typed year is not sent until it is four digits', async () => {
+  renderPage()
+  typeQuery('spider-man')
+  typeYear(/year from/i, '201')
+  await waitFor(() => expect(calls.some((c) => c.includes('/search'))).toBe(true))
+  expect(calls.every((c) => !c.includes('yearFrom=201&') && !c.endsWith('yearFrom=201'))).toBe(true)
+})
+
+test('clear resets both year bounds', async () => {
+  renderPage()
+  typeQuery('spider-man')
+  typeYear(/year from/i, '2015')
+  typeYear(/year to/i, '2018')
+  await waitFor(() => expect(calls.some((c) => c.includes('yearFrom=2015'))).toBe(true))
+
+  fireEvent.click(screen.getByRole('button', { name: /clear years/i }))
+
+  expect(screen.getByLabelText(/year from/i)).toHaveValue(null)
+  expect(screen.getByLabelText(/year to/i)).toHaveValue(null)
+})
+
+test('the clear control only appears once a bound is set', async () => {
+  renderPage()
+  expect(screen.queryByRole('button', { name: /clear years/i })).not.toBeInTheDocument()
+  typeYear(/year from/i, '2015')
+  expect(await screen.findByRole('button', { name: /clear years/i })).toBeInTheDocument()
+})
+
+test('both scrape buttons are offered', async () => {
+  renderPage()
+  expect(await screen.findByRole('button', { name: /check for new/i })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /full scrape/i })).toBeInTheDocument()
+})
+
+test('check for new posts a quick run', async () => {
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: /check for new/i }))
+  await waitFor(() => {
+    expect(posted.some((p) => p.url.includes('/api/comic-index/scrape') && p.body.includes('quick')))
+      .toBe(true)
+  })
+})
+
+test('full scrape posts a full run', async () => {
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: /full scrape/i }))
+  await waitFor(() => {
+    expect(posted.some((p) => p.body.includes('full'))).toBe(true)
+  })
+})
+
+test('a run in flight shows progress and disables both buttons', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return {
+      ...IDLE_SCRAPE, running: true, mode: 'full', page: 12, totalPages: 133, inserted: 47, updated: 3,
+    }
+    return { results: [], total: 0 }
+  })
+  renderPage()
+  expect(await screen.findByText(/page 12 of 133/i)).toBeInTheDocument()
+  expect(screen.getByText(/47 new/i)).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /check for new/i })).toBeDisabled()
+  expect(screen.getByRole('button', { name: /full scrape/i })).toBeDisabled()
+})
+
+test('a finished run reports what it added', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return {
+      ...IDLE_SCRAPE, mode: 'quick', page: 5, totalPages: 5, inserted: 9, updated: 2, unchanged: 40,
+      startedAt: '2026-08-22T10:00:00Z', finishedAt: '2026-08-22T10:00:30Z',
+    }
+    return { results: [], total: 0 }
+  })
+  renderPage()
+  expect(await screen.findByText(/9 new/i)).toBeInTheDocument()
+})
+
+test('a scrape error is surfaced', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return { ...IDLE_SCRAPE, error: 'connect ETIMEDOUT', finishedAt: 'x' }
+    return { results: [], total: 0 }
+  })
+  renderPage()
+  expect(await screen.findByText(/connect ETIMEDOUT/)).toBeInTheDocument()
+})
+
+test('results refresh once a run finishes', async () => {
+  let running = true
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return { ...IDLE_SCRAPE, running, mode: 'quick', totalPages: 5 }
+    return { results: [result(1, 'Batman (2011) #1')], total: 1 }
+  })
+  renderPage()
+  typeQuery('batman')
+  await waitFor(() => expect(calls.some((c) => c.includes('/search'))).toBe(true))
+  const before = calls.filter((c) => c.includes('/search')).length
+
+  running = false
+  await waitFor(
+    () => expect(calls.filter((c) => c.includes('/search')).length).toBeGreaterThan(before),
+    { timeout: 4000 },
+  )
+})

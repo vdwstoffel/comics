@@ -10,6 +10,8 @@ import seriesRoutes from './routes/series.js'
 import booksRoutes from './routes/books.js'
 import uploadRoutes from './routes/upload.js'
 import comicvineRoutes from './routes/comicvine.js'
+import comicIndexRoutes from './routes/comicIndex.js'
+import { createScrapeRunner } from './services/comicIndexScraper.js'
 import type { App } from './types.js'
 
 export function registerSpa(app: App, _distDir: string): void {
@@ -28,6 +30,8 @@ export async function buildServer(): Promise<App> {
   app.decorate('db', db)
   app.addHook('onClose', async () => db.close())
 
+  app.decorate('scraper', createScrapeRunner({ db, config }))
+
   app.get('/api/health', async () => ({ status: 'ok' }))
 
   await app.register(multipart, { limits: { fileSize: config.maxUploadBytes } })
@@ -36,6 +40,7 @@ export async function buildServer(): Promise<App> {
   await app.register(booksRoutes)
   await app.register(uploadRoutes)
   await app.register(comicvineRoutes)
+  await app.register(comicIndexRoutes)
 
   const distDir = join(process.cwd(), 'dist')
   if (existsSync(distDir)) {

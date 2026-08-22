@@ -1,6 +1,7 @@
 import type { FastifyInstance } from 'fastify'
 import type DatabaseType from 'better-sqlite3'
 import type { Config } from './config.js'
+import type { ScrapeRunner } from './services/comicIndexScraper.js'
 
 export type Db = DatabaseType.Database
 
@@ -38,6 +39,20 @@ export interface Book {
   publisher: string | null
 }
 
+export interface ComicIndexEntry {
+  title: string
+  url: string
+  category: string
+}
+
+export interface ComicIndexRow extends ComicIndexEntry {
+  id: number
+  // Derived from the title on insert; see lib/comicTitle.ts
+  number: string | null
+  year: number | null
+  importedAt: string
+}
+
 export interface Progress {
   bookId: number
   lastPage: number
@@ -67,6 +82,7 @@ declare module 'fastify' {
   interface FastifyInstance {
     config: Config
     db: Db
+    scraper: ScrapeRunner
   }
 }
 

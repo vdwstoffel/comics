@@ -52,6 +52,33 @@ CREATE TABLE IF NOT EXISTS book_tag (
 );
 CREATE INDEX IF NOT EXISTS idx_book_tag_book ON book_tag(book_id);
 CREATE INDEX IF NOT EXISTS idx_book_tag_kind_value ON book_tag(kind, value);
+
+CREATE TABLE IF NOT EXISTS comic_index (
+  id          INTEGER PRIMARY KEY,
+  title       TEXT NOT NULL,
+  url         TEXT NOT NULL UNIQUE,
+  category    TEXT NOT NULL,
+  year        INTEGER,
+  number      TEXT,
+  imported_at TEXT NOT NULL
+);
+CREATE INDEX IF NOT EXISTS idx_comic_index_category ON comic_index(category);
+
+-- Full-text index over titles. External-content table: the fts rows mirror comic_index
+-- and are kept in sync by the triggers below, so any writer (server or the python
+-- scraper) gets a correct index without having to remember to rebuild it.
+CREATE VIRTUAL TABLE IF NOT EXISTS comic_index_fts
+  USING fts5(title, content='comic_index', content_rowid='id');
+CREATE TRIGGER IF NOT EXISTS comic_index_ai AFTER INSERT ON comic_index BEGIN
+  INSERT INTO comic_index_fts(rowid, title) VALUES (new.id, new.title);
+END;
+CREATE TRIGGER IF NOT EXISTS comic_index_ad AFTER DELETE ON comic_index BEGIN
+  INSERT INTO comic_index_fts(comic_index_fts, rowid, title) VALUES('delete', old.id, old.title);
+END;
+CREATE TRIGGER IF NOT EXISTS comic_index_au AFTER UPDATE ON comic_index BEGIN
+  INSERT INTO comic_index_fts(comic_index_fts, rowid, title) VALUES('delete', old.id, old.title);
+  INSERT INTO comic_index_fts(rowid, title) VALUES (new.id, new.title);
+END;
 `
 
 export function openDb(dbPath: string): Db {
@@ -68,5 +95,11 @@ export function openDb(dbPath: string): Db {
   if (!bookCols.includes('publisher')) db.exec('ALTER TABLE book ADD COLUMN publisher TEXT')
 
   db.exec(MIGRATION)
+
+  // Additive migration: comic_index gained year/number after first release
+  const indexCols = (db.pragma('table_info(comic_index)') as Array<{ name: string }>).map((r) => r.name)
+  if (!indexCols.includes('year')) db.exec('ALTER TABLE comic_index ADD COLUMN year INTEGER')
+  if (!indexCols.includes('number')) db.exec('ALTER TABLE comic_index ADD COLUMN number TEXT')
+
   return db
 }
