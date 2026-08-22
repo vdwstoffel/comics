@@ -9,6 +9,7 @@ CREATE TABLE IF NOT EXISTS series (
   publisher    TEXT,
   summary      TEXT,
   comicvine_id INTEGER,
+  group_name   TEXT,
   created_at   TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS book (
@@ -95,6 +96,9 @@ export function openDb(dbPath: string): Db {
   if (!bookCols.includes('publisher')) db.exec('ALTER TABLE book ADD COLUMN publisher TEXT')
 
   db.exec(MIGRATION)
+
+  const seriesCols = (db.pragma('table_info(series)') as Array<{ name: string }>).map((r) => r.name)
+  if (!seriesCols.includes('group_name')) db.exec('ALTER TABLE series ADD COLUMN group_name TEXT')
 
   // Additive migration: comic_index gained year/number after first release
   const indexCols = (db.pragma('table_info(comic_index)') as Array<{ name: string }>).map((r) => r.name)

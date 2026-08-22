@@ -22,8 +22,8 @@ export default function ComicVineMatchDialog({ defaultQuery, onPick, onClose }: 
   }
 
   return (
-    <div className="cv-backdrop">
-      <div className="cv-panel">
+    <div className="modal-backdrop">
+      <div className="modal-panel">
         <h3>Fetch from Comic Vine</h3>
         <div className="cv-search-row">
           <input placeholder="Search Comic Vine" value={q} onChange={(e) => setQ(e.target.value)} />

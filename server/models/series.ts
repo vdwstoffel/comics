@@ -1,3 +1,4 @@
+import { deriveGroupName } from '../lib/seriesGroup.js'
 import type { Db, Series } from '../types.js'
 
 interface SeriesRow {
@@ -7,6 +8,7 @@ interface SeriesRow {
   publisher: string | null
   summary: string | null
   comicvine_id: number | null
+  group_name: string | null
   created_at: string
   book_count?: number
 }
@@ -16,8 +18,8 @@ function toSeries(row: SeriesRow | undefined): Series | undefined {
   return {
     id: row.id, name: row.name, folder: row.folder,
     publisher: row.publisher ?? null, summary: row.summary ?? null,
-    comicvineId: row.comicvine_id ?? null, createdAt: row.created_at,
-    bookCount: row.book_count ?? undefined,
+    comicvineId: row.comicvine_id ?? null, groupName: row.group_name ?? null,
+    createdAt: row.created_at, bookCount: row.book_count ?? undefined,
   }
 }
 
@@ -25,8 +27,8 @@ export function upsertSeries(db: Db, { name, folder }: { name: string; folder: s
   const existing = db.prepare('SELECT * FROM series WHERE name = ?').get(name) as SeriesRow | undefined
   if (existing) return toSeries(existing) as Series
   const info = db
-    .prepare('INSERT INTO series (name, folder, created_at) VALUES (?,?,?)')
-    .run(name, folder, new Date().toISOString())
+    .prepare('INSERT INTO series (name, folder, group_name, created_at) VALUES (?,?,?,?)')
+    .run(name, folder, deriveGroupName(name), new Date().toISOString())
   return toSeries(db.prepare('SELECT * FROM series WHERE id = ?').get(info.lastInsertRowid) as SeriesRow) as Series
 }
 
@@ -80,9 +82,26 @@ export function listPublishers(db: Db): PublisherFacet[] {
 // Name changes must go through renameSeries() in services/library.ts, which also
 // moves the files on disk and updates the `folder` column. Updating `name` directly
 // here will leave files in the old folder and break the path invariant.
-const SERIES_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name' }
+const SERIES_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name', groupName: 'group_name' }
 
-export type SeriesUpdate = Partial<Pick<Series, 'publisher' | 'summary' | 'comicvineId' | 'name'>>
+export type SeriesUpdate = Partial<Pick<Series, 'publisher' | 'summary' | 'comicvineId' | 'name' | 'groupName'>>
+
+export const SERIES_UPDATABLE_FIELDS = Object.keys(SERIES_FIELDS) as (keyof SeriesUpdate)[]
+
+/**
+ * Everything a rename must carry over to the row it recreates: all updatable metadata
+ * except the name itself. Derived from SERIES_FIELDS rather than listed by hand, so a
+ * column added later is carried automatically instead of being silently dropped - which
+ * is how publisher/summary/comicvineId and then group_name were each lost in turn.
+ */
+export function carryableMetadata(series: Series): SeriesUpdate {
+  const carried: Record<string, unknown> = {}
+  for (const key of SERIES_UPDATABLE_FIELDS) {
+    if (key === 'name') continue
+    carried[key] = (series as unknown as Record<string, unknown>)[key]
+  }
+  return carried as SeriesUpdate
+}
 
 export function updateSeries(db: Db, id: number, fields: SeriesUpdate): Series | undefined {
   const sets: string[] = [], vals: unknown[] = []

@@ -14,6 +14,8 @@ export interface Series {
   publisher: string | null
   summary: string | null
   comicvineId: number | null
+  /** Franchise this series belongs to; derived from the name, correctable by hand. */
+  groupName: string | null
   createdAt: string
   bookCount?: number
 }

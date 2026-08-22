@@ -12,6 +12,7 @@ import uploadRoutes from './routes/upload.js'
 import comicvineRoutes from './routes/comicvine.js'
 import comicIndexRoutes from './routes/comicIndex.js'
 import { createScrapeRunner } from './services/comicIndexScraper.js'
+import { backfillSeriesGroups } from './models/seriesGroups.js'
 import type { App } from './types.js'
 
 export function registerSpa(app: App, _distDir: string): void {
@@ -29,6 +30,10 @@ export async function buildServer(): Promise<App> {
   const db = openDb(config.dbPath)
   app.decorate('db', db)
   app.addHook('onClose', async () => db.close())
+
+  // One-off for series that predate group_name; only fills rows that have none.
+  const grouped = backfillSeriesGroups(db)
+  if (grouped) console.log(`assigned groups to ${grouped} series`)
 
   app.decorate('scraper', createScrapeRunner({ db, config }))
 

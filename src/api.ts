@@ -1,6 +1,7 @@
 export interface ApiSeries {
   id: number
   name: string
+  groupName?: string | null
   folder?: string
   publisher?: string | null
   summary?: string | null
@@ -29,6 +30,12 @@ export interface ApiBook {
   year?: number | null
   coverUrl?: string | null
   cvSiteUrl?: string | null
+}
+
+export interface ApiSeriesGroup {
+  name: string
+  bookCount: number
+  series: ApiSeries[]
 }
 
 export interface ApiCredit {
@@ -69,6 +76,8 @@ export interface ContinueReadingBook extends ApiBook {
 }
 
 export interface SeriesListResponse { series: ApiSeries[] }
+export interface SeriesGroupsResponse { groups: ApiSeriesGroup[] }
+export interface SeriesGroupResponse { group: ApiSeriesGroup }
 export interface ContinueReadingResponse { books: ContinueReadingBook[] }
 export interface SeriesDetailResponse { series: ApiSeries; books: ApiBook[] }
 export interface BookResponse { book: ApiBook; progress: ApiProgress; credits?: ApiCredit[]; tags?: ApiTag[] }
@@ -124,6 +133,19 @@ export const api = {
     return json<SeriesListResponse>(url)
   },
   getPublishers: () => json<PublishersResponse>('/api/publishers'),
+  getSeriesGroups: (publisher?: string) => {
+    const url = publisher
+      ? `/api/series-groups?publisher=${encodeURIComponent(publisher)}`
+      : '/api/series-groups'
+    return json<SeriesGroupsResponse>(url)
+  },
+  getSeriesGroup: (name: string) =>
+    json<SeriesGroupResponse>(`/api/series-groups/${encodeURIComponent(name)}`),
+  setSeriesGroup: (id: string | number, groupName: string) =>
+    json<RenameSeriesResponse>(`/api/series/${id}`, {
+      method: 'PATCH', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ groupName }),
+    }),
   getContinueReading: (publisher?: string) => {
     const url = publisher ? `/api/continue-reading?publisher=${encodeURIComponent(publisher)}` : '/api/continue-reading'
     return json<ContinueReadingResponse>(url)

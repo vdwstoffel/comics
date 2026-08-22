@@ -19,8 +19,8 @@ export default function Library() {
   })
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['series', selectedPublisher],
-    queryFn: () => api.getSeries(selectedPublisher ?? undefined),
+    queryKey: ['series-groups', selectedPublisher],
+    queryFn: () => api.getSeriesGroups(selectedPublisher ?? undefined),
   })
 
   const { data: continueData } = useQuery({
@@ -78,11 +78,22 @@ export default function Library() {
         {error && <p>Failed to load library.</p>}
         {data && (
           <div className="tile-grid">
-            {data.series.map((s) => (
-              <CoverTile key={s.id} to={`/series/${s.id}`}
-                img={`/api/series/${s.id}/thumbnail`} title={s.name}
-                subtitle={`${s.bookCount} issue${s.bookCount === 1 ? '' : 's'}`} />
-            ))}
+            {(data.groups ?? []).map((group) => {
+              // A franchise with a single edition would open onto a list of one, so it
+              // links straight through to that series instead.
+              const only = group.series.length === 1 ? group.series[0] : undefined
+              const cover = group.series[0]
+              const issues = `${group.bookCount} issue${group.bookCount === 1 ? '' : 's'}`
+              return (
+                <CoverTile
+                  key={group.name}
+                  to={only ? `/series/${only.id}` : `/group/${encodeURIComponent(group.name)}`}
+                  img={`/api/series/${cover.id}/thumbnail`}
+                  title={only ? only.name : group.name}
+                  subtitle={only ? issues : `${group.series.length} editions · ${issues}`}
+                />
+              )
+            })}
           </div>
         )}
       </div>

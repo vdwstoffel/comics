@@ -2,6 +2,7 @@ import { Routes, Route, Link } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import Library from './pages/Library'
 import Series from './pages/Series'
+import SeriesGroup from './pages/SeriesGroup'
 import BookDetail from './pages/BookDetail'
 import Reader from './pages/Reader'
 import Upload from './pages/Upload'
@@ -49,6 +50,7 @@ export default function App() {
   return (
     <Routes>
       <Route path="/" element={<LibraryLayout />} />
+      <Route path="/group/:name" element={<Layout><SeriesGroup /></Layout>} />
       <Route path="/series/:id" element={<Layout><Series /></Layout>} />
       <Route path="/book/:id" element={<Layout><BookDetail /></Layout>} />
       <Route path="/read/:id" element={<ReaderLayout><Reader /></ReaderLayout>} />

@@ -17,6 +17,7 @@ function makeFetch(routes: Record<string, unknown>) {
 beforeEach(() => {
   globalThis.fetch = makeFetch({
     '/api/publishers': { publishers: [] },
+    '/api/series-groups': { groups: [{ name: 'Batman', bookCount: 3, series: [{ id: 1, name: 'Batman', bookCount: 3 }] }] },
     '/api/series': { series: [{ id: 1, name: 'Batman', bookCount: 3 }] },
   })
 })
@@ -41,6 +42,7 @@ test('Library shows a Continue reading section for in-progress books', async () 
   globalThis.fetch = makeFetch({
     '/api/publishers': { publishers: [] },
     '/api/continue-reading': { books: [inProgressBook] },
+    '/api/series-groups': { groups: [{ name: 'Batman', bookCount: 3, series: [{ id: 1, name: 'Batman', bookCount: 3 }] }] },
     '/api/series': { series: [{ id: 1, name: 'Batman', bookCount: 3 }] },
   })
 
@@ -56,6 +58,7 @@ test('Continue reading tiles link into the reader', async () => {
   globalThis.fetch = makeFetch({
     '/api/publishers': { publishers: [] },
     '/api/continue-reading': { books: [inProgressBook] },
+    '/api/series-groups': { groups: [{ name: 'Batman', bookCount: 3, series: [{ id: 1, name: 'Batman', bookCount: 3 }] }] },
     '/api/series': { series: [{ id: 1, name: 'Batman', bookCount: 3 }] },
   })
 
@@ -73,6 +76,7 @@ test('Continue reading follows the publisher filter', async () => {
     if (u.includes('/api/continue-reading')) {
       return { ok: true, json: async () => ({ books: u.includes('publisher=DC') ? [] : [inProgressBook] }) }
     }
+    if (u.includes('/api/series-groups')) return { ok: true, json: async () => ({ groups: [{ name: 'Batman', bookCount: 3, series: [{ id: 1, name: 'Batman', bookCount: 3 }] }] }) }
     if (u.includes('/api/series')) return { ok: true, json: async () => ({ series: [{ id: 1, name: 'Batman', bookCount: 3 }] }) }
     return { ok: true, json: async () => ({}) }
   }) as unknown as typeof fetch
@@ -89,6 +93,7 @@ test('Library omits the Continue reading section when nothing is in progress', a
   globalThis.fetch = makeFetch({
     '/api/publishers': { publishers: [] },
     '/api/continue-reading': { books: [] },
+    '/api/series-groups': { groups: [{ name: 'Batman', bookCount: 3, series: [{ id: 1, name: 'Batman', bookCount: 3 }] }] },
     '/api/series': { series: [{ id: 1, name: 'Batman', bookCount: 3 }] },
   })
 
@@ -107,6 +112,7 @@ test('Library renders series tiles from the API', async () => {
 test('Library shows publisher sidebar items when publishers exist', async () => {
   globalThis.fetch = makeFetch({
     '/api/publishers': { publishers: [{ name: 'DC', count: 2 }, { name: 'Marvel', count: 1 }] },
+    '/api/series-groups': { groups: [{ name: 'Batman', bookCount: 2, series: [{ id: 1, name: 'Batman', bookCount: 2 }] }] },
     '/api/series': { series: [{ id: 1, name: 'Batman', bookCount: 2 }] },
   })
 
@@ -124,8 +130,11 @@ test('Library filters series when a publisher is clicked', async () => {
     if (urlStr.includes('/api/publishers')) {
       return { ok: true, json: async () => ({ publishers: [{ name: 'Marvel', count: 1 }] }) }
     }
-    if (urlStr.includes('/api/series') && urlStr.includes('publisher=Marvel')) {
-      return { ok: true, json: async () => ({ series: [{ id: 2, name: 'X-Men', bookCount: 5 }] }) }
+    if (urlStr.includes('/api/series-groups') && urlStr.includes('publisher=Marvel')) {
+      return { ok: true, json: async () => ({ groups: [{ name: 'X-Men', bookCount: 5, series: [{ id: 2, name: 'X-Men', bookCount: 5 }] }] }) }
+    }
+    if (urlStr.includes('/api/series-groups')) {
+      return { ok: true, json: async () => ({ groups: [{ name: 'Batman', bookCount: 3, series: [{ id: 1, name: 'Batman', bookCount: 3 }] }, { name: 'X-Men', bookCount: 5, series: [{ id: 2, name: 'X-Men', bookCount: 5 }] }] }) }
     }
     if (urlStr.includes('/api/series')) {
       return { ok: true, json: async () => ({ series: [{ id: 1, name: 'Batman', bookCount: 3 }, { id: 2, name: 'X-Men', bookCount: 5 }] }) }
@@ -148,4 +157,59 @@ test('Library filters series when a publisher is clicked', async () => {
     expect(screen.queryByText('Batman')).not.toBeInTheDocument()
     expect(screen.getByText('X-Men')).toBeInTheDocument()
   })
+})
+
+const ASM_GROUP = {
+  name: 'Amazing Spider-Man',
+  bookCount: 5,
+  series: [
+    { id: 9, name: 'Amazing Spider-Man (2025)', bookCount: 3 },
+    { id: 8, name: 'Amazing Spider-Man by Nick Spencer Omnibus', bookCount: 2 },
+  ],
+}
+const BATMAN_GROUP = {
+  name: 'Batman',
+  bookCount: 10,
+  series: [{ id: 6, name: 'Batman Vol. 2 (New 52 TPB)', bookCount: 10 }],
+}
+
+function groupFetch(groups: unknown[]) {
+  return makeFetch({
+    '/api/series-groups': { groups },
+    '/api/publishers': { publishers: [] },
+    '/api/continue-reading': { books: [] },
+    '/api/series': { series: [] },
+  })
+}
+
+test('a franchise with several editions is one tile, opening the edition list', async () => {
+  globalThis.fetch = groupFetch([ASM_GROUP, BATMAN_GROUP])
+  renderWithProviders(<Library />)
+
+  const tile = (await screen.findByText('Amazing Spider-Man')).closest('a')
+  expect(tile).toHaveAttribute('href', '/group/Amazing%20Spider-Man')
+  expect(screen.queryByText('Amazing Spider-Man (2025)')).not.toBeInTheDocument()
+})
+
+test('a multi-edition tile says how many editions and issues it holds', async () => {
+  globalThis.fetch = groupFetch([ASM_GROUP])
+  renderWithProviders(<Library />)
+  expect(await screen.findByText('2 editions · 5 issues')).toBeInTheDocument()
+})
+
+// A single-edition tile keeps the series name it has today, since it opens that series.
+test('a franchise with one edition links straight to that series', async () => {
+  globalThis.fetch = groupFetch([BATMAN_GROUP])
+  renderWithProviders(<Library />)
+
+  const tile = (await screen.findByText('Batman Vol. 2 (New 52 TPB)')).closest('a')
+  expect(tile).toHaveAttribute('href', '/series/6')
+  expect(screen.getByText('10 issues')).toBeInTheDocument()
+})
+
+test('a single-edition tile shows the series cover, not a group cover', async () => {
+  globalThis.fetch = groupFetch([BATMAN_GROUP])
+  renderWithProviders(<Library />)
+  const img = await screen.findByAltText('Batman Vol. 2 (New 52 TPB)')
+  expect(img).toHaveAttribute('src', '/api/series/6/thumbnail')
 })

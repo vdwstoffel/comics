@@ -3,13 +3,13 @@ import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import CoverTile from '../components/CoverTile'
+import SeriesEditDialog from '../components/SeriesEditDialog'
 
 export default function Series() {
   const { id } = useParams()
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [editing, setEditing] = useState(false)
-  const [nameInput, setNameInput] = useState('')
 
   const { data, isLoading } = useQuery({
     queryKey: ['series', id],
@@ -25,14 +25,22 @@ export default function Series() {
     },
   })
 
-  const handleEditClick = () => {
-    setNameInput(data?.series.name ?? '')
-    setEditing(true)
-  }
+  const setGroup = useMutation({
+    mutationFn: (groupName: string) => api.setSeriesGroup(id!, groupName),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['series', id] })
+      qc.invalidateQueries({ queryKey: ['series-groups'] })
+    },
+  })
 
-  const handleSave = () => {
-    const trimmed = nameInput.trim()
-    if (trimmed) rename.mutate(trimmed)
+  const handleSave = async ({ name, groupName }: { name: string; groupName: string }) => {
+    // Only send what actually changed: a rename also moves files on disk.
+    if (groupName !== (data?.series.groupName ?? '')) await setGroup.mutateAsync(groupName)
+    if (name !== data?.series.name) {
+      rename.mutate(name)
+      return
+    }
+    setEditing(false)
   }
 
   if (isLoading) return <p>Loading…</p>
@@ -45,30 +53,31 @@ export default function Series() {
     <div>
       <Link to="/" className="back-link">← Library</Link>
       <div className="series-header">
-        {editing ? (
-          <div className="series-edit-row">
-            <input
-              className="series-edit-input"
-              value={nameInput}
-              onChange={(e) => setNameInput(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') handleSave() }}
-              autoFocus
-            />
-            <button className="btn" onClick={handleSave} disabled={rename.isPending}>Save</button>
-            <button className="btn-ghost" onClick={() => setEditing(false)}>Cancel</button>
-          </div>
-        ) : (
-          <div className="series-header__title-row">
-            <h1 className="page-title">{data.series.name}</h1>
-            <button className="btn-icon" onClick={handleEditClick} title="Edit series name" aria-label="Edit series name">
-              ✏
-            </button>
-          </div>
-        )}
+        <div className="series-header__title-row">
+          <h1 className="page-title">{data.series.name}</h1>
+          <button className="btn-icon" onClick={() => setEditing(true)}
+            title="Edit series" aria-label="Edit series">
+            ✏
+          </button>
+        </div>
         <p className="series-header__count">{bookLabel}</p>
-        {rename.isError && <p className="series-header__error">Rename failed: {rename.error?.message}</p>}
         {data.series.summary && <p className="series-header__summary">{data.series.summary}</p>}
       </div>
+
+      {editing && (
+        <SeriesEditDialog
+          name={data.series.name}
+          groupName={data.series.groupName ?? null}
+          saving={rename.isPending || setGroup.isPending}
+          error={
+            rename.isError ? `Rename failed: ${rename.error?.message}`
+              : setGroup.isError ? `Could not change group: ${setGroup.error?.message}`
+                : null
+          }
+          onSave={handleSave}
+          onClose={() => setEditing(false)}
+        />
+      )}
       <div className="tile-grid">
         {data.books.map((b) => (
           <CoverTile

@@ -165,35 +165,6 @@ img {
 }
 
 /* Inline editor in series header */
-.series-edit-row {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  margin-bottom: 4px;
-}
-
-.series-edit-input {
-  background: var(--elevated);
-  border: 1px solid var(--accent);
-  color: var(--text);
-  border-radius: 8px;
-  padding: 8px 14px;
-  font-size: 1.75rem;
-  font-weight: 800;
-  letter-spacing: -0.03em;
-  line-height: 1.15;
-  font-family: inherit;
-  width: 100%;
-  max-width: 520px;
-  transition: border-color 0.15s, box-shadow 0.15s;
-}
-
-.series-edit-input:focus {
-  outline: none;
-  border-color: var(--accent);
-  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.22);
-}
-
 /* Pencil / edit icon button */
 .btn-icon {
   display: inline-flex;
@@ -678,9 +649,9 @@ textarea.input:hover:not(:focus) {
 }
 
 /* ============================================================
-   Comic Vine dialog
+   Modal shell (shared by the series editor and the Comic Vine dialog)
    ============================================================ */
-.cv-backdrop {
+.modal-backdrop {
   position: fixed;
   inset: 0;
   background: rgba(0, 0, 0, 0.7);
@@ -690,7 +661,7 @@ textarea.input:hover:not(:focus) {
   z-index: 200;
 }
 
-.cv-panel {
+.modal-panel {
   background: var(--surface);
   color: var(--text);
   border: 1px solid var(--border);
@@ -703,7 +674,7 @@ textarea.input:hover:not(:focus) {
   padding: 28px;
 }
 
-.cv-panel h3 {
+.modal-panel h3 {
   font-size: 1.125rem;
   font-weight: 700;
   margin-bottom: 20px;
@@ -1406,4 +1377,60 @@ textarea.input:hover:not(:focus) {
   color: var(--muted);
   font-size: 0.8125rem;
   font-variant-numeric: tabular-nums;
+}
+
+
+/* Modal form fields */
+.modal-field {
+  margin-bottom: 18px;
+}
+
+.modal-field label {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.modal-field input {
+  width: 100%;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 13px;
+  color: var(--text);
+  font-size: 0.9375rem;
+  font-family: inherit;
+  transition: border-color 0.15s ease;
+}
+
+.modal-field input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.modal-hint {
+  margin-top: 6px;
+  color: var(--muted);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+
+.modal-error {
+  margin-bottom: 16px;
+  padding: 9px 12px;
+  border: 1px solid var(--accent);
+  border-radius: 8px;
+  color: var(--accent);
+  font-size: 0.8125rem;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin-top: 4px;
 }
