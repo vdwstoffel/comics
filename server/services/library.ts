@@ -2,7 +2,9 @@ import { mkdir, rename, rmdir } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import { join, basename, extname, dirname } from 'node:path'
 import { sanitizeSeriesFolder } from '../lib/paths.js'
-import { upsertSeries, getSeries, getSeriesByName, deleteSeries, updateSeries } from '../models/series.js'
+import {
+  upsertSeries, getSeries, getSeriesByName, deleteSeries, updateSeries, carryableMetadata,
+} from '../models/series.js'
 import { getBook, listBooksBySeries, setBookSeries } from '../models/books.js'
 import type { Ctx } from '../types.js'
 import type { Series, Book } from '../types.js'
@@ -87,13 +89,9 @@ export async function renameSeries(
     return { series: currentSeries }
   }
 
-  // Metadata to preserve across the rename/merge (the moves create/keep a
-  // different series row, so we must carry these forward explicitly).
-  const carry = {
-    publisher: currentSeries.publisher,
-    summary: currentSeries.summary,
-    comicvineId: currentSeries.comicvineId,
-  }
+  // Metadata to preserve across the rename/merge (the moves create/keep a different
+  // series row, so it must be carried forward explicitly). Everything but the name.
+  const carry = carryableMetadata(currentSeries)
 
   const targetExisting = getSeriesByName(db, newName)
 
@@ -105,10 +103,13 @@ export async function renameSeries(
     }
     // Backfill the target's metadata from the source only where the target lacks it
     const target = getSeries(db, targetExisting.id) as Series
-    const patch: { publisher?: string | null; summary?: string | null; comicvineId?: number | null } = {}
-    if (!target.publisher && carry.publisher) patch.publisher = carry.publisher
-    if (!target.summary && carry.summary) patch.summary = carry.summary
-    if (target.comicvineId == null && carry.comicvineId != null) patch.comicvineId = carry.comicvineId
+    const patch: Record<string, unknown> = {}
+    const missing = (v: unknown) => v == null || v === ''
+    for (const [key, value] of Object.entries(carry)) {
+      if (missing((target as unknown as Record<string, unknown>)[key]) && !missing(value)) {
+        patch[key] = value
+      }
+    }
     if (Object.keys(patch).length > 0) updateSeries(db, target.id, patch)
     return { series: getSeries(db, target.id) as Series }
   }
@@ -127,11 +128,8 @@ export async function renameSeries(
     await moveBookToSeries(ctx, book.id, newName)
   }
   const renamed = getSeriesByName(db, newName) as Series
-  updateSeries(db, renamed.id, {
-    publisher: carry.publisher,
-    summary: carry.summary,
-    comicvineId: carry.comicvineId,
-  })
+  // The fresh row derived its own group from the new name; the old one wins.
+  updateSeries(db, renamed.id, carry)
   return { series: getSeries(db, renamed.id) as Series }
 }
 

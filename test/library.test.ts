@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, mkdirSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openDb } from '../server/db.js'
-import { upsertSeries, getSeriesByName, updateSeries } from '../server/models/series.js'
+import { upsertSeries, getSeriesByName, updateSeries, carryableMetadata, SERIES_UPDATABLE_FIELDS } from '../server/models/series.js'
 import { insertBook } from '../server/models/books.js'
 import { moveBookToSeries, renameSeries, reorganizeLibrary } from '../server/services/library.js'
 import { makeCbz } from './helpers/makeCbz.js'
@@ -205,4 +205,84 @@ test('renameSeries (merge) backfills the target publisher when it lacks one', as
   expect(result.series.id).toBe(target.id)
   expect(result.series.publisher).toBe('DC Comics')
   expect(getSeriesByName(ctx.db, 'DC')).toBeUndefined()
+})
+
+test('renameSeries (pure rename) preserves the group', async () => {
+  const srcDir = join(ctx.config.comicsDir, 'Amazing Spider-Man (2025)')
+  mkdirSync(srcDir, { recursive: true })
+  await makeCbz(srcDir, ['p1.png'], 'issue1.cbz')
+  const s = upsertSeries(ctx.db, { name: 'Amazing Spider-Man (2025)', folder: 'Amazing Spider-Man (2025)' })
+  updateSeries(ctx.db, s.id, { groupName: 'Amazing Spider-Man' })
+  insertBook(ctx.db, { seriesId: s.id, filePath: 'Amazing Spider-Man (2025)/issue1.cbz', pageCount: 1, fileSize: 100 })
+
+  const result = await renameSeries(ctx, s.id, 'Vol 7')
+
+  expect(result.series.name).toBe('Vol 7')
+  expect(result.series.groupName).toBe('Amazing Spider-Man')
+})
+
+// The reported symptom: renaming the series also renamed its group to match, because
+// the recreated row derived a fresh group from the new name.
+test('renameSeries does not overwrite the group with the new name', async () => {
+  const srcDir = join(ctx.config.comicsDir, 'ASM Omnibus')
+  mkdirSync(srcDir, { recursive: true })
+  await makeCbz(srcDir, ['p1.png'], 'issue1.cbz')
+  const s = upsertSeries(ctx.db, { name: 'ASM Omnibus', folder: 'ASM Omnibus' })
+  updateSeries(ctx.db, s.id, { groupName: 'Amazing Spider-Man' })
+  insertBook(ctx.db, { seriesId: s.id, filePath: 'ASM Omnibus/issue1.cbz', pageCount: 1, fileSize: 100 })
+
+  const result = await renameSeries(ctx, s.id, 'Nick Spencer Omnibus')
+
+  expect(result.series.groupName).not.toBe('Nick Spencer')
+  expect(result.series.groupName).not.toBe('Nick Spencer Omnibus')
+  expect(result.series.groupName).toBe('Amazing Spider-Man')
+})
+
+test('renameSeries (merge) keeps the target group and backfills only when it has none', async () => {
+  const tDir = join(ctx.config.comicsDir, 'Target')
+  mkdirSync(tDir, { recursive: true })
+  await makeCbz(tDir, ['p1.png'], 't.cbz')
+  const target = upsertSeries(ctx.db, { name: 'Target', folder: 'Target' })
+  updateSeries(ctx.db, target.id, { groupName: 'Keep Me' })
+  insertBook(ctx.db, { seriesId: target.id, filePath: 'Target/t.cbz', pageCount: 1, fileSize: 1 })
+
+  const sDir = join(ctx.config.comicsDir, 'Source')
+  mkdirSync(sDir, { recursive: true })
+  await makeCbz(sDir, ['p1.png'], 's.cbz')
+  const src = upsertSeries(ctx.db, { name: 'Source', folder: 'Source' })
+  updateSeries(ctx.db, src.id, { groupName: 'Discard Me' })
+  insertBook(ctx.db, { seriesId: src.id, filePath: 'Source/s.cbz', pageCount: 1, fileSize: 1 })
+
+  const result = await renameSeries(ctx, src.id, 'Target')
+  expect(result.series.groupName).toBe('Keep Me')
+})
+
+test('renameSeries (merge) takes the source group when the target has none', async () => {
+  const tDir = join(ctx.config.comicsDir, 'Bare')
+  mkdirSync(tDir, { recursive: true })
+  await makeCbz(tDir, ['p1.png'], 't.cbz')
+  const target = upsertSeries(ctx.db, { name: 'Bare', folder: 'Bare' })
+  updateSeries(ctx.db, target.id, { groupName: null })
+  insertBook(ctx.db, { seriesId: target.id, filePath: 'Bare/t.cbz', pageCount: 1, fileSize: 1 })
+
+  const sDir = join(ctx.config.comicsDir, 'Donor')
+  mkdirSync(sDir, { recursive: true })
+  await makeCbz(sDir, ['p1.png'], 's.cbz')
+  const src = upsertSeries(ctx.db, { name: 'Donor', folder: 'Donor' })
+  updateSeries(ctx.db, src.id, { groupName: 'Donated' })
+  insertBook(ctx.db, { seriesId: src.id, filePath: 'Donor/s.cbz', pageCount: 1, fileSize: 1 })
+
+  const result = await renameSeries(ctx, src.id, 'Bare')
+  expect(result.series.groupName).toBe('Donated')
+})
+
+// Guard: this is the second column (after publisher/summary/comicvineId) to be lost
+// because the carry-over was an allowlist. Adding a field to SERIES_FIELDS without
+// carrying it should now fail here rather than silently in the app.
+test('a rename carries every updatable series field except the name', () => {
+  const expected = SERIES_UPDATABLE_FIELDS.filter((f) => f !== 'name').sort()
+  const carried = Object.keys(carryableMetadata({
+    publisher: 'p', summary: 's', comicvineId: 1, groupName: 'g',
+  } as never)).sort()
+  expect(carried).toEqual(expected)
 })
