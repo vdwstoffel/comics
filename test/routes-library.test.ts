@@ -8,6 +8,7 @@ import seriesRoutes from '../server/routes/series.js'
 import booksRoutes from '../server/routes/books.js'
 import { upsertSeries, updateSeries } from '../server/models/series.js'
 import { insertBook } from '../server/models/books.js'
+import { setProgress } from '../server/models/progress.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import type { FastifyInstance } from 'fastify'
 import type { Config } from '../server/config.js'
@@ -160,4 +161,82 @@ test('GET /api/series (no param) returns all series', async () => {
   expect(res.statusCode).toBe(200)
   const body = res.json() as { series: Array<{ name: string }> }
   expect(body.series).toHaveLength(2)
+})
+
+/** Pin a book's read timestamp so ordering assertions are deterministic. */
+function setReadAt(bookId: number, iso: string) {
+  app.db.prepare('UPDATE read_progress SET updated_at = ? WHERE book_id = ?').run(iso, bookId)
+}
+
+test('GET /api/continue-reading returns started books, most recently read first', async () => {
+  const series = upsertSeries(app.db, { name: 'Avengers', folder: 'Avengers' })
+  const first = insertBook(app.db, { seriesId: series.id, filePath: 'Avengers/1.cbz', pageCount: 10, fileSize: 1, title: 'Vol. 1' })!
+  const second = insertBook(app.db, { seriesId: series.id, filePath: 'Avengers/2.cbz', pageCount: 10, fileSize: 1, title: 'Vol. 2' })!
+  setProgress(app.db, first.id, { lastPage: 3 })
+  setProgress(app.db, second.id, { lastPage: 5 })
+  setReadAt(first.id, '2026-01-01T00:00:00.000Z')
+  setReadAt(second.id, '2026-02-01T00:00:00.000Z')
+
+  const res = await app.inject({ url: '/api/continue-reading' })
+  expect(res.statusCode).toBe(200)
+  const body = res.json() as { books: Array<{ title: string; readState: string; percent: number; seriesName: string }> }
+  expect(body.books.map((b) => b.title)).toEqual(['Vol. 2', 'Vol. 1'])
+  expect(body.books[0]).toMatchObject({ readState: 'reading', percent: 56, seriesName: 'Avengers' })
+})
+
+test('GET /api/continue-reading excludes finished and never-opened books', async () => {
+  const series = upsertSeries(app.db, { name: 'Batman', folder: 'Batman' })
+  const reading = insertBook(app.db, { seriesId: series.id, filePath: 'Batman/1.cbz', pageCount: 10, fileSize: 1, title: 'Reading' })!
+  const finished = insertBook(app.db, { seriesId: series.id, filePath: 'Batman/2.cbz', pageCount: 10, fileSize: 1, title: 'Finished' })!
+  insertBook(app.db, { seriesId: series.id, filePath: 'Batman/3.cbz', pageCount: 10, fileSize: 1, title: 'Untouched' })
+  setProgress(app.db, reading.id, { lastPage: 2 })
+  setProgress(app.db, finished.id, { lastPage: 9, completed: true })
+
+  const res = await app.inject({ url: '/api/continue-reading' })
+  const body = res.json() as { books: Array<{ title: string }> }
+  expect(body.books.map((b) => b.title)).toEqual(['Reading'])
+})
+
+test('GET /api/continue-reading caps results at the requested limit', async () => {
+  const series = upsertSeries(app.db, { name: 'X-Men', folder: 'X-Men' })
+  for (let i = 1; i <= 3; i++) {
+    const b = insertBook(app.db, { seriesId: series.id, filePath: `X-Men/${i}.cbz`, pageCount: 10, fileSize: 1, title: `#${i}` })!
+    setProgress(app.db, b.id, { lastPage: i })
+    setReadAt(b.id, `2026-0${i}-01T00:00:00.000Z`)
+  }
+
+  const res = await app.inject({ url: '/api/continue-reading?limit=2' })
+  const body = res.json() as { books: Array<{ title: string }> }
+  expect(body.books.map((b) => b.title)).toEqual(['#3', '#2'])
+})
+
+test('GET /api/continue-reading?publisher=X only returns that publisher', async () => {
+  const marvel = upsertSeries(app.db, { name: 'Avengers', folder: 'Avengers' })
+  const dc = upsertSeries(app.db, { name: 'Batman', folder: 'Batman' })
+  updateSeries(app.db, marvel.id, { publisher: 'Marvel' })
+  updateSeries(app.db, dc.id, { publisher: 'DC' })
+  const marvelBook = insertBook(app.db, { seriesId: marvel.id, filePath: 'Avengers/1.cbz', pageCount: 10, fileSize: 1, title: 'Avengers 1' })!
+  const dcBook = insertBook(app.db, { seriesId: dc.id, filePath: 'Batman/1.cbz', pageCount: 10, fileSize: 1, title: 'Batman 1' })!
+  setProgress(app.db, marvelBook.id, { lastPage: 2 })
+  setProgress(app.db, dcBook.id, { lastPage: 2 })
+
+  const res = await app.inject({ url: '/api/continue-reading?publisher=DC' })
+  expect(res.statusCode).toBe(200)
+  const body = res.json() as { books: Array<{ title: string }> }
+  expect(body.books.map((b) => b.title)).toEqual(['Batman 1'])
+})
+
+test('GET /api/continue-reading?publisher=__unknown__ returns books from series with no publisher', async () => {
+  const marvel = upsertSeries(app.db, { name: 'Avengers', folder: 'Avengers' })
+  const mystery = upsertSeries(app.db, { name: 'Mystery', folder: 'Mystery' })
+  updateSeries(app.db, marvel.id, { publisher: 'Marvel' })
+  // 'Mystery' intentionally left without a publisher
+  const marvelBook = insertBook(app.db, { seriesId: marvel.id, filePath: 'Avengers/1.cbz', pageCount: 10, fileSize: 1, title: 'Avengers 1' })!
+  const mysteryBook = insertBook(app.db, { seriesId: mystery.id, filePath: 'Mystery/1.cbz', pageCount: 10, fileSize: 1, title: 'Mystery 1' })!
+  setProgress(app.db, marvelBook.id, { lastPage: 2 })
+  setProgress(app.db, mysteryBook.id, { lastPage: 2 })
+
+  const res = await app.inject({ url: '/api/continue-reading?publisher=__unknown__' })
+  const body = res.json() as { books: Array<{ title: string }> }
+  expect(body.books.map((b) => b.title)).toEqual(['Mystery 1'])
 })

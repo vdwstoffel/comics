@@ -62,7 +62,14 @@ export interface PublisherFacet {
   count: number
 }
 
+export interface ContinueReadingBook extends ApiBook {
+  readState: 'unread' | 'reading' | 'read'
+  percent: number
+  seriesName: string
+}
+
 export interface SeriesListResponse { series: ApiSeries[] }
+export interface ContinueReadingResponse { books: ContinueReadingBook[] }
 export interface SeriesDetailResponse { series: ApiSeries; books: ApiBook[] }
 export interface BookResponse { book: ApiBook; progress: ApiProgress; credits?: ApiCredit[]; tags?: ApiTag[] }
 export interface ProgressResponse { progress: ApiProgress }
@@ -83,6 +90,10 @@ export const api = {
     return json<SeriesListResponse>(url)
   },
   getPublishers: () => json<PublishersResponse>('/api/publishers'),
+  getContinueReading: (publisher?: string) => {
+    const url = publisher ? `/api/continue-reading?publisher=${encodeURIComponent(publisher)}` : '/api/continue-reading'
+    return json<ContinueReadingResponse>(url)
+  },
   getSeriesDetail: (id: string | number) => json<SeriesDetailResponse>(`/api/series/${id}`),
   getBook: (id: string | number) => json<BookResponse>(`/api/books/${id}`),
   putProgress: (id: string | number, body: { lastPage: number; completed: boolean }) =>

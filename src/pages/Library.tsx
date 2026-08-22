@@ -23,6 +23,12 @@ export default function Library() {
     queryFn: () => api.getSeries(selectedPublisher ?? undefined),
   })
 
+  const { data: continueData } = useQuery({
+    queryKey: ['continue-reading', selectedPublisher],
+    queryFn: () => api.getContinueReading(selectedPublisher ?? undefined),
+  })
+
+  const continueReading = continueData?.books ?? []
   const publishers = publishersData?.publishers ?? []
 
   // Build sidebar items: named publishers (label = name, count shown as a separate badge)
@@ -52,6 +58,21 @@ export default function Library() {
         />
       </nav>
       <div className="library-content">
+        {continueReading.length > 0 && (
+          <section className="continue-reading">
+            <h2 className="section-title">Continue reading</h2>
+            <div className="tile-grid">
+              {continueReading.map((b) => (
+                <CoverTile key={b.id} to={`/read/${b.id}`}
+                  img={`/api/books/${b.id}/thumbnail`}
+                  title={b.title || `#${b.number ?? '?'}`}
+                  subtitle={b.seriesName}
+                  readState={b.readState} percent={b.percent} />
+              ))}
+            </div>
+          </section>
+        )}
+
         <h1 className="page-title">Library</h1>
         {isLoading && <p>Loading…</p>}
         {error && <p>Failed to load library.</p>}

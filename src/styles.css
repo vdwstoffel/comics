@@ -1048,6 +1048,20 @@ textarea.input:hover:not(:focus) {
   margin-bottom: 24px;
 }
 
+/* Continue reading: in-progress books, above the series grid */
+.continue-reading {
+  margin-bottom: 40px;
+}
+
+.section-title {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  margin-bottom: 14px;
+}
+
 /* ============================================================
    Filter sidebar (inside the rail)
    ============================================================ */

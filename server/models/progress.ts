@@ -1,4 +1,11 @@
-import type { Db, Progress } from '../types.js'
+import type { Db, Book, Progress } from '../types.js'
+
+export type ReadState = 'unread' | 'reading' | 'read'
+
+export interface BookWithProgress extends Book {
+  readState: ReadState
+  percent: number
+}
 
 interface ProgressRow {
   book_id: number
@@ -25,4 +32,22 @@ export function setProgress(
       completed = excluded.completed, updated_at = excluded.updated_at
   `).run(bookId, lastPage, completed ? 1 : 0, new Date().toISOString())
   return getProgress(db, bookId)
+}
+
+export function deriveReadState(db: Db, book: Book): BookWithProgress {
+  const progress = getProgress(db, book.id)
+  let readState: ReadState
+  let percent: number
+  if (progress.completed) {
+    readState = 'read'
+    percent = 100
+  } else if (progress.lastPage > 0) {
+    readState = 'reading'
+    const divisor = Math.max(book.pageCount - 1, 1)
+    percent = Math.min(Math.max(Math.round(progress.lastPage / divisor * 100), 1), 99)
+  } else {
+    readState = 'unread'
+    percent = 0
+  }
+  return { ...book, readState, percent }
 }

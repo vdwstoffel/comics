@@ -32,6 +32,72 @@ function renderWithProviders(ui: ReactNode) {
   )
 }
 
+const inProgressBook = {
+  id: 7, seriesId: 1, title: 'Vol. 1', number: '1', pageCount: 10,
+  comicinfoSynced: false, readState: 'reading', percent: 40, seriesName: 'Avengers',
+}
+
+test('Library shows a Continue reading section for in-progress books', async () => {
+  globalThis.fetch = makeFetch({
+    '/api/publishers': { publishers: [] },
+    '/api/continue-reading': { books: [inProgressBook] },
+    '/api/series': { series: [{ id: 1, name: 'Batman', bookCount: 3 }] },
+  })
+
+  renderWithProviders(<Library />)
+
+  expect(await screen.findByText('Continue reading')).toBeInTheDocument()
+  expect(screen.getByText('Vol. 1')).toBeInTheDocument()
+  expect(screen.getByText('Avengers')).toBeInTheDocument()
+  expect(screen.getByLabelText('In progress: 40%')).toBeInTheDocument()
+})
+
+test('Continue reading tiles link into the reader', async () => {
+  globalThis.fetch = makeFetch({
+    '/api/publishers': { publishers: [] },
+    '/api/continue-reading': { books: [inProgressBook] },
+    '/api/series': { series: [{ id: 1, name: 'Batman', bookCount: 3 }] },
+  })
+
+  renderWithProviders(<Library />)
+
+  const tile = (await screen.findByText('Vol. 1')).closest('a')
+  expect(tile).toHaveAttribute('href', '/read/7')
+})
+
+test('Continue reading follows the publisher filter', async () => {
+  globalThis.fetch = vi.fn(async (url: string) => {
+    const u = String(url)
+    if (u.includes('/api/publishers')) return { ok: true, json: async () => ({ publishers: [{ name: 'DC', count: 1 }] }) }
+    // Nothing DC is in progress; the unfiltered call still has the Marvel book.
+    if (u.includes('/api/continue-reading')) {
+      return { ok: true, json: async () => ({ books: u.includes('publisher=DC') ? [] : [inProgressBook] }) }
+    }
+    if (u.includes('/api/series')) return { ok: true, json: async () => ({ series: [{ id: 1, name: 'Batman', bookCount: 3 }] }) }
+    return { ok: true, json: async () => ({}) }
+  }) as unknown as typeof fetch
+
+  renderWithProviders(<Library />)
+  expect(await screen.findByText('Continue reading')).toBeInTheDocument()
+
+  fireEvent.click(await screen.findByRole('button', { name: /DC/ }))
+
+  await waitFor(() => expect(screen.queryByText('Continue reading')).not.toBeInTheDocument())
+})
+
+test('Library omits the Continue reading section when nothing is in progress', async () => {
+  globalThis.fetch = makeFetch({
+    '/api/publishers': { publishers: [] },
+    '/api/continue-reading': { books: [] },
+    '/api/series': { series: [{ id: 1, name: 'Batman', bookCount: 3 }] },
+  })
+
+  renderWithProviders(<Library />)
+
+  expect(await screen.findByText('Batman')).toBeInTheDocument()
+  expect(screen.queryByText('Continue reading')).not.toBeInTheDocument()
+})
+
 test('Library renders series tiles from the API', async () => {
   renderWithProviders(<Library />)
   expect(await screen.findByText('Batman')).toBeInTheDocument()
