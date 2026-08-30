@@ -28,11 +28,11 @@ function mockFetch(series: Record<string, unknown> = SERIES) {
 beforeEach(() => { mockFetch() })
 afterEach(() => { cleanup() })
 
-function renderPage() {
+function renderPage(path = '/series/9') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const ui: ReactNode = (
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/series/9']}>
+      <MemoryRouter initialEntries={[path]}>
         <Routes><Route path="/series/:id" element={<Series />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>
@@ -119,4 +119,26 @@ test('the dialog closes once a save succeeds', async () => {
   fireEvent.click(screen.getByRole('button', { name: 'Save' }))
   await waitFor(() =>
     expect(screen.queryByRole('heading', { name: /edit series/i })).not.toBeInTheDocument())
+})
+
+test('a status in the url is sent to the series endpoint', async () => {
+  renderPage('/series/9?status=unread')
+  await waitFor(() => {
+    const urls = (globalThis.fetch as unknown as { mock: { calls: string[][] } }).mock.calls
+      .map((c) => String(c[0]))
+    expect(urls.some((u) => u.includes('/api/series/9') && u.includes('readState=unread'))).toBe(true)
+  })
+})
+
+test('a filtered series says so and offers a way back to everything', async () => {
+  renderPage('/series/9?status=unread')
+  expect(await screen.findByText(/showing unread issues/i)).toBeInTheDocument()
+  const showAll = screen.getByRole('link', { name: /show all/i })
+  expect(showAll).toHaveAttribute('href', '/series/9')
+})
+
+test('an unfiltered series shows no filter notice', async () => {
+  renderPage()
+  await screen.findByRole('heading', { name: 'Amazing Spider-Man (2025)' })
+  expect(screen.queryByText(/showing .* issues/i)).not.toBeInTheDocument()
 })

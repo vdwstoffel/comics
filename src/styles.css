@@ -1019,11 +1019,6 @@ textarea.input:hover:not(:focus) {
   margin-bottom: 24px;
 }
 
-/* Continue reading: in-progress books, above the series grid */
-.continue-reading {
-  margin-bottom: 40px;
-}
-
 .section-title {
   font-size: 0.75rem;
   font-weight: 700;
@@ -1433,4 +1428,14 @@ textarea.input:hover:not(:focus) {
   gap: 10px;
   align-items: center;
   margin-top: 4px;
+}
+
+.series-header__filter {
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.series-header__filter a {
+  color: var(--accent);
 }

@@ -1,4 +1,5 @@
 import { deriveGroupName } from '../lib/seriesGroup.js'
+import type { ReadState } from './progress.js'
 import type { Db, Series } from '../types.js'
 
 interface SeriesRow {
@@ -36,31 +37,89 @@ export function getSeries(db: Db, id: number): Series | undefined {
   return toSeries(db.prepare('SELECT * FROM series WHERE id = ?').get(id) as SeriesRow | undefined)
 }
 
-export function listSeries(db: Db, opts?: { publisher?: string }): Series[] {
-  if (opts?.publisher === '__unknown__') {
-    return (db
-      .prepare(`SELECT s.*, COUNT(b.id) AS book_count
-                FROM series s LEFT JOIN book b ON b.series_id = s.id
-                WHERE s.publisher IS NULL
-                GROUP BY s.id ORDER BY s.name COLLATE NOCASE`)
-      .all() as SeriesRow[])
-      .map((r) => toSeries(r) as Series)
-  }
-  if (opts?.publisher) {
-    return (db
-      .prepare(`SELECT s.*, COUNT(b.id) AS book_count
-                FROM series s LEFT JOIN book b ON b.series_id = s.id
-                WHERE s.publisher = ?
-                GROUP BY s.id ORDER BY s.name COLLATE NOCASE`)
-      .all(opts.publisher) as SeriesRow[])
-      .map((r) => toSeries(r) as Series)
-  }
+// A book with no read_progress row has never been opened, so it counts as unread -
+// the same rule deriveReadState applies to a single book.
+const HAS_UNREAD = `EXISTS (
+  SELECT 1 FROM book b2 LEFT JOIN read_progress p ON p.book_id = b2.id
+  WHERE b2.series_id = s.id AND (p.book_id IS NULL OR (p.last_page = 0 AND p.completed = 0)))`
+
+const HAS_READING = `EXISTS (
+  SELECT 1 FROM book b2 JOIN read_progress p ON p.book_id = b2.id
+  WHERE b2.series_id = s.id AND p.completed = 0 AND p.last_page > 0)`
+
+const HAS_READ = `EXISTS (
+  SELECT 1 FROM book b2 JOIN read_progress p ON p.book_id = b2.id
+  WHERE b2.series_id = s.id AND p.completed = 1)`
+
+// One rule for all three: a series matches a state when it holds at least one issue in
+// it. A part-read series is therefore both unread (issues left) and read (issues
+// finished), which is what the tiles and their counts should say.
+const READ_STATE_SQL: Record<ReadState, string> = {
+  unread: HAS_UNREAD,
+  reading: HAS_READING,
+  read: HAS_READ,
+}
+
+// The same three states expressed against a book LEFT JOINed to its progress row,
+// for counting and for listing the issues inside a series.
+export const BOOK_STATE_SQL: Record<ReadState, string> = {
+  unread: '(p.book_id IS NULL OR (p.last_page = 0 AND p.completed = 0))',
+  reading: '(p.completed = 0 AND p.last_page > 0)',
+  read: '(p.completed = 1)',
+}
+
+export interface SeriesFilter {
+  publisher?: string
+  readState?: ReadState
+}
+
+function buildSeriesFilter({ publisher, readState }: SeriesFilter): {
+  where: string
+  params: unknown[]
+} {
+  const clauses: string[] = []
+  const params: unknown[] = []
+
+  if (publisher === '__unknown__') clauses.push('s.publisher IS NULL')
+  else if (publisher) { clauses.push('s.publisher = ?'); params.push(publisher) }
+
+  if (readState && READ_STATE_SQL[readState]) clauses.push(READ_STATE_SQL[readState])
+
+  return { where: clauses.length ? `WHERE ${clauses.join(' AND ')}` : '', params }
+}
+
+export function listSeries(db: Db, opts?: SeriesFilter): Series[] {
+  const { where, params } = buildSeriesFilter(opts ?? {})
+  // Under a filter the count must describe what the tile will actually open onto,
+  // so it counts matching issues rather than every issue in the series.
+  const counted = opts?.readState ? BOOK_STATE_SQL[opts.readState] : 'b.id IS NOT NULL'
   return (db
-    .prepare(`SELECT s.*, COUNT(b.id) AS book_count
-              FROM series s LEFT JOIN book b ON b.series_id = s.id
+    .prepare(`SELECT s.*, COUNT(CASE WHEN ${counted} THEN b.id END) AS book_count
+              FROM series s
+              LEFT JOIN book b ON b.series_id = s.id
+              LEFT JOIN read_progress p ON p.book_id = b.id
+              ${where}
               GROUP BY s.id ORDER BY s.name COLLATE NOCASE`)
-    .all() as SeriesRow[])
+    .all(...params) as SeriesRow[])
     .map((r) => toSeries(r) as Series)
+}
+
+export interface ReadStateFacet {
+  name: ReadState
+  count: number
+}
+
+/** Counts issues, not series, so the numbers match what clicking through lists. */
+export function listReadStates(db: Db): ReadStateFacet[] {
+  const states: ReadState[] = ['unread', 'reading', 'read']
+  return states.map((name) => ({
+    name,
+    count: (db
+      .prepare(`SELECT COUNT(*) AS n FROM book b
+                LEFT JOIN read_progress p ON p.book_id = b.id
+                WHERE ${BOOK_STATE_SQL[name]}`)
+      .get() as { n: number }).n,
+  }))
 }
 
 export interface PublisherFacet {

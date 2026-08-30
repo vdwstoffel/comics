@@ -1,5 +1,6 @@
 import { deriveGroupName } from '../lib/seriesGroup.js'
 import { listSeries } from './series.js'
+import type { SeriesFilter } from './series.js'
 import type { Db, Series } from '../types.js'
 
 export interface SeriesGroup {
@@ -31,10 +32,10 @@ function keyOf(series: Series): string {
   return (series.groupName?.trim() || series.name).toLowerCase()
 }
 
-export function listSeriesGroups(db: Db, opts?: { publisher?: string }): SeriesGroup[] {
+export function listSeriesGroups(db: Db, opts?: SeriesFilter): SeriesGroup[] {
   const groups = new Map<string, SeriesGroup>()
 
-  // listSeries already applies the publisher filter and orders by name.
+  // listSeries already applies the publisher/read-state filters and orders by name.
   for (const series of listSeries(db, opts)) {
     const key = keyOf(series)
     const group = groups.get(key)
@@ -56,7 +57,7 @@ export function listSeriesGroups(db: Db, opts?: { publisher?: string }): SeriesG
 export function getSeriesGroup(
   db: Db,
   name: string,
-  opts?: { publisher?: string },
+  opts?: SeriesFilter,
 ): SeriesGroup | undefined {
   const wanted = name.trim().toLowerCase()
   return listSeriesGroups(db, opts).find((group) => group.name.toLowerCase() === wanted)

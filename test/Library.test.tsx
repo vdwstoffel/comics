@@ -1,6 +1,6 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { ReactNode } from 'react'
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import Library from '../src/pages/Library'
@@ -24,84 +24,14 @@ beforeEach(() => {
 
 afterEach(() => { cleanup() })
 
-function renderWithProviders(ui: ReactNode) {
+function renderWithProviders(ui: ReactNode, path = '/') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter>{ui}</MemoryRouter>
+      <MemoryRouter initialEntries={[path]}>{ui}</MemoryRouter>
     </QueryClientProvider>
   )
 }
-
-const inProgressBook = {
-  id: 7, seriesId: 1, title: 'Vol. 1', number: '1', pageCount: 10,
-  comicinfoSynced: false, readState: 'reading', percent: 40, seriesName: 'Avengers',
-}
-
-test('Library shows a Continue reading section for in-progress books', async () => {
-  globalThis.fetch = makeFetch({
-    '/api/publishers': { publishers: [] },
-    '/api/continue-reading': { books: [inProgressBook] },
-    '/api/series-groups': { groups: [{ name: 'Batman', bookCount: 3, series: [{ id: 1, name: 'Batman', bookCount: 3 }] }] },
-    '/api/series': { series: [{ id: 1, name: 'Batman', bookCount: 3 }] },
-  })
-
-  renderWithProviders(<Library />)
-
-  expect(await screen.findByText('Continue reading')).toBeInTheDocument()
-  expect(screen.getByText('Vol. 1')).toBeInTheDocument()
-  expect(screen.getByText('Avengers')).toBeInTheDocument()
-  expect(screen.getByLabelText('In progress: 40%')).toBeInTheDocument()
-})
-
-test('Continue reading tiles link into the reader', async () => {
-  globalThis.fetch = makeFetch({
-    '/api/publishers': { publishers: [] },
-    '/api/continue-reading': { books: [inProgressBook] },
-    '/api/series-groups': { groups: [{ name: 'Batman', bookCount: 3, series: [{ id: 1, name: 'Batman', bookCount: 3 }] }] },
-    '/api/series': { series: [{ id: 1, name: 'Batman', bookCount: 3 }] },
-  })
-
-  renderWithProviders(<Library />)
-
-  const tile = (await screen.findByText('Vol. 1')).closest('a')
-  expect(tile).toHaveAttribute('href', '/read/7')
-})
-
-test('Continue reading follows the publisher filter', async () => {
-  globalThis.fetch = vi.fn(async (url: string) => {
-    const u = String(url)
-    if (u.includes('/api/publishers')) return { ok: true, json: async () => ({ publishers: [{ name: 'DC', count: 1 }] }) }
-    // Nothing DC is in progress; the unfiltered call still has the Marvel book.
-    if (u.includes('/api/continue-reading')) {
-      return { ok: true, json: async () => ({ books: u.includes('publisher=DC') ? [] : [inProgressBook] }) }
-    }
-    if (u.includes('/api/series-groups')) return { ok: true, json: async () => ({ groups: [{ name: 'Batman', bookCount: 3, series: [{ id: 1, name: 'Batman', bookCount: 3 }] }] }) }
-    if (u.includes('/api/series')) return { ok: true, json: async () => ({ series: [{ id: 1, name: 'Batman', bookCount: 3 }] }) }
-    return { ok: true, json: async () => ({}) }
-  }) as unknown as typeof fetch
-
-  renderWithProviders(<Library />)
-  expect(await screen.findByText('Continue reading')).toBeInTheDocument()
-
-  fireEvent.click(await screen.findByRole('button', { name: /DC/ }))
-
-  await waitFor(() => expect(screen.queryByText('Continue reading')).not.toBeInTheDocument())
-})
-
-test('Library omits the Continue reading section when nothing is in progress', async () => {
-  globalThis.fetch = makeFetch({
-    '/api/publishers': { publishers: [] },
-    '/api/continue-reading': { books: [] },
-    '/api/series-groups': { groups: [{ name: 'Batman', bookCount: 3, series: [{ id: 1, name: 'Batman', bookCount: 3 }] }] },
-    '/api/series': { series: [{ id: 1, name: 'Batman', bookCount: 3 }] },
-  })
-
-  renderWithProviders(<Library />)
-
-  expect(await screen.findByText('Batman')).toBeInTheDocument()
-  expect(screen.queryByText('Continue reading')).not.toBeInTheDocument()
-})
 
 test('Library renders series tiles from the API', async () => {
   renderWithProviders(<Library />)
@@ -121,7 +51,9 @@ test('Library shows publisher sidebar items when publishers exist', async () => 
   expect(await screen.findByText('Publishers')).toBeInTheDocument()
   expect(await screen.findByRole('button', { name: /DC/ })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /Marvel/ })).toBeInTheDocument()
-  expect(screen.getByText('All')).toBeInTheDocument()
+  // Each rail has its own All, so scope the assertion to the publisher one.
+  const publishers = screen.getByRole('complementary', { name: 'Publishers' })
+  expect(within(publishers).getByText('All')).toBeInTheDocument()
 })
 
 test('Library filters series when a publisher is clicked', async () => {
@@ -177,7 +109,6 @@ function groupFetch(groups: unknown[]) {
   return makeFetch({
     '/api/series-groups': { groups },
     '/api/publishers': { publishers: [] },
-    '/api/continue-reading': { books: [] },
     '/api/series': { series: [] },
   })
 }
@@ -212,4 +143,112 @@ test('a single-edition tile shows the series cover, not a group cover', async ()
   renderWithProviders(<Library />)
   const img = await screen.findByAltText('Batman Vol. 2 (New 52 TPB)')
   expect(img).toHaveAttribute('src', '/api/series/6/thumbnail')
+})
+
+let calls: string[] = []
+
+const READ_STATES = {
+  readStates: [
+    { name: 'unread', count: 4 },
+    { name: 'reading', count: 2 },
+    { name: 'read', count: 0 },
+  ],
+}
+
+function statusFetch(groups: unknown[] = [ASM_GROUP]) {
+  calls = []
+  globalThis.fetch = vi.fn(async (url: string) => {
+    const u = String(url)
+    calls.push(u)
+    const body =
+      u.includes('/api/read-states') ? READ_STATES
+        : u.includes('/api/series-groups') ? { groups }
+          : u.includes('/api/publishers') ? { publishers: [{ name: 'Marvel', count: 3 }] }
+              : { series: [] }
+    return { ok: true, json: async () => body }
+  }) as unknown as typeof fetch
+}
+
+const gridCalls = () => calls.filter((c) => c.includes('/api/series-groups'))
+
+test('the sidebar offers a Status section with a count per state', async () => {
+  statusFetch()
+  renderWithProviders(<Library />)
+
+  await screen.findByRole('button', { name: /Unread/ })
+  const status = screen.getByRole('complementary', { name: 'Status' })
+  for (const label of ['Unread', 'Reading', 'Read']) {
+    expect(within(status).getByText(label)).toBeInTheDocument()
+  }
+  expect(within(status).getByRole('button', { name: /Unread/ })).toHaveTextContent('4')
+})
+
+test('choosing Unread asks the server for series with unread issues', async () => {
+  statusFetch()
+  renderWithProviders(<Library />)
+  fireEvent.click(await screen.findByRole('button', { name: /Unread/ }))
+
+  await waitFor(() => expect(gridCalls().some((c) => c.includes('readState=unread'))).toBe(true))
+})
+
+test('choosing a status clears the publisher filter', async () => {
+  statusFetch()
+  renderWithProviders(<Library />)
+
+  fireEvent.click(await screen.findByRole('button', { name: /Marvel/ }))
+  await waitFor(() => expect(gridCalls().some((c) => c.includes('publisher=Marvel'))).toBe(true))
+
+  fireEvent.click(screen.getByRole('button', { name: /Unread/ }))
+  await waitFor(() => {
+    const last = gridCalls()[gridCalls().length - 1]
+    expect(last).toContain('readState=unread')
+    expect(last).not.toContain('publisher=')
+  })
+})
+
+test('choosing a publisher clears the status filter', async () => {
+  statusFetch()
+  renderWithProviders(<Library />)
+
+  fireEvent.click(await screen.findByRole('button', { name: /Unread/ }))
+  await waitFor(() => expect(gridCalls().some((c) => c.includes('readState=unread'))).toBe(true))
+
+  fireEvent.click(screen.getByRole('button', { name: /Marvel/ }))
+  await waitFor(() => {
+    const last = gridCalls()[gridCalls().length - 1]
+    expect(last).toContain('publisher=Marvel')
+    expect(last).not.toContain('readState=')
+  })
+})
+
+test('an active status is carried into the tile links', async () => {
+  statusFetch([BATMAN_GROUP])
+  renderWithProviders(<Library />, '/?status=unread')
+
+  const tile = (await screen.findByText('Batman Vol. 2 (New 52 TPB)')).closest('a')
+  expect(tile).toHaveAttribute('href', '/series/6?status=unread')
+})
+
+test('a multi-edition tile carries the status too', async () => {
+  statusFetch([ASM_GROUP])
+  renderWithProviders(<Library />, '/?status=read')
+
+  const tile = (await screen.findByText('Amazing Spider-Man')).closest('a')
+  expect(tile).toHaveAttribute('href', '/group/Amazing%20Spider-Man?status=read')
+})
+
+test('the status in the url drives the request and the active rail item', async () => {
+  statusFetch()
+  renderWithProviders(<Library />, '/?status=reading')
+
+  await waitFor(() => expect(gridCalls().some((c) => c.includes('readState=reading'))).toBe(true))
+})
+
+test('choosing a status puts it in the url', async () => {
+  statusFetch()
+  renderWithProviders(<Library />)
+  fireEvent.click(await screen.findByRole('button', { name: /Unread/ }))
+
+  const tile = await screen.findByText('Amazing Spider-Man')
+  expect(tile.closest('a')).toHaveAttribute('href', expect.stringContaining('status=unread'))
 })

@@ -1,19 +1,22 @@
 import { useState } from 'react'
-import { useParams, useNavigate, Link } from 'react-router-dom'
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
+import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import SeriesEditDialog from '../components/SeriesEditDialog'
 
 export default function Series() {
   const { id } = useParams()
+  const [searchParams] = useSearchParams()
+  const status = statusFrom(searchParams)
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [editing, setEditing] = useState(false)
 
   const { data, isLoading } = useQuery({
-    queryKey: ['series', id],
-    queryFn: () => api.getSeriesDetail(id!),
+    queryKey: ['series', id, status],
+    queryFn: () => api.getSeriesDetail(id!, status ?? undefined),
   })
 
   const rename = useMutation({
@@ -61,6 +64,13 @@ export default function Series() {
           </button>
         </div>
         <p className="series-header__count">{bookLabel}</p>
+        {status && (
+          <p className="series-header__filter">
+            Showing {STATUS_LABELS[status].toLowerCase()} issues
+            {' · '}
+            <Link to={`/series/${id}`}>Show all</Link>
+          </p>
+        )}
         {data.series.summary && <p className="series-header__summary">{data.series.summary}</p>}
       </div>
 

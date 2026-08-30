@@ -1,3 +1,5 @@
+import { BOOK_STATE_SQL } from './series.js'
+import type { ReadState } from './progress.js'
 import type { Db, Book } from '../types.js'
 
 interface BookRow {
@@ -73,35 +75,17 @@ export function findBookByPath(db: Db, filePath: string): Book | undefined {
   return toBook(db.prepare('SELECT * FROM book WHERE file_path = ?').get(filePath) as BookRow | undefined)
 }
 
-export function listBooksBySeries(db: Db, seriesId: number): Book[] {
-  return (db.prepare('SELECT * FROM book WHERE series_id = ?').all(seriesId) as BookRow[])
+export function listBooksBySeries(db: Db, seriesId: number, readState?: ReadState): Book[] {
+  const filter = readState ? `AND ${BOOK_STATE_SQL[readState]}` : ''
+  return (db
+    .prepare(`SELECT b.* FROM book b
+              LEFT JOIN read_progress p ON p.book_id = b.id
+              WHERE b.series_id = ? ${filter}`)
+    .all(seriesId) as BookRow[])
     .map((r) => toBook(r) as Book)
     .sort((a, b) => String(a.number ?? a.filePath).localeCompare(String(b.number ?? b.filePath), undefined, { numeric: true }))
 }
 
-/**
- * Books that have been opened but not finished, most recently read first.
- * `publisher` filters via the owning series, using the same '__unknown__'
- * convention as listSeries.
- */
-export function listInProgressBooks(db: Db, limit: number, publisher?: string): Book[] {
-  const started = 'read_progress.completed = 0 AND read_progress.last_page > 0'
-  const order = 'ORDER BY read_progress.updated_at DESC LIMIT ?'
-  const from = `
-    FROM book
-    JOIN read_progress ON read_progress.book_id = book.id
-    JOIN series ON series.id = book.series_id
-  `
-  let rows: BookRow[]
-  if (publisher === '__unknown__') {
-    rows = db.prepare(`SELECT book.* ${from} WHERE ${started} AND series.publisher IS NULL ${order}`).all(limit) as BookRow[]
-  } else if (publisher) {
-    rows = db.prepare(`SELECT book.* ${from} WHERE ${started} AND series.publisher = ? ${order}`).all(publisher, limit) as BookRow[]
-  } else {
-    rows = db.prepare(`SELECT book.* ${from} WHERE ${started} ${order}`).all(limit) as BookRow[]
-  }
-  return rows.map((r) => toBook(r) as Book)
-}
 
 const BOOK_FIELDS: Record<string, string> = {
   title: 'title', number: 'number', writer: 'writer', penciller: 'penciller',

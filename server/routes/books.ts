@@ -1,6 +1,6 @@
 import { createReadStream, existsSync } from 'node:fs'
 import { join, extname } from 'node:path'
-import { getBook, updateBook, listInProgressBooks } from '../models/books.js'
+import { getBook, updateBook } from '../models/books.js'
 import { getProgress, setProgress, deriveReadState } from '../models/progress.js'
 import { getBookCredits, getBookTags } from '../models/metadata.js'
 import { readPage } from '../lib/cbz.js'
@@ -23,18 +23,8 @@ type MetadataBody = Record<string, unknown>
 interface MoveSeriesBody { name?: string }
 interface ContinueQuery { limit?: string; publisher?: string }
 
-const CONTINUE_READING_LIMIT = 12
 
 export default async function booksRoutes(app: App) {
-  app.get<{ Querystring: ContinueQuery }>('/api/continue-reading', async (req) => {
-    const requested = Number(req.query.limit)
-    const limit = Number.isFinite(requested) && requested > 0 ? Math.min(requested, CONTINUE_READING_LIMIT) : CONTINUE_READING_LIMIT
-    const books = listInProgressBooks(app.db, limit, req.query.publisher).map((b) => ({
-      ...deriveReadState(app.db, b),
-      seriesName: getSeries(app.db, b.seriesId)?.name ?? '',
-    }))
-    return { books }
-  })
 
   app.get<{ Params: IdParams }>('/api/books/:id', async (req, reply) => {
     const book = getBook(app.db, Number(req.params.id))

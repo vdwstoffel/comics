@@ -64,21 +64,21 @@ export interface CvSearchResult {
   thumbnail?: string
 }
 
+export type ReadState = 'unread' | 'reading' | 'read'
+
+export interface ReadStateFacet {
+  name: ReadState
+  count: number
+}
+
 export interface PublisherFacet {
   name: string
   count: number
 }
 
-export interface ContinueReadingBook extends ApiBook {
-  readState: 'unread' | 'reading' | 'read'
-  percent: number
-  seriesName: string
-}
-
 export interface SeriesListResponse { series: ApiSeries[] }
 export interface SeriesGroupsResponse { groups: ApiSeriesGroup[] }
 export interface SeriesGroupResponse { group: ApiSeriesGroup }
-export interface ContinueReadingResponse { books: ContinueReadingBook[] }
 export interface SeriesDetailResponse { series: ApiSeries; books: ApiBook[] }
 export interface BookResponse { book: ApiBook; progress: ApiProgress; credits?: ApiCredit[]; tags?: ApiTag[] }
 export interface ProgressResponse { progress: ApiProgress }
@@ -86,6 +86,7 @@ export interface CvSearchResponse { results: CvSearchResult[] }
 export interface RenameSeriesResponse { series: ApiSeries }
 export interface MoveBookSeriesResponse { book: ApiBook; series: ApiSeries }
 export interface PublishersResponse { publishers: PublisherFacet[] }
+export interface ReadStatesResponse { readStates: ReadStateFacet[] }
 
 export interface ComicIndexResult {
   id: number
@@ -133,24 +134,27 @@ export const api = {
     return json<SeriesListResponse>(url)
   },
   getPublishers: () => json<PublishersResponse>('/api/publishers'),
-  getSeriesGroups: (publisher?: string) => {
-    const url = publisher
-      ? `/api/series-groups?publisher=${encodeURIComponent(publisher)}`
-      : '/api/series-groups'
-    return json<SeriesGroupsResponse>(url)
+  getReadStates: () => json<ReadStatesResponse>('/api/read-states'),
+  getSeriesGroups: ({ publisher, readState }: { publisher?: string; readState?: ReadState } = {}) => {
+    const params = new URLSearchParams()
+    if (publisher) params.set('publisher', publisher)
+    if (readState) params.set('readState', readState)
+    const query = params.toString()
+    return json<SeriesGroupsResponse>(`/api/series-groups${query ? `?${query}` : ''}`)
   },
-  getSeriesGroup: (name: string) =>
-    json<SeriesGroupResponse>(`/api/series-groups/${encodeURIComponent(name)}`),
+  getSeriesGroup: (name: string, readState?: ReadState) => {
+    const query = readState ? `?readState=${readState}` : ''
+    return json<SeriesGroupResponse>(`/api/series-groups/${encodeURIComponent(name)}${query}`)
+  },
   setSeriesGroup: (id: string | number, groupName: string) =>
     json<RenameSeriesResponse>(`/api/series/${id}`, {
       method: 'PATCH', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ groupName }),
     }),
-  getContinueReading: (publisher?: string) => {
-    const url = publisher ? `/api/continue-reading?publisher=${encodeURIComponent(publisher)}` : '/api/continue-reading'
-    return json<ContinueReadingResponse>(url)
+  getSeriesDetail: (id: string | number, readState?: ReadState) => {
+    const query = readState ? `?readState=${readState}` : ''
+    return json<SeriesDetailResponse>(`/api/series/${id}${query}`)
   },
-  getSeriesDetail: (id: string | number) => json<SeriesDetailResponse>(`/api/series/${id}`),
   getBook: (id: string | number) => json<BookResponse>(`/api/books/${id}`),
   putProgress: (id: string | number, body: { lastPage: number; completed: boolean }) =>
     json<ProgressResponse>(`/api/books/${id}/progress`, {

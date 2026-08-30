@@ -1,15 +1,18 @@
-import { useParams } from 'react-router-dom'
+import { useParams, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
+import { statusFrom, withStatus } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 
 export default function SeriesGroup() {
   const { name } = useParams()
+  const [searchParams] = useSearchParams()
   const groupName = decodeURIComponent(name ?? '')
+  const status = statusFrom(searchParams)
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['series-group', groupName],
-    queryFn: () => api.getSeriesGroup(groupName),
+    queryKey: ['series-group', groupName, status],
+    queryFn: () => api.getSeriesGroup(groupName, status ?? undefined),
   })
 
   if (isLoading) return <p>Loading…</p>
@@ -29,7 +32,7 @@ export default function SeriesGroup() {
         {group.series.map((series) => (
           <CoverTile
             key={series.id}
-            to={`/series/${series.id}`}
+            to={withStatus(`/series/${series.id}`, status)}
             img={`/api/series/${series.id}/thumbnail`}
             title={series.name}
             subtitle={`${series.bookCount} issue${series.bookCount === 1 ? '' : 's'}`}

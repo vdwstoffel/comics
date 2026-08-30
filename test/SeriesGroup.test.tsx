@@ -73,3 +73,16 @@ test('an unknown group reports that it was not found', async () => {
   renderAt('/group/Aquaman')
   expect(await screen.findByText(/not found/i)).toBeInTheDocument()
 })
+
+test('a status in the url is sent with the group request', async () => {
+  renderAt('/group/Amazing%20Spider-Man?status=unread')
+  await screen.findByRole('heading', { name: 'Amazing Spider-Man' })
+  const url = String((globalThis.fetch as unknown as { mock: { calls: string[][] } }).mock.calls[0][0])
+  expect(url).toContain('readState=unread')
+})
+
+test('edition links carry the status onwards', async () => {
+  renderAt('/group/Amazing%20Spider-Man?status=unread')
+  const tile = (await screen.findByText('Amazing Spider-Man (2025)')).closest('a')
+  expect(tile).toHaveAttribute('href', '/series/9?status=unread')
+})

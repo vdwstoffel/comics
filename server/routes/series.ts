@@ -1,6 +1,9 @@
 import { createReadStream, existsSync } from 'node:fs'
 import { join } from 'node:path'
-import { listSeries, getSeries, listPublishers, updateSeries } from '../models/series.js'
+import {
+  listSeries, getSeries, listPublishers, listReadStates, updateSeries,
+} from '../models/series.js'
+import type { ReadState } from '../models/progress.js'
 import { listSeriesGroups, getSeriesGroup } from '../models/seriesGroups.js'
 import { listBooksBySeries } from '../models/books.js'
 import { deriveReadState } from '../models/progress.js'
@@ -9,36 +12,48 @@ import type { App } from '../types.js'
 
 interface IdParams { id: string }
 interface RenameBody { name?: string; groupName?: string }
-interface SeriesQuery { publisher?: string }
+interface SeriesQuery { publisher?: string; readState?: string }
+
+const READ_STATES: ReadState[] = ['unread', 'reading', 'read']
+
+// An unrecognised value means "no read-state filter", matching how a junk publisher
+// simply matches nothing rather than failing the request.
+function readStateOf(value: string | undefined): ReadState | undefined {
+  return READ_STATES.includes(value as ReadState) ? (value as ReadState) : undefined
+}
+
+function seriesFilterOf(query: SeriesQuery) {
+  return { publisher: query.publisher || undefined, readState: readStateOf(query.readState) }
+}
 interface GroupParams { name: string }
 
 export default async function seriesRoutes(app: App) {
   app.get<{ Querystring: SeriesQuery }>('/api/series', async (req) => {
-    const { publisher } = req.query
-    return { series: listSeries(app.db, publisher ? { publisher } : undefined) }
+    return { series: listSeries(app.db, seriesFilterOf(req.query)) }
   })
 
   app.get('/api/publishers', async () => ({ publishers: listPublishers(app.db) }))
 
+  app.get('/api/read-states', async () => ({ readStates: listReadStates(app.db) }))
+
   app.get<{ Querystring: SeriesQuery }>('/api/series-groups', async (req) => {
-    const { publisher } = req.query
-    return { groups: listSeriesGroups(app.db, publisher ? { publisher } : undefined) }
+    return { groups: listSeriesGroups(app.db, seriesFilterOf(req.query)) }
   })
 
   app.get<{ Params: GroupParams; Querystring: SeriesQuery }>(
     '/api/series-groups/:name',
     async (req, reply) => {
-      const { publisher } = req.query
-      const group = getSeriesGroup(app.db, req.params.name, publisher ? { publisher } : undefined)
+      const group = getSeriesGroup(app.db, req.params.name, seriesFilterOf(req.query))
       if (!group) return reply.code(404).send({ error: 'group not found' })
       return { group }
     },
   )
 
-  app.get<{ Params: IdParams }>('/api/series/:id', async (req, reply) => {
+  app.get<{ Params: IdParams; Querystring: SeriesQuery }>('/api/series/:id', async (req, reply) => {
     const series = getSeries(app.db, Number(req.params.id))
     if (!series) return reply.code(404).send({ error: 'series not found' })
-    const books = listBooksBySeries(app.db, series.id).map((b) => deriveReadState(app.db, b))
+    const books = listBooksBySeries(app.db, series.id, readStateOf(req.query.readState))
+      .map((b) => deriveReadState(app.db, b))
     return { series, books }
   })
 

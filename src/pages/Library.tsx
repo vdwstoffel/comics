@@ -1,11 +1,18 @@
 import { useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
+import type { ReadState } from '../api'
+import { statusFrom, withStatus, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import FilterSidebar from '../components/FilterSidebar'
 
 export default function Library() {
   const [selectedPublisher, setSelectedPublisher] = useState<string | null>(null)
+  // The status lives in the url so it survives a refresh and can be carried into
+  // every link, which is what keeps the filter applied as you drill down.
+  const [searchParams, setSearchParams] = useSearchParams()
+  const selectedStatus = statusFrom(searchParams)
 
   const { data: publishersData } = useQuery({
     queryKey: ['publishers'],
@@ -18,17 +25,29 @@ export default function Library() {
     queryFn: () => api.getSeries(),
   })
 
+  const { data: readStateData } = useQuery({
+    queryKey: ['read-states'],
+    queryFn: api.getReadStates,
+  })
+
   const { data, isLoading, error } = useQuery({
-    queryKey: ['series-groups', selectedPublisher],
-    queryFn: () => api.getSeriesGroups(selectedPublisher ?? undefined),
+    queryKey: ['series-groups', selectedPublisher, selectedStatus],
+    queryFn: () => api.getSeriesGroups({
+      publisher: selectedPublisher ?? undefined,
+      readState: selectedStatus ?? undefined,
+    }),
   })
 
-  const { data: continueData } = useQuery({
-    queryKey: ['continue-reading', selectedPublisher],
-    queryFn: () => api.getContinueReading(selectedPublisher ?? undefined),
-  })
+  // The two rails are alternatives, not layers: choosing one clears the other.
+  const choosePublisher = (key: string | null) => {
+    setSelectedPublisher(key)
+    setSearchParams({})
+  }
+  const chooseStatus = (key: string | null) => {
+    setSearchParams(key ? { status: key } : {})
+    setSelectedPublisher(null)
+  }
 
-  const continueReading = continueData?.books ?? []
   const publishers = publishersData?.publishers ?? []
 
   // Build sidebar items: named publishers (label = name, count shown as a separate badge)
@@ -54,24 +73,20 @@ export default function Library() {
           title="Publishers"
           items={sidebarItems}
           active={selectedPublisher}
-          onSelect={setSelectedPublisher}
+          onSelect={choosePublisher}
+        />
+        <FilterSidebar
+          title="Status"
+          items={(readStateData?.readStates ?? []).map((s) => ({
+            key: s.name,
+            label: STATUS_LABELS[s.name],
+            count: s.count,
+          }))}
+          active={selectedStatus}
+          onSelect={chooseStatus}
         />
       </nav>
       <div className="library-content">
-        {continueReading.length > 0 && (
-          <section className="continue-reading">
-            <h2 className="section-title">Continue reading</h2>
-            <div className="tile-grid">
-              {continueReading.map((b) => (
-                <CoverTile key={b.id} to={`/read/${b.id}`}
-                  img={`/api/books/${b.id}/thumbnail`}
-                  title={b.title || `#${b.number ?? '?'}`}
-                  subtitle={b.seriesName}
-                  readState={b.readState} percent={b.percent} />
-              ))}
-            </div>
-          </section>
-        )}
 
         <h1 className="page-title">Library</h1>
         {isLoading && <p>Loading…</p>}
@@ -87,7 +102,10 @@ export default function Library() {
               return (
                 <CoverTile
                   key={group.name}
-                  to={only ? `/series/${only.id}` : `/group/${encodeURIComponent(group.name)}`}
+                  to={withStatus(
+                    only ? `/series/${only.id}` : `/group/${encodeURIComponent(group.name)}`,
+                    selectedStatus,
+                  )}
                   img={`/api/series/${cover.id}/thumbnail`}
                   title={only ? only.name : group.name}
                   subtitle={only ? issues : `${group.series.length} editions · ${issues}`}

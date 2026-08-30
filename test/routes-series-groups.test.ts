@@ -7,6 +7,7 @@ import { openDb } from '../server/db.js'
 import seriesRoutes from '../server/routes/series.js'
 import { upsertSeries, updateSeries, getSeries } from '../server/models/series.js'
 import { insertBook } from '../server/models/books.js'
+import { setProgress } from '../server/models/progress.js'
 import type { FastifyInstance } from 'fastify'
 import type { Config } from '../server/config.js'
 
@@ -103,4 +104,95 @@ test('PATCH /api/series/:id clears a group when given an empty string', async ()
   })
   expect(res.statusCode).toBe(200)
   expect(res.json().series.groupName).toBeNull()
+})
+
+function seedRead(name: string, kinds: ('unread' | 'reading' | 'read')[]) {
+  const series = upsertSeries(app.db, { name, folder: name })
+  kinds.forEach((kind, i) => {
+    const book = insertBook(app.db, {
+      seriesId: series.id, filePath: `${name}/${i}.cbz`, pageCount: 10, fileSize: 100,
+    })!
+    if (kind === 'reading') setProgress(app.db, book.id, { lastPage: 4 })
+    if (kind === 'read') setProgress(app.db, book.id, { lastPage: 9, completed: true })
+  })
+  return series
+}
+
+test('GET /api/series-groups filters by read state', async () => {
+  seedRead('Finished Run', ['read', 'read'])
+  seedRead('Halfway', ['reading', 'unread'])
+
+  const unread = (await get('/api/series-groups?readState=unread')).json()
+  expect(unread.groups.map((g: { name: string }) => g.name)).toContain('Halfway')
+  expect(unread.groups.map((g: { name: string }) => g.name)).not.toContain('Finished Run')
+
+  const read = (await get('/api/series-groups?readState=read')).json()
+  expect(read.groups.map((g: { name: string }) => g.name)).toEqual(['Finished Run'])
+  expect(read.groups[0].bookCount).toBe(2)
+
+  const reading = (await get('/api/series-groups?readState=reading')).json()
+  expect(reading.groups.map((g: { name: string }) => g.name)).toEqual(['Halfway'])
+})
+
+test('GET /api/series-groups ignores an unknown read state instead of erroring', async () => {
+  const all = (await get('/api/series-groups')).json().groups.length
+  const res = await get('/api/series-groups?readState=banana')
+  expect(res.statusCode).toBe(200)
+  expect(res.json().groups).toHaveLength(all)
+})
+
+test('GET /api/read-states counts issues in each state', async () => {
+  seedRead('Finished Run', ['read', 'read'])
+  seedRead('Halfway', ['reading', 'unread'])
+
+  const res = await get('/api/read-states')
+  expect(res.statusCode).toBe(200)
+  const byName = Object.fromEntries(
+    res.json().readStates.map((r: { name: string; count: number }) => [r.name, r.count]),
+  )
+  // 15 issues from the beforeEach fixture have no progress, plus 1 unread here
+  expect(byName.unread).toBe(16)
+  expect(byName.reading).toBe(1)
+  expect(byName.read).toBe(2)
+})
+
+test('GET /api/series-groups read filter includes part-read series', async () => {
+  seedRead('Part Read', ['read', 'unread'])
+  const read = (await get('/api/series-groups?readState=read')).json()
+  expect(read.groups.map((g: { name: string }) => g.name)).toContain('Part Read')
+  const unread = (await get('/api/series-groups?readState=unread')).json()
+  expect(unread.groups.map((g: { name: string }) => g.name)).toContain('Part Read')
+})
+
+test('GET /api/series-groups reports the filtered issue count on each series', async () => {
+  seedRead('Part Read', ['read', 'read', 'unread'])
+  const read = (await get('/api/series-groups?readState=read')).json()
+  const group = read.groups.find((g: { name: string }) => g.name === 'Part Read')
+  expect(group.series[0].bookCount).toBe(2)
+  expect(group.bookCount).toBe(2)
+})
+
+test('GET /api/series/:id lists only the issues in the requested state', async () => {
+  const series = seedRead('Mixed', ['unread', 'read', 'read', 'reading'])
+
+  const all = (await get(`/api/series/${series.id}`)).json()
+  expect(all.books).toHaveLength(4)
+
+  const unread = (await get(`/api/series/${series.id}?readState=unread`)).json()
+  expect(unread.books).toHaveLength(1)
+  expect(unread.books[0].readState).toBe('unread')
+
+  const read = (await get(`/api/series/${series.id}?readState=read`)).json()
+  expect(read.books).toHaveLength(2)
+  expect(read.books.every((b: { readState: string }) => b.readState === 'read')).toBe(true)
+
+  const reading = (await get(`/api/series/${series.id}?readState=reading`)).json()
+  expect(reading.books).toHaveLength(1)
+})
+
+test('GET /api/series/:id ignores a junk read state', async () => {
+  const series = seedRead('Mixed', ['unread', 'read'])
+  const res = await get(`/api/series/${series.id}?readState=banana`)
+  expect(res.statusCode).toBe(200)
+  expect(res.json().books).toHaveLength(2)
 })

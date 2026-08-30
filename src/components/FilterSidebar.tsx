@@ -13,7 +13,7 @@ interface FilterSidebarProps {
 
 export default function FilterSidebar({ title, items, active, onSelect }: FilterSidebarProps) {
   return (
-    <aside className="filter-sidebar">
+    <aside className="filter-sidebar" aria-label={title}>
       <div className="filter-sidebar__title">{title}</div>
       <ul className="filter-sidebar__list">
         <li>
