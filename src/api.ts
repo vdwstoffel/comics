@@ -1,7 +1,7 @@
-export interface ApiSeries {
+export interface ApiEdition {
   id: number
   name: string
-  groupName?: string | null
+  seriesName?: string | null
   folder?: string
   publisher?: string | null
   summary?: string | null
@@ -12,7 +12,7 @@ export interface ApiSeries {
 
 export interface ApiBook {
   id: number
-  seriesId: number
+  editionId: number
   filePath?: string
   title: string | null
   number: string | null
@@ -32,10 +32,10 @@ export interface ApiBook {
   cvSiteUrl?: string | null
 }
 
-export interface ApiSeriesGroup {
+export interface ApiSeries {
   name: string
   bookCount: number
-  series: ApiSeries[]
+  editions: ApiEdition[]
 }
 
 export interface ApiCredit {
@@ -76,15 +76,15 @@ export interface PublisherFacet {
   count: number
 }
 
+export interface EditionsListResponse { editions: ApiEdition[] }
 export interface SeriesListResponse { series: ApiSeries[] }
-export interface SeriesGroupsResponse { groups: ApiSeriesGroup[] }
-export interface SeriesGroupResponse { group: ApiSeriesGroup }
-export interface SeriesDetailResponse { series: ApiSeries; books: ApiBook[] }
+export interface SeriesResponse { series: ApiSeries }
+export interface EditionDetailResponse { edition: ApiEdition; books: ApiBook[] }
 export interface BookResponse { book: ApiBook; progress: ApiProgress; credits?: ApiCredit[]; tags?: ApiTag[] }
 export interface ProgressResponse { progress: ApiProgress }
 export interface CvSearchResponse { results: CvSearchResult[] }
-export interface RenameSeriesResponse { series: ApiSeries }
-export interface MoveBookSeriesResponse { book: ApiBook; series: ApiSeries }
+export interface EditionResponse { edition: ApiEdition }
+export interface MoveBookEditionResponse { book: ApiBook; edition: ApiEdition }
 export interface PublishersResponse { publishers: PublisherFacet[] }
 export interface ReadStatesResponse { readStates: ReadStateFacet[] }
 
@@ -129,31 +129,31 @@ async function json<T>(url: string, opts?: RequestInit): Promise<T> {
 }
 
 export const api = {
-  getSeries: (publisher?: string) => {
-    const url = publisher ? `/api/series?publisher=${encodeURIComponent(publisher)}` : '/api/series'
-    return json<SeriesListResponse>(url)
+  getEditions: (publisher?: string) => {
+    const url = publisher ? `/api/editions?publisher=${encodeURIComponent(publisher)}` : '/api/editions'
+    return json<EditionsListResponse>(url)
   },
   getPublishers: () => json<PublishersResponse>('/api/publishers'),
   getReadStates: () => json<ReadStatesResponse>('/api/read-states'),
-  getSeriesGroups: ({ publisher, readState }: { publisher?: string; readState?: ReadState } = {}) => {
+  getSeries: ({ publisher, readState }: { publisher?: string; readState?: ReadState } = {}) => {
     const params = new URLSearchParams()
     if (publisher) params.set('publisher', publisher)
     if (readState) params.set('readState', readState)
     const query = params.toString()
-    return json<SeriesGroupsResponse>(`/api/series-groups${query ? `?${query}` : ''}`)
+    return json<SeriesListResponse>(`/api/series${query ? `?${query}` : ''}`)
   },
-  getSeriesGroup: (name: string, readState?: ReadState) => {
+  getSeriesByName: (name: string, readState?: ReadState) => {
     const query = readState ? `?readState=${readState}` : ''
-    return json<SeriesGroupResponse>(`/api/series-groups/${encodeURIComponent(name)}${query}`)
+    return json<SeriesResponse>(`/api/series/${encodeURIComponent(name)}${query}`)
   },
-  setSeriesGroup: (id: string | number, groupName: string) =>
-    json<RenameSeriesResponse>(`/api/series/${id}`, {
+  setEditionSeries: (id: string | number, seriesName: string) =>
+    json<EditionResponse>(`/api/editions/${id}`, {
       method: 'PATCH', headers: { 'content-type': 'application/json' },
-      body: JSON.stringify({ groupName }),
+      body: JSON.stringify({ seriesName }),
     }),
-  getSeriesDetail: (id: string | number, readState?: ReadState) => {
+  getEditionDetail: (id: string | number, readState?: ReadState) => {
     const query = readState ? `?readState=${readState}` : ''
-    return json<SeriesDetailResponse>(`/api/series/${id}${query}`)
+    return json<EditionDetailResponse>(`/api/editions/${id}${query}`)
   },
   getBook: (id: string | number) => json<BookResponse>(`/api/books/${id}`),
   putProgress: (id: string | number, body: { lastPage: number; completed: boolean }) =>
@@ -171,12 +171,12 @@ export const api = {
     json<BookResponse>(`/api/books/${id}/comicvine`, {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ issueId }),
     }),
-  renameSeries: (id: string | number, name: string) =>
-    json<RenameSeriesResponse>(`/api/series/${id}`, {
+  renameEdition: (id: string | number, name: string) =>
+    json<EditionResponse>(`/api/editions/${id}`, {
       method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }),
     }),
-  moveBookSeries: (id: string | number, name: string) =>
-    json<MoveBookSeriesResponse>(`/api/books/${id}/series`, {
+  moveBookEdition: (id: string | number, name: string) =>
+    json<MoveBookEditionResponse>(`/api/books/${id}/edition`, {
       method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }),
     }),
   searchComicIndex: ({ q, category, yearFrom, yearTo, limit = 50, offset = 0 }: {

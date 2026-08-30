@@ -5,7 +5,7 @@ import { listPages } from '../lib/cbz.js'
 import { isCbr, convertCbrToCbz } from '../lib/cbr.js'
 import { generateCover } from '../lib/thumbnails.js'
 import { parseComicInfo } from '../lib/comicinfo.js'
-import { upsertSeries } from '../models/series.js'
+import { upsertEdition } from '../models/editions.js'
 import { insertBook, findBookByPath } from '../models/books.js'
 import yauzl from 'yauzl'
 import type { Entry } from 'yauzl'
@@ -69,15 +69,15 @@ function dedupeCbzPath(cbrPath: string): string {
   }
 }
 
-export async function ingestFile(ctx: Ctx, absPath: string, seriesName?: string): Promise<Book | undefined> {
+export async function ingestFile(ctx: Ctx, absPath: string, editionName?: string): Promise<Book | undefined> {
   const { db, config } = ctx
   const relPath = relative(config.comicsDir, absPath)
   const pages = await listPages(absPath)
   const info: ComicMeta = (await readComicInfo(absPath)) || {}
-  const name = seriesName || info.series || basename(dirname(absPath))
-  const series = upsertSeries(db, { name, folder: name })
+  const name = editionName || info.series || basename(dirname(absPath))
+  const edition = upsertEdition(db, { name, folder: name })
   const book = insertBook(db, {
-    seriesId: series.id,
+    editionId: edition.id,
     filePath: relPath,
     title: info.title,
     number: info.number,

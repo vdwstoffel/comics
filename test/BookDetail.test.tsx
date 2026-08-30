@@ -6,7 +6,7 @@ import BookDetail from '../src/pages/BookDetail'
 
 const book = {
   id: 5,
-  seriesId: 1,
+  editionId: 1,
   title: 'Untitled',
   number: '1',
   pageCount: 20,

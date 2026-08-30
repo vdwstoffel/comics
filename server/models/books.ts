@@ -1,10 +1,10 @@
-import { BOOK_STATE_SQL } from './series.js'
+import { BOOK_STATE_SQL } from './editions.js'
 import type { ReadState } from './progress.js'
 import type { Db, Book } from '../types.js'
 
 interface BookRow {
   id: number
-  series_id: number
+  edition_id: number
   file_path: string
   title: string | null
   number: string | null
@@ -26,7 +26,7 @@ interface BookRow {
 function toBook(row: BookRow | undefined): Book | undefined {
   if (!row) return undefined
   return {
-    id: row.id, seriesId: row.series_id, filePath: row.file_path,
+    id: row.id, editionId: row.edition_id, filePath: row.file_path,
     title: row.title ?? null, number: row.number ?? null,
     pageCount: row.page_count, fileSize: row.file_size,
     writer: row.writer ?? null, penciller: row.penciller ?? null,
@@ -39,7 +39,7 @@ function toBook(row: BookRow | undefined): Book | undefined {
 }
 
 export interface InsertBookInput {
-  seriesId: number
+  editionId: number
   filePath: string
   title?: string | null
   number?: string | null
@@ -54,12 +54,12 @@ export interface InsertBookInput {
 
 export function insertBook(db: Db, d: InsertBookInput): Book | undefined {
   const info = db.prepare(`
-    INSERT INTO book (series_id, file_path, title, number, page_count, file_size,
+    INSERT INTO book (edition_id, file_path, title, number, page_count, file_size,
                       writer, penciller, summary, date, added_at)
-    VALUES (@seriesId, @filePath, @title, @number, @pageCount, @fileSize,
+    VALUES (@editionId, @filePath, @title, @number, @pageCount, @fileSize,
             @writer, @penciller, @summary, @date, @addedAt)
   `).run({
-    seriesId: d.seriesId, filePath: d.filePath, title: d.title ?? null, number: d.number ?? null,
+    editionId: d.editionId, filePath: d.filePath, title: d.title ?? null, number: d.number ?? null,
     pageCount: d.pageCount, fileSize: d.fileSize, writer: d.writer ?? null,
     penciller: d.penciller ?? null, summary: d.summary ?? null, date: d.date ?? null,
     addedAt: d.addedAt ?? new Date().toISOString(),
@@ -75,13 +75,13 @@ export function findBookByPath(db: Db, filePath: string): Book | undefined {
   return toBook(db.prepare('SELECT * FROM book WHERE file_path = ?').get(filePath) as BookRow | undefined)
 }
 
-export function listBooksBySeries(db: Db, seriesId: number, readState?: ReadState): Book[] {
+export function listBooksByEdition(db: Db, editionId: number, readState?: ReadState): Book[] {
   const filter = readState ? `AND ${BOOK_STATE_SQL[readState]}` : ''
   return (db
     .prepare(`SELECT b.* FROM book b
               LEFT JOIN read_progress p ON p.book_id = b.id
-              WHERE b.series_id = ? ${filter}`)
-    .all(seriesId) as BookRow[])
+              WHERE b.edition_id = ? ${filter}`)
+    .all(editionId) as BookRow[])
     .map((r) => toBook(r) as Book)
     .sort((a, b) => String(a.number ?? a.filePath).localeCompare(String(b.number ?? b.filePath), undefined, { numeric: true }))
 }
@@ -120,7 +120,7 @@ export function updateBook(db: Db, id: number | bigint, fields: BookUpdate): Boo
   return getBook(db, id)
 }
 
-export function setBookSeries(db: Db, bookId: number, seriesId: number, filePath: string): Book {
-  db.prepare('UPDATE book SET series_id = ?, file_path = ? WHERE id = ?').run(seriesId, filePath, bookId)
+export function setBookEdition(db: Db, bookId: number, editionId: number, filePath: string): Book {
+  db.prepare('UPDATE book SET edition_id = ?, file_path = ? WHERE id = ?').run(editionId, filePath, bookId)
   return getBook(db, bookId) as Book
 }

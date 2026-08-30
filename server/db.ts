@@ -2,19 +2,19 @@ import Database from 'better-sqlite3'
 import type { Db } from './types.js'
 
 const SCHEMA = `
-CREATE TABLE IF NOT EXISTS series (
+CREATE TABLE IF NOT EXISTS edition (
   id           INTEGER PRIMARY KEY,
   name         TEXT NOT NULL UNIQUE,
   folder       TEXT NOT NULL,
   publisher    TEXT,
   summary      TEXT,
   comicvine_id INTEGER,
-  group_name   TEXT,
+  series_name  TEXT,
   created_at   TEXT NOT NULL
 );
 CREATE TABLE IF NOT EXISTS book (
   id           INTEGER PRIMARY KEY,
-  series_id    INTEGER NOT NULL REFERENCES series(id) ON DELETE CASCADE,
+  edition_id   INTEGER NOT NULL REFERENCES edition(id) ON DELETE CASCADE,
   file_path    TEXT NOT NULL UNIQUE,
   title        TEXT,
   number       TEXT,
@@ -82,14 +82,45 @@ CREATE TRIGGER IF NOT EXISTS comic_index_au AFTER UPDATE ON comic_index BEGIN
 END;
 `
 
+function columnsOf(db: Db, table: string): string[] {
+  return (db.pragma(`table_info(${table})`) as Array<{ name: string }>).map((r) => r.name)
+}
+
+/**
+ * A folder of issues used to be called a "series" and the franchise above it a "group".
+ * Both names sat one rung too low: the franchise is the series, and a folder holds one
+ * edition of it. Renames the old tables in place so an existing library keeps its rows.
+ *
+ * Must run before SCHEMA - CREATE TABLE IF NOT EXISTS would otherwise leave an empty
+ * `edition` table beside the populated `series` one, and the rename would never happen.
+ */
+function renameSeriesToEdition(db: Db): void {
+  const tables = new Set(
+    (db.prepare("SELECT name FROM sqlite_master WHERE type = 'table'").all() as Array<{ name: string }>)
+      .map((r) => r.name),
+  )
+  if (!tables.has('series') || tables.has('edition')) return
+
+  // RENAME TO rewrites book's foreign key to point at `edition` on its own.
+  db.exec('ALTER TABLE series RENAME TO edition')
+  if (columnsOf(db, 'edition').includes('group_name')) {
+    db.exec('ALTER TABLE edition RENAME COLUMN group_name TO series_name')
+  }
+  if (tables.has('book') && columnsOf(db, 'book').includes('series_id')) {
+    db.exec('ALTER TABLE book RENAME COLUMN series_id TO edition_id')
+  }
+}
+
 export function openDb(dbPath: string): Db {
   const db = new Database(dbPath)
   db.pragma('journal_mode = WAL')
   db.pragma('foreign_keys = ON')
+
+  renameSeriesToEdition(db)
   db.exec(SCHEMA)
 
   // Additive migration: add new columns to book if missing
-  const bookCols = (db.pragma('table_info(book)') as Array<{ name: string }>).map((r) => r.name)
+  const bookCols = columnsOf(db, 'book')
   if (!bookCols.includes('year')) db.exec('ALTER TABLE book ADD COLUMN year INTEGER')
   if (!bookCols.includes('cover_url')) db.exec('ALTER TABLE book ADD COLUMN cover_url TEXT')
   if (!bookCols.includes('cv_site_url')) db.exec('ALTER TABLE book ADD COLUMN cv_site_url TEXT')
@@ -97,11 +128,13 @@ export function openDb(dbPath: string): Db {
 
   db.exec(MIGRATION)
 
-  const seriesCols = (db.pragma('table_info(series)') as Array<{ name: string }>).map((r) => r.name)
-  if (!seriesCols.includes('group_name')) db.exec('ALTER TABLE series ADD COLUMN group_name TEXT')
+  // Editions that predate the grouping feature have no series of their own yet.
+  if (!columnsOf(db, 'edition').includes('series_name')) {
+    db.exec('ALTER TABLE edition ADD COLUMN series_name TEXT')
+  }
 
   // Additive migration: comic_index gained year/number after first release
-  const indexCols = (db.pragma('table_info(comic_index)') as Array<{ name: string }>).map((r) => r.name)
+  const indexCols = columnsOf(db, 'comic_index')
   if (!indexCols.includes('year')) db.exec('ALTER TABLE comic_index ADD COLUMN year INTEGER')
   if (!indexCols.includes('number')) db.exec('ALTER TABLE comic_index ADD COLUMN number TEXT')
 

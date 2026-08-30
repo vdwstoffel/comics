@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Fastify from 'fastify'
 import { openDb } from '../server/db.js'
-import seriesRoutes from '../server/routes/series.js'
+import editionRoutes from '../server/routes/editions.js'
 import booksRoutes from '../server/routes/books.js'
 import { scanLibrary } from '../server/services/indexer.js'
 import { makeCbz } from './helpers/makeCbz.js'
@@ -22,21 +22,21 @@ beforeEach(async () => {
   app = Fastify()
   app.decorate('db', openDb(':memory:'))
   app.decorate('config', config)
-  await app.register(seriesRoutes)
+  await app.register(editionRoutes)
   await app.register(booksRoutes)
   await scanLibrary({ db: app.db, config })
 })
 afterEach(async () => { await app.close(); rmSync(dir, { recursive: true, force: true }) })
 
-test('GET /api/series lists series with bookCount', async () => {
-  const res = await app.inject({ url: '/api/series' })
+test('GET /api/editions lists editions with bookCount', async () => {
+  const res = await app.inject({ url: '/api/editions' })
   expect(res.statusCode).toBe(200)
-  expect(res.json().series[0]).toMatchObject({ name: 'Batman', bookCount: 1 })
+  expect(res.json().editions[0]).toMatchObject({ name: 'Batman', bookCount: 1 })
 })
 
-test('GET /api/series/:id returns books', async () => {
-  const id = (app.db.prepare('SELECT id FROM series').get() as { id: number }).id
-  const res = await app.inject({ url: `/api/series/${id}` })
+test('GET /api/editions/:id returns books', async () => {
+  const id = (app.db.prepare('SELECT id FROM edition').get() as { id: number }).id
+  const res = await app.inject({ url: `/api/editions/${id}` })
   expect(res.json().books).toHaveLength(1)
   expect(res.json().books[0].pageCount).toBe(2)
 })
@@ -48,14 +48,14 @@ test('GET /api/books/:id includes progress', async () => {
   expect(res.json().progress).toMatchObject({ lastPage: 0, completed: false })
 })
 
-test('missing series 404s', async () => {
-  const res = await app.inject({ url: '/api/series/9999' })
+test('a missing edition 404s', async () => {
+  const res = await app.inject({ url: '/api/editions/9999' })
   expect(res.statusCode).toBe(404)
 })
 
-test('GET /api/series/:id books include readState and percent', async () => {
-  const seriesId = (app.db.prepare('SELECT id FROM series').get() as { id: number }).id
-  // Create a second book in the same series so we can test multiple states
+test('GET /api/editions/:id books include readState and percent', async () => {
+  const editionId = (app.db.prepare('SELECT id FROM edition').get() as { id: number }).id
+  // Create a second book in the same edition so we can test multiple states
   await makeCbz(join(app.config.comicsDir, 'Batman'), ['p1.png', 'p2.png', 'p3.png', 'p4.png', 'p5.png'], '002.cbz')
   await makeCbz(join(app.config.comicsDir, 'Batman'), ['p1.png', 'p2.png', 'p3.png'], '003.cbz')
   await scanLibrary({ db: app.db, config: app.config })
@@ -70,7 +70,7 @@ test('GET /api/series/:id books include readState and percent', async () => {
   // book3: completed
   setProgress(app.db, book3.id, { lastPage: 2, completed: true })
 
-  const res = await app.inject({ url: `/api/series/${seriesId}` })
+  const res = await app.inject({ url: `/api/editions/${editionId}` })
   expect(res.statusCode).toBe(200)
   const booksRes = res.json().books as Array<{ id: number; readState: string; percent: number }>
 

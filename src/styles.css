@@ -132,25 +132,25 @@ img {
 /* ============================================================
    Series page header
    ============================================================ */
-.series-header {
+.edition-header {
   margin-bottom: 32px;
 }
 
-.series-header__title-row {
+.edition-header__title-row {
   display: flex;
   align-items: center;
   gap: 10px;
   margin-bottom: 4px;
 }
 
-.series-header__count {
+.edition-header__count {
   font-size: 0.875rem;
   color: var(--muted);
   font-weight: 400;
   margin-bottom: 10px;
 }
 
-.series-header__summary {
+.edition-header__summary {
   color: var(--muted);
   font-size: 0.9375rem;
   max-width: 640px;
@@ -158,13 +158,13 @@ img {
   margin-top: 8px;
 }
 
-.series-header__error {
+.edition-header__error {
   color: var(--accent);
   font-size: 0.875rem;
   margin-top: 8px;
 }
 
-/* Inline editor in series header */
+/* Inline editor in edition header */
 /* Pencil / edit icon button */
 .btn-icon {
   display: inline-flex;
@@ -501,13 +501,13 @@ textarea.input:hover:not(:focus) {
   margin-top: 5px;
 }
 
-.move-series-row {
+.move-edition-row {
   display: flex;
   gap: 8px;
   align-items: center;
 }
 
-.move-series-row input {
+.move-edition-row input {
   flex: 1;
 }
 
@@ -649,7 +649,7 @@ textarea.input:hover:not(:focus) {
 }
 
 /* ============================================================
-   Modal shell (shared by the series editor and the Comic Vine dialog)
+   Modal shell (shared by the edition editor and the Comic Vine dialog)
    ============================================================ */
 .modal-backdrop {
   position: fixed;
@@ -1407,13 +1407,6 @@ textarea.input:hover:not(:focus) {
   border-color: var(--accent);
 }
 
-.modal-hint {
-  margin-top: 6px;
-  color: var(--muted);
-  font-size: 0.75rem;
-  line-height: 1.5;
-}
-
 .modal-error {
   margin-bottom: 16px;
   padding: 9px 12px;
@@ -1430,12 +1423,12 @@ textarea.input:hover:not(:focus) {
   margin-top: 4px;
 }
 
-.series-header__filter {
+.edition-header__filter {
   margin-top: 4px;
   color: var(--muted);
   font-size: 0.8125rem;
 }
 
-.series-header__filter a {
+.edition-header__filter a {
   color: var(--accent);
 }

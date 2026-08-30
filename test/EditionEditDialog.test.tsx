@@ -1,16 +1,16 @@
 import { test, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup } from '@testing-library/react'
-import SeriesEditDialog from '../src/components/SeriesEditDialog'
+import EditionEditDialog from '../src/components/EditionEditDialog'
 
 afterEach(() => { cleanup() })
 
-function renderDialog(props: Partial<Parameters<typeof SeriesEditDialog>[0]> = {}) {
+function renderDialog(props: Partial<Parameters<typeof EditionEditDialog>[0]> = {}) {
   const onSave = vi.fn()
   const onClose = vi.fn()
   render(
-    <SeriesEditDialog
+    <EditionEditDialog
       name="Batman Vol. 2 (New 52 TPB)"
-      groupName="Batman"
+      seriesName="Batman"
       onSave={onSave}
       onClose={onClose}
       {...props}
@@ -21,32 +21,27 @@ function renderDialog(props: Partial<Parameters<typeof SeriesEditDialog>[0]> = {
 
 test('shows both fields, labelled and prefilled', () => {
   renderDialog()
-  expect(screen.getByRole('heading', { name: /edit series/i })).toBeInTheDocument()
-  expect(screen.getByLabelText(/series name/i)).toHaveValue('Batman Vol. 2 (New 52 TPB)')
-  expect(screen.getByLabelText(/group/i)).toHaveValue('Batman')
+  expect(screen.getByRole('heading', { name: /edit edition/i })).toBeInTheDocument()
+  expect(screen.getByLabelText(/edition name/i)).toHaveValue('Batman Vol. 2 (New 52 TPB)')
+  expect(screen.getByLabelText(/^series$/i)).toHaveValue('Batman')
 })
 
-test('explains what the group field does', () => {
-  renderDialog()
-  expect(screen.getByText(/appear as one tile/i)).toBeInTheDocument()
-})
-
-test('an empty group renders as an empty field, not the word null', () => {
-  renderDialog({ groupName: null })
-  expect(screen.getByLabelText(/group/i)).toHaveValue('')
+test('an empty series renders as an empty field, not the word null', () => {
+  renderDialog({ seriesName: null })
+  expect(screen.getByLabelText(/^series$/i)).toHaveValue('')
 })
 
 test('saving passes the edited values back, trimmed', () => {
   const { onSave } = renderDialog()
-  fireEvent.change(screen.getByLabelText(/series name/i), { target: { value: '  Batman Vol. 2  ' } })
-  fireEvent.change(screen.getByLabelText(/group/i), { target: { value: '  Batman  ' } })
+  fireEvent.change(screen.getByLabelText(/edition name/i), { target: { value: '  Batman Vol. 2  ' } })
+  fireEvent.change(screen.getByLabelText(/^series$/i), { target: { value: '  Batman  ' } })
   fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-  expect(onSave).toHaveBeenCalledWith({ name: 'Batman Vol. 2', groupName: 'Batman' })
+  expect(onSave).toHaveBeenCalledWith({ name: 'Batman Vol. 2', seriesName: 'Batman' })
 })
 
 test('pressing Enter in a field saves', () => {
   const { onSave } = renderDialog()
-  fireEvent.keyDown(screen.getByLabelText(/series name/i), { key: 'Enter' })
+  fireEvent.keyDown(screen.getByLabelText(/edition name/i), { key: 'Enter' })
   expect(onSave).toHaveBeenCalled()
 })
 
@@ -66,19 +61,19 @@ test('Escape closes without saving', () => {
 
 test('clicking the backdrop closes', () => {
   const { onClose } = renderDialog()
-  fireEvent.click(screen.getByTestId('series-edit-backdrop'))
+  fireEvent.click(screen.getByTestId('edition-edit-backdrop'))
   expect(onClose).toHaveBeenCalled()
 })
 
 test('clicking inside the panel does not close', () => {
   const { onClose } = renderDialog()
-  fireEvent.click(screen.getByRole('heading', { name: /edit series/i }))
+  fireEvent.click(screen.getByRole('heading', { name: /edit edition/i }))
   expect(onClose).not.toHaveBeenCalled()
 })
 
 test('a blank name cannot be saved', () => {
   const { onSave } = renderDialog()
-  fireEvent.change(screen.getByLabelText(/series name/i), { target: { value: '   ' } })
+  fireEvent.change(screen.getByLabelText(/edition name/i), { target: { value: '   ' } })
   expect(screen.getByRole('button', { name: 'Save' })).toBeDisabled()
   fireEvent.click(screen.getByRole('button', { name: 'Save' }))
   expect(onSave).not.toHaveBeenCalled()
@@ -92,9 +87,4 @@ test('Save is disabled while a save is in flight', () => {
 test('an error is shown inside the dialog', () => {
   renderDialog({ error: 'Rename failed: folder exists' })
   expect(screen.getByText(/folder exists/)).toBeInTheDocument()
-})
-
-test('renaming is called out as moving files', () => {
-  renderDialog()
-  expect(screen.getByText(/moves the files/i)).toBeInTheDocument()
 })

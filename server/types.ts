@@ -7,22 +7,22 @@ export type Db = DatabaseType.Database
 
 // --- Model output shapes (camelCase) ---
 
-export interface Series {
+export interface Edition {
   id: number
   name: string
   folder: string
   publisher: string | null
   summary: string | null
   comicvineId: number | null
-  /** Franchise this series belongs to; derived from the name, correctable by hand. */
-  groupName: string | null
+  /** Series this edition belongs to; derived from the name, correctable by hand. */
+  seriesName: string | null
   createdAt: string
   bookCount?: number
 }
 
 export interface Book {
   id: number
-  seriesId: number
+  editionId: number
   filePath: string
   title: string | null
   number: string | null

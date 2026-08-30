@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { openDb } from '../server/db.js'
-import { upsertSeries } from '../server/models/series.js'
+import { upsertEdition } from '../server/models/editions.js'
 import { insertBook } from '../server/models/books.js'
 import {
   replaceBookCredits,
@@ -12,8 +12,8 @@ import {
 function freshDb() { return openDb(':memory:') }
 
 function makeBook(db: ReturnType<typeof freshDb>) {
-  const s = upsertSeries(db, { name: 'Batman', folder: 'Batman' })
-  return insertBook(db, { seriesId: s.id, filePath: 'Batman/001.cbz', pageCount: 10, fileSize: 100 })!
+  const s = upsertEdition(db, { name: 'Batman', folder: 'Batman' })
+  return insertBook(db, { editionId: s.id, filePath: 'Batman/001.cbz', pageCount: 10, fileSize: 100 })!
 }
 
 test('replaceBookCredits/getBookCredits round-trip', () => {

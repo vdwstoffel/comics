@@ -13,7 +13,7 @@ test('registerSpa serves index.html for unknown non-api routes', async () => {
   const app = Fastify()
   await app.register(fastifyStatic, { root: dist })
   registerSpa(app, dist)
-  const res = await app.inject({ url: '/series/1' })
+  const res = await app.inject({ url: '/edition/1' })
   expect(res.statusCode).toBe(200)
   expect(res.body).toContain('app')
   await app.close()

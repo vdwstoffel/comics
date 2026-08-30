@@ -25,7 +25,7 @@ test('scanLibrary ingests cbz files under series folders and writes thumbnails',
   const res = await scanLibrary(ctx)
   expect(res.added).toBe(1)
 
-  const series = ctx.db.prepare('SELECT * FROM series').all() as Array<{ name: string }>
+  const series = ctx.db.prepare('SELECT * FROM edition').all() as Array<{ name: string }>
   expect(series[0].name).toBe('Batman')
   const book = ctx.db.prepare('SELECT * FROM book').get() as { page_count: number; id: number }
   expect(book.page_count).toBe(3)

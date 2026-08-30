@@ -17,7 +17,7 @@ export default function BookDetail() {
   const [editing, setEditing] = useState(false)
 
   const { data, isLoading } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
-  const { data: seriesData, isLoading: seriesLoading } = useQuery({ queryKey: ['series'], queryFn: () => api.getSeries() })
+  const { data: editionsData, isLoading: editionsLoading } = useQuery({ queryKey: ['editions'], queryFn: () => api.getEditions() })
 
   const save = useMutation({
     mutationFn: (form: Record<string, unknown>) => api.patchMetadata(id!, form),
@@ -31,10 +31,11 @@ export default function BookDetail() {
     mutationFn: () => api.embed(id!),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['book', id] }),
   })
-  const moveSeries = useMutation({
-    mutationFn: (name: string) => api.moveBookSeries(id!, name),
+  const moveEdition = useMutation({
+    mutationFn: (name: string) => api.moveBookEdition(id!, name),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['book', id] })
+      qc.invalidateQueries({ queryKey: ['editions'] })
       qc.invalidateQueries({ queryKey: ['series'] })
       setMoveTarget(null)
     },
@@ -55,8 +56,8 @@ export default function BookDetail() {
   const teams = tags.filter((t) => t.kind === 'team').map((t) => t.value)
   const storyArcs = tags.filter((t) => t.kind === 'story_arc').map((t) => t.value)
 
-  const currentSeriesName = seriesData?.series?.find((s) => s.id === book.seriesId)?.name ?? `Series #${book.seriesId}`
-  const moveValue = moveTarget ?? currentSeriesName
+  const currentEditionName = editionsData?.editions?.find((e) => e.id === book.editionId)?.name ?? `Edition #${book.editionId}`
+  const moveValue = moveTarget ?? currentEditionName
   const metadataKey = [book.title, book.number, book.writer, book.penciller, book.date, book.summary].join('|')
 
   const visibleCharacters = showAllCharacters ? characters : characters.slice(0, CHARACTER_SHOW_THRESHOLD)
@@ -70,35 +71,35 @@ export default function BookDetail() {
 
   // Read-mode detail rows: the editable metadata, minus what the header already shows
   const details: { label: string; value: ReactNode }[] = [
-    { label: 'Series', value: <Link to={`/series/${book.seriesId}`}>{currentSeriesName}</Link> },
+    { label: 'Edition', value: <Link to={`/edition/${book.editionId}`}>{currentEditionName}</Link> },
   ]
   if (book.writer) details.push({ label: 'Writer', value: book.writer })
   if (book.penciller) details.push({ label: 'Penciller', value: book.penciller })
   if (book.date) details.push({ label: 'Date', value: book.date })
 
-  const seriesMoveField = (
+  const editionMoveField = (
     <div className="field">
-      <label>Series</label>
-      <div className="move-series-row">
+      <label>Edition</label>
+      <div className="move-edition-row">
         <input
-          list="series-list"
+          list="edition-list"
           value={moveValue}
           onChange={(e) => setMoveTarget(e.target.value)}
         />
-        <datalist id="series-list">
-          {seriesData?.series?.map((s) => (
-            <option key={s.id} value={s.name} />
+        <datalist id="edition-list">
+          {editionsData?.editions?.map((e) => (
+            <option key={e.id} value={e.name} />
           ))}
         </datalist>
         <button
           className="btn-ghost"
-          disabled={moveSeries.isPending || seriesLoading || moveValue.trim() === currentSeriesName}
-          onClick={() => { const t = moveValue.trim(); if (t) moveSeries.mutate(t) }}
+          disabled={moveEdition.isPending || editionsLoading || moveValue.trim() === currentEditionName}
+          onClick={() => { const t = moveValue.trim(); if (t) moveEdition.mutate(t) }}
         >
           Move
         </button>
       </div>
-      {moveSeries.isError && <p className="book-detail__move-error">Move failed: {moveSeries.error?.message}</p>}
+      {moveEdition.isError && <p className="book-detail__move-error">Move failed: {moveEdition.error?.message}</p>}
     </div>
   )
 
@@ -115,7 +116,7 @@ export default function BookDetail() {
           <button className="btn-ghost" onClick={() => embed.mutate()} disabled={embed.isPending}>Embed into file</button>
         </div>
         {embed.isError && <p className="book-detail__error">Embed failed: {embed.error?.message ?? 'Unknown error'}</p>}
-        <Link to={`/series/${book.seriesId}`} className="back-link">← Back to series</Link>
+        <Link to={`/edition/${book.editionId}`} className="back-link">← Back to edition</Link>
       </div>
 
       {/* RIGHT COLUMN: title, summary + details (or the editor), creators, tags */}
@@ -150,7 +151,7 @@ export default function BookDetail() {
               onSave={(form) => save.mutate(form)}
               onCancel={() => setEditing(false)}
             >
-              {seriesMoveField}
+              {editionMoveField}
             </MetadataEditor>
           </div>
         ) : (

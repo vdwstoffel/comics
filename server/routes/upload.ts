@@ -6,19 +6,19 @@ import { randomUUID } from 'node:crypto'
 import { listPages } from '../lib/cbz.js'
 import { isCbr, convertCbrToCbz } from '../lib/cbr.js'
 import { ingestFile } from '../services/indexer.js'
-import { sanitizeSeriesFolder } from '../lib/paths.js'
+import { sanitizeEditionFolder } from '../lib/paths.js'
 import type { App } from '../types.js'
 
 export default async function uploadRoutes(app: App) {
   app.post('/api/upload', async (req, reply) => {
     const parts = req.parts()
-    let seriesName: string | undefined
+    let editionName: string | undefined
     let tmpPath: string | undefined
     let originalName: string | undefined
 
     for await (const part of parts) {
-      if (part.type === 'field' && part.fieldname === 'series') {
-        seriesName = String(part.value)
+      if (part.type === 'field' && part.fieldname === 'edition') {
+        editionName = String(part.value)
       } else if (part.type === 'file' && part.fieldname === 'file') {
         originalName = basename(part.filename)
         const ext = extname(originalName).toLowerCase()
@@ -63,13 +63,13 @@ export default async function uploadRoutes(app: App) {
     // Clean up the original .cbr tmp file now that conversion succeeded
     if (cbrTmpPath) await unlink(cbrTmpPath).catch(() => {})
 
-    const finalSeries = sanitizeSeriesFolder(seriesName || 'Unsorted')
-    const destDir = join(app.config.comicsDir, finalSeries)
+    const finalEdition = sanitizeEditionFolder(editionName || 'Unsorted')
+    const destDir = join(app.config.comicsDir, finalEdition)
     await mkdir(destDir, { recursive: true })
     const destPath = join(destDir, originalName)
     await rename(cbzTmpPath, destPath)
 
-    const book = await ingestFile({ db: app.db, config: app.config }, destPath, finalSeries)
+    const book = await ingestFile({ db: app.db, config: app.config }, destPath, finalEdition)
     return { book }
   })
 }

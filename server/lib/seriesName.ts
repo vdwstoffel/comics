@@ -1,8 +1,8 @@
 /**
- * Derive the franchise a series belongs to by stripping edition markers from its name,
+ * Derive the series an edition belongs to by stripping edition markers from its name,
  * so "Amazing Spider-Man (2025)" and "Amazing Spider-Man by Nick Spencer Omnibus" share
- * a group. It is a heuristic over titles - stored on the series so a wrong guess can be
- * corrected by hand rather than being recomputed forever.
+ * a series. It is a heuristic over titles - stored on the edition so a wrong guess can
+ * be corrected by hand rather than being recomputed forever.
  */
 
 const STRIP: RegExp[] = [
@@ -14,14 +14,14 @@ const STRIP: RegExp[] = [
   /\s+(omnibus|tpb)e?s?\s*$/i,                         // "Omnibus", "TPB"
 ]
 
-export function deriveGroupName(name: string): string {
+export function deriveSeriesName(name: string): string {
   const original = name.trim().replace(/\s+/g, ' ')
-  let group = original
+  let series = original
 
   for (const pattern of STRIP) {
-    group = group.replace(pattern, '')
+    series = series.replace(pattern, '')
   }
 
-  // Stripping everything away would collapse unrelated series into one empty group.
-  return group.trim() || original || name
+  // Stripping everything away would collapse unrelated editions into one empty series.
+  return series.trim() || original || name
 }

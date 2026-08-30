@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { deriveGroupName } from '../server/lib/seriesGroup.js'
+import { deriveSeriesName } from '../server/lib/seriesName.js'
 
 // The first five are the real series names in the library.
 const CASES: [name: string, group: string][] = [
@@ -24,7 +24,7 @@ const CASES: [name: string, group: string][] = [
 ]
 
 test.each(CASES)('%s -> %s', (name, group) => {
-  expect(deriveGroupName(name)).toBe(group)
+  expect(deriveSeriesName(name)).toBe(group)
 })
 
 // Stripping must never leave nothing behind, or every such series would collapse
@@ -32,13 +32,13 @@ test.each(CASES)('%s -> %s', (name, group) => {
 test.each([['Omnibus'], ['(2025)'], ['Vol. 1'], ['by Nick Spencer'], ['   ']])(
   'falls back to the original name for %s',
   (name) => {
-    expect(deriveGroupName(name)).toBe(name.trim() || name)
+    expect(deriveSeriesName(name)).toBe(name.trim() || name)
   },
 )
 
 test('is stable when applied twice', () => {
   for (const [name] of CASES) {
-    const once = deriveGroupName(name)
-    expect(deriveGroupName(once)).toBe(once)
+    const once = deriveSeriesName(name)
+    expect(deriveSeriesName(once)).toBe(once)
   }
 })

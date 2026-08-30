@@ -1,25 +1,25 @@
 import { test, expect } from 'vitest'
 import { openDb } from '../server/db.js'
-import { upsertSeries, updateSeries, listSeries, listReadStates } from '../server/models/series.js'
-import { listSeriesGroups } from '../server/models/seriesGroups.js'
-import { insertBook, listBooksBySeries } from '../server/models/books.js'
+import { upsertEdition, updateEdition, listEditions, listReadStates } from '../server/models/editions.js'
+import { listSeries } from '../server/models/series.js'
+import { insertBook, listBooksByEdition } from '../server/models/books.js'
 import { setProgress } from '../server/models/progress.js'
 import type { Db } from '../server/types.js'
 
 type Kind = 'unread' | 'reading' | 'read'
 
 function seed(db: Db, name: string, kinds: Kind[], publisher?: string) {
-  const series = upsertSeries(db, { name, folder: name })
-  if (publisher) updateSeries(db, series.id, { publisher })
+  const edition = upsertEdition(db, { name, folder: name })
+  if (publisher) updateEdition(db, edition.id, { publisher })
   kinds.forEach((kind, i) => {
     const book = insertBook(db, {
-      seriesId: series.id, filePath: `${name}/${i}.cbz`, pageCount: 10, fileSize: 100,
+      editionId: edition.id, filePath: `${name}/${i}.cbz`, pageCount: 10, fileSize: 100,
     })!
     if (kind === 'reading') setProgress(db, book.id, { lastPage: 4 })
     if (kind === 'read') setProgress(db, book.id, { lastPage: 9, completed: true })
     // 'unread' leaves no read_progress row at all, as a freshly scanned book has none
   })
-  return series
+  return edition
 }
 
 function library(db: Db) {
@@ -35,21 +35,21 @@ const names = (rows: { name: string }[]) => rows.map((r) => r.name).sort()
 test('unread lists every series with an issue still to read', () => {
   const db = openDb(':memory:')
   library(db)
-  expect(names(listSeries(db, { readState: 'unread' }))).toEqual(['All Unread', 'Part Read'])
+  expect(names(listEditions(db, { readState: 'unread' }))).toEqual(['All Unread', 'Part Read'])
   db.close()
 })
 
 test('reading lists series with an issue in progress', () => {
   const db = openDb(':memory:')
   library(db)
-  expect(names(listSeries(db, { readState: 'reading' }))).toEqual(['In Progress'])
+  expect(names(listEditions(db, { readState: 'reading' }))).toEqual(['In Progress'])
   db.close()
 })
 
 test('read lists every series holding a completed issue', () => {
   const db = openDb(':memory:')
   library(db)
-  expect(names(listSeries(db, { readState: 'read' })))
+  expect(names(listEditions(db, { readState: 'read' })))
     .toEqual(['Finished', 'In Progress', 'Part Read'])
   db.close()
 })
@@ -58,8 +58,8 @@ test('read lists every series holding a completed issue', () => {
 test('a part-read series appears under unread and under read', () => {
   const db = openDb(':memory:')
   library(db)
-  expect(names(listSeries(db, { readState: 'unread' }))).toContain('Part Read')
-  expect(names(listSeries(db, { readState: 'read' }))).toContain('Part Read')
+  expect(names(listEditions(db, { readState: 'unread' }))).toContain('Part Read')
+  expect(names(listEditions(db, { readState: 'read' }))).toContain('Part Read')
   db.close()
 })
 
@@ -67,17 +67,17 @@ test('the issue count of a filtered series counts only matching issues', () => {
   const db = openDb(':memory:')
   library(db)
   const under = (state: 'unread' | 'reading' | 'read') =>
-    listSeries(db, { readState: state }).find((x) => x.name === 'Part Read')?.bookCount
+    listEditions(db, { readState: state }).find((x) => x.name === 'Part Read')?.bookCount
   expect(under('unread')).toBe(1)
   expect(under('read')).toBe(2)
-  expect(listSeries(db).find((x) => x.name === 'Part Read')?.bookCount).toBe(3)
+  expect(listEditions(db).find((x) => x.name === 'Part Read')?.bookCount).toBe(3)
   db.close()
 })
 
 test('a book with no progress row counts as unread', () => {
   const db = openDb(':memory:')
   seed(db, 'Never Opened', ['unread'])
-  expect(names(listSeries(db, { readState: 'unread' }))).toEqual(['Never Opened'])
+  expect(names(listEditions(db, { readState: 'unread' }))).toEqual(['Never Opened'])
   db.close()
 })
 
@@ -85,24 +85,24 @@ test('a series with no books matches no read state', () => {
   const db = openDb(':memory:')
   library(db)
   for (const state of ['unread', 'reading', 'read'] as const) {
-    expect(names(listSeries(db, { readState: state }))).not.toContain('Empty')
+    expect(names(listEditions(db, { readState: state }))).not.toContain('Empty')
   }
-  expect(names(listSeries(db))).toContain('Empty')
+  expect(names(listEditions(db))).toContain('Empty')
   db.close()
 })
 
 test('no read state given leaves the list unfiltered', () => {
   const db = openDb(':memory:')
   library(db)
-  expect(listSeries(db)).toHaveLength(5)
+  expect(listEditions(db)).toHaveLength(5)
   db.close()
 })
 
 test('read state composes with the publisher filter', () => {
   const db = openDb(':memory:')
   library(db)
-  expect(names(listSeries(db, { readState: 'unread', publisher: 'Marvel' }))).toEqual(['Part Read'])
-  expect(names(listSeries(db, { readState: 'unread', publisher: 'DC Comics' }))).toEqual(['All Unread'])
+  expect(names(listEditions(db, { readState: 'unread', publisher: 'Marvel' }))).toEqual(['Part Read'])
+  expect(names(listEditions(db, { readState: 'unread', publisher: 'DC Comics' }))).toEqual(['All Unread'])
   db.close()
 })
 
@@ -118,13 +118,13 @@ test('listReadStates counts issues, not series', () => {
   db.close()
 })
 
-test('listBooksBySeries can return only the issues in one state', () => {
+test('listBooksByEdition can return only the issues in one state', () => {
   const db = openDb(':memory:')
-  const series = seed(db, 'Mixed', ['unread', 'reading', 'read', 'read'])
-  expect(listBooksBySeries(db, series.id)).toHaveLength(4)
-  expect(listBooksBySeries(db, series.id, 'unread')).toHaveLength(1)
-  expect(listBooksBySeries(db, series.id, 'reading')).toHaveLength(1)
-  expect(listBooksBySeries(db, series.id, 'read')).toHaveLength(2)
+  const edition = seed(db, 'Mixed', ['unread', 'reading', 'read', 'read'])
+  expect(listBooksByEdition(db, edition.id)).toHaveLength(4)
+  expect(listBooksByEdition(db, edition.id, 'unread')).toHaveLength(1)
+  expect(listBooksByEdition(db, edition.id, 'reading')).toHaveLength(1)
+  expect(listBooksByEdition(db, edition.id, 'read')).toHaveLength(2)
   db.close()
 })
 
@@ -132,13 +132,13 @@ test('the grid groups whatever survives the read-state filter', () => {
   const db = openDb(':memory:')
   const a = seed(db, 'Hawkeye (2012)', ['unread'])
   const b = seed(db, 'Hawkeye Omnibus', ['read'])
-  updateSeries(db, a.id, { groupName: 'Hawkeye' })
-  updateSeries(db, b.id, { groupName: 'Hawkeye' })
+  updateEdition(db, a.id, { seriesName: 'Hawkeye' })
+  updateEdition(db, b.id, { seriesName: 'Hawkeye' })
 
-  const unread = listSeriesGroups(db, { readState: 'unread' })
+  const unread = listSeries(db, { readState: 'unread' })
   expect(unread).toHaveLength(1)
-  expect(unread[0].series.map((s) => s.name)).toEqual(['Hawkeye (2012)'])
+  expect(unread[0].editions.map((s) => s.name)).toEqual(['Hawkeye (2012)'])
 
-  expect(listSeriesGroups(db)[0].series).toHaveLength(2)
+  expect(listSeries(db)[0].editions).toHaveLength(2)
   db.close()
 })

@@ -139,9 +139,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import comicvineRoutes from '../server/routes/comicvine.js'
 import { openDb } from '../server/db.js'
-import { upsertSeries } from '../server/models/series.js'
+import { upsertEdition } from '../server/models/editions.js'
 import { insertBook, getBook } from '../server/models/books.js'
-import { getSeries } from '../server/models/series.js'
+import { getEdition } from '../server/models/editions.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import type { Config } from '../server/config.js'
 
@@ -187,8 +187,8 @@ test('apply route stores publisher on book and series when getVolume returns one
 
   await app.register(comicvineRoutes)
 
-  const series = upsertSeries(db, { name: 'Batman', folder: 'Batman' })
-  const book = insertBook(db, { seriesId: series.id, filePath: 'Batman/001.cbz', pageCount: 1, fileSize: 100 })!
+  const edition = upsertEdition(db, { name: 'Batman', folder: 'Batman' })
+  const book = insertBook(db, { editionId: edition.id, filePath: 'Batman/001.cbz', pageCount: 1, fileSize: 100 })!
 
   try {
     const res = await app.inject({
@@ -199,7 +199,7 @@ test('apply route stores publisher on book and series when getVolume returns one
     expect(res.statusCode).toBe(200)
     const updatedBook = getBook(db, book.id)!
     expect(updatedBook.publisher).toBe('DC')
-    const updatedSeries = getSeries(db, series.id)!
+    const updatedSeries = getEdition(db, edition.id)!
     expect(updatedSeries.publisher).toBe('DC')
   } finally {
     globalThis.fetch = origFetch

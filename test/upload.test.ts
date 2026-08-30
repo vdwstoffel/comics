@@ -26,12 +26,12 @@ beforeEach(async () => {
 })
 afterEach(async () => { await app.close(); rmSync(dir, { recursive: true, force: true }) })
 
-test('uploading a cbz ingests it into the given series', async () => {
+test('uploading a cbz ingests it into the given edition', async () => {
   const srcDir = mkdtempSync(join(tmpdir(), 'src-'))
   const cbz = await makeCbz(srcDir, ['p1.png', 'p2.png', 'p3.png'], 'Issue 1.cbz')
 
   const form = new FormData()
-  form.set('series', 'Spider-Man')
+  form.set('edition', 'Spider-Man')
   form.set('file', new Blob([readFileSync(cbz)]), 'Issue 1.cbz')
 
   const res = await app.inject({ method: 'POST', url: '/api/upload', payload: form })
@@ -39,8 +39,8 @@ test('uploading a cbz ingests it into the given series', async () => {
   const { book } = res.json()
   expect(book.pageCount).toBe(3)
 
-  const series = app.db.prepare('SELECT * FROM series').get() as { name: string }
-  expect(series.name).toBe('Spider-Man')
+  const edition = app.db.prepare('SELECT * FROM edition').get() as { name: string }
+  expect(edition.name).toBe('Spider-Man')
   expect(existsSync(join(app.config.comicsDir, 'Spider-Man', 'Issue 1.cbz'))).toBe(true)
   rmSync(srcDir, { recursive: true, force: true })
 })
@@ -52,12 +52,12 @@ test('rejecting a non-cbz upload', async () => {
   expect(res.statusCode).toBe(400)
 })
 
-test('path traversal in series field is neutralised', async () => {
+test('path traversal in the edition field is neutralised', async () => {
   const srcDir = mkdtempSync(join(tmpdir(), 'src-'))
   const cbz = await makeCbz(srcDir, ['p1.png'], 'evil.cbz')
 
   const form = new FormData()
-  form.set('series', '../../evil')
+  form.set('edition', '../../evil')
   form.set('file', new Blob([readFileSync(cbz)]), 'evil.cbz')
 
   const res = await app.inject({ method: 'POST', url: '/api/upload', payload: form })

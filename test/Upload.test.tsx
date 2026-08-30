@@ -3,8 +3,8 @@ import { render, screen } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import Upload from '../src/pages/Upload'
 
-test('Upload page renders a series field and file input', () => {
+test('Upload page renders an edition field and file input', () => {
   render(<MemoryRouter><Upload /></MemoryRouter>)
-  expect(screen.getByPlaceholderText('Series name')).toBeInTheDocument()
+  expect(screen.getByPlaceholderText('Edition name')).toBeInTheDocument()
   expect(screen.getByLabelText(/comic file/i)).toBeInTheDocument()
 })

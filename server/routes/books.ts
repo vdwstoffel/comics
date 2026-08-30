@@ -6,8 +6,8 @@ import { getBookCredits, getBookTags } from '../models/metadata.js'
 import { readPage } from '../lib/cbz.js'
 import { buildComicInfo } from '../lib/comicinfo.js'
 import { embedComicInfo } from '../lib/embed.js'
-import { getSeries } from '../models/series.js'
-import { moveBookToSeries } from '../services/library.js'
+import { getEdition } from '../models/editions.js'
+import { moveBookToEdition } from '../services/library.js'
 import type { App, Book } from '../types.js'
 
 const MIME: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' }
@@ -20,7 +20,7 @@ interface IdParams { id: string }
 interface PageParams { id: string; n: string }
 interface ProgressBody { lastPage?: number; completed?: boolean }
 type MetadataBody = Record<string, unknown>
-interface MoveSeriesBody { name?: string }
+interface MoveEditionBody { name?: string }
 interface ContinueQuery { limit?: string; publisher?: string }
 
 
@@ -78,23 +78,24 @@ export default async function booksRoutes(app: App) {
   app.post<{ Params: IdParams }>('/api/books/:id/embed', async (req, reply) => {
     const book = getBook(app.db, Number(req.params.id))
     if (!book) return reply.code(404).send({ error: 'book not found' })
-    const series = getSeries(app.db, book.seriesId)
+    const edition = getEdition(app.db, book.editionId)
     const xml = buildComicInfo({
-      title: book.title ?? undefined, series: series?.name, number: book.number ?? undefined,
+      // ComicInfo's <Series> tag names the folder the issue ships in - our edition.
+      title: book.title ?? undefined, series: edition?.name, number: book.number ?? undefined,
       writer: book.writer ?? undefined, penciller: book.penciller ?? undefined, summary: book.summary ?? undefined,
-      publisher: series?.publisher ?? undefined, date: book.date ?? undefined,
+      publisher: edition?.publisher ?? undefined, date: book.date ?? undefined,
     })
     await embedComicInfo(absCbz(app, book), xml)
     const updatedBook = updateBook(app.db, book.id, { comicinfoSynced: true })
     return { book: updatedBook, credits: getBookCredits(app.db, book.id), tags: getBookTags(app.db, book.id) }
   })
 
-  app.put<{ Params: IdParams; Body: MoveSeriesBody }>('/api/books/:id/series', async (req, reply) => {
+  app.put<{ Params: IdParams; Body: MoveEditionBody }>('/api/books/:id/edition', async (req, reply) => {
     const name = (req.body?.name ?? '').trim()
     if (!name) return reply.code(400).send({ error: 'name is required' })
     const book = getBook(app.db, Number(req.params.id))
     if (!book) return reply.code(404).send({ error: 'book not found' })
-    const result = await moveBookToSeries({ db: app.db, config: app.config }, book.id, name)
-    return { book: result.book, series: result.series }
+    const result = await moveBookToEdition({ db: app.db, config: app.config }, book.id, name)
+    return { book: result.book, edition: result.edition }
   })
 }

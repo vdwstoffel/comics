@@ -8,7 +8,7 @@ interface MetadataEditorProps {
   book: ApiBook
   onSave: (form: Record<string, string>) => void
   onCancel: () => void
-  /** Extra fields rendered above the metadata fields (e.g. the series move row). */
+  /** Extra fields rendered above the metadata fields (e.g. the edition move row). */
   children?: ReactNode
 }
 

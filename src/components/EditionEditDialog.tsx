@@ -1,19 +1,19 @@
 import { useEffect, useState } from 'react'
 
-interface SeriesEditDialogProps {
+interface EditionEditDialogProps {
   name: string
-  groupName: string | null
+  seriesName: string | null
   saving?: boolean
   error?: string | null
-  onSave: (next: { name: string; groupName: string }) => void
+  onSave: (next: { name: string; seriesName: string }) => void
   onClose: () => void
 }
 
-export default function SeriesEditDialog({
-  name, groupName, saving = false, error = null, onSave, onClose,
-}: SeriesEditDialogProps) {
+export default function EditionEditDialog({
+  name, seriesName, saving = false, error = null, onSave, onClose,
+}: EditionEditDialogProps) {
   const [nameInput, setNameInput] = useState(name)
-  const [groupInput, setGroupInput] = useState(groupName ?? '')
+  const [seriesInput, setSeriesInput] = useState(seriesName ?? '')
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -26,7 +26,7 @@ export default function SeriesEditDialog({
 
   const save = () => {
     if (!canSave) return
-    onSave({ name: trimmedName, groupName: groupInput.trim() })
+    onSave({ name: trimmedName, seriesName: seriesInput.trim() })
   }
 
   const onFieldKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter') save() }
@@ -34,35 +34,33 @@ export default function SeriesEditDialog({
   return (
     <div
       className="modal-backdrop"
-      data-testid="series-edit-backdrop"
+      data-testid="edition-edit-backdrop"
       onClick={onClose}
     >
       {/* Clicks inside the panel must not reach the backdrop's close handler. */}
       <div className="modal-panel" onClick={(e) => e.stopPropagation()}>
-        <h3>Edit series</h3>
+        <h3>Edit edition</h3>
 
         <div className="modal-field">
-          <label htmlFor="series-name">Series name</label>
+          <label htmlFor="edition-name">Edition name</label>
           <input
-            id="series-name"
+            id="edition-name"
             value={nameInput}
             onChange={(e) => setNameInput(e.target.value)}
             onKeyDown={onFieldKeyDown}
             autoFocus
           />
-          <p className="modal-hint">Renaming moves the files on disk to match.</p>
         </div>
 
         <div className="modal-field">
-          <label htmlFor="series-group">Group</label>
+          <label htmlFor="edition-series">Series</label>
           <input
-            id="series-group"
-            value={groupInput}
-            placeholder="No group"
-            onChange={(e) => setGroupInput(e.target.value)}
+            id="edition-series"
+            value={seriesInput}
+            placeholder="No series"
+            onChange={(e) => setSeriesInput(e.target.value)}
             onKeyDown={onFieldKeyDown}
           />
-          <p className="modal-hint">Series sharing a group appear as one tile in the library.</p>
         </div>
 
         {error && <p className="modal-error">{error}</p>}

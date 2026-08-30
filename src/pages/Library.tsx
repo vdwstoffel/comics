@@ -19,10 +19,10 @@ export default function Library() {
     queryFn: api.getPublishers,
   })
 
-  // Always fetch the unfiltered count so we can detect "unknown" series
-  const { data: allSeriesData } = useQuery({
-    queryKey: ['series', null],
-    queryFn: () => api.getSeries(),
+  // Always fetch the unfiltered count so we can detect "unknown" editions
+  const { data: allEditionsData } = useQuery({
+    queryKey: ['editions', null],
+    queryFn: () => api.getEditions(),
   })
 
   const { data: readStateData } = useQuery({
@@ -31,8 +31,8 @@ export default function Library() {
   })
 
   const { data, isLoading, error } = useQuery({
-    queryKey: ['series-groups', selectedPublisher, selectedStatus],
-    queryFn: () => api.getSeriesGroups({
+    queryKey: ['series', selectedPublisher, selectedStatus],
+    queryFn: () => api.getSeries({
       publisher: selectedPublisher ?? undefined,
       readState: selectedStatus ?? undefined,
     }),
@@ -57,10 +57,10 @@ export default function Library() {
     count: p.count,
   }))
 
-  // Show "Unknown" item if any series lack a publisher
+  // Show "Unknown" item if any editions lack a publisher
   const totalWithPublisher = publishers.reduce((sum, p) => sum + p.count, 0)
-  const totalSeries = allSeriesData?.series.length ?? 0
-  const unknownCount = totalSeries - totalWithPublisher
+  const totalEditions = allEditionsData?.editions.length ?? 0
+  const unknownCount = totalEditions - totalWithPublisher
 
   if (unknownCount > 0) {
     sidebarItems.push({ key: '__unknown__', label: 'Unknown', count: unknownCount })
@@ -93,22 +93,22 @@ export default function Library() {
         {error && <p>Failed to load library.</p>}
         {data && (
           <div className="tile-grid">
-            {(data.groups ?? []).map((group) => {
-              // A franchise with a single edition would open onto a list of one, so it
-              // links straight through to that series instead.
-              const only = group.series.length === 1 ? group.series[0] : undefined
-              const cover = group.series[0]
-              const issues = `${group.bookCount} issue${group.bookCount === 1 ? '' : 's'}`
+            {(data.series ?? []).map((series) => {
+              // A series with a single edition would open onto a list of one, so it
+              // links straight through to that edition instead.
+              const only = series.editions.length === 1 ? series.editions[0] : undefined
+              const cover = series.editions[0]
+              const issues = `${series.bookCount} issue${series.bookCount === 1 ? '' : 's'}`
               return (
                 <CoverTile
-                  key={group.name}
+                  key={series.name}
                   to={withStatus(
-                    only ? `/series/${only.id}` : `/group/${encodeURIComponent(group.name)}`,
+                    only ? `/edition/${only.id}` : `/series/${encodeURIComponent(series.name)}`,
                     selectedStatus,
                   )}
-                  img={`/api/series/${cover.id}/thumbnail`}
-                  title={only ? only.name : group.name}
-                  subtitle={only ? issues : `${group.series.length} editions · ${issues}`}
+                  img={`/api/editions/${cover.id}/thumbnail`}
+                  title={only ? only.name : series.name}
+                  subtitle={only ? issues : `${series.editions.length} editions · ${issues}`}
                 />
               )
             })}

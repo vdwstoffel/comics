@@ -1,6 +1,6 @@
 import { createComicVine } from '../lib/comicvine.js'
 import { getBook, updateBook } from '../models/books.js'
-import { getSeries, updateSeries } from '../models/series.js'
+import { getEdition, updateEdition } from '../models/editions.js'
 import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags } from '../models/metadata.js'
 import type { App } from '../types.js'
 
@@ -46,11 +46,11 @@ export default async function comicvineRoutes(app: App) {
         ...meta.storyArcs.map((value) => ({ kind: 'story_arc', value })),
       ]
       replaceBookTags(app.db, book.id, tags)
-      // Propagate publisher to series if series doesn't have one yet
-      if (publisher && book.seriesId) {
-        const series = getSeries(app.db, book.seriesId)
-        if (series && !series.publisher) {
-          updateSeries(app.db, book.seriesId, { publisher })
+      // Propagate publisher to the edition if the edition doesn't have one yet
+      if (publisher && book.editionId) {
+        const edition = getEdition(app.db, book.editionId)
+        if (edition && !edition.publisher) {
+          updateEdition(app.db, book.editionId, { publisher })
         }
       }
       return b
@@ -61,14 +61,14 @@ export default async function comicvineRoutes(app: App) {
     return { book: updatedBook, credits, tags }
   })
 
-  app.post<{ Params: IdParams; Body: { volumeId?: number | string } }>('/api/series/:id/comicvine', async (req, reply) => {
-    const series = getSeries(app.db, Number(req.params.id))
-    if (!series) return reply.code(404).send({ error: 'series not found' })
+  app.post<{ Params: IdParams; Body: { volumeId?: number | string } }>('/api/editions/:id/comicvine', async (req, reply) => {
+    const edition = getEdition(app.db, Number(req.params.id))
+    if (!edition) return reply.code(404).send({ error: 'edition not found' })
     const { volumeId } = req.body || {}
     if (!volumeId) return reply.code(400).send({ error: 'missing volumeId' })
     const meta = await cv.getVolume(volumeId)
-    return { series: updateSeries(app.db, series.id, {
-      name: meta.name || series.name, publisher: meta.publisher ?? null, summary: meta.summary ?? null, comicvineId: Number(volumeId),
+    return { edition: updateEdition(app.db, edition.id, {
+      name: meta.name || edition.name, publisher: meta.publisher ?? null, summary: meta.summary ?? null, comicvineId: Number(volumeId),
     }) }
   })
 }

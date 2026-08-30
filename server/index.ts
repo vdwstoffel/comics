@@ -6,13 +6,14 @@ import { existsSync } from 'node:fs'
 import { loadConfig } from './config.js'
 import { openDb } from './db.js'
 import scanRoutes from './routes/scan.js'
+import editionRoutes from './routes/editions.js'
 import seriesRoutes from './routes/series.js'
 import booksRoutes from './routes/books.js'
 import uploadRoutes from './routes/upload.js'
 import comicvineRoutes from './routes/comicvine.js'
 import comicIndexRoutes from './routes/comicIndex.js'
 import { createScrapeRunner } from './services/comicIndexScraper.js'
-import { backfillSeriesGroups } from './models/seriesGroups.js'
+import { backfillSeriesNames } from './models/series.js'
 import type { App } from './types.js'
 
 export function registerSpa(app: App, _distDir: string): void {
@@ -31,9 +32,9 @@ export async function buildServer(): Promise<App> {
   app.decorate('db', db)
   app.addHook('onClose', async () => db.close())
 
-  // One-off for series that predate group_name; only fills rows that have none.
-  const grouped = backfillSeriesGroups(db)
-  if (grouped) console.log(`assigned groups to ${grouped} series`)
+  // One-off for editions that predate series_name; only fills rows that have none.
+  const named = backfillSeriesNames(db)
+  if (named) console.log(`assigned a series to ${named} editions`)
 
   app.decorate('scraper', createScrapeRunner({ db, config }))
 
@@ -41,6 +42,7 @@ export async function buildServer(): Promise<App> {
 
   await app.register(multipart, { limits: { fileSize: config.maxUploadBytes } })
   await app.register(scanRoutes)
+  await app.register(editionRoutes)
   await app.register(seriesRoutes)
   await app.register(booksRoutes)
   await app.register(uploadRoutes)
