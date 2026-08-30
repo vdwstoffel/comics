@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ScrapeStatus } from '../api'
@@ -12,11 +13,20 @@ function fullYear(value: string): number | undefined {
 }
 
 export default function SearchComics() {
-  const [input, setInput] = useState('')
-  const [query, setQuery] = useState('')
+  // Arriving from an edition carries its series and first year, so the page opens on
+  // results rather than a blank box. Both the raw and the committed values are seeded,
+  // which is what saves the first search from waiting out a debounce tick.
+  const [urlParams] = useSearchParams()
+  const seededQuery = urlParams.get('q')?.trim() ?? ''
+  const seededYearFrom = urlParams.get('yearFrom')?.trim() ?? ''
+
+  const [input, setInput] = useState(seededQuery)
+  const [query, setQuery] = useState(seededQuery)
   const [category, setCategory] = useState<string | null>(null)
-  const [yearInput, setYearInput] = useState({ from: '', to: '' })
-  const [years, setYears] = useState<{ from?: number; to?: number }>({})
+  const [yearInput, setYearInput] = useState({ from: seededYearFrom, to: '' })
+  const [years, setYears] = useState<{ from?: number; to?: number }>({
+    from: fullYear(seededYearFrom),
+  })
 
   // Debounce so a fetch fires per pause, not per keystroke.
   useEffect(() => {

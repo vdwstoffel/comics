@@ -143,6 +143,18 @@ img {
   margin-bottom: 4px;
 }
 
+.edition-header__find {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  text-decoration: none;
+  border-bottom: 1px solid transparent;
+}
+
+.edition-header__find:hover {
+  color: var(--text);
+  border-bottom-color: var(--muted);
+}
+
 .edition-header__count {
   font-size: 0.875rem;
   color: var(--muted);

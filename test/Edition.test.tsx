@@ -14,15 +14,19 @@ const EDITION = {
 
 let patched: { url: string; body: Record<string, unknown> }[]
 
-function mockFetch(edition: Record<string, unknown> = EDITION) {
+function mockFetch(edition: Record<string, unknown> = EDITION, books: unknown[] = []) {
   patched = []
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
     if (init?.method === 'PATCH') {
       patched.push({ url: String(url), body: JSON.parse(String(init.body)) })
       return { ok: true, json: async () => ({ edition }) }
     }
-    return { ok: true, json: async () => ({ edition, books: [] }) }
+    return { ok: true, json: async () => ({ edition, books }) }
   }) as unknown as typeof fetch
+}
+
+function issue(number: string, year: number | null) {
+  return { id: Number(number), number, title: null, pageCount: 20, comicinfoSynced: false, year }
 }
 
 beforeEach(() => { mockFetch() })
@@ -141,4 +145,25 @@ test('an unfiltered edition shows no filter notice', async () => {
   renderPage()
   await screen.findByRole('heading', { name: 'Amazing Spider-Man (2025)' })
   expect(screen.queryByText(/showing .* issues/i)).not.toBeInTheDocument()
+})
+
+test('the search link carries the series name and the first year in the edition', async () => {
+  mockFetch(EDITION, [issue('2', 2025), issue('1', 2023), issue('3', 2024)])
+  renderPage()
+  const link = await screen.findByRole('link', { name: /find more/i })
+  expect(link).toHaveAttribute('href', '/search?q=Amazing+Spider-Man&yearFrom=2023')
+})
+
+test('the search link falls back to the edition name when it has no series', async () => {
+  mockFetch({ ...EDITION, seriesName: null }, [issue('1', 2025)])
+  renderPage()
+  const link = await screen.findByRole('link', { name: /find more/i })
+  expect(link).toHaveAttribute('href', '/search?q=Amazing+Spider-Man+%282025%29&yearFrom=2025')
+})
+
+test('the search link omits the year when no issue has one', async () => {
+  mockFetch(EDITION, [issue('1', null)])
+  renderPage()
+  const link = await screen.findByRole('link', { name: /find more/i })
+  expect(link).toHaveAttribute('href', '/search?q=Amazing+Spider-Man')
 })

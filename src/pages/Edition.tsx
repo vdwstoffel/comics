@@ -53,6 +53,15 @@ export default function Edition() {
   const bookCount = data.books.length
   const bookLabel = `${bookCount} book${bookCount === 1 ? '' : 's'}`
 
+  // Search the index for the series this edition belongs to, from its first issue
+  // onwards. An edition whose series was cleared by hand searches for its own name.
+  const findParams = new URLSearchParams({
+    q: data.edition.seriesName?.trim() || data.edition.name,
+  })
+  const years = data.books.map((b) => b.year).filter((y): y is number => typeof y === 'number')
+  if (years.length) findParams.set('yearFrom', String(Math.min(...years)))
+  const searchHref = `/search?${findParams}`
+
   return (
     <div>
       <Link to="/" className="back-link">← Library</Link>
@@ -63,6 +72,7 @@ export default function Edition() {
             title="Edit edition" aria-label="Edit edition">
             ✏
           </button>
+          <Link to={searchHref} className="edition-header__find">Find more</Link>
         </div>
         <p className="edition-header__count">{bookLabel}</p>
         {status && (

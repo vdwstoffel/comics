@@ -42,11 +42,11 @@ beforeEach(() => {
 })
 afterEach(() => { cleanup() })
 
-function renderPage() {
+function renderPage(path = '/search') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const ui: ReactNode = (
     <QueryClientProvider client={qc}>
-      <MemoryRouter><SearchComics /></MemoryRouter>
+      <MemoryRouter initialEntries={[path]}><SearchComics /></MemoryRouter>
     </QueryClientProvider>
   )
   return render(ui)
@@ -290,4 +290,24 @@ test('results refresh once a run finishes', async () => {
     () => expect(calls.filter((c) => c.includes('/search')).length).toBeGreaterThan(before),
     { timeout: 4000 },
   )
+})
+
+test('a q in the url fills the box and searches without waiting for a keystroke', async () => {
+  renderPage('/search?q=Amazing%20Spider-Man')
+  expect(screen.getByRole('searchbox')).toHaveValue('Amazing Spider-Man')
+  await waitFor(() =>
+    expect(calls.some((c) => c.includes('q=Amazing+Spider-Man'))).toBe(true))
+})
+
+test('a yearFrom in the url fills the bound and is sent with the search', async () => {
+  renderPage('/search?q=Batman&yearFrom=2011')
+  expect(screen.getByLabelText(/year from/i)).toHaveValue(2011)
+  await waitFor(() =>
+    expect(calls.some((c) => c.includes('yearFrom=2011'))).toBe(true))
+})
+
+test('arriving with no params leaves the page empty and prompting', async () => {
+  renderPage()
+  expect(screen.getByRole('searchbox')).toHaveValue('')
+  expect(screen.getByText(/type to search the index/i)).toBeInTheDocument()
 })
