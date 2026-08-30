@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import Reader from '../src/pages/Reader'
+import { stubFullscreen } from './helpers/fullscreen'
 
 beforeEach(() => {
   globalThis.fetch = vi.fn(async (url: string, opts?: RequestInit) => {
@@ -46,4 +47,75 @@ test('scrubber renders with correct max and navigates on change', async () => {
 
   expect(await findByText('3 / 3')).toBeInTheDocument()
   await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledWith('/api/books/5/progress', expect.objectContaining({ method: 'PUT' })))
+})
+
+test('enters fullscreen when the reader opens', async () => {
+  const fs = stubFullscreen()
+  renderReader()
+  await screen.findByText('1 / 3')
+  await waitFor(() => expect(fs.requestFullscreen).toHaveBeenCalled())
+  fs.restore()
+})
+
+test('the fullscreen button leaves fullscreen once in it', async () => {
+  const fs = stubFullscreen()
+  const { container } = renderReader()
+  await screen.findByText('1 / 3')
+
+  const button = await within(container).findByRole('button', { name: 'Exit fullscreen' })
+  fireEvent.click(button)
+
+  await waitFor(() => expect(fs.exitFullscreen).toHaveBeenCalled())
+  expect(await within(container).findByRole('button', { name: 'Enter fullscreen' })).toBeInTheDocument()
+  fs.restore()
+})
+
+test('f toggles fullscreen', async () => {
+  const fs = stubFullscreen()
+  const { container } = renderReader()
+  await screen.findByText('1 / 3')
+
+  fireEvent.keyDown(window, { key: 'f' })
+  await waitFor(() => expect(fs.exitFullscreen).toHaveBeenCalled())
+
+  fs.requestFullscreen.mockClear()
+  fireEvent.keyDown(window, { key: 'f' })
+  await waitFor(() => expect(fs.requestFullscreen).toHaveBeenCalled())
+  expect(await within(container).findByRole('button', { name: 'Exit fullscreen' })).toBeInTheDocument()
+  fs.restore()
+})
+
+test('the button follows the browser leaving fullscreen on Escape', async () => {
+  const fs = stubFullscreen()
+  const { container } = renderReader()
+  await screen.findByText('1 / 3')
+  await within(container).findByRole('button', { name: 'Exit fullscreen' })
+
+  fs.escape()
+
+  expect(await within(container).findByRole('button', { name: 'Enter fullscreen' })).toBeInTheDocument()
+  fs.restore()
+})
+
+test('leaves fullscreen when the reader closes', async () => {
+  const fs = stubFullscreen()
+  const { unmount } = renderReader()
+  await screen.findByText('1 / 3')
+  fs.exitFullscreen.mockClear()
+
+  unmount()
+
+  await waitFor(() => expect(fs.exitFullscreen).toHaveBeenCalled())
+  fs.restore()
+})
+
+test('still reads normally when the browser refuses fullscreen', async () => {
+  const fs = stubFullscreen({ refuse: true })
+  const { container } = renderReader()
+
+  expect(await screen.findByText('1 / 3')).toBeInTheDocument()
+  fireEvent.keyDown(window, { key: 'ArrowRight' })
+  expect(await screen.findByText('2 / 3')).toBeInTheDocument()
+  expect(await within(container).findByRole('button', { name: 'Enter fullscreen' })).toBeInTheDocument()
+  fs.restore()
 })

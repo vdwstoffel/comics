@@ -3,6 +3,7 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import BookDetail from '../src/pages/BookDetail'
+import { stubFullscreen } from './helpers/fullscreen'
 
 const book = {
   id: 5,
@@ -95,4 +96,14 @@ test('there is no manual embed button; saving handles it', async () => {
   renderAt()
   await screen.findByText(/Earths Mightiest Heroes/)
   expect(screen.queryByRole('button', { name: /embed/i })).not.toBeInTheDocument()
+})
+
+test('Read asks for fullscreen as part of the click that opens the reader', async () => {
+  const fs = stubFullscreen()
+  renderAt()
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Read' }))
+
+  await waitFor(() => expect(fs.requestFullscreen).toHaveBeenCalled())
+  fs.restore()
 })

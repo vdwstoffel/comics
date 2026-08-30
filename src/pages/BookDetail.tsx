@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
+import { enterFullscreen } from '../lib/useFullscreen'
 import MetadataEditor from '../components/MetadataEditor'
 import ComicVineMatchDialog from '../components/ComicVineMatchDialog'
 
@@ -107,7 +108,7 @@ export default function BookDetail() {
           <img src={`/api/books/${id}/thumbnail`} alt="" className="book-detail__cover" />
         </div>
         <div className="btn-row book-detail__actions">
-          <Link to={`/read/${id}`}><button className="btn">Read</button></Link>
+          <Link to={`/read/${id}`} onClick={enterFullscreen}><button className="btn">Read</button></Link>
           <button className="btn-ghost" onClick={() => setDialog(true)}>Fetch metadata</button>
         </div>
         <Link to={`/edition/${book.editionId}`} className="back-link">← Back to edition</Link>

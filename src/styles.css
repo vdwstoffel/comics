@@ -834,6 +834,22 @@ textarea.input:hover:not(:focus) {
   flex-shrink: 0;
 }
 
+.reader-fullscreen {
+  background: none;
+  border: none;
+  padding: 0 2px;
+  color: rgba(255, 255, 255, 0.35);
+  font-size: 1rem;
+  line-height: 1;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.15s;
+}
+
+.reader-fullscreen:hover {
+  color: #fff;
+}
+
 /* ── Range scrubber ── */
 .reader-scrubber {
   flex: 1;

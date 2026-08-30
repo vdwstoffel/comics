@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
+import { useFullscreen } from '../lib/useFullscreen'
 
 export default function Reader() {
   const { id } = useParams()
@@ -9,6 +10,13 @@ export default function Reader() {
   const [page, setPage] = useState<number | null>(null)
   const [scrubbing, setScrubbing] = useState<number | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const { isFullscreen, enter, exit, toggle } = useFullscreen()
+
+  // Reading takes the whole screen, and gives it back on the way out.
+  useEffect(() => {
+    enter()
+    return exit
+  }, [enter, exit])
 
   // Resume at last-read page once the book loads.
   useEffect(() => {
@@ -30,10 +38,11 @@ export default function Reader() {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') setPage((p) => Math.min((p ?? 0) + 1, data.book.pageCount - 1))
       if (e.key === 'ArrowLeft') setPage((p) => Math.max((p ?? 0) - 1, 0))
+      if (e.key === 'f') toggle()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [data])
+  }, [data, toggle])
 
   if (!data || page === null) return <p>Loading…</p>
   const total = data.book.pageCount
@@ -66,6 +75,12 @@ export default function Reader() {
           }}
         />
         <span className="reader-counter">{displayPage + 1} / {total}</span>
+        <button
+          className="reader-fullscreen"
+          onClick={toggle}
+          aria-label={isFullscreen ? 'Exit fullscreen' : 'Enter fullscreen'}
+          title={isFullscreen ? 'Exit fullscreen (f)' : 'Enter fullscreen (f)'}
+        >{isFullscreen ? '⤡' : '⤢'}</button>
       </div>
     </div>
   )
