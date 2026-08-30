@@ -260,3 +260,28 @@ test('applying an issue embeds its metadata, credits and tags into the file', as
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+// The grid of candidates needs art big enough to read; thumb_url is 104x160, while
+// small_url is 418x640. Both are mapped so a caller can pick the size it wants.
+test('search maps the small image as the cover, keeping the thumbnail', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([
+      ['/search/', { results: [{ id: 42, name: 'Batman', issue_number: '1',
+        image: { thumb_url: 'scale_avatar/t.jpg', small_url: 'scale_small/s.jpg' } }] }],
+    ]),
+  })
+  const [result] = await cv.search('batman', 'issue')
+  expect(result).toMatchObject({ cover: 'scale_small/s.jpg', thumbnail: 'scale_avatar/t.jpg' })
+})
+
+test('a result with no small image falls back to the thumbnail for its cover', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([
+      ['/search/', { results: [{ id: 42, name: 'Batman', image: { thumb_url: 't.jpg' } }] }],
+    ]),
+  })
+  const [result] = await cv.search('batman', 'issue')
+  expect(result.cover).toBe('t.jpg')
+})

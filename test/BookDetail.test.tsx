@@ -16,12 +16,16 @@ const book = {
   penciller: 'Steve Epting',
   date: '2020-08',
   summary: 'Earths Mightiest Heroes expand their sphere of influence.',
+  filePath: 'Vol 3/Avengers 001 (2020) (Digital) (Zone-Empire).cbz',
 }
+
+const edition = { id: 1, name: 'Vol 3', seriesName: 'Avengers' }
 
 beforeEach(() => {
   globalThis.fetch = vi.fn(async (url: string, opts?: RequestInit) => {
     if (url === '/api/books/5' && !opts) return { ok: true, json: async () => ({ book, progress: { lastPage: 0, completed: false } }) }
     if (url === '/api/series') return { ok: true, json: async () => ({ series: [{ id: 1, name: 'Avengers' }] }) }
+    if (url === '/api/editions') return { ok: true, json: async () => ({ editions: [edition] }) }
     if (url.includes('/comicvine/search')) return { ok: true, json: async () => ({ results: [{ id: 99, name: 'Batman', issueNumber: '1', year: '2011' }] }) }
     if (url === '/api/books/5/comicvine') return { ok: true, json: async () => ({ book: { ...book, title: 'Year One' } }) }
     return { ok: true, json: async () => ({}) }
@@ -106,4 +110,12 @@ test('Read asks for fullscreen as part of the click that opens the reader', asyn
 
   await waitFor(() => expect(fs.requestFullscreen).toHaveBeenCalled())
   fs.restore()
+})
+
+// The issue title makes a poor Comic Vine query - its search matches volumes - so the
+// dialog opens on the series and issue number instead.
+test('the Comic Vine dialog opens on the series and number, not the issue title', async () => {
+  renderAt()
+  fireEvent.click(await screen.findByText('Fetch metadata'))
+  expect(await screen.findByDisplayValue('Avengers #1')).toBeInTheDocument()
 })

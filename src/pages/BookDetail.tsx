@@ -6,6 +6,7 @@ import { api } from '../api'
 import { enterFullscreen } from '../lib/useFullscreen'
 import MetadataEditor from '../components/MetadataEditor'
 import ComicVineMatchDialog from '../components/ComicVineMatchDialog'
+import { buildCvQuery } from '../lib/cvQuery'
 
 const CHARACTER_SHOW_THRESHOLD = 40
 
@@ -53,7 +54,8 @@ export default function BookDetail() {
   const teams = tags.filter((t) => t.kind === 'team').map((t) => t.value)
   const storyArcs = tags.filter((t) => t.kind === 'story_arc').map((t) => t.value)
 
-  const currentEditionName = editionsData?.editions?.find((e) => e.id === book.editionId)?.name ?? `Edition #${book.editionId}`
+  const currentEdition = editionsData?.editions?.find((e) => e.id === book.editionId)
+  const currentEditionName = currentEdition?.name ?? `Edition #${book.editionId}`
   const moveValue = moveTarget ?? currentEditionName
   const metadataKey = [book.title, book.number, book.writer, book.penciller, book.date, book.summary].join('|')
 
@@ -228,7 +230,7 @@ export default function BookDetail() {
 
       {dialog && (
         <ComicVineMatchDialog
-          defaultQuery={book.title}
+          defaultQuery={buildCvQuery(book, currentEdition)}
           onPick={(r) => apply.mutate(r.id)}
           onClose={() => setDialog(false)}
         />

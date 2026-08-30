@@ -6,6 +6,7 @@ const TYPE_PREFIX: Record<string, string> = { issue: '4000', volume: '4050' }
 
 interface CvImage {
   thumb_url?: string
+  small_url?: string
   original_url?: string
 }
 interface CvPerson {
@@ -42,6 +43,7 @@ export interface CvSearchResult {
   publisher?: string
   year?: string
   thumbnail?: string
+  cover?: string
 }
 export interface CvCredit {
   name: string
@@ -117,6 +119,8 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         publisher: r.publisher?.name,
         year: year(r.cover_date || r.start_year),
         thumbnail: r.image?.thumb_url,
+        // Big enough to read as art in a grid; thumb_url is a 104x160 avatar.
+        cover: r.image?.small_url || r.image?.thumb_url,
       }))
     },
     async getIssue(id) {

@@ -62,6 +62,7 @@ export interface CvSearchResult {
   publisher?: string
   year?: string
   thumbnail?: string
+  cover?: string
 }
 
 export type ReadState = 'unread' | 'reading' | 'read'

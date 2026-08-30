@@ -686,6 +686,10 @@ textarea.input:hover:not(:focus) {
   padding: 28px;
 }
 
+.modal-panel--wide {
+  width: 720px;
+}
+
 .modal-panel h3 {
   font-size: 1.125rem;
   font-weight: 700;
@@ -724,35 +728,76 @@ textarea.input:hover:not(:focus) {
 .cv-results {
   list-style: none;
   margin: 0 0 16px;
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  overflow: hidden;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 18px 16px;
 }
 
 .cv-results:empty {
   display: none;
 }
 
-.cv-results li + li {
-  border-top: 1px solid var(--border);
-}
-
-.cv-candidate {
+/* Cover-first candidates: two printings of the same issue are told apart by art far
+   faster than by the year in their caption. */
+.cv-tile {
   display: block;
   width: 100%;
   text-align: left;
-  padding: 12px 14px;
+  padding: 0;
   background: transparent;
   border: none;
   color: var(--text);
-  font-size: 0.875rem;
   font-family: inherit;
   cursor: pointer;
-  transition: background 0.12s;
+  border-radius: var(--radius);
+  outline: 2px solid transparent;
+  outline-offset: 2px;
+  transition: transform 0.2s ease;
 }
 
-.cv-candidate:hover {
+.cv-tile:hover {
+  transform: translateY(-4px);
+}
+
+.cv-tile:focus-visible {
+  outline-color: var(--accent);
+}
+
+.cv-tile__cover {
+  display: block;
+  width: 100%;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
   background: var(--elevated);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  transition: box-shadow 0.2s ease;
+}
+
+.cv-tile:hover .cv-tile__cover {
+  box-shadow: var(--shadow-hover), 0 0 0 2px var(--accent);
+}
+
+.cv-tile__name {
+  display: block;
+  margin-top: 10px;
+  font-weight: 600;
+  font-size: 0.8125rem;
+  line-height: 1.35;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.cv-tile__caption {
+  display: block;
+  margin-top: 3px;
+  font-size: 0.75rem;
+  color: var(--muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .cv-status {
