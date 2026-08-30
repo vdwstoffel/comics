@@ -4,10 +4,8 @@ import { getBook, updateBook } from '../models/books.js'
 import { getProgress, setProgress, deriveReadState } from '../models/progress.js'
 import { getBookCredits, getBookTags } from '../models/metadata.js'
 import { readPage } from '../lib/cbz.js'
-import { buildComicInfo } from '../lib/comicinfo.js'
-import { embedComicInfo } from '../lib/embed.js'
-import { getEdition } from '../models/editions.js'
 import { moveBookToEdition } from '../services/library.js'
+import { syncComicInfoFile } from '../services/comicinfoSync.js'
 import type { App, Book } from '../types.js'
 
 const MIME: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' }
@@ -72,22 +70,13 @@ export default async function booksRoutes(app: App) {
     const fields: Record<string, unknown> = {}
     for (const k of EDITABLE) if (k in body) fields[k] = body[k]
     const updatedBook = updateBook(app.db, book.id, fields)
-    return { book: updatedBook, credits: getBookCredits(app.db, book.id), tags: getBookTags(app.db, book.id) }
-  })
-
-  app.post<{ Params: IdParams }>('/api/books/:id/embed', async (req, reply) => {
-    const book = getBook(app.db, Number(req.params.id))
-    if (!book) return reply.code(404).send({ error: 'book not found' })
-    const edition = getEdition(app.db, book.editionId)
-    const xml = buildComicInfo({
-      // ComicInfo's <Series> tag names the folder the issue ships in - our edition.
-      title: book.title ?? undefined, series: edition?.name, number: book.number ?? undefined,
-      writer: book.writer ?? undefined, penciller: book.penciller ?? undefined, summary: book.summary ?? undefined,
-      publisher: edition?.publisher ?? undefined, date: book.date ?? undefined,
-    })
-    await embedComicInfo(absCbz(app, book), xml)
-    const updatedBook = updateBook(app.db, book.id, { comicinfoSynced: true })
-    return { book: updatedBook, credits: getBookCredits(app.db, book.id), tags: getBookTags(app.db, book.id) }
+    // The file carries the metadata too, so a save is not finished until it is written.
+    const synced = await syncComicInfoFile({ db: app.db, config: app.config }, book.id)
+    return {
+      book: synced ?? updatedBook,
+      credits: getBookCredits(app.db, book.id),
+      tags: getBookTags(app.db, book.id),
+    }
   })
 
   app.put<{ Params: IdParams; Body: MoveEditionBody }>('/api/books/:id/edition', async (req, reply) => {

@@ -2,6 +2,7 @@ import { createComicVine } from '../lib/comicvine.js'
 import { getBook, updateBook } from '../models/books.js'
 import { getEdition, updateEdition } from '../models/editions.js'
 import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags } from '../models/metadata.js'
+import { syncComicInfoFile } from '../services/comicinfoSync.js'
 import type { App } from '../types.js'
 
 interface IdParams { id: string }
@@ -56,9 +57,12 @@ export default async function comicvineRoutes(app: App) {
       return b
     })()
 
+    // Everything Comic Vine just gave us goes into the file as well as the database.
+    const synced = await syncComicInfoFile({ db: app.db, config: app.config }, book.id)
+
     const credits = getBookCredits(app.db, book.id)
     const tags = getBookTags(app.db, book.id)
-    return { book: updatedBook, credits, tags }
+    return { book: synced ?? updatedBook, credits, tags }
   })
 
   app.post<{ Params: IdParams; Body: { volumeId?: number | string } }>('/api/editions/:id/comicvine', async (req, reply) => {

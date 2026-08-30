@@ -90,3 +90,9 @@ test('shows book, opens Comic Vine dialog, applies a match', async () => {
   fireEvent.click(candidate)
   await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledWith('/api/books/5/comicvine', expect.objectContaining({ method: 'POST' })))
 })
+
+test('there is no manual embed button; saving handles it', async () => {
+  renderAt()
+  await screen.findByText(/Earths Mightiest Heroes/)
+  expect(screen.queryByRole('button', { name: /embed/i })).not.toBeInTheDocument()
+})

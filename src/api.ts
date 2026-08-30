@@ -164,7 +164,6 @@ export const api = {
     json<BookResponse>(`/api/books/${id}/metadata`, {
       method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
     }),
-  embed: (id: string | number) => json<BookResponse>(`/api/books/${id}/embed`, { method: 'POST' }),
   cvSearch: (q: string, type: string) =>
     json<CvSearchResponse>(`/api/comicvine/search?q=${encodeURIComponent(q)}&type=${type}`),
   applyIssue: (id: string | number, issueId: number) =>

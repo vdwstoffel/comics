@@ -143,6 +143,7 @@ import { upsertEdition } from '../server/models/editions.js'
 import { insertBook, getBook } from '../server/models/books.js'
 import { getEdition } from '../server/models/editions.js'
 import { makeCbz } from './helpers/makeCbz.js'
+import { readZipEntry } from './helpers/readZipEntry.js'
 import type { Config } from '../server/config.js'
 
 test('search route 400s when no API key configured', async () => {
@@ -201,6 +202,58 @@ test('apply route stores publisher on book and series when getVolume returns one
     expect(updatedBook.publisher).toBe('DC')
     const updatedSeries = getEdition(db, edition.id)!
     expect(updatedSeries.publisher).toBe('DC')
+  } finally {
+    globalThis.fetch = origFetch
+    await app.close()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+test('applying an issue embeds its metadata, credits and tags into the file', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cv-embed-'))
+  mkdirSync(join(dir, 'Batman'), { recursive: true })
+  await makeCbz(join(dir, 'Batman'), ['p1.png'], '001.cbz')
+
+  const mockFetchImpl = mockFetch([
+    ['/issue/', { results: {
+      name: 'Shed', issue_number: '12', cover_date: '2011-11-01', description: null,
+      volume: { name: 'Batman', id: 7890 },
+      person_credits: [
+        { name: 'Scott Snyder', role: 'writer' },
+        { name: 'Greg Capullo', role: 'penciller, cover' },
+      ],
+      character_credits: [{ name: 'Batman' }, { name: 'Commissioner Gordon' }],
+      team_credits: [{ name: 'Court of Owls' }],
+      story_arc_credits: [{ name: 'The Black Mirror' }],
+    } }],
+    ['/volume/', { results: { name: 'Batman', publisher: { name: 'DC' }, description: null } }],
+  ])
+
+  const app = Fastify()
+  const db = openDb(':memory:')
+  app.decorate('db', db)
+  app.decorate('config', { comicVineApiKey: 'test-key', comicsDir: dir, thumbsDir: dir } as Config)
+  const origFetch = globalThis.fetch
+  globalThis.fetch = mockFetchImpl as unknown as typeof fetch
+
+  await app.register(comicvineRoutes)
+  const edition = upsertEdition(db, { name: 'Batman', folder: 'Batman' })
+  const book = insertBook(db, { editionId: edition.id, filePath: 'Batman/001.cbz', pageCount: 1, fileSize: 100 })!
+
+  try {
+    const res = await app.inject({
+      method: 'POST', url: `/api/books/${book.id}/comicvine`, payload: { issueId: 42 },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().book.comicinfoSynced).toBe(true)
+
+    const xml = await readZipEntry(join(dir, 'Batman', '001.cbz'), 'ComicInfo.xml')
+    expect(xml).toContain('<Title>Shed</Title>')
+    expect(xml).toContain('<Writer>Scott Snyder</Writer>')
+    expect(xml).toContain('<CoverArtist>Greg Capullo</CoverArtist>')
+    expect(xml).toContain('<Characters>Batman, Commissioner Gordon</Characters>')
+    expect(xml).toContain('<Teams>Court of Owls</Teams>')
+    expect(xml).toContain('<StoryArc>The Black Mirror</StoryArc>')
   } finally {
     globalThis.fetch = origFetch
     await app.close()

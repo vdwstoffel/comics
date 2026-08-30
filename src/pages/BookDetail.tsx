@@ -27,10 +27,6 @@ export default function BookDetail() {
     mutationFn: (issueId: number) => api.applyIssue(id!, issueId),
     onSuccess: () => { qc.invalidateQueries({ queryKey: ['book', id] }); setDialog(false) },
   })
-  const embed = useMutation({
-    mutationFn: () => api.embed(id!),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['book', id] }),
-  })
   const moveEdition = useMutation({
     mutationFn: (name: string) => api.moveBookEdition(id!, name),
     onSuccess: () => {
@@ -113,9 +109,7 @@ export default function BookDetail() {
         <div className="btn-row book-detail__actions">
           <Link to={`/read/${id}`}><button className="btn">Read</button></Link>
           <button className="btn-ghost" onClick={() => setDialog(true)}>Fetch metadata</button>
-          <button className="btn-ghost" onClick={() => embed.mutate()} disabled={embed.isPending}>Embed into file</button>
         </div>
-        {embed.isError && <p className="book-detail__error">Embed failed: {embed.error?.message ?? 'Unknown error'}</p>}
         <Link to={`/edition/${book.editionId}`} className="back-link">← Back to edition</Link>
       </div>
 

@@ -77,6 +77,10 @@ export interface ComicMeta {
   summary?: string
   publisher?: string
   date?: string
+  credits?: Array<{ name: string; role: string }>
+  characters?: string[]
+  teams?: string[]
+  storyArcs?: string[]
 }
 
 // --- Fastify decorations ---

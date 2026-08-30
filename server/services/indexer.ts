@@ -7,6 +7,7 @@ import { generateCover } from '../lib/thumbnails.js'
 import { parseComicInfo } from '../lib/comicinfo.js'
 import { upsertEdition } from '../models/editions.js'
 import { insertBook, findBookByPath } from '../models/books.js'
+import { replaceBookCredits, replaceBookTags } from '../models/metadata.js'
 import yauzl from 'yauzl'
 import type { Entry } from 'yauzl'
 import type { Ctx, ComicMeta, Book } from '../types.js'
@@ -88,7 +89,23 @@ export async function ingestFile(ctx: Ctx, absPath: string, editionName?: string
     summary: info.summary,
     date: info.date,
   })
-  if (book) await generateCover(absPath, join(config.thumbsDir, `${book.id}.webp`))
+  if (!book) return book
+
+  // A file that was embedded before carries its credits and tags; take them back so a
+  // wipe-and-rescan does not quietly drop everything Comic Vine once supplied.
+  const tags = [
+    ...(info.characters ?? []).map((value) => ({ kind: 'character', value })),
+    ...(info.teams ?? []).map((value) => ({ kind: 'team', value })),
+    ...(info.storyArcs ?? []).map((value) => ({ kind: 'story_arc', value })),
+  ]
+  if (info.credits?.length || tags.length) {
+    db.transaction(() => {
+      replaceBookCredits(db, book.id, info.credits ?? [])
+      replaceBookTags(db, book.id, tags)
+    })()
+  }
+
+  await generateCover(absPath, join(config.thumbsDir, `${book.id}.webp`))
   return book
 }
 
