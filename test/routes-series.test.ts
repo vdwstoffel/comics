@@ -198,3 +198,22 @@ test('GET /api/editions/:id ignores a junk read state', async () => {
   expect(res.statusCode).toBe(200)
   expect(res.json().books).toHaveLength(2)
 })
+
+test('DELETE /api/series/:name removes every edition grouped under it', async () => {
+  const res = await app.inject({
+    method: 'DELETE',
+    url: `/api/series/${encodeURIComponent('Amazing Spider-Man')}`,
+  })
+
+  expect(res.statusCode).toBe(200)
+  expect(res.json()).toMatchObject({ deleted: true, editions: 2, books: 5 })
+
+  const after = await get('/api/series')
+  expect(after.json().series.map((s: { name: string }) => s.name)).toEqual(['Batman'])
+})
+
+test('DELETE /api/series/:name 404s on a series that matches nothing', async () => {
+  const res = await app.inject({ method: 'DELETE', url: '/api/series/Nope' })
+  expect(res.statusCode).toBe(404)
+  expect(res.json()).toEqual({ error: 'series not found' })
+})

@@ -4,7 +4,7 @@ import { getBook, updateBook } from '../models/books.js'
 import { getProgress, setProgress, deriveReadState } from '../models/progress.js'
 import { getBookCredits, getBookTags } from '../models/metadata.js'
 import { readPage } from '../lib/cbz.js'
-import { moveBookToEdition } from '../services/library.js'
+import { moveBookToEdition, removeBook } from '../services/library.js'
 import { syncComicInfoFile } from '../services/comicinfoSync.js'
 import type { App, Book } from '../types.js'
 
@@ -77,6 +77,13 @@ export default async function booksRoutes(app: App) {
       credits: getBookCredits(app.db, book.id),
       tags: getBookTags(app.db, book.id),
     }
+  })
+
+  app.delete<{ Params: IdParams }>('/api/books/:id', async (req, reply) => {
+    const book = getBook(app.db, Number(req.params.id))
+    if (!book) return reply.code(404).send({ error: 'book not found' })
+    const result = await removeBook({ db: app.db, config: app.config }, book.id)
+    return { deleted: true, ...result }
   })
 
   app.put<{ Params: IdParams; Body: MoveEditionBody }>('/api/books/:id/edition', async (req, reply) => {

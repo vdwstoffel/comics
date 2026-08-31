@@ -1,13 +1,13 @@
 import { test, expect, beforeEach, afterEach } from 'vitest'
-import { mkdtempSync, rmSync, mkdirSync } from 'node:fs'
+import { mkdtempSync, rmSync, mkdirSync, existsSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import Fastify from 'fastify'
 import { openDb } from '../server/db.js'
 import editionRoutes from '../server/routes/editions.js'
 import booksRoutes from '../server/routes/books.js'
-import { upsertEdition, updateEdition } from '../server/models/editions.js'
-import { insertBook } from '../server/models/books.js'
+import { upsertEdition, updateEdition, getEdition } from '../server/models/editions.js'
+import { insertBook, getBook } from '../server/models/books.js'
 import { setProgress } from '../server/models/progress.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import type { FastifyInstance } from 'fastify'
@@ -164,3 +164,64 @@ test('GET /api/editions (no param) returns all editions', async () => {
 })
 
 /** Pin a book's read timestamp so ordering assertions are deterministic. */
+
+/** An edition folder on disk with `count` real issues in it. */
+async function seedOnDisk(name: string, count: number) {
+  const folder = join(app.config.comicsDir, name)
+  mkdirSync(folder, { recursive: true })
+  const edition = upsertEdition(app.db, { name, folder: name })
+  const books = []
+  for (let i = 1; i <= count; i++) {
+    await makeCbz(folder, ['p1.png'], `${i}.cbz`)
+    books.push(insertBook(app.db, {
+      editionId: edition.id, filePath: `${name}/${i}.cbz`, pageCount: 1, fileSize: 100,
+    })!)
+  }
+  return { edition, books, folder }
+}
+
+test('DELETE /api/books/:id removes the issue and its file', async () => {
+  const { books, folder } = await seedOnDisk('Saga', 2)
+
+  const res = await app.inject({ method: 'DELETE', url: `/api/books/${books[0].id}` })
+
+  expect(res.statusCode).toBe(200)
+  expect(res.json()).toMatchObject({ deleted: true, editionRemoved: false })
+  expect(existsSync(join(folder, '1.cbz'))).toBe(false)
+  expect(existsSync(join(folder, '2.cbz'))).toBe(true)
+})
+
+test('DELETE /api/books/:id reports the edition going with its last issue', async () => {
+  const { edition, books } = await seedOnDisk('One Shot', 1)
+
+  const res = await app.inject({ method: 'DELETE', url: `/api/books/${books[0].id}` })
+
+  expect(res.statusCode).toBe(200)
+  expect(res.json()).toMatchObject({ deleted: true, editionId: edition.id, editionRemoved: true })
+})
+
+test('DELETE /api/books/:id 404s on an unknown issue', async () => {
+  const res = await app.inject({ method: 'DELETE', url: '/api/books/99999' })
+  expect(res.statusCode).toBe(404)
+  // Assert the handler's own body - an unregistered route 404s too, and would pass a
+  // bare status check without the route existing at all.
+  expect(res.json()).toEqual({ error: 'book not found' })
+})
+
+test('DELETE /api/editions/:id removes the edition, its issues and its folder', async () => {
+  const { edition, books, folder } = await seedOnDisk('Saga', 3)
+
+  const res = await app.inject({ method: 'DELETE', url: `/api/editions/${edition.id}` })
+
+  expect(res.statusCode).toBe(200)
+  expect(res.json()).toMatchObject({ deleted: true, books: 3 })
+  expect(existsSync(folder)).toBe(false)
+  expect(getEdition(app.db, edition.id)).toBeUndefined()
+  expect(getBook(app.db, books[0].id)).toBeUndefined()
+})
+
+test('DELETE /api/editions/:id 404s on an unknown edition', async () => {
+  const res = await app.inject({ method: 'DELETE', url: '/api/editions/99999' })
+  expect(res.statusCode).toBe(404)
+  expect(res.json()).toEqual({ error: 'edition not found' })
+})

@@ -143,6 +143,13 @@ img {
   margin-bottom: 4px;
 }
 
+.series-header__title-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 4px;
+}
+
 .edition-header__find {
   color: var(--muted);
   font-size: 0.8125rem;
@@ -345,6 +352,43 @@ img {
 }
 
 .btn-ghost:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Quiet trigger for a destructive action: ghost-shaped so it never competes with the
+   primary button on the page, red so it never reads as just another neutral one. */
+.btn-danger {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: transparent;
+  color: var(--accent);
+  border: 1px solid rgba(229, 72, 77, 0.4);
+  border-radius: 8px;
+  padding: 9px 18px;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: inherit;
+  line-height: 1;
+  white-space: nowrap;
+}
+
+.btn-danger:hover:not(:disabled) {
+  background: rgba(229, 72, 77, 0.12);
+  border-color: var(--accent);
+}
+
+.btn-danger:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.25);
+  border-color: var(--accent);
+}
+
+.btn-danger:disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
@@ -1478,6 +1522,19 @@ textarea.input:hover:not(:focus) {
 .modal-field input:focus {
   outline: none;
   border-color: var(--accent);
+}
+
+.modal-detail {
+  margin-bottom: 6px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.modal-warning {
+  margin-bottom: 16px;
+  color: var(--accent);
+  font-size: 0.875rem;
+  font-weight: 600;
 }
 
 .modal-error {

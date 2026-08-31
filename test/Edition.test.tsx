@@ -13,10 +13,16 @@ const EDITION = {
 }
 
 let patched: { url: string; body: Record<string, unknown> }[]
+let deleted: string[]
 
 function mockFetch(edition: Record<string, unknown> = EDITION, books: unknown[] = []) {
   patched = []
+  deleted = []
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'DELETE') {
+      deleted.push(String(url))
+      return { ok: true, json: async () => ({ deleted: true, books: 3, seriesName: 'Amazing Spider-Man' }) }
+    }
     if (init?.method === 'PATCH') {
       patched.push({ url: String(url), body: JSON.parse(String(init.body)) })
       return { ok: true, json: async () => ({ edition }) }
@@ -166,4 +172,53 @@ test('the search link omits the year when no issue has one', async () => {
   renderPage()
   const link = await screen.findByRole('link', { name: /find more/i })
   expect(link).toHaveAttribute('href', '/search?q=Amazing+Spider-Man')
+})
+
+test('Remove edition asks first, naming the edition and its file count', async () => {
+  mockFetch(EDITION, [issue('1', 2025), issue('2', 2025), issue('3', 2025)])
+  renderPage()
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove edition' }))
+
+  expect(await screen.findByRole('heading', { name: /remove edition "Amazing Spider-Man \(2025\)"\?/i })).toBeInTheDocument()
+  expect(screen.getByText(/3 files will be deleted from disk/i)).toBeInTheDocument()
+  expect(deleted).toEqual([])
+})
+
+test('confirming sends the DELETE for the edition', async () => {
+  mockFetch(EDITION, [issue('1', 2025)])
+  renderPage()
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove edition' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+
+  await waitFor(() => expect(deleted).toEqual(['/api/editions/9']))
+})
+
+test('cancelling the edition removal sends nothing', async () => {
+  mockFetch(EDITION, [issue('1', 2025)])
+  renderPage()
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove edition' }))
+  fireEvent.click(await screen.findByRole('button', { name: /cancel/i }))
+
+  await waitFor(() => expect(screen.queryByRole('heading', { name: /remove edition/i })).not.toBeInTheDocument())
+  expect(deleted).toEqual([])
+})
+
+// The page's book list is filtered by ?status=, but removing the edition takes every
+// issue with it - so the confirm must count the whole edition, not the visible slice.
+test('the removal counts every issue in the edition, not just the filtered ones', async () => {
+  const all = [issue('1', 2025), issue('2', 2025), issue('3', 2025)]
+  globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'DELETE') return { ok: true, json: async () => ({ deleted: true, books: 3 }) }
+    const filtered = String(url).includes('readState=unread')
+    return { ok: true, json: async () => ({ edition: EDITION, books: filtered ? all.slice(0, 1) : all }) }
+  }) as unknown as typeof fetch
+
+  renderPage('/edition/9?status=unread')
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove edition' }))
+
+  expect(await screen.findByText(/3 files will be deleted from disk/i)).toBeInTheDocument()
 })

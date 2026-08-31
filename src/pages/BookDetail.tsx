@@ -1,11 +1,12 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import { enterFullscreen } from '../lib/useFullscreen'
 import MetadataEditor from '../components/MetadataEditor'
 import ComicVineMatchDialog from '../components/ComicVineMatchDialog'
+import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { buildCvQuery } from '../lib/cvQuery'
 
 const CHARACTER_SHOW_THRESHOLD = 40
@@ -17,6 +18,8 @@ export default function BookDetail() {
   const [moveTarget, setMoveTarget] = useState<string | null>(null)
   const [showAllCharacters, setShowAllCharacters] = useState(false)
   const [editing, setEditing] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState(false)
+  const navigate = useNavigate()
 
   const { data, isLoading } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
   const { data: editionsData, isLoading: editionsLoading } = useQuery({ queryKey: ['editions'], queryFn: () => api.getEditions() })
@@ -36,6 +39,18 @@ export default function BookDetail() {
       qc.invalidateQueries({ queryKey: ['editions'] })
       qc.invalidateQueries({ queryKey: ['series'] })
       setMoveTarget(null)
+    },
+  })
+
+  const remove = useMutation({
+    mutationFn: () => api.deleteBook(id!),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ['editions'] })
+      qc.invalidateQueries({ queryKey: ['series'] })
+      qc.invalidateQueries({ queryKey: ['edition'] })
+      setConfirmRemove(false)
+      // The edition page is gone too if that was its last issue.
+      navigate(result.editionRemoved ? '/' : `/edition/${result.editionId}`, { replace: true })
     },
   })
 
@@ -112,6 +127,7 @@ export default function BookDetail() {
         <div className="btn-row book-detail__actions">
           <Link to={`/read/${id}`} onClick={enterFullscreen}><button className="btn">Read</button></Link>
           <button className="btn-ghost" onClick={() => setDialog(true)}>Fetch metadata</button>
+          <button className="btn-danger" onClick={() => setConfirmRemove(true)}>Remove issue</button>
         </div>
         <Link to={`/edition/${book.editionId}`} className="back-link">← Back to edition</Link>
       </div>
@@ -227,6 +243,17 @@ export default function BookDetail() {
           </div>
         )}
       </div>
+
+      {confirmRemove && (
+        <ConfirmDeleteDialog
+          what={`"${book.title || `#${book.number ?? '?'}`}"`}
+          fileCount={1}
+          deleting={remove.isPending}
+          error={remove.isError ? `Remove failed: ${remove.error?.message}` : null}
+          onConfirm={() => remove.mutate()}
+          onClose={() => setConfirmRemove(false)}
+        />
+      )}
 
       {dialog && (
         <ComicVineMatchDialog

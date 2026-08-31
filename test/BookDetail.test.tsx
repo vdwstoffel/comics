@@ -24,6 +24,7 @@ const edition = { id: 1, name: 'Vol 3', seriesName: 'Avengers' }
 beforeEach(() => {
   globalThis.fetch = vi.fn(async (url: string, opts?: RequestInit) => {
     if (url === '/api/books/5' && !opts) return { ok: true, json: async () => ({ book, progress: { lastPage: 0, completed: false } }) }
+    if (url === '/api/books/5' && opts?.method === 'DELETE') return { ok: true, json: async () => ({ deleted: true, editionId: 1, editionRemoved: false }) }
     if (url === '/api/series') return { ok: true, json: async () => ({ series: [{ id: 1, name: 'Avengers' }] }) }
     if (url === '/api/editions') return { ok: true, json: async () => ({ editions: [edition] }) }
     if (url.includes('/comicvine/search')) return { ok: true, json: async () => ({ results: [{ id: 99, name: 'Batman', issueNumber: '1', year: '2011' }] }) }
@@ -118,4 +119,33 @@ test('the Comic Vine dialog opens on the series and number, not the issue title'
   renderAt()
   fireEvent.click(await screen.findByText('Fetch metadata'))
   expect(await screen.findByDisplayValue('Avengers #1')).toBeInTheDocument()
+})
+
+test('Remove asks first, naming the issue and the single file that goes', async () => {
+  renderAt()
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove issue' }))
+
+  expect(await screen.findByRole('heading', { name: /remove "Untitled"\?/i })).toBeInTheDocument()
+  expect(screen.getByText(/1 file will be deleted from disk/i)).toBeInTheDocument()
+  // Nothing is sent until the confirm is clicked.
+  expect(globalThis.fetch).not.toHaveBeenCalledWith('/api/books/5', expect.objectContaining({ method: 'DELETE' }))
+})
+
+test('confirming the removal sends the DELETE', async () => {
+  renderAt()
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove issue' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+
+  await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledWith(
+    '/api/books/5', expect.objectContaining({ method: 'DELETE' }),
+  ))
+})
+
+test('cancelling the removal sends nothing', async () => {
+  renderAt()
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove issue' }))
+  fireEvent.click(await screen.findByRole('button', { name: /cancel/i }))
+
+  await waitFor(() => expect(screen.queryByRole('heading', { name: /remove/i })).not.toBeInTheDocument())
+  expect(globalThis.fetch).not.toHaveBeenCalledWith('/api/books/5', expect.objectContaining({ method: 'DELETE' }))
 })

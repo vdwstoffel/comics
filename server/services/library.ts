@@ -1,11 +1,12 @@
-import { mkdir, rename, rmdir } from 'node:fs/promises'
+import { mkdir, rename, rmdir, unlink } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
-import { join, basename, extname, dirname } from 'node:path'
+import { join, basename, extname, dirname, resolve, sep } from 'node:path'
 import { sanitizeEditionFolder } from '../lib/paths.js'
 import {
   upsertEdition, getEdition, getEditionByName, deleteEdition, updateEdition, carryableMetadata,
 } from '../models/editions.js'
-import { getBook, listBooksByEdition, setBookEdition } from '../models/books.js'
+import { getBook, listBooksByEdition, setBookEdition, deleteBook } from '../models/books.js'
+import { getSeries } from '../models/series.js'
 import type { Ctx } from '../types.js'
 import type { Edition, Book } from '../types.js'
 
@@ -24,6 +25,50 @@ function dedupeDestPath(destDir: string, filename: string, srcAbsPath?: string):
     n++
   }
   return candidate
+}
+
+/**
+ * Resolve a book's stored path against the library root, refusing anything that climbs
+ * out of it. file_path is built from sanitized folder names so this should never fire,
+ * but an unlink driven by a DB string deserves the guard.
+ */
+function resolveInsideComicsDir(comicsDir: string, filePath: string): string {
+  const root = resolve(comicsDir)
+  const target = resolve(join(comicsDir, filePath))
+  if (target !== root && !target.startsWith(root + sep)) {
+    throw new Error(`Refusing to delete ${filePath}: outside the library`)
+  }
+  return target
+}
+
+/**
+ * Unlink a file, treating "already gone" as success. A row whose file vanished from
+ * disk must still be clearable; anything other than ENOENT is a real failure.
+ */
+async function unlinkIfPresent(path: string): Promise<void> {
+  await unlink(path).catch((err: NodeJS.ErrnoException) => {
+    if (err.code !== 'ENOENT') throw err
+  })
+}
+
+/**
+ * Drop an edition that has just lost its last issue, along with its now-empty folder.
+ * `fallbackFolder` covers the case where the row is already gone and only the path on
+ * disk is known. Returns whether the edition was actually removed.
+ */
+async function pruneEditionIfEmpty(
+  ctx: Ctx,
+  editionId: number,
+  fallbackFolder?: string,
+): Promise<boolean> {
+  const { db, config } = ctx
+  if (listBooksByEdition(db, editionId).length > 0) return false
+
+  // Read the folder BEFORE deleting the row - afterwards there is nothing to read it from.
+  const folder = getEdition(db, editionId)?.folder ?? fallbackFolder
+  deleteEdition(db, editionId)
+  if (folder) await rmdir(join(config.comicsDir, folder)).catch(() => { /* ENOTEMPTY etc. */ })
+  return true
 }
 
 export async function moveBookToEdition(
@@ -58,17 +103,8 @@ export async function moveBookToEdition(
   const updatedBook = setBookEdition(db, bookId, targetEdition.id, destRelPath)
 
   // Prune old edition if now empty
-  const oldEditionId = book.editionId
-  if (oldEditionId !== targetEdition.id) {
-    const remaining = listBooksByEdition(db, oldEditionId)
-    if (remaining.length === 0) {
-      // Compute old folder path BEFORE deleting the DB row
-      const oldEdition = getEdition(db, oldEditionId)
-      const oldFolderName = oldEdition?.folder ?? dirname(book.filePath)
-      deleteEdition(db, oldEditionId)
-      const oldDir = join(config.comicsDir, oldFolderName)
-      await rmdir(oldDir).catch(() => { /* ignore ENOTEMPTY or other errors */ })
-    }
+  if (book.editionId !== targetEdition.id) {
+    await pruneEditionIfEmpty(ctx, book.editionId, dirname(book.filePath))
   }
 
   const edition = getEdition(db, targetEdition.id) as Edition
@@ -152,4 +188,51 @@ export async function reorganizeLibrary(ctx: Ctx): Promise<{ moved: number }> {
     }
   }
   return { moved }
+}
+
+export async function removeBook(
+  ctx: Ctx,
+  bookId: number,
+): Promise<{ editionId: number; editionRemoved: boolean }> {
+  const { db, config } = ctx
+  const book = getBook(db, bookId)
+  if (!book) throw new Error(`Book ${bookId} not found`)
+
+  await unlinkIfPresent(resolveInsideComicsDir(config.comicsDir, book.filePath))
+  await unlinkIfPresent(join(config.thumbsDir, `${bookId}.webp`))
+  deleteBook(db, bookId)
+
+  const editionRemoved = await pruneEditionIfEmpty(ctx, book.editionId, dirname(book.filePath))
+  return { editionId: book.editionId, editionRemoved }
+}
+
+/**
+ * Remove an edition and every issue in it. removeBook prunes the edition once its last
+ * issue goes, so the loop is the whole job - the trailing prune only covers an edition
+ * that was already empty.
+ */
+export async function removeEdition(ctx: Ctx, editionId: number): Promise<{ books: number }> {
+  const edition = getEdition(ctx.db, editionId)
+  if (!edition) throw new Error(`Edition ${editionId} not found`)
+
+  const books = listBooksByEdition(ctx.db, editionId)
+  for (const book of books) await removeBook(ctx, book.id)
+  await pruneEditionIfEmpty(ctx, editionId, edition.folder)
+
+  return { books: books.length }
+}
+
+/** Remove every edition grouped under a series name. */
+export async function removeSeries(
+  ctx: Ctx,
+  name: string,
+): Promise<{ editions: number; books: number }> {
+  const series = getSeries(ctx.db, name)
+  if (!series) throw new Error(`Series ${name} not found`)
+
+  let books = 0
+  for (const edition of series.editions) {
+    books += (await removeEdition(ctx, edition.id)).books
+  }
+  return { editions: series.editions.length, books }
 }

@@ -5,6 +5,7 @@ import { api } from '../api'
 import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import EditionEditDialog from '../components/EditionEditDialog'
+import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 
 export default function Edition() {
   const { id } = useParams()
@@ -13,10 +14,29 @@ export default function Edition() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [editing, setEditing] = useState(false)
+  const [confirmRemove, setConfirmRemove] = useState(false)
 
   const { data, isLoading } = useQuery({
     queryKey: ['edition', id, status],
     queryFn: () => api.getEditionDetail(id!, status ?? undefined),
+  })
+
+  // Removing takes the whole edition, so the confirm must count every issue - the list
+  // above it may be showing only the ?status= slice. Fetched only when the dialog opens.
+  const { data: unfiltered } = useQuery({
+    queryKey: ['edition', id, null],
+    queryFn: () => api.getEditionDetail(id!),
+    enabled: confirmRemove && status !== null,
+  })
+
+  const remove = useMutation({
+    mutationFn: () => api.deleteEdition(id!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['editions'] })
+      qc.invalidateQueries({ queryKey: ['series'] })
+      setConfirmRemove(false)
+      navigate('/', { replace: true })
+    },
   })
 
   const rename = useMutation({
@@ -73,6 +93,7 @@ export default function Edition() {
             ✏
           </button>
           <Link to={searchHref} className="edition-header__find">Find more</Link>
+          <button className="btn-danger" onClick={() => setConfirmRemove(true)}>Remove edition</button>
         </div>
         <p className="edition-header__count">{bookLabel}</p>
         {status && (
@@ -99,6 +120,17 @@ export default function Edition() {
           onClose={() => setEditing(false)}
         />
       )}
+      {confirmRemove && (
+        <ConfirmDeleteDialog
+          what={`edition "${data.edition.name}"`}
+          fileCount={status ? (unfiltered?.books.length ?? null) : bookCount}
+          deleting={remove.isPending}
+          error={remove.isError ? `Remove failed: ${remove.error?.message}` : null}
+          onConfirm={() => remove.mutate()}
+          onClose={() => setConfirmRemove(false)}
+        />
+      )}
+
       <div className="tile-grid">
         {data.books.map((b) => (
           <CoverTile

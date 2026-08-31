@@ -124,3 +124,7 @@ export function setBookEdition(db: Db, bookId: number, editionId: number, filePa
   db.prepare('UPDATE book SET edition_id = ?, file_path = ? WHERE id = ?').run(editionId, filePath, bookId)
   return getBook(db, bookId) as Book
 }
+
+export function deleteBook(db: Db, id: number): void {
+  db.prepare('DELETE FROM book WHERE id = ?').run(id)
+}

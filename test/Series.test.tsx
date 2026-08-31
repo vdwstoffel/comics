@@ -1,6 +1,6 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { ReactNode } from 'react'
-import { render, screen, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, within, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import Series from '../src/pages/Series'
@@ -85,4 +85,27 @@ test('edition links carry the status onwards', async () => {
   renderAt('/series/Amazing%20Spider-Man?status=unread')
   const tile = (await screen.findByText('Amazing Spider-Man (2025)')).closest('a')
   expect(tile).toHaveAttribute('href', '/edition/9?status=unread')
+})
+
+test('Remove series asks first, naming its editions, issues and file count', async () => {
+  renderAt('/series/Amazing%20Spider-Man')
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove series' }))
+
+  // Scoped to the dialog: the page subtitle carries the same wording.
+  const dialog = within(await screen.findByTestId('confirm-delete-backdrop'))
+  expect(dialog.getByRole('heading', { name: /remove series "Amazing Spider-Man"\?/i })).toBeInTheDocument()
+  expect(dialog.getByText('2 editions · 5 issues')).toBeInTheDocument()
+  expect(dialog.getByText(/5 files will be deleted from disk/i)).toBeInTheDocument()
+})
+
+test('confirming sends the DELETE for the series', async () => {
+  renderAt('/series/Amazing%20Spider-Man')
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove series' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Remove' }))
+
+  await waitFor(() => expect(globalThis.fetch).toHaveBeenCalledWith(
+    '/api/series/Amazing%20Spider-Man', expect.objectContaining({ method: 'DELETE' }),
+  ))
 })

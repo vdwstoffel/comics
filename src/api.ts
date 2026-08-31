@@ -86,6 +86,9 @@ export interface ProgressResponse { progress: ApiProgress }
 export interface CvSearchResponse { results: CvSearchResult[] }
 export interface EditionResponse { edition: ApiEdition }
 export interface MoveBookEditionResponse { book: ApiBook; edition: ApiEdition }
+export interface DeleteBookResponse { deleted: true; editionId: number; editionRemoved: boolean }
+export interface DeleteEditionResponse { deleted: true; books: number }
+export interface DeleteSeriesResponse { deleted: true; editions: number; books: number }
 export interface PublishersResponse { publishers: PublisherFacet[] }
 export interface ReadStatesResponse { readStates: ReadStateFacet[] }
 
@@ -179,6 +182,12 @@ export const api = {
     json<MoveBookEditionResponse>(`/api/books/${id}/edition`, {
       method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }),
     }),
+  deleteBook: (id: string | number) =>
+    json<DeleteBookResponse>(`/api/books/${id}`, { method: 'DELETE' }),
+  deleteEdition: (id: string | number) =>
+    json<DeleteEditionResponse>(`/api/editions/${id}`, { method: 'DELETE' }),
+  deleteSeries: (name: string) =>
+    json<DeleteSeriesResponse>(`/api/series/${encodeURIComponent(name)}`, { method: 'DELETE' }),
   searchComicIndex: ({ q, category, yearFrom, yearTo, limit = 50, offset = 0 }: {
     q: string; category?: string; yearFrom?: number; yearTo?: number
     limit?: number; offset?: number

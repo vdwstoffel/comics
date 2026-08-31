@@ -5,7 +5,7 @@ import {
 } from '../models/editions.js'
 import { listBooksByEdition } from '../models/books.js'
 import { deriveReadState } from '../models/progress.js'
-import { renameEdition } from '../services/library.js'
+import { renameEdition, removeEdition } from '../services/library.js'
 import { editionFilterOf, readStateOf } from './filters.js'
 import type { LibraryQuery } from './filters.js'
 import type { App } from '../types.js'
@@ -60,5 +60,12 @@ export default async function editionRoutes(app: App) {
 
     const result = await renameEdition({ db: app.db, config: app.config }, existing.id, name)
     return { edition: result.edition }
+  })
+
+  app.delete<{ Params: IdParams }>('/api/editions/:id', async (req, reply) => {
+    const edition = getEdition(app.db, Number(req.params.id))
+    if (!edition) return reply.code(404).send({ error: 'edition not found' })
+    const { books } = await removeEdition({ db: app.db, config: app.config }, edition.id)
+    return { deleted: true, books }
   })
 }
