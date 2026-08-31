@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom'
+import { useParams, useSearchParams, useNavigate, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import { statusFrom, withStatus } from '../lib/readStatus'
@@ -52,6 +52,7 @@ export default function Series() {
 
   return (
     <div>
+      <Link to="/" className="back-link">← Library</Link>
       <div className="series-header__title-row">
         <h1 className="page-title">{series.name}</h1>
         <button className="btn-danger" onClick={() => setConfirmRemove(true)}>Remove series</button>

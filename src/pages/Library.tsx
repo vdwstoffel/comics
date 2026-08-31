@@ -94,21 +94,18 @@ export default function Library() {
         {data && (
           <div className="tile-grid">
             {(data.series ?? []).map((series) => {
-              // A series with a single edition would open onto a list of one, so it
-              // links straight through to that edition instead.
-              const only = series.editions.length === 1 ? series.editions[0] : undefined
+              // The home screen is the series level throughout - even a series holding a
+              // single edition is opened through its own page, so the hierarchy reads the
+              // same way everywhere. The cover still comes from the first edition.
               const cover = series.editions[0]
-              const issues = `${series.bookCount} issue${series.bookCount === 1 ? '' : 's'}`
+              const editions = series.editions.length
               return (
                 <CoverTile
                   key={series.name}
-                  to={withStatus(
-                    only ? `/edition/${only.id}` : `/series/${encodeURIComponent(series.name)}`,
-                    selectedStatus,
-                  )}
+                  to={withStatus(`/series/${encodeURIComponent(series.name)}`, selectedStatus)}
                   img={`/api/editions/${cover.id}/thumbnail`}
-                  title={only ? only.name : series.name}
-                  subtitle={only ? issues : `${series.editions.length} editions · ${issues}`}
+                  title={series.name}
+                  subtitle={`${editions} edition${editions === 1 ? '' : 's'} · ${series.bookCount} issue${series.bookCount === 1 ? '' : 's'}`}
                 />
               )
             })}

@@ -128,20 +128,27 @@ test('a multi-edition tile says how many editions and issues it holds', async ()
   expect(await screen.findByText('2 editions · 5 issues')).toBeInTheDocument()
 })
 
-// A single-edition tile keeps the edition's own name, since it opens that edition.
-test('a series with one edition links straight to that edition', async () => {
+// The home screen is the series level throughout: a lone edition is still reached by
+// going through its series, so every tile behaves the same way.
+test('a series with one edition still opens its series page', async () => {
   globalThis.fetch = seriesFetch([BATMAN_SERIES])
   renderWithProviders(<Library />)
 
-  const tile = (await screen.findByText('Batman Vol. 2 (New 52 TPB)')).closest('a')
-  expect(tile).toHaveAttribute('href', '/edition/6')
-  expect(screen.getByText('10 issues')).toBeInTheDocument()
+  const tile = (await screen.findByText('Batman')).closest('a')
+  expect(tile).toHaveAttribute('href', '/series/Batman')
+  expect(screen.queryByText('Batman Vol. 2 (New 52 TPB)')).not.toBeInTheDocument()
 })
 
-test('a single-edition tile shows that edition\'s cover', async () => {
+test('a single-edition tile counts its one edition like any other', async () => {
   globalThis.fetch = seriesFetch([BATMAN_SERIES])
   renderWithProviders(<Library />)
-  const img = await screen.findByAltText('Batman Vol. 2 (New 52 TPB)')
+  expect(await screen.findByText('1 edition · 10 issues')).toBeInTheDocument()
+})
+
+test('a single-edition tile still shows that edition\'s cover', async () => {
+  globalThis.fetch = seriesFetch([BATMAN_SERIES])
+  renderWithProviders(<Library />)
+  const img = await screen.findByAltText('Batman')
   expect(img).toHaveAttribute('src', '/api/editions/6/thumbnail')
 })
 
@@ -225,8 +232,8 @@ test('an active status is carried into the tile links', async () => {
   statusFetch([BATMAN_SERIES])
   renderWithProviders(<Library />, '/?status=unread')
 
-  const tile = (await screen.findByText('Batman Vol. 2 (New 52 TPB)')).closest('a')
-  expect(tile).toHaveAttribute('href', '/edition/6?status=unread')
+  const tile = (await screen.findByText('Batman')).closest('a')
+  expect(tile).toHaveAttribute('href', '/series/Batman?status=unread')
 })
 
 test('a multi-edition tile carries the status too', async () => {

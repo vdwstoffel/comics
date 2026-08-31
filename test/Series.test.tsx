@@ -109,3 +109,11 @@ test('confirming sends the DELETE for the series', async () => {
     '/api/series/Amazing%20Spider-Man', expect.objectContaining({ method: 'DELETE' }),
   ))
 })
+
+// Every series is now reached by clicking through from the home screen, so the way back
+// has to be on the page - the edition page has carried the same link all along.
+test('there is a link back to the library', async () => {
+  renderAt('/series/Amazing%20Spider-Man')
+  const back = await screen.findByRole('link', { name: /library/i })
+  expect(back).toHaveAttribute('href', '/')
+})
