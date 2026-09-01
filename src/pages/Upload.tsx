@@ -1,11 +1,19 @@
 import { useState } from 'react'
 import type { FormEvent } from 'react'
+import { useQuery } from '@tanstack/react-query'
+import { api } from '../api'
+import EditionCombobox from '../components/EditionCombobox'
 
 export default function Upload() {
   const [edition, setEdition] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [pct, setPct] = useState<number | null>(null)
   const [msg, setMsg] = useState<string | null>(null)
+
+  const { data: editionsData } = useQuery({
+    queryKey: ['editions', null],
+    queryFn: () => api.getEditions(),
+  })
 
   function submit(e: FormEvent<HTMLFormElement>) {
     e.preventDefault()
@@ -27,7 +35,12 @@ export default function Upload() {
         <h1>Upload a comic</h1>
         <form onSubmit={submit}>
           <div className="field">
-            <input className="input" placeholder="Edition name" value={edition} onChange={(e) => setEdition(e.target.value)} />
+            <EditionCombobox
+              value={edition}
+              onChange={setEdition}
+              options={editionsData?.editions ?? []}
+              placeholder="Edition name"
+            />
           </div>
           <div className="field">
             <label className="file-label">
