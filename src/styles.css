@@ -1626,3 +1626,186 @@ textarea.input:hover:not(:focus) {
 .edition-header__filter a {
   color: var(--accent);
 }
+
+/* ============================================================
+   Character card
+   ============================================================ */
+
+/* A character chip is a button; a team or story-arc chip is not. Only the ones that
+   lead somewhere look like they do. */
+.chip--action {
+  font: inherit;
+  font-size: 0.8125rem;
+  cursor: pointer;
+  transition: color 0.15s, border-color 0.15s, background 0.15s;
+}
+
+.chip--action:hover {
+  color: var(--text);
+  border-color: var(--accent);
+  background: var(--surface);
+}
+
+.chip--action:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.character-card__head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.character-card__portrait {
+  width: 96px;
+  aspect-ratio: 2 / 3;
+  object-fit: cover;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--elevated);
+  flex-shrink: 0;
+}
+
+.character-card__portrait--empty {
+  display: block;
+}
+
+.character-card__ident {
+  min-width: 0;
+}
+
+/* Overrides the 20px that .modal-panel h3 gives every dialog heading — here the name
+   sits directly above the real name it belongs with. */
+.character-card__name {
+  margin-bottom: 4px;
+}
+
+.character-card__real-name {
+  color: var(--text);
+  font-size: 0.9375rem;
+}
+
+.character-card__publisher {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  margin-top: 2px;
+}
+
+.character-card__caveat {
+  color: var(--accent);
+  font-size: 0.8125rem;
+  line-height: 1.5;
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  padding: 8px 12px;
+  margin-bottom: 14px;
+}
+
+.character-card__deck {
+  color: var(--text);
+  font-size: 0.9375rem;
+  line-height: 1.6;
+  margin-bottom: 16px;
+}
+
+.character-card__fact {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 6px;
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
+.character-card__fact-label {
+  font-weight: 700;
+  color: var(--muted);
+  flex-shrink: 0;
+  min-width: 130px;
+}
+
+.character-card__fact-value {
+  color: var(--text);
+}
+
+.character-card__link {
+  display: inline-block;
+  margin-top: 12px;
+  color: var(--accent);
+  font-size: 0.875rem;
+}
+
+/* The full Comic Vine profile, behind an expander. ~70 blocks for a well-documented
+   character, so it scrolls in its own region rather than pushing the facts off screen. */
+.character-profile {
+  margin-top: 14px;
+  border-top: 1px solid var(--border);
+  padding-top: 12px;
+}
+
+.character-profile__toggle {
+  padding: 0;
+  border: none;
+  background: none;
+  color: var(--accent);
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.character-profile__toggle:hover {
+  color: var(--accent-hover);
+}
+
+.character-profile__body {
+  max-height: 40vh;
+  overflow-y: auto;
+  margin-top: 12px;
+  padding-right: 10px;
+}
+
+.character-profile__heading {
+  color: var(--text);
+  font-weight: 700;
+  line-height: 1.3;
+  margin: 18px 0 6px;
+}
+
+.character-profile__heading:first-child {
+  margin-top: 0;
+}
+
+.character-profile__heading--2 {
+  font-size: 1rem;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 4px;
+}
+
+.character-profile__heading--3 {
+  font-size: 0.9375rem;
+}
+
+.character-profile__heading--4 {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.character-profile__para {
+  color: var(--text);
+  font-size: 0.875rem;
+  line-height: 1.65;
+  margin-bottom: 10px;
+}
+
+.character-profile__list {
+  list-style: disc;
+  padding-left: 20px;
+  margin-bottom: 10px;
+}
+
+.character-profile__list li {
+  color: var(--text);
+  font-size: 0.875rem;
+  line-height: 1.6;
+}

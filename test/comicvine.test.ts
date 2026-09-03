@@ -85,7 +85,7 @@ test('getIssue maps rich fields: multi-role credits, characters, teams, arcs, ye
           { name: 'Greg Capullo', role: 'penciler' },
           { name: 'Jonathan Glapion', role: 'inker' },
         ],
-        character_credits: [{ name: 'Batman' }, { name: 'The Joker' }],
+        character_credits: [{ id: 1699, name: 'Batman' }, { id: 9268, name: 'The Joker' }],
         team_credits: [{ name: 'Justice League' }],
         story_arc_credits: [{ name: 'Court of Owls' }],
         image: { original_url: 'https://example.com/cover.jpg' },
@@ -110,7 +110,7 @@ test('getIssue maps rich fields: multi-role credits, characters, teams, arcs, ye
   expect(issue.credits).toHaveLength(4)
 
   // Arrays
-  expect(issue.characters).toEqual(['Batman', 'The Joker'])
+  expect(issue.characters).toEqual([{ id: 1699, name: 'Batman' }, { id: 9268, name: 'The Joker' }])
   expect(issue.teams).toEqual(['Justice League'])
   expect(issue.storyArcs).toEqual(['Court of Owls'])
 })
@@ -142,6 +142,7 @@ import { openDb } from '../server/db.js'
 import { upsertEdition } from '../server/models/editions.js'
 import { insertBook, getBook } from '../server/models/books.js'
 import { getEdition } from '../server/models/editions.js'
+import { getBookTags } from '../server/models/metadata.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import { readZipEntry } from './helpers/readZipEntry.js'
 import type { Config } from '../server/config.js'
@@ -284,4 +285,169 @@ test('a result with no small image falls back to the thumbnail for its cover', a
   })
   const [result] = await cv.search('batman', 'issue')
   expect(result.cover).toBe('t.jpg')
+})
+
+// --- character lookup -------------------------------------------------------
+
+const HOBGOBLIN = {
+  id: 7605,
+  name: 'Hobgoblin (Kingsley)',
+  real_name: 'Roderick Kingsley',
+  // Comic Vine returns aliases as one newline-separated string, not a list.
+  aliases: 'Roderick Kingsley\nHobgoblin\nDevil-Spider\nHobgobbler',
+  deck: 'Roderick Kingsley became a worthy heir of the Goblin legacy.',
+  publisher: { name: 'Marvel' },
+  first_appeared_in_issue: { id: 20469, name: 'Pretty Poison', issue_number: '43' },
+  count_of_issue_appearances: 576,
+  image: { small_url: 'small.jpg', thumb_url: 'thumb.jpg' },
+  site_detail_url: 'https://comicvine.gamespot.com/hobgoblin/4005-7605/',
+}
+
+test('getCharacter maps the fields the card renders', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/character/', { results: HOBGOBLIN }]]),
+  })
+  const c = await cv.getCharacter(7605)
+  expect(c).toMatchObject({
+    id: 7605,
+    name: 'Hobgoblin (Kingsley)',
+    realName: 'Roderick Kingsley',
+    deck: 'Roderick Kingsley became a worthy heir of the Goblin legacy.',
+    publisher: 'Marvel',
+    firstAppearance: 'Pretty Poison #43',
+    appearanceCount: 576,
+    imageUrl: 'small.jpg',
+    siteUrl: 'https://comicvine.gamespot.com/hobgoblin/4005-7605/',
+  })
+})
+
+test('getCharacter splits the newline-separated aliases into a list', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/character/', { results: HOBGOBLIN }]]),
+  })
+  const c = await cv.getCharacter(7605)
+  expect(c.aliases).toEqual(['Roderick Kingsley', 'Hobgoblin', 'Devil-Spider', 'Hobgobbler'])
+})
+
+test('getCharacter has no aliases when the field is absent', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/character/', { results: { id: 1, name: 'Nobody' } }]]),
+  })
+  const c = await cv.getCharacter(1)
+  expect(c.aliases).toEqual([])
+})
+
+// The card renders the profile behind an expander, so it has to come down with the card.
+// One 30KB request beats a second round trip against a 200/hour budget.
+test('getCharacter requests the description the profile is built from', async () => {
+  const urls: string[] = []
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async (url: string) => {
+      urls.push(url)
+      return { ok: true, json: async () => ({ results: HOBGOBLIN }) }
+    },
+  })
+  await cv.getCharacter(7605)
+  const fieldList = new URL(urls[0]).searchParams.get('field_list')!
+  expect(fieldList).toContain('description')
+  expect(fieldList).toContain('deck')
+})
+
+// issue_credits is 576 entries for Hobgoblin and nothing renders it; it would triple the
+// payload on its own.
+test('getCharacter does not request the issue or volume credit lists', async () => {
+  const urls: string[] = []
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async (url: string) => {
+      urls.push(url)
+      return { ok: true, json: async () => ({ results: HOBGOBLIN }) }
+    },
+  })
+  await cv.getCharacter(7605)
+  const fieldList = new URL(urls[0]).searchParams.get('field_list')!
+  expect(fieldList).not.toContain('issue_credits')
+  expect(fieldList).not.toContain('volume_credits')
+})
+
+test('getCharacter turns the description into renderable blocks', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/character/', { results: {
+      ...HOBGOBLIN,
+      description: '<h2>Origin</h2><p>Roderick Kingsley was a <b>famous</b> designer.</p>',
+    } }]]),
+  })
+  const c = await cv.getCharacter(7605)
+  expect(c.profile).toEqual([
+    { kind: 'heading', level: 2, text: 'Origin' },
+    { kind: 'para', text: 'Roderick Kingsley was a famous designer.' },
+  ])
+})
+
+test('a character with no description has an empty profile', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/character/', { results: { id: 1, name: 'Nobody' } }]]),
+  })
+  expect((await cv.getCharacter(1)).profile).toEqual([])
+})
+
+test('getCharacter addresses the character resource by its 4005 prefix', async () => {
+  const urls: string[] = []
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async (url: string) => {
+      urls.push(url)
+      return { ok: true, json: async () => ({ results: HOBGOBLIN }) }
+    },
+  })
+  await cv.getCharacter(7605)
+  expect(urls[0]).toContain('/character/4005-7605/')
+})
+
+test('applying an issue stores the Comic Vine id alongside each character tag', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cv-charid-'))
+  mkdirSync(join(dir, 'Spider-Man'), { recursive: true })
+  await makeCbz(join(dir, 'Spider-Man'), ['p1.png'], '238.cbz')
+
+  const mockFetchImpl = mockFetch([
+    ['/issue/', { results: {
+      name: 'The Hobgoblin', issue_number: '238', cover_date: '1983-03-01', description: null,
+      volume: { name: 'The Amazing Spider-Man', id: 2127 },
+      person_credits: [],
+      character_credits: [{ id: 1443, name: 'Spider-Man' }, { id: 7605, name: 'Hobgoblin (Kingsley)' }],
+      team_credits: [{ id: 999, name: 'Sinister Six' }],
+    } }],
+    ['/volume/', { results: { name: 'The Amazing Spider-Man', publisher: { name: 'Marvel' }, description: null } }],
+  ])
+
+  const app = Fastify()
+  const db = openDb(':memory:')
+  app.decorate('db', db)
+  app.decorate('config', { comicVineApiKey: 'test-key', comicsDir: dir, thumbsDir: dir } as Config)
+  const origFetch = globalThis.fetch
+  globalThis.fetch = mockFetchImpl as unknown as typeof fetch
+
+  await app.register(comicvineRoutes)
+  const edition = upsertEdition(db, { name: 'Spider-Man', folder: 'Spider-Man' })
+  const book = insertBook(db, { editionId: edition.id, filePath: 'Spider-Man/238.cbz', pageCount: 1, fileSize: 100 })!
+
+  try {
+    const res = await app.inject({
+      method: 'POST', url: `/api/books/${book.id}/comicvine`, payload: { issueId: 42 },
+    })
+    expect(res.statusCode).toBe(200)
+    const tags = getBookTags(db, book.id)
+    expect(tags).toContainEqual({ kind: 'character', value: 'Spider-Man', extId: 1443 })
+    expect(tags).toContainEqual({ kind: 'character', value: 'Hobgoblin (Kingsley)', extId: 7605 })
+  } finally {
+    globalThis.fetch = origFetch
+    await app.close()
+    rmSync(dir, { recursive: true, force: true })
+  }
 })

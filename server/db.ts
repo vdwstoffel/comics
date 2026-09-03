@@ -128,6 +128,12 @@ export function openDb(dbPath: string): Db {
 
   db.exec(MIGRATION)
 
+  // Additive migration: character tags gained the Comic Vine id that says WHICH character
+  // they are. Four different people have gone by "Hobgoblin"; the name alone can't pick one.
+  if (!columnsOf(db, 'book_tag').includes('ext_id')) {
+    db.exec('ALTER TABLE book_tag ADD COLUMN ext_id INTEGER')
+  }
+
   // Editions that predate the grouping feature have no series of their own yet.
   if (!columnsOf(db, 'edition').includes('series_name')) {
     db.exec('ALTER TABLE edition ADD COLUMN series_name TEXT')

@@ -7,6 +7,7 @@ import { enterFullscreen } from '../lib/useFullscreen'
 import MetadataEditor from '../components/MetadataEditor'
 import ComicVineMatchDialog from '../components/ComicVineMatchDialog'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
+import CharacterDialog from '../components/CharacterDialog'
 import { buildCvQuery } from '../lib/cvQuery'
 
 const CHARACTER_SHOW_THRESHOLD = 40
@@ -19,6 +20,7 @@ export default function BookDetail() {
   const [showAllCharacters, setShowAllCharacters] = useState(false)
   const [editing, setEditing] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [character, setCharacter] = useState<string | null>(null)
   const navigate = useNavigate()
 
   const { data, isLoading } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
@@ -208,7 +210,9 @@ export default function BookDetail() {
           <div className="book-detail__section">
             <h3 className="book-detail__section-heading">Characters</h3>
             <div className="chip-row">
-              {visibleCharacters.map((c) => <span key={c} className="chip">{c}</span>)}
+              {visibleCharacters.map((c) => (
+                <button key={c} className="chip chip--action" onClick={() => setCharacter(c)}>{c}</button>
+              ))}
             </div>
             {hasMoreCharacters && (
               <button
@@ -243,6 +247,10 @@ export default function BookDetail() {
           </div>
         )}
       </div>
+
+      {character && (
+        <CharacterDialog bookId={id!} name={character} onClose={() => setCharacter(null)} />
+      )}
 
       {confirmRemove && (
         <ConfirmDeleteDialog

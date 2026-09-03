@@ -8,6 +8,8 @@ export interface BookCredit {
 export interface BookTag {
   kind: string
   value: string
+  /** Comic Vine id, for character tags matched from an issue's credits. */
+  extId?: number
 }
 
 // Must be called within a transaction for atomicity.
@@ -26,12 +28,31 @@ export function getBookCredits(db: Db, bookId: number): BookCredit[] {
 // Must be called within a transaction for atomicity.
 export function replaceBookTags(db: Db, bookId: number, tags: BookTag[]): void {
   db.prepare('DELETE FROM book_tag WHERE book_id = ?').run(bookId)
-  const insert = db.prepare('INSERT INTO book_tag (book_id, kind, value) VALUES (?, ?, ?)')
-  for (const { kind, value } of tags) {
-    insert.run(bookId, kind, value)
+  const insert = db.prepare('INSERT INTO book_tag (book_id, kind, value, ext_id) VALUES (?, ?, ?, ?)')
+  for (const { kind, value, extId } of tags) {
+    insert.run(bookId, kind, value, extId ?? null)
+  }
+}
+
+/**
+ * Fill in Comic Vine ids on character tags that were saved without them — tags written
+ * before ids were captured, or parsed out of a ComicInfo.xml during a scan. Matches on the
+ * name the tag was stored under, which is Comic Vine's own name for that character.
+ * Idempotent: re-running it writes the same ids.
+ */
+export function setCharacterTagIds(db: Db, bookId: number, refs: Array<{ id?: number; name: string }>): void {
+  const update = db.prepare(
+    "UPDATE book_tag SET ext_id = ? WHERE book_id = ? AND kind = 'character' AND value = ?",
+  )
+  for (const { id, name } of refs) {
+    if (id == null) continue
+    update.run(id, bookId, name)
   }
 }
 
 export function getBookTags(db: Db, bookId: number): BookTag[] {
-  return db.prepare('SELECT kind, value FROM book_tag WHERE book_id = ? ORDER BY id').all(bookId) as BookTag[]
+  const rows = db
+    .prepare('SELECT kind, value, ext_id FROM book_tag WHERE book_id = ? ORDER BY id')
+    .all(bookId) as Array<{ kind: string; value: string; ext_id: number | null }>
+  return rows.map(({ kind, value, ext_id }) => ({ kind, value, extId: ext_id ?? undefined }))
 }

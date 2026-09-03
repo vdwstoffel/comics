@@ -21,9 +21,32 @@ const book = {
 
 const edition = { id: 1, name: 'Vol 3', seriesName: 'Avengers' }
 
+const tags = [
+  { kind: 'character', value: 'Spider-Man', extId: 1443 },
+  { kind: 'character', value: 'Hobgoblin (Kingsley)', extId: 7605 },
+  { kind: 'team', value: 'Sinister Six' },
+]
+
+const HOBGOBLIN = {
+  id: 7605,
+  name: 'Hobgoblin (Kingsley)',
+  realName: 'Roderick Kingsley',
+  aliases: [],
+  deck: 'A worthy heir of the Goblin legacy.',
+  publisher: 'Marvel',
+  siteUrl: 'https://comicvine.gamespot.com/hobgoblin/4005-7605/',
+}
+
+function characterUrls() {
+  return (globalThis.fetch as unknown as ReturnType<typeof vi.fn>).mock.calls
+    .map(([url]) => String(url))
+    .filter((url) => url.includes('/character?'))
+}
+
 beforeEach(() => {
   globalThis.fetch = vi.fn(async (url: string, opts?: RequestInit) => {
-    if (url === '/api/books/5' && !opts) return { ok: true, json: async () => ({ book, progress: { lastPage: 0, completed: false } }) }
+    if (url.includes('/character?')) return { ok: true, json: async () => ({ character: HOBGOBLIN, verified: true }) }
+    if (url === '/api/books/5' && !opts) return { ok: true, json: async () => ({ book, progress: { lastPage: 0, completed: false }, tags }) }
     if (url === '/api/books/5' && opts?.method === 'DELETE') return { ok: true, json: async () => ({ deleted: true, editionId: 1, editionRemoved: false }) }
     if (url === '/api/series') return { ok: true, json: async () => ({ series: [{ id: 1, name: 'Avengers' }] }) }
     if (url === '/api/editions') return { ok: true, json: async () => ({ editions: [edition] }) }
@@ -148,4 +171,43 @@ test('cancelling the removal sends nothing', async () => {
 
   await waitFor(() => expect(screen.queryByRole('heading', { name: /remove/i })).not.toBeInTheDocument())
   expect(globalThis.fetch).not.toHaveBeenCalledWith('/api/books/5', expect.objectContaining({ method: 'DELETE' }))
+})
+
+// --- character lookup -------------------------------------------------------
+
+// An issue can credit thirty characters. Looking them all up to render chips nobody
+// clicked would spend the hourly Comic Vine budget on a page view.
+test('rendering the characters looks none of them up', async () => {
+  renderAt()
+  expect(await screen.findByText('Hobgoblin (Kingsley)')).toBeInTheDocument()
+  expect(characterUrls()).toHaveLength(0)
+})
+
+test('clicking a character opens their card', async () => {
+  renderAt()
+  fireEvent.click(await screen.findByRole('button', { name: 'Hobgoblin (Kingsley)' }))
+  expect(await screen.findByText('A worthy heir of the Goblin legacy.')).toBeInTheDocument()
+  expect(screen.getByText('Roderick Kingsley')).toBeInTheDocument()
+})
+
+test('clicking a character looks up that character, once', async () => {
+  renderAt()
+  fireEvent.click(await screen.findByRole('button', { name: 'Spider-Man' }))
+  await waitFor(() => expect(characterUrls()).toHaveLength(1))
+  expect(characterUrls()[0]).toContain(`name=${encodeURIComponent('Spider-Man')}`)
+})
+
+// Teams and story arcs have no character lookup behind them, so they stay plain text
+// rather than advertising a click that does nothing.
+test('a team is not clickable', async () => {
+  renderAt()
+  expect(await screen.findByText('Sinister Six')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Sinister Six' })).not.toBeInTheDocument()
+})
+
+test('the card closes again', async () => {
+  renderAt()
+  fireEvent.click(await screen.findByRole('button', { name: 'Hobgoblin (Kingsley)' }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Close' }))
+  await waitFor(() => expect(screen.queryByText('A worthy heir of the Goblin legacy.')).not.toBeInTheDocument())
 })

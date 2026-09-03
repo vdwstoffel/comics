@@ -46,6 +46,28 @@ export interface ApiCredit {
 export interface ApiTag {
   kind: string
   value: string
+  /** Comic Vine id, present on character tags matched from an issue's credits. */
+  extId?: number
+}
+
+/** One piece of a Comic Vine profile. The server parses the HTML away before it gets here. */
+export type ProfileBlock =
+  | { kind: 'heading'; level: 2 | 3 | 4; text: string }
+  | { kind: 'para'; text: string }
+  | { kind: 'list'; items: string[] }
+
+export interface ApiCharacter {
+  id?: number
+  name?: string
+  realName?: string
+  aliases: string[]
+  deck?: string
+  publisher?: string
+  firstAppearance?: string
+  appearanceCount?: number
+  imageUrl?: string
+  siteUrl?: string
+  profile: ProfileBlock[]
 }
 
 export interface ApiProgress {
@@ -84,6 +106,8 @@ export interface EditionDetailResponse { edition: ApiEdition; books: ApiBook[] }
 export interface BookResponse { book: ApiBook; progress: ApiProgress; credits?: ApiCredit[]; tags?: ApiTag[] }
 export interface ProgressResponse { progress: ApiProgress }
 export interface CvSearchResponse { results: CvSearchResult[] }
+/** `verified` is false when the character was resolved by name search rather than by id. */
+export interface CharacterResponse { character: ApiCharacter; verified: boolean }
 export interface EditionResponse { edition: ApiEdition }
 export interface MoveBookEditionResponse { book: ApiBook; edition: ApiEdition }
 export interface DeleteBookResponse { deleted: true; editionId: number; editionRemoved: boolean }
@@ -168,6 +192,8 @@ export const api = {
     json<BookResponse>(`/api/books/${id}/metadata`, {
       method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
     }),
+  getCharacter: (bookId: string | number, name: string) =>
+    json<CharacterResponse>(`/api/books/${bookId}/character?name=${encodeURIComponent(name)}`),
   cvSearch: (q: string, type: string) =>
     json<CvSearchResponse>(`/api/comicvine/search?q=${encodeURIComponent(q)}&type=${type}`),
   applyIssue: (id: string | number, issueId: number) =>
