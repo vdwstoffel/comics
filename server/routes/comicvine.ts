@@ -1,7 +1,7 @@
 import { createComicVine } from '../lib/comicvine.js'
 import { getBook, updateBook } from '../models/books.js'
 import { getEdition, updateEdition } from '../models/editions.js'
-import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags, setCharacterTagIds } from '../models/metadata.js'
+import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags, setTagIds } from '../models/metadata.js'
 import { syncComicInfoFile } from '../services/comicinfoSync.js'
 import type { App } from '../types.js'
 
@@ -45,7 +45,7 @@ export default async function comicvineRoutes(app: App) {
       const tags = [
         ...meta.characters.map((c) => ({ kind: 'character', value: c.name, extId: c.id })),
         ...meta.teams.map((value) => ({ kind: 'team', value })),
-        ...meta.storyArcs.map((value) => ({ kind: 'story_arc', value })),
+        ...meta.storyArcs.map((a) => ({ kind: 'story_arc', value: a.name, extId: a.id })),
       ]
       replaceBookTags(app.db, book.id, tags)
       // Propagate publisher to the edition if the edition doesn't have one yet
@@ -104,7 +104,7 @@ export default async function comicvineRoutes(app: App) {
     // requests the first time you open any character on this issue and one after that.
     if (extId == null && book.comicvineId) {
       const issue = await cv.getIssue(book.comicvineId)
-      setCharacterTagIds(app.db, book.id, issue.characters)
+      setTagIds(app.db, book.id, 'character', issue.characters)
       extId = issue.characters.find((c) => c.name === name)?.id
     }
 

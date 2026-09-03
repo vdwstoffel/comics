@@ -3,9 +3,9 @@ import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ReadState } from '../api'
-import { statusFrom, withStatus, STATUS_LABELS } from '../lib/readStatus'
+import { statusFrom, withStatus } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
-import FilterSidebar from '../components/FilterSidebar'
+import LibraryRail from '../components/LibraryRail'
 
 export default function Library() {
   const [selectedPublisher, setSelectedPublisher] = useState<string | null>(null)
@@ -13,22 +13,6 @@ export default function Library() {
   // every link, which is what keeps the filter applied as you drill down.
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedStatus = statusFrom(searchParams)
-
-  const { data: publishersData } = useQuery({
-    queryKey: ['publishers'],
-    queryFn: api.getPublishers,
-  })
-
-  // Always fetch the unfiltered count so we can detect "unknown" editions
-  const { data: allEditionsData } = useQuery({
-    queryKey: ['editions', null],
-    queryFn: () => api.getEditions(),
-  })
-
-  const { data: readStateData } = useQuery({
-    queryKey: ['read-states'],
-    queryFn: api.getReadStates,
-  })
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['series', selectedPublisher, selectedStatus],
@@ -48,45 +32,15 @@ export default function Library() {
     setSelectedPublisher(null)
   }
 
-  const publishers = publishersData?.publishers ?? []
-
-  // Build sidebar items: named publishers (label = name, count shown as a separate badge)
-  const sidebarItems: { key: string; label: string; count?: number }[] = publishers.map((p) => ({
-    key: p.name,
-    label: p.name,
-    count: p.count,
-  }))
-
-  // Show "Unknown" item if any editions lack a publisher
-  const totalWithPublisher = publishers.reduce((sum, p) => sum + p.count, 0)
-  const totalEditions = allEditionsData?.editions.length ?? 0
-  const unknownCount = totalEditions - totalWithPublisher
-
-  if (unknownCount > 0) {
-    sidebarItems.push({ key: '__unknown__', label: 'Unknown', count: unknownCount })
-  }
-
   return (
     <>
-      <nav className="library-rail">
-        <FilterSidebar
-          title="Publishers"
-          items={sidebarItems}
-          active={selectedPublisher}
-          onSelect={choosePublisher}
-        />
-        <FilterSidebar
-          title="Status"
-          items={(readStateData?.readStates ?? []).map((s) => ({
-            key: s.name,
-            label: STATUS_LABELS[s.name],
-            count: s.count,
-          }))}
-          active={selectedStatus}
-          onSelect={chooseStatus}
-        />
-      </nav>
-      <div className="library-content">
+      <LibraryRail
+        activePublisher={selectedPublisher}
+        activeStatus={selectedStatus}
+        onPublisher={choosePublisher}
+        onStatus={chooseStatus}
+      />
+      <main className="library-content">
 
         <h1 className="page-title">Library</h1>
         {isLoading && <p>Loading…</p>}
@@ -111,7 +65,7 @@ export default function Library() {
             })}
           </div>
         )}
-      </div>
+      </main>
     </>
   )
 }

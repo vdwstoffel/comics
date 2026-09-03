@@ -3,7 +3,7 @@ import type { Block } from './html.js'
 
 const BASE = 'https://comicvine.gamespot.com/api'
 const UA = 'comic-app/0.1 (self-hosted personal comic library)'
-const TYPE_PREFIX: Record<string, string> = { issue: '4000', volume: '4050', character: '4005' }
+const TYPE_PREFIX: Record<string, string> = { issue: '4000', volume: '4050', character: '4005', storyArc: '4045' }
 
 // Everything the character card renders. `description` is the ~30KB profile behind the
 // expander; it comes down with the card so opening it costs no second request. What stays
@@ -12,9 +12,14 @@ const TYPE_PREFIX: Record<string, string> = { issue: '4000', volume: '4050', cha
 const CHARACTER_FIELDS =
   'id,name,real_name,aliases,deck,description,publisher,first_appeared_in_issue,count_of_issue_appearances,image,site_detail_url'
 
+// `issues` is the point of the arc page. `description` stays out — the arc page shows the
+// one-line deck and links out for the rest.
+const STORY_ARC_FIELDS = 'id,name,deck,publisher,image,site_detail_url,issues'
+
 interface CvImage {
   thumb_url?: string
   small_url?: string
+  medium_url?: string
   original_url?: string
 }
 interface CvPerson {
@@ -54,6 +59,15 @@ interface CvCharacterResult {
   image?: CvImage
   site_detail_url?: string
 }
+interface CvStoryArcResult {
+  id?: number
+  name?: string
+  deck?: string
+  publisher?: { name?: string }
+  image?: CvImage
+  site_detail_url?: string
+  issues?: Array<{ id?: number; name?: string; site_detail_url?: string }>
+}
 interface CvResponse {
   results?: CvResult | CvResult[]
 }
@@ -72,9 +86,9 @@ export interface CvCredit {
   role: string
 }
 
-/** A character as an issue credits it: the name we display, plus the id that identifies
- *  WHICH character it is. Comic Vine's search can't tell four Hobgoblins apart; this can. */
-export interface CvCharacterRef {
+/** A credited character or story arc: the name we display, plus the id that identifies WHICH
+ *  one it is. Comic Vine's search can't tell four Hobgoblins apart; this can. */
+export interface CvNamedRef {
   id?: number
   name: string
 }
@@ -88,9 +102,9 @@ export interface CvIssue {
   writer?: string
   penciller?: string
   credits: CvCredit[]
-  characters: CvCharacterRef[]
+  characters: CvNamedRef[]
   teams: string[]
-  storyArcs: string[]
+  storyArcs: CvNamedRef[]
   coverUrl?: string
   siteUrl?: string
   volumeId?: number
@@ -109,6 +123,21 @@ export interface CvCharacter {
   /** The full profile, parsed into blocks so no Comic Vine HTML reaches the page. */
   profile: Block[]
 }
+/** An issue as a story arc lists it. Comic Vine gives no number, volume or date here. */
+export interface CvArcIssue {
+  id: number
+  name?: string
+  siteUrl?: string
+}
+export interface CvStoryArc {
+  id?: number
+  name?: string
+  deck?: string
+  publisher?: string
+  imageUrl?: string
+  siteUrl?: string
+  issues: CvArcIssue[]
+}
 export interface CvVolume {
   name?: string
   publisher?: string
@@ -126,6 +155,7 @@ export interface ComicVineClient {
   getIssue(id: number | string): Promise<CvIssue>
   getVolume(id: number | string): Promise<CvVolume>
   getCharacter(id: number | string): Promise<CvCharacter>
+  getStoryArc(id: number | string): Promise<CvStoryArc>
 }
 
 export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.now() }: ComicVineOptions): ComicVineClient {
@@ -185,7 +215,7 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
 
       const names = (list: CvNamedItem[] | undefined) =>
         (list || []).map((x) => x.name).filter((n): n is string => !!n)
-      const refs = (list: CvNamedItem[] | undefined): CvCharacterRef[] =>
+      const refs = (list: CvNamedItem[] | undefined): CvNamedRef[] =>
         (list || []).flatMap((x) => (x.name ? [{ id: x.id, name: x.name }] : []))
 
       const coverDate = r.cover_date
@@ -200,7 +230,7 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         credits,
         characters: refs(r.character_credits),
         teams: names(r.team_credits),
-        storyArcs: names(r.story_arc_credits),
+        storyArcs: refs(r.story_arc_credits),
         coverUrl: r.image?.original_url,
         siteUrl: r.site_detail_url,
         volumeId: r.volume?.id,
@@ -229,6 +259,26 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         imageUrl: r.image?.small_url || r.image?.thumb_url,
         siteUrl: r.site_detail_url,
         profile: toBlocks(r.description),
+      }
+    },
+    async getStoryArc(id) {
+      const data = await get(`/story_arc/${TYPE_PREFIX.storyArc}-${id}/`, { field_list: STORY_ARC_FIELDS })
+      const r = (data.results || {}) as CvStoryArcResult
+
+      // The issues arrive unordered and carry no number, volume or date to sort on. Ascending
+      // id recovers reading order, because issues enter Comic Vine roughly as published.
+      const issues = (r.issues || [])
+        .flatMap((i) => (i.id == null ? [] : [{ id: i.id, name: i.name, siteUrl: i.site_detail_url }]))
+        .sort((a, b) => a.id - b.id)
+
+      return {
+        id: r.id,
+        name: r.name,
+        deck: r.deck,
+        publisher: r.publisher?.name,
+        imageUrl: r.image?.medium_url || r.image?.original_url,
+        siteUrl: r.site_detail_url,
+        issues,
       }
     },
     async getVolume(id) {

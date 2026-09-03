@@ -7,6 +7,8 @@ import BookDetail from './pages/BookDetail'
 import Reader from './pages/Reader'
 import Upload from './pages/Upload'
 import SearchComics from './pages/SearchComics'
+import Arcs from './pages/Arcs'
+import Arc from './pages/Arc'
 
 function Header() {
   return (
@@ -31,13 +33,12 @@ function Layout({ children }: { children: ReactNode }) {
   )
 }
 
-function LibraryLayout() {
+/** The rail-and-content shell. The arc views share it so the sidebar stays put. */
+function LibraryLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <Header />
-      <div className="library-shell">
-        <Library />
-      </div>
+      <div className="library-shell">{children}</div>
     </>
   )
 }
@@ -49,7 +50,9 @@ function ReaderLayout({ children }: { children: ReactNode }) {
 export default function App() {
   return (
     <Routes>
-      <Route path="/" element={<LibraryLayout />} />
+      <Route path="/" element={<LibraryLayout><Library /></LibraryLayout>} />
+      <Route path="/arcs" element={<LibraryLayout><Arcs /></LibraryLayout>} />
+      <Route path="/arcs/:name" element={<LibraryLayout><Arc /></LibraryLayout>} />
       <Route path="/series/:name" element={<Layout><Series /></Layout>} />
       <Route path="/edition/:id" element={<Layout><Edition /></Layout>} />
       <Route path="/book/:id" element={<Layout><BookDetail /></Layout>} />

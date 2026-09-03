@@ -87,7 +87,7 @@ test('getIssue maps rich fields: multi-role credits, characters, teams, arcs, ye
         ],
         character_credits: [{ id: 1699, name: 'Batman' }, { id: 9268, name: 'The Joker' }],
         team_credits: [{ name: 'Justice League' }],
-        story_arc_credits: [{ name: 'Court of Owls' }],
+        story_arc_credits: [{ id: 42125, name: 'Court of Owls' }],
         image: { original_url: 'https://example.com/cover.jpg' },
         site_detail_url: 'https://comicvine.gamespot.com/batman-1/4000-12345/',
       } }],
@@ -112,7 +112,7 @@ test('getIssue maps rich fields: multi-role credits, characters, teams, arcs, ye
   // Arrays
   expect(issue.characters).toEqual([{ id: 1699, name: 'Batman' }, { id: 9268, name: 'The Joker' }])
   expect(issue.teams).toEqual(['Justice League'])
-  expect(issue.storyArcs).toEqual(['Court of Owls'])
+  expect(issue.storyArcs).toEqual([{ id: 42125, name: 'Court of Owls' }])
 })
 
 test('getIssue returns empty arrays when no credits/tags', async () => {
@@ -445,6 +445,121 @@ test('applying an issue stores the Comic Vine id alongside each character tag', 
     const tags = getBookTags(db, book.id)
     expect(tags).toContainEqual({ kind: 'character', value: 'Spider-Man', extId: 1443 })
     expect(tags).toContainEqual({ kind: 'character', value: 'Hobgoblin (Kingsley)', extId: 7605 })
+  } finally {
+    globalThis.fetch = origFetch
+    await app.close()
+    rmSync(dir, { recursive: true, force: true })
+  }
+})
+
+// --- story arcs -------------------------------------------------------------
+
+const ARC = {
+  id: 56676,
+  name: 'Redemption',
+  deck: 'A four part story arc.',
+  publisher: { name: 'BOOM! Studios' },
+  image: { medium_url: 'arc.jpg', original_url: 'arc-big.jpg' },
+  site_detail_url: 'https://comicvine.gamespot.com/redemption/4045-56676/',
+  // As Comic Vine returns them: out of reading order.
+  issues: [
+    { id: 308492, name: 'Redemption, Part Two', site_detail_url: 'https://cv/part-two' },
+    { id: 306000, name: 'Redemption, Part One', site_detail_url: 'https://cv/part-one' },
+    { id: 312721, name: 'Redemption, Part Four', site_detail_url: 'https://cv/part-four' },
+    { id: 309601, name: 'Redemption, Part Three', site_detail_url: 'https://cv/part-three' },
+  ],
+}
+
+test('getStoryArc maps the fields the arc page renders', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/story_arc/', { results: ARC }]]),
+  })
+  const arc = await cv.getStoryArc(56676)
+  expect(arc).toMatchObject({
+    id: 56676,
+    name: 'Redemption',
+    deck: 'A four part story arc.',
+    publisher: 'BOOM! Studios',
+    imageUrl: 'arc.jpg',
+    siteUrl: 'https://comicvine.gamespot.com/redemption/4045-56676/',
+  })
+})
+
+// The issues carry no number, volume or date — id order is the only signal for reading
+// order, and it holds because issues enter Comic Vine roughly as they are published.
+test('getStoryArc puts the issues back into reading order', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/story_arc/', { results: ARC }]]),
+  })
+  const arc = await cv.getStoryArc(56676)
+  expect(arc.issues.map((i) => i.name)).toEqual([
+    'Redemption, Part One', 'Redemption, Part Two', 'Redemption, Part Three', 'Redemption, Part Four',
+  ])
+})
+
+test('getStoryArc keeps each issue id and link', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/story_arc/', { results: ARC }]]),
+  })
+  const [first] = (await cv.getStoryArc(56676)).issues
+  expect(first).toEqual({ id: 306000, name: 'Redemption, Part One', siteUrl: 'https://cv/part-one' })
+})
+
+test('getStoryArc addresses the arc by its 4045 prefix and skips the description', async () => {
+  const urls: string[] = []
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async (url: string) => {
+      urls.push(url)
+      return { ok: true, json: async () => ({ results: ARC }) }
+    },
+  })
+  await cv.getStoryArc(56676)
+  expect(urls[0]).toContain('/story_arc/4045-56676/')
+  expect(new URL(urls[0]).searchParams.get('field_list')).not.toContain('description')
+})
+
+test('an arc with no issues listed is still an arc', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/story_arc/', { results: { id: 1, name: 'Lonely Arc' } }]]),
+  })
+  const arc = await cv.getStoryArc(1)
+  expect(arc.name).toBe('Lonely Arc')
+  expect(arc.issues).toEqual([])
+})
+
+test('applying an issue stores the Comic Vine id alongside each story arc tag', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'cv-arcid-'))
+  mkdirSync(join(dir, 'Batman'), { recursive: true })
+  await makeCbz(join(dir, 'Batman'), ['p1.png'], '001.cbz')
+
+  const mockFetchImpl = mockFetch([
+    ['/issue/', { results: {
+      name: 'Court', issue_number: '1', cover_date: '2011-11-01', description: null,
+      volume: { name: 'Batman', id: 7890 }, person_credits: [],
+      story_arc_credits: [{ id: 42125, name: 'Court of Owls' }],
+    } }],
+    ['/volume/', { results: { name: 'Batman', publisher: { name: 'DC' }, description: null } }],
+  ])
+
+  const app = Fastify()
+  const db = openDb(':memory:')
+  app.decorate('db', db)
+  app.decorate('config', { comicVineApiKey: 'test-key', comicsDir: dir, thumbsDir: dir } as Config)
+  const origFetch = globalThis.fetch
+  globalThis.fetch = mockFetchImpl as unknown as typeof fetch
+
+  await app.register(comicvineRoutes)
+  const edition = upsertEdition(db, { name: 'Batman', folder: 'Batman' })
+  const book = insertBook(db, { editionId: edition.id, filePath: 'Batman/001.cbz', pageCount: 1, fileSize: 100 })!
+
+  try {
+    await app.inject({ method: 'POST', url: `/api/books/${book.id}/comicvine`, payload: { issueId: 42 } })
+    expect(getBookTags(db, book.id)).toContainEqual({ kind: 'story_arc', value: 'Court of Owls', extId: 42125 })
   } finally {
     globalThis.fetch = origFetch
     await app.close()

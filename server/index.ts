@@ -11,6 +11,7 @@ import seriesRoutes from './routes/series.js'
 import booksRoutes from './routes/books.js'
 import uploadRoutes from './routes/upload.js'
 import comicvineRoutes from './routes/comicvine.js'
+import arcRoutes from './routes/arcs.js'
 import comicIndexRoutes from './routes/comicIndex.js'
 import { createScrapeRunner } from './services/comicIndexScraper.js'
 import { backfillSeriesNames } from './models/series.js'
@@ -47,6 +48,7 @@ export async function buildServer(): Promise<App> {
   await app.register(booksRoutes)
   await app.register(uploadRoutes)
   await app.register(comicvineRoutes)
+  await app.register(arcRoutes)
   await app.register(comicIndexRoutes)
 
   const distDir = join(process.cwd(), 'dist')

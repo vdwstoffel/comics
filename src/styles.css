@@ -1809,3 +1809,39 @@ textarea.input:hover:not(:focus) {
   font-size: 0.875rem;
   line-height: 1.6;
 }
+
+/* ============================================================
+   Story arcs
+   ============================================================ */
+
+.arc-empty {
+  color: var(--muted);
+  max-width: 46ch;
+  line-height: 1.6;
+}
+
+.arc-detail__meta {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin-bottom: 10px;
+}
+
+.arc-detail__deck {
+  color: var(--text);
+  line-height: 1.6;
+  max-width: 62ch;
+  margin-bottom: 24px;
+}
+
+.arc-issue-grid {
+  margin-bottom: 24px;
+}
+
+/* A cover box with nothing in it is an issue the library does not have. Dashed so it
+   reads as a deliberate gap rather than art that failed to load — and blank, because the
+   cover of a comic you have not read is a spoiler. */
+.cover-tile__image-box:empty {
+  border-style: dashed;
+  box-shadow: none;
+  background: none;
+}

@@ -259,3 +259,43 @@ test('choosing a status puts it in the url', async () => {
   const tile = await screen.findByText('Amazing Spider-Man')
   expect(tile.closest('a')).toHaveAttribute('href', expect.stringContaining('status=unread'))
 })
+
+// --- story arcs rail --------------------------------------------------------
+
+const ARC_ROUTES = {
+  '/api/publishers': { publishers: [] },
+  '/api/series': { series: [] },
+  '/api/editions': { editions: [] },
+  '/api/arcs': { arcs: [{ name: 'Death Spiral', owned: 3 }, { name: 'Court of Owls', owned: 1 }] },
+}
+
+test('the sidebar has a single Story Arcs entry', async () => {
+  globalThis.fetch = makeFetch(ARC_ROUTES)
+  renderWithProviders(<Library />)
+  const rail = await screen.findByLabelText('Story Arcs')
+  expect(within(rail).getByRole('link', { name: /Story Arcs/ })).toHaveAttribute('href', '/arcs')
+})
+
+// Listing every arc in a rail stops working as soon as there are more than a handful,
+// and the names are long enough to truncate at this width.
+test('the sidebar does not list the arcs themselves', async () => {
+  globalThis.fetch = makeFetch(ARC_ROUTES)
+  renderWithProviders(<Library />)
+  const rail = await screen.findByLabelText('Story Arcs')
+  expect(within(rail).queryByText('Death Spiral')).not.toBeInTheDocument()
+  expect(within(rail).queryByText('Court of Owls')).not.toBeInTheDocument()
+})
+
+test('the Story Arcs entry counts the arcs', async () => {
+  globalThis.fetch = makeFetch(ARC_ROUTES)
+  renderWithProviders(<Library />)
+  const rail = await screen.findByLabelText('Story Arcs')
+  expect(within(rail).getByText('2')).toBeInTheDocument()
+})
+
+test('the Story Arcs entry stays out of the way when there are no arcs', async () => {
+  globalThis.fetch = makeFetch({ ...ARC_ROUTES, '/api/arcs': { arcs: [] } })
+  renderWithProviders(<Library />)
+  await screen.findByLabelText('Publishers')
+  expect(screen.queryByLabelText('Story Arcs')).not.toBeInTheDocument()
+})

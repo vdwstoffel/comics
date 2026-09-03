@@ -298,6 +298,36 @@ test('a shorter title does not jump ahead of lower issue numbers in the same ser
   db.close()
 })
 
+// A series that ran, ended and was relaunched should read as one run after another,
+// not as issue #1 of every era, then issue #2 of every era.
+test('each run of a series lists complete before the next run starts', () => {
+  const db = openDb(':memory:')
+  upsertComicIndex(db, [
+    { title: 'Spider-Man #2 (2022)', url: 'https://x.test/d/', category: MARVEL },
+    { title: 'Spider-Man #1 (2016)', url: 'https://x.test/a/', category: MARVEL },
+    { title: 'Spider-Man #2 (2016)', url: 'https://x.test/b/', category: MARVEL },
+    { title: 'Spider-Man #1 (2022)', url: 'https://x.test/c/', category: MARVEL },
+  ])
+  expect(searchComicIndex(db, { q: 'spider-man' }).results.map((r) => r.title)).toEqual([
+    'Spider-Man #1 (2016)', 'Spider-Man #2 (2016)',
+    'Spider-Man #1 (2022)', 'Spider-Man #2 (2022)',
+  ])
+  db.close()
+})
+
+// An undated post is not a lost first printing; it belongs after the runs that say when
+// they came out, never ahead of them.
+test('an undated issue sorts after the dated issues of its series', () => {
+  const db = openDb(':memory:')
+  upsertComicIndex(db, [
+    { title: 'Spider-Man #5', url: 'https://x.test/undated/', category: MARVEL },
+    { title: 'Spider-Man #9 (2016)', url: 'https://x.test/dated/', category: MARVEL },
+  ])
+  expect(searchComicIndex(db, { q: 'spider-man' }).results.map((r) => r.number))
+    .toEqual(['009', '005'])
+  db.close()
+})
+
 test('same series and issue number orders by year', () => {
   const db = openDb(':memory:')
   upsertComicIndex(db, [

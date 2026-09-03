@@ -35,18 +35,19 @@ export function replaceBookTags(db: Db, bookId: number, tags: BookTag[]): void {
 }
 
 /**
- * Fill in Comic Vine ids on character tags that were saved without them — tags written
+ * Fill in Comic Vine ids on tags of one kind that were saved without them — tags written
  * before ids were captured, or parsed out of a ComicInfo.xml during a scan. Matches on the
- * name the tag was stored under, which is Comic Vine's own name for that character.
+ * name the tag was stored under, which is Comic Vine's own name for it. Scoped by kind
+ * because a character and a story arc can share a name (Venom is both).
  * Idempotent: re-running it writes the same ids.
  */
-export function setCharacterTagIds(db: Db, bookId: number, refs: Array<{ id?: number; name: string }>): void {
+export function setTagIds(db: Db, bookId: number, kind: string, refs: Array<{ id?: number; name: string }>): void {
   const update = db.prepare(
-    "UPDATE book_tag SET ext_id = ? WHERE book_id = ? AND kind = 'character' AND value = ?",
+    'UPDATE book_tag SET ext_id = ? WHERE book_id = ? AND kind = ? AND value = ?',
   )
   for (const { id, name } of refs) {
     if (id == null) continue
-    update.run(id, bookId, name)
+    update.run(id, bookId, kind, name)
   }
 }
 

@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom'
 
 interface CoverTileProps {
-  to: string
+  /** Internal route. Give `href` instead for a destination outside the app. */
+  to?: string
+  href?: string
   img?: string
   title: string
   subtitle?: string
@@ -9,12 +11,12 @@ interface CoverTileProps {
   percent?: number
 }
 
-export default function CoverTile({ to, img, title, subtitle, readState, percent }: CoverTileProps) {
+export default function CoverTile({ to, href, img, title, subtitle, readState, percent }: CoverTileProps) {
   const isRead = readState === 'read'
   const isReading = readState === 'reading'
 
-  return (
-    <Link to={to} className="cover-tile">
+  const inner = (
+    <>
       <div className="cover-tile__image-box" style={isRead ? { filter: 'brightness(0.6)' } : undefined}>
         {img && <img src={img} alt={title} />}
         {isRead && (
@@ -30,6 +32,12 @@ export default function CoverTile({ to, img, title, subtitle, readState, percent
       </div>
       <div className="cover-tile__title">{title}</div>
       {subtitle && <div className="cover-tile__subtitle">{subtitle}</div>}
-    </Link>
+    </>
   )
+
+  // A comic the library does not have lives on Comic Vine, which is not a route.
+  if (href) {
+    return <a href={href} target="_blank" rel="noreferrer" className="cover-tile">{inner}</a>
+  }
+  return <Link to={to ?? '#'} className="cover-tile">{inner}</Link>
 }

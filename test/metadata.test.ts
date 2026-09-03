@@ -7,7 +7,7 @@ import {
   getBookCredits,
   replaceBookTags,
   getBookTags,
-  setCharacterTagIds,
+  setTagIds,
 } from '../server/models/metadata.js'
 
 function freshDb() { return openDb(':memory:') }
@@ -114,7 +114,7 @@ test('a tag saved without an id reads back with no extId', () => {
   expect(getBookTags(db, book.id)[0].extId).toBeUndefined()
 })
 
-test('setCharacterTagIds fills in ids on existing character tags by name', () => {
+test('setTagIds fills in ids on existing character tags by name', () => {
   const db = freshDb()
   const book = makeBook(db)
   replaceBookTags(db, book.id, [
@@ -123,7 +123,7 @@ test('setCharacterTagIds fills in ids on existing character tags by name', () =>
     { kind: 'team', value: 'Sinister Six' },
   ])
 
-  setCharacterTagIds(db, book.id, [
+  setTagIds(db, book.id, 'character', [
     { id: 1443, name: 'Spider-Man' },
     { id: 7605, name: 'Hobgoblin (Kingsley)' },
   ])
@@ -135,10 +135,32 @@ test('setCharacterTagIds fills in ids on existing character tags by name', () =>
   expect(tags).toContainEqual({ kind: 'team', value: 'Sinister Six' })
 })
 
-test('setCharacterTagIds leaves a character it has no id for alone', () => {
+test('setTagIds leaves a tag it has no id for alone', () => {
   const db = freshDb()
   const book = makeBook(db)
   replaceBookTags(db, book.id, [{ kind: 'character', value: 'Some Guy' }])
-  setCharacterTagIds(db, book.id, [{ name: 'Some Guy' }])
+  setTagIds(db, book.id, 'character', [{ name: 'Some Guy' }])
   expect(getBookTags(db, book.id)[0].extId).toBeUndefined()
+})
+
+test('setTagIds fills in story arc ids too', () => {
+  const db = freshDb()
+  const book = makeBook(db)
+  replaceBookTags(db, book.id, [{ kind: 'story_arc', value: 'Court of Owls' }])
+  setTagIds(db, book.id, 'story_arc', [{ id: 42125, name: 'Court of Owls' }])
+  expect(getBookTags(db, book.id)).toContainEqual({ kind: 'story_arc', value: 'Court of Owls', extId: 42125 })
+})
+
+// A character and an arc can share a name; filling one must not touch the other.
+test('setTagIds only writes to the kind it was given', () => {
+  const db = freshDb()
+  const book = makeBook(db)
+  replaceBookTags(db, book.id, [
+    { kind: 'character', value: 'Venom' },
+    { kind: 'story_arc', value: 'Venom' },
+  ])
+  setTagIds(db, book.id, 'story_arc', [{ id: 999, name: 'Venom' }])
+  const tags = getBookTags(db, book.id)
+  expect(tags).toContainEqual({ kind: 'story_arc', value: 'Venom', extId: 999 })
+  expect(tags).toContainEqual({ kind: 'character', value: 'Venom' })
 })

@@ -70,6 +70,30 @@ export interface ApiCharacter {
   profile: ProfileBlock[]
 }
 
+export interface ApiStoryArcSummary {
+  name: string
+  owned: number
+}
+
+export interface ApiArcIssue {
+  id: number
+  name?: string
+  siteUrl?: string
+  owned: boolean
+  /** Present only when owned — the issue in your library. */
+  bookId?: number
+}
+
+export interface ApiStoryArc {
+  id?: number
+  name?: string
+  deck?: string
+  publisher?: string
+  imageUrl?: string
+  siteUrl?: string
+  issues: ApiArcIssue[]
+}
+
 export interface ApiProgress {
   bookId: number
   lastPage: number
@@ -108,6 +132,8 @@ export interface ProgressResponse { progress: ApiProgress }
 export interface CvSearchResponse { results: CvSearchResult[] }
 /** `verified` is false when the character was resolved by name search rather than by id. */
 export interface CharacterResponse { character: ApiCharacter; verified: boolean }
+export interface ArcsListResponse { arcs: ApiStoryArcSummary[] }
+export interface ArcResponse { arc: ApiStoryArc }
 export interface EditionResponse { edition: ApiEdition }
 export interface MoveBookEditionResponse { book: ApiBook; edition: ApiEdition }
 export interface DeleteBookResponse { deleted: true; editionId: number; editionRemoved: boolean }
@@ -192,6 +218,8 @@ export const api = {
     json<BookResponse>(`/api/books/${id}/metadata`, {
       method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
     }),
+  getArcs: () => json<ArcsListResponse>('/api/arcs'),
+  getArc: (name: string) => json<ArcResponse>(`/api/arcs/${encodeURIComponent(name)}`),
   getCharacter: (bookId: string | number, name: string) =>
     json<CharacterResponse>(`/api/books/${bookId}/character?name=${encodeURIComponent(name)}`),
   cvSearch: (q: string, type: string) =>

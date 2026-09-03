@@ -137,10 +137,15 @@ function buildFilter(
 }
 
 /**
- * Results are ordered as a catalog, not by relevance: series name, then issue number,
- * then year. Every row already matches every search term (the query ANDs its prefixes),
- * so bm25 rank mostly tracked title length - which pushed "#11" ahead of "#1 (2015)".
- * CAST to REAL is what keeps #999 before #1000 and sorts negative issues first.
+ * Results are ordered as a catalog, not by relevance: series name, then year, then issue
+ * number. Year outranks the number so a relaunched series reads as one run after another
+ * rather than issue #1 of every era, then issue #2 of every era. Every row already
+ * matches every search term (the query ANDs its prefixes), so bm25 rank mostly tracked
+ * title length - which pushed "#11" ahead of "#1 (2015)". CAST to REAL is what keeps #999
+ * before #1000 and sorts negative issues first.
+ *
+ * `year IS NULL` leads the year keys because SQLite sorts NULL first by default, which
+ * would file every undated post ahead of the dated runs of its own series.
  */
 export function searchComicIndex(
   db: Db,
@@ -169,9 +174,10 @@ export function searchComicIndex(
               ORDER BY CASE WHEN instr(ci.title, '#') > 0
                             THEN substr(ci.title, 1, instr(ci.title, '#') - 1)
                             ELSE ci.title END COLLATE NOCASE,
+                       ci.year IS NULL,
+                       ci.year,
                        CAST(ci.number AS REAL),
                        ci.number,
-                       ci.year,
                        ci.title COLLATE NOCASE
               LIMIT ? OFFSET ?`)
     .all(...params, size, from) as Row[])
