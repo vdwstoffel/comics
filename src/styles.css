@@ -169,6 +169,21 @@ img {
   margin-bottom: 10px;
 }
 
+/* When the run was last read from Comic Vine, with the button to read it again. */
+.edition-header__run-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+  margin-bottom: 10px;
+}
+
+.edition-header__refresh {
+  font-size: 0.8125rem;
+  padding: 2px 8px;
+}
+
 .edition-header__summary {
   color: var(--muted);
   font-size: 0.9375rem;

@@ -65,6 +65,26 @@ CREATE TABLE IF NOT EXISTS comic_index (
 );
 CREATE INDEX IF NOT EXISTS idx_comic_index_category ON comic_index(category);
 
+-- Comic Vine's issue list for a volume, so an edition can show the whole run without
+-- asking Comic Vine on every page view. A running volume gains an issue a month, so this
+-- is a cache with an age, not a source of truth - volume_cache records when we last asked.
+-- It is a separate table because a volume Comic Vine lists NO issues for still has to
+-- record the attempt; otherwise "no rows" and "never asked" are indistinguishable and it
+-- would refetch forever.
+CREATE TABLE IF NOT EXISTS volume_cache (
+  volume_id  INTEGER PRIMARY KEY,
+  fetched_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS volume_issue (
+  volume_id   INTEGER NOT NULL,
+  cv_issue_id INTEGER NOT NULL,
+  number      TEXT,
+  name        TEXT,
+  cover_date  TEXT,
+  site_url    TEXT,
+  PRIMARY KEY (volume_id, cv_issue_id)
+);
+
 -- Full-text index over titles. External-content table: the fts rows mirror comic_index
 -- and are kept in sync by the triggers below, so any writer (server or the python
 -- scraper) gets a correct index without having to remember to rebuild it.

@@ -1,11 +1,34 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
+import type { ApiVolumeIssue, ApiBook } from '../api'
 import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import EditionEditDialog from '../components/EditionEditDialog'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
+
+/**
+ * One issue of the run. Yours shows its cover and opens in the library; one you do not have
+ * shows no art — a cover is a spoiler for a comic you have not read — but keeps its place in
+ * the run and stays clickable through to Comic Vine.
+ */
+function VolumeIssue({ issue, book }: { issue: ApiVolumeIssue; book?: ApiBook }) {
+  const label = `#${issue.number ?? '?'}`
+  if (issue.owned && issue.bookId != null) {
+    return (
+      <CoverTile
+        to={`/book/${issue.bookId}`}
+        img={`/api/books/${issue.bookId}/thumbnail`}
+        title={book?.title || issue.name || label}
+        subtitle={label}
+        readState={book?.readState}
+        percent={book?.percent}
+      />
+    )
+  }
+  return <CoverTile href={issue.siteUrl} title={label} subtitle="Missing" />
+}
 
 export default function Edition() {
   const { id } = useParams()
@@ -58,6 +81,29 @@ export default function Edition() {
   // Pending, errored, or any future paused state all share the same property: we
   // cannot yet tell a rename from a merge. Gate on whether the answer is known at
   // all, not on whether a fetch happens to be in flight right now.
+  // The whole run, so a gap in it is visible rather than something to work out by hand.
+  // Skipped while a read filter is on: a placeholder has no read state, so it cannot
+  // honestly survive a filter that asks about one.
+  // Set just before a refetch and consumed by it, so pressing Refresh bypasses the
+  // server's day-long cache while an ordinary render does not. It stays out of the query
+  // key deliberately: a forced read and a normal one are the same data, not two caches.
+  const forceRefresh = useRef(false)
+  const { data: volume, isFetching: volumeFetching, refetch: refetchVolume } = useQuery({
+    queryKey: ['edition-issues', id],
+    queryFn: () => {
+      const force = forceRefresh.current
+      forceRefresh.current = false
+      return api.getEditionIssues(id!, force)
+    },
+    enabled: status === null,
+    // The server caches for a day, so re-reading it on every navigation buys nothing.
+    staleTime: 5 * 60 * 1000,
+  })
+  const refreshRun = () => {
+    forceRefresh.current = true
+    void refetchVolume()
+  }
+
   const editionsKnown = editionsData !== undefined
 
   // Comic Vine's name for the volume, plus the year its run started, is what this
@@ -118,6 +164,17 @@ export default function Edition() {
   if (years.length) findParams.set('yearFrom', String(Math.min(...years)))
   const searchHref = `/search?${findParams}`
 
+  // Render the run itself only when Comic Vine actually gave us one; otherwise the page
+  // falls back to the books, which is also what a volumeless edition and an unreachable
+  // Comic Vine get.
+  const bookById = new Map(data.books.map((b) => [b.id, b]))
+  // Defensive against a response that is not the shape we expect: a run we cannot read is
+  // no reason to take the page down with it.
+  const runAsOf = volume?.fetchedAt ? new Date(volume.fetchedAt).toLocaleString() : ''
+  const runIssues = volume?.issues ?? []
+  const runExtras = volume?.extras ?? []
+  const showRun = runIssues.length > 0 || runExtras.length > 0
+
   return (
     <div>
       <Link to="/" className="back-link">← Library</Link>
@@ -131,7 +188,24 @@ export default function Edition() {
           <Link to={searchHref} className="edition-header__find">Find more</Link>
           <button className="btn-danger" onClick={() => setConfirmRemove(true)}>Remove edition</button>
         </div>
-        <p className="edition-header__count">{bookLabel}</p>
+        <p className="edition-header__count">
+          {volume?.total ? `${volume.owned} of ${volume.total} issues` : bookLabel}
+        </p>
+        {showRun && volume?.fetchedAt && (
+          <p className="edition-header__run-meta">
+            {volume.stale
+              ? `Could not reach Comic Vine — showing the run as of ${runAsOf}`
+              : `Run as of ${runAsOf}`}
+            <button
+              type="button"
+              className="btn btn-ghost edition-header__refresh"
+              disabled={volumeFetching}
+              onClick={refreshRun}
+            >
+              {volumeFetching ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </p>
+        )}
         {status && (
           <p className="edition-header__filter">
             Showing {STATUS_LABELS[status].toLowerCase()} issues
@@ -191,17 +265,39 @@ export default function Edition() {
       )}
 
       <div className="tile-grid">
-        {data.books.map((b) => (
-          <CoverTile
-            key={b.id}
-            to={`/book/${b.id}`}
-            img={`/api/books/${b.id}/thumbnail`}
-            title={b.title || `#${b.number ?? '?'}`}
-            subtitle={b.number ? `#${b.number}` : ''}
-            readState={b.readState}
-            percent={b.percent}
-          />
-        ))}
+        {showRun
+          ? (
+            <>
+              {runIssues.map((issue) => (
+                <VolumeIssue key={issue.id} issue={issue} book={bookById.get(issue.bookId ?? -1)} />
+              ))}
+              {runExtras.map((extra) => {
+                const b = bookById.get(extra.bookId)
+                return (
+                  <CoverTile
+                    key={extra.bookId}
+                    to={`/book/${extra.bookId}`}
+                    img={`/api/books/${extra.bookId}/thumbnail`}
+                    title={b?.title || extra.title || `#${extra.number ?? '?'}`}
+                    subtitle={extra.number ? `#${extra.number}` : ''}
+                    readState={b?.readState}
+                    percent={b?.percent}
+                  />
+                )
+              })}
+            </>
+          )
+          : data.books.map((b) => (
+            <CoverTile
+              key={b.id}
+              to={`/book/${b.id}`}
+              img={`/api/books/${b.id}/thumbnail`}
+              title={b.title || `#${b.number ?? '?'}`}
+              subtitle={b.number ? `#${b.number}` : ''}
+              readState={b.readState}
+              percent={b.percent}
+            />
+          ))}
       </div>
     </div>
   )

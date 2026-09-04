@@ -72,6 +72,35 @@ export interface ApiCharacter {
   profile: ProfileBlock[]
 }
 
+export interface ApiVolumeIssue {
+  id: number
+  number?: string
+  name?: string | null
+  coverDate?: string
+  siteUrl?: string
+  owned: boolean
+  bookId?: number
+}
+
+export interface ApiEditionExtra {
+  bookId: number
+  number?: string | null
+  title?: string | null
+}
+
+export interface ApiEditionIssues {
+  volumeId: number | null
+  issues: ApiVolumeIssue[]
+  extras: ApiEditionExtra[]
+  owned: number
+  total: number
+  unavailable?: boolean
+  /** When this run was last read from Comic Vine. */
+  fetchedAt?: string
+  /** True when Comic Vine could not be reached and this list is what we already held. */
+  stale?: boolean
+}
+
 export interface ApiStoryArcSummary {
   name: string
   owned: number
@@ -235,6 +264,9 @@ export const api = {
       method: 'PATCH', headers: { 'content-type': 'application/json' },
       body: JSON.stringify(seriesName === undefined ? { name } : { name, seriesName }),
     }),
+  getEditionIssues: (id: string | number, refresh = false) =>
+    json<ApiEditionIssues>(`/api/editions/${id}/issues${refresh ? '?refresh=1' : ''}`),
+
   checkComicVineVolume: (id: string | number) =>
     json<{ matched: boolean; edition?: ApiEdition }>(`/api/editions/${id}/comicvine-volume`, { method: 'POST' }),
   moveBookEdition: (id: string | number, name: string) =>

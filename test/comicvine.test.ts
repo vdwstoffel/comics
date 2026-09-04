@@ -582,3 +582,70 @@ test('a volume with no start year has no year rather than NaN', async () => {
   const cv = createComicVine({ apiKey: 'k', fetchImpl: impl as never, now: () => 0 })
   expect((await cv.getVolume(1)).startYear).toBeUndefined()
 })
+
+// Marvel keeps legacy numbering across relaunches, so Venom (2025) runs #250-261 rather
+// than #1-12. The issue list has to come from Comic Vine; it cannot be inferred as 1..N.
+test('listVolumeIssues returns the volume issues in issue-number order', async () => {
+  const urls: string[] = []
+  const impl = async (url: string) => {
+    urls.push(url)
+    return {
+      ok: true,
+      json: async () => ({
+        number_of_total_results: 3,
+        results: [
+          { id: 3, issue_number: '251', name: null, cover_date: '2026-01-01', site_detail_url: 'https://cv/251' },
+          { id: 1, issue_number: '250', name: 'Naked and Afraid', cover_date: '2025-12-01', site_detail_url: 'https://cv/250' },
+          { id: 2, issue_number: '252', name: null, cover_date: '2026-02-01', site_detail_url: 'https://cv/252' },
+        ],
+      }),
+    }
+  }
+  const cv = createComicVine({ apiKey: 'k', fetchImpl: impl as never, now: () => 0 })
+
+  const issues = await cv.listVolumeIssues(167333)
+
+  expect(issues.map((i) => i.number)).toEqual(['250', '251', '252'])
+  expect(issues[0]).toMatchObject({ id: 1, number: '250', name: 'Naked and Afraid', siteUrl: 'https://cv/250' })
+  expect(urls[0]).toContain('filter=volume%3A167333')
+})
+
+// #10 must not sort between #1 and #2, and a half-issue keeps its place.
+test('listVolumeIssues sorts issue numbers numerically, not as text', async () => {
+  const impl = async () => ({
+    ok: true,
+    json: async () => ({
+      number_of_total_results: 4,
+      results: ['10', '2', '1', '1.5'].map((n, i) => ({ id: i + 1, issue_number: n })),
+    }),
+  })
+  const cv = createComicVine({ apiKey: 'k', fetchImpl: impl as never, now: () => 0 })
+  expect((await cv.listVolumeIssues(1)).map((i) => i.number)).toEqual(['1', '1.5', '2', '10'])
+})
+
+// Comic Vine caps a list response at 100. The Amazing Spider-Man (1963) has 651 issues,
+// so a volume that long must not silently arrive truncated to its first page.
+test('listVolumeIssues pages until every issue has been read', async () => {
+  const offsets: string[] = []
+  const impl = async (url: string) => {
+    const offset = new URL(url).searchParams.get('offset') ?? '0'
+    offsets.push(offset)
+    const start = Number(offset)
+    return {
+      ok: true,
+      json: async () => ({
+        number_of_total_results: 250,
+        results: Array.from({ length: Math.min(100, 250 - start) }, (_, i) => ({
+          id: start + i + 1,
+          issue_number: String(start + i + 1),
+        })),
+      }),
+    }
+  }
+  const cv = createComicVine({ apiKey: 'k', fetchImpl: impl as never, now: () => 0 })
+
+  const issues = await cv.listVolumeIssues(2127)
+
+  expect(issues).toHaveLength(250)
+  expect(offsets).toEqual(['0', '100', '200'])
+})

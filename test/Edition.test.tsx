@@ -365,3 +365,117 @@ test('the button stays disabled if the editions list fails to load', async () =>
   const button = await screen.findByRole('button', { name: /rename to The Amazing Spider-Man \(2025\)/i })
   await waitFor(() => expect(button).toBeDisabled())
 })
+
+// Missing-issue placeholders. Venom (2025) runs #250-261 on Comic Vine; owning only #255
+// should read as a run with holes, not as a one-issue shelf.
+const VOLUME_ISSUES = {
+  volumeId: 167333,
+  owned: 1,
+  total: 3,
+  extras: [],
+  issues: [
+    { id: 1136140, number: '250', name: 'Naked and Afraid', siteUrl: 'https://cv/250', owned: false },
+    { id: 1159231, number: '255', name: 'Death Spiral', siteUrl: 'https://cv/255', owned: true, bookId: 77 },
+    { id: 1173391, number: '259', name: null, siteUrl: 'https://cv/259', owned: false },
+  ],
+}
+
+function mockFetchWithIssues(issuesBody: unknown, edition: Record<string, unknown> = EDITION, books: unknown[] = []) {
+  globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).includes('/issues')) return { ok: true, json: async () => issuesBody }
+    if (init?.method === 'PATCH') return { ok: true, json: async () => ({ edition }) }
+    if (String(url).includes('/api/editions?') || String(url).endsWith('/api/editions')) {
+      return { ok: true, json: async () => ({ editions: [] }) }
+    }
+    return { ok: true, json: async () => ({ edition, books }) }
+  }) as unknown as typeof fetch
+}
+
+test('an issue the volume has but the library does not shows as missing', async () => {
+  mockFetchWithIssues(VOLUME_ISSUES)
+  renderPage()
+
+  expect(await screen.findByText('#250')).toBeInTheDocument()
+  expect(screen.getAllByText(/missing/i).length).toBe(2)
+})
+
+test('missing issues keep their place in the run', async () => {
+  mockFetchWithIssues(VOLUME_ISSUES)
+  renderPage()
+
+  await screen.findByText('#250')
+  const numbers = screen.getAllByText(/^#(250|255|259)$/).map((n) => n.textContent)
+  expect(numbers).toEqual(['#250', '#255', '#259'])
+})
+
+test('the header counts the whole run, not just what you have', async () => {
+  mockFetchWithIssues(VOLUME_ISSUES)
+  renderPage()
+
+  expect(await screen.findByText(/1 of 3 issues/i)).toBeInTheDocument()
+})
+
+// A comic you own must never disappear because Comic Vine has not heard of it.
+test('a book Comic Vine does not list still appears', async () => {
+  mockFetchWithIssues({ ...VOLUME_ISSUES, extras: [{ bookId: 99, number: 'Annual 1', title: 'Annual' }] })
+  renderPage()
+
+  expect(await screen.findByText('Annual')).toBeInTheDocument()
+})
+
+test('an edition with no volume shows only the books, no placeholders', async () => {
+  mockFetchWithIssues({ volumeId: null, issues: [], extras: [{ bookId: 5, number: '1', title: 'Issue one' }], owned: 0, total: 0 })
+  renderPage()
+
+  expect(await screen.findByText('Issue one')).toBeInTheDocument()
+  expect(screen.queryByText(/missing/i)).not.toBeInTheDocument()
+})
+
+// A placeholder has no read state, so it cannot honestly survive a read-status filter.
+// Waiting for the book to render first is what makes this a real assertion: a bare negative
+// check inside waitFor passes on the first tick, before any query has resolved.
+test('placeholders drop out when a read filter is on', async () => {
+  mockFetchWithIssues(VOLUME_ISSUES, EDITION, [
+    { id: 77, number: '255', title: 'Death Spiral', pageCount: 20, comicinfoSynced: false, year: 2026 },
+  ])
+  renderPage('/edition/9?status=unread')
+
+  expect(await screen.findByText('Death Spiral')).toBeInTheDocument()
+  expect(screen.queryByText(/missing/i)).not.toBeInTheDocument()
+  expect(screen.queryByText('#250')).not.toBeInTheDocument()
+})
+
+// ---- cache surface ----
+
+test('the run says when it was last read from Comic Vine', async () => {
+  mockFetchWithIssues({ ...VOLUME_ISSUES, fetchedAt: '2026-09-04T10:00:00.000Z' })
+  renderPage()
+
+  expect(await screen.findByText(/as of/i)).toBeInTheDocument()
+})
+
+test('refreshing the run asks Comic Vine again', async () => {
+  const urls: string[] = []
+  globalThis.fetch = vi.fn(async (url: string) => {
+    urls.push(String(url))
+    if (String(url).includes('/issues')) {
+      return { ok: true, json: async () => ({ ...VOLUME_ISSUES, fetchedAt: '2026-09-04T10:00:00.000Z' }) }
+    }
+    if (String(url).includes('/api/editions?') || String(url).endsWith('/api/editions')) {
+      return { ok: true, json: async () => ({ editions: [] }) }
+    }
+    return { ok: true, json: async () => ({ edition: EDITION, books: [] }) }
+  }) as unknown as typeof fetch
+  renderPage()
+
+  fireEvent.click(await screen.findByRole('button', { name: /refresh/i }))
+
+  await waitFor(() => expect(urls.some((u) => u.includes('refresh=1'))).toBe(true))
+})
+
+test('a run served from a stale cache says so', async () => {
+  mockFetchWithIssues({ ...VOLUME_ISSUES, fetchedAt: '2020-01-01T00:00:00.000Z', stale: true })
+  renderPage()
+
+  expect(await screen.findByText(/could not reach comic vine/i)).toBeInTheDocument()
+})

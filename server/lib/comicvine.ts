@@ -15,6 +15,9 @@ const CHARACTER_FIELDS =
 // `issues` is the point of the arc page. `description` stays out — the arc page shows the
 // one-line deck and links out for the rest.
 const STORY_ARC_FIELDS = 'id,name,deck,publisher,image,site_detail_url,issues'
+const VOLUME_ISSUE_FIELDS = 'id,issue_number,name,cover_date,site_detail_url'
+// Comic Vine caps a list response at 100 regardless of what `limit` asks for.
+const LIST_PAGE = 100
 
 interface CvImage {
   thumb_url?: string
@@ -70,6 +73,7 @@ interface CvStoryArcResult {
 }
 interface CvResponse {
   results?: CvResult | CvResult[]
+  number_of_total_results?: number
 }
 
 export interface CvSearchResult {
@@ -138,6 +142,14 @@ export interface CvStoryArc {
   siteUrl?: string
   issues: CvArcIssue[]
 }
+export interface CvVolumeIssue {
+  id: number
+  number?: string
+  name?: string
+  coverDate?: string
+  siteUrl?: string
+}
+
 export interface CvVolume {
   name?: string
   publisher?: string
@@ -155,6 +167,7 @@ export interface ComicVineClient {
   search(query: string, type?: string): Promise<CvSearchResult[]>
   getIssue(id: number | string): Promise<CvIssue>
   getVolume(id: number | string): Promise<CvVolume>
+  listVolumeIssues(volumeId: number | string): Promise<CvVolumeIssue[]>
   getCharacter(id: number | string): Promise<CvCharacter>
   getStoryArc(id: number | string): Promise<CvStoryArc>
 }
@@ -292,6 +305,55 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         summary: stripHtml(r.description),
         startYear: Number.isInteger(started) ? started : undefined,
       }
+    },
+
+    /**
+     * Every issue Comic Vine lists for a volume, in issue order.
+     *
+     * The list has to come from Comic Vine rather than being inferred as 1..N: Marvel keeps
+     * legacy numbering across relaunches, so Venom (2025) runs #250-261. Numbers sort
+     * numerically - text order puts #10 between #1 and #2 - with the raw string as the
+     * tiebreak so a lettered or unnumbered issue still lands somewhere stable.
+     *
+     * Paging is not optional. A response is capped at 100 and The Amazing Spider-Man (1963)
+     * has 651 issues, so a single request would truncate it in silence.
+     */
+    async listVolumeIssues(volumeId) {
+      const issues: CvVolumeIssue[] = []
+      let offset = 0
+      let total = Infinity
+
+      while (offset < total) {
+        const data = await get('/issues/', {
+          filter: `volume:${volumeId}`,
+          field_list: VOLUME_ISSUE_FIELDS,
+          limit: String(LIST_PAGE),
+          offset: String(offset),
+        })
+        const page = (Array.isArray(data.results) ? data.results : []) as CvResult[]
+        total = data.number_of_total_results ?? page.length
+        for (const r of page) {
+          if (r.id == null) continue
+          issues.push({
+            id: r.id,
+            number: r.issue_number,
+            name: r.name ?? undefined,
+            coverDate: r.cover_date,
+            siteUrl: r.site_detail_url,
+          })
+        }
+        // A page that comes back empty would otherwise spin forever against a wrong total.
+        if (page.length === 0) break
+        offset += page.length
+      }
+
+      return issues.sort((a, b) => {
+        const an = Number(a.number)
+        const bn = Number(b.number)
+        if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn
+        if (Number.isFinite(an) !== Number.isFinite(bn)) return Number.isFinite(an) ? -1 : 1
+        return (a.number ?? '').localeCompare(b.number ?? '')
+      })
     },
   }
 }

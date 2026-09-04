@@ -8,6 +8,8 @@ import { listBooksByEdition } from '../models/books.js'
 import { deriveReadState } from '../models/progress.js'
 import { renameEdition, removeEdition } from '../services/library.js'
 import { createComicVine } from '../lib/comicvine.js'
+import type { CvVolumeIssue } from '../lib/comicvine.js'
+import { cacheVolumeIssues, getCachedVolumeIssues } from '../models/volumeIssues.js'
 import { editionFilterOf, readStateOf } from './filters.js'
 import type { LibraryQuery } from './filters.js'
 import type { App } from '../types.js'
@@ -84,6 +86,79 @@ export default async function editionRoutes(app: App) {
     updateEdition(app.db, edition.id, patch)
 
     return { matched: true, edition: getEdition(app.db, edition.id) }
+  })
+
+  /**
+   * The volume's full issue list, each marked owned or missing, so a gap in a run is
+   * visible rather than something to work out by hand.
+   *
+   * Owned is decided by Comic Vine issue id on both sides - never by issue number, which
+   * repeats across volumes. Anything of yours the list does not account for comes back as
+   * an `extra`: a comic you own must not vanish because Comic Vine has not heard of it.
+   * An edition with no volume, or a Comic Vine that will not answer, still reports your
+   * books - a missing-issues feature must never stop you reading what you have.
+   */
+  app.get<{ Params: IdParams; Querystring: { refresh?: string } }>('/api/editions/:id/issues', async (req, reply) => {
+    const edition = getEdition(app.db, Number(req.params.id))
+    if (!edition) return reply.code(404).send({ error: 'edition not found' })
+
+    const books = listBooksByEdition(app.db, edition.id)
+    const extraOf = (b: (typeof books)[number]) => ({ bookId: b.id, number: b.number, title: b.title })
+
+    if (!edition.comicvineId || !app.config.comicVineApiKey) {
+      return { volumeId: edition.comicvineId ?? null, issues: [], extras: books.map(extraOf), owned: 0, total: 0 }
+    }
+
+    // Serve what we hold unless it has aged out or a refresh was asked for. A running
+    // volume gains an issue a month, so a day-old list is close enough to live, and it
+    // spares a paged read of a 651-issue volume on every single page view.
+    const refresh = req.query?.refresh === '1'
+    const fresh = refresh ? undefined : getCachedVolumeIssues(app.db, edition.comicvineId)
+
+    let volumeIssues: CvVolumeIssue[]
+    let fetchedAt: string
+    let stale = false
+
+    if (fresh) {
+      volumeIssues = fresh.issues
+      fetchedAt = fresh.fetchedAt
+    } else {
+      const cv = createComicVine({ apiKey: app.config.comicVineApiKey })
+      try {
+        volumeIssues = await cv.listVolumeIssues(edition.comicvineId)
+        fetchedAt = new Date().toISOString()
+        cacheVolumeIssues(app.db, edition.comicvineId, volumeIssues, fetchedAt)
+      } catch {
+        // A list we already hold beats no list at all, however old it is.
+        const anyAge = getCachedVolumeIssues(app.db, edition.comicvineId, Infinity)
+        if (!anyAge) {
+          return {
+            volumeId: edition.comicvineId, issues: [], extras: books.map(extraOf),
+            owned: 0, total: 0, unavailable: true,
+          }
+        }
+        volumeIssues = anyAge.issues
+        fetchedAt = anyAge.fetchedAt
+        stale = true
+      }
+    }
+
+    const byCvId = new Map(books.filter((b) => b.comicvineId).map((b) => [b.comicvineId as number, b]))
+    const issues = volumeIssues.map((issue) => {
+      const book = byCvId.get(issue.id)
+      return book ? { ...issue, owned: true, bookId: book.id } : { ...issue, owned: false }
+    })
+
+    const accounted = new Set(issues.filter((i) => i.owned).map((i) => (i as { bookId: number }).bookId))
+    return {
+      volumeId: edition.comicvineId,
+      issues,
+      extras: books.filter((b) => !accounted.has(b.id)).map(extraOf),
+      owned: accounted.size,
+      total: issues.length,
+      fetchedAt,
+      ...(stale ? { stale: true } : {}),
+    }
   })
 
   app.delete<{ Params: IdParams }>('/api/editions/:id', async (req, reply) => {
