@@ -566,3 +566,19 @@ test('applying an issue stores the Comic Vine id alongside each story arc tag', 
     rmSync(dir, { recursive: true, force: true })
   }
 })
+
+test('getVolume reads the start year the volume record carries', async () => {
+  const impl = async () => ({
+    ok: true,
+    json: async () => ({ results: { name: 'The Amazing Spider-Man', start_year: '2025', publisher: { name: 'Marvel' } } }),
+  })
+  const cv = createComicVine({ apiKey: 'k', fetchImpl: impl as never, now: () => 0 })
+  const volume = await cv.getVolume(163325)
+  expect(volume).toMatchObject({ name: 'The Amazing Spider-Man', publisher: 'Marvel', startYear: 2025 })
+})
+
+test('a volume with no start year has no year rather than NaN', async () => {
+  const impl = async () => ({ ok: true, json: async () => ({ results: { name: 'Untitled' } }) })
+  const cv = createComicVine({ apiKey: 'k', fetchImpl: impl as never, now: () => 0 })
+  expect((await cv.getVolume(1)).startYear).toBeUndefined()
+})

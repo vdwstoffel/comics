@@ -36,6 +36,11 @@ test.each([['Omnibus'], ['(2025)'], ['Vol. 1'], ['by Nick Spencer'], ['   ']])(
   },
 )
 
+test('a year suffix marks the edition, leaving the series behind it', () => {
+  expect(deriveSeriesName('The Amazing Spider-Man (2025)')).toBe('The Amazing Spider-Man')
+  expect(deriveSeriesName('Venom (2025)')).toBe('Venom')
+})
+
 test('is stable when applied twice', () => {
   for (const [name] of CASES) {
     const once = deriveSeriesName(name)

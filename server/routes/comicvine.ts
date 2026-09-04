@@ -1,6 +1,8 @@
 import { createComicVine } from '../lib/comicvine.js'
+import type { CvVolume } from '../lib/comicvine.js'
 import { getBook, updateBook } from '../models/books.js'
 import { getEdition, updateEdition } from '../models/editions.js'
+import type { EditionUpdate } from '../models/editions.js'
 import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags, setTagIds } from '../models/metadata.js'
 import { syncComicInfoFile } from '../services/comicinfoSync.js'
 import type { App } from '../types.js'
@@ -26,12 +28,13 @@ export default async function comicvineRoutes(app: App) {
     if (!issueId) return reply.code(400).send({ error: 'missing issueId' })
     const meta = await cv.getIssue(issueId)
 
-    // Best-effort: fetch publisher from the volume BEFORE opening the transaction
+    // Best-effort: fetch the volume BEFORE opening the transaction
     // (better-sqlite3 transactions must be synchronous; no async calls inside)
-    let publisher: string | undefined
+    let volume: CvVolume | undefined
     try {
-      if (meta.volumeId) publisher = (await cv.getVolume(meta.volumeId)).publisher
+      if (meta.volumeId) volume = await cv.getVolume(meta.volumeId)
     } catch { /* best-effort; don't fail the match */ }
+    const publisher = volume?.publisher
 
     const updatedBook = app.db.transaction(() => {
       const b = updateBook(app.db, book.id, {
@@ -48,11 +51,18 @@ export default async function comicvineRoutes(app: App) {
         ...meta.storyArcs.map((a) => ({ kind: 'story_arc', value: a.name, extId: a.id })),
       ]
       replaceBookTags(app.db, book.id, tags)
-      // Propagate publisher to the edition if the edition doesn't have one yet
-      if (publisher && book.editionId) {
+      // Propagate the volume to the edition: publisher and Comic Vine identity if it
+      // has none, and the volume's own name/year, which is what the edition should be
+      // called. The name is offered as a suggestion, never applied here.
+      if (book.editionId && (publisher || volume)) {
         const edition = getEdition(app.db, book.editionId)
-        if (edition && !edition.publisher) {
-          updateEdition(app.db, book.editionId, { publisher })
+        if (edition) {
+          const patch: EditionUpdate = {}
+          if (publisher && !edition.publisher) patch.publisher = publisher
+          if (volume?.name) patch.cvName = volume.name
+          if (volume?.startYear !== undefined) patch.cvStartYear = volume.startYear
+          if (meta.volumeId && !edition.comicvineId) patch.comicvineId = Number(meta.volumeId)
+          if (Object.keys(patch).length > 0) updateEdition(app.db, book.editionId, patch)
         }
       }
       return b

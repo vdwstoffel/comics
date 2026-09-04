@@ -49,6 +49,42 @@ export default function Edition() {
     },
   })
 
+  // Every other edition, so a Comic Vine rename that lands on a name already in use
+  // can be worded as a merge instead. Same list EditionCombobox draws its options from.
+  const { data: editionsData } = useQuery({
+    queryKey: ['editions', null],
+    queryFn: () => api.getEditions(),
+  })
+  // Pending, errored, or any future paused state all share the same property: we
+  // cannot yet tell a rename from a merge. Gate on whether the answer is known at
+  // all, not on whether a fetch happens to be in flight right now.
+  const editionsKnown = editionsData !== undefined
+
+  // Comic Vine's name for the volume, plus the year its run started, is what this
+  // edition should be called. Offered, never applied on its own.
+  const suggested = data?.edition.cvName && data.edition.cvStartYear
+    ? `${data.edition.cvName} (${data.edition.cvStartYear})`
+    : null
+  const needsRename = suggested !== null && suggested !== data?.edition.name
+  // Renaming onto an existing name merges into it; the button has to say so.
+  const collides = needsRename
+    && (editionsData?.editions ?? []).some((e) => e.name === suggested && e.id !== data?.edition.id)
+
+  const applyName = useMutation({
+    mutationFn: () => api.renameEdition(id!, suggested!, data!.edition.cvName!),
+    onSuccess: (result) => {
+      qc.invalidateQueries({ queryKey: ['edition'] })
+      qc.invalidateQueries({ queryKey: ['editions'] })
+      qc.invalidateQueries({ queryKey: ['series'] })
+      navigate(`/edition/${result.edition.id}`, { replace: true })
+    },
+  })
+
+  const lookup = useMutation({
+    mutationFn: () => api.checkComicVineVolume(id!),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['edition'] }),
+  })
+
   const setSeries = useMutation({
     mutationFn: (seriesName: string) => api.setEditionSeries(id!, seriesName),
     onSuccess: () => {
@@ -129,6 +165,29 @@ export default function Edition() {
           onConfirm={() => remove.mutate()}
           onClose={() => setConfirmRemove(false)}
         />
+      )}
+
+      {needsRename && (
+        <div className="edition__cv-suggestion">
+          <span>Comic Vine calls this <strong>{suggested}</strong></span>
+          <button
+            type="button"
+            className="btn"
+            // Withhold the click until we actually know whether this is a rename or a
+            // merge - a stale "Rename to ..." label must never be clickable while that
+            // answer is unknown, whether because the editions list is still loading or
+            // because fetching it failed, since a merge moves files on disk.
+            disabled={applyName.isPending || !editionsKnown}
+            onClick={() => applyName.mutate()}
+          >
+            {collides ? `Merge into ${suggested}` : `Rename to ${suggested}`}
+          </button>
+        </div>
+      )}
+      {!suggested && (
+        <button type="button" className="btn btn-ghost" disabled={lookup.isPending} onClick={() => lookup.mutate()}>
+          {lookup.isPending ? 'Checking…' : 'Check Comic Vine'}
+        </button>
       )}
 
       <div className="tile-grid">

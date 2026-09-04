@@ -12,3 +12,21 @@ export function sanitizeEditionFolder(name: string): string {
     .trim()
   return sanitized || 'Unsorted'
 }
+
+/**
+ * Where an edition's files live, relative to the comics dir: `<series>/<edition>`.
+ *
+ * Each segment goes through sanitizeEditionFolder separately, so a slash inside a
+ * name collapses to `_` instead of silently becoming another folder level - the
+ * library contains a series literally named "Amazing Spider-Man/Venom". An edition with
+ * no series of its own - or whose series is just its own name - stays at the top level,
+ * which is where Unsorted lives.
+ */
+export function editionFolderPath(seriesName: string | null | undefined, name: string): string {
+  const leaf = sanitizeEditionFolder(name)
+  const series = seriesName?.trim() ? sanitizeEditionFolder(seriesName) : ''
+  // A series equal to the edition name is not a grouping - deriveSeriesName returns a
+  // plain name unchanged, so nesting those would give Unsorted/Unsorted.
+  if (!series || series === leaf) return leaf
+  return `${series}/${leaf}`
+}

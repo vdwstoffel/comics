@@ -6,6 +6,7 @@ import Fastify from 'fastify'
 import { openDb } from '../server/db.js'
 import editionRoutes from '../server/routes/editions.js'
 import booksRoutes from '../server/routes/books.js'
+import libraryRoutes from '../server/routes/library.js'
 import { upsertEdition, updateEdition, getEdition } from '../server/models/editions.js'
 import { insertBook, getBook } from '../server/models/books.js'
 import { setProgress } from '../server/models/progress.js'
@@ -28,6 +29,7 @@ beforeEach(async () => {
   app.decorate('config', config)
   await app.register(editionRoutes)
   await app.register(booksRoutes)
+  await app.register(libraryRoutes)
 })
 afterEach(async () => { await app.close(); rmSync(dir, { recursive: true, force: true }) })
 
@@ -224,4 +226,57 @@ test('DELETE /api/editions/:id 404s on an unknown edition', async () => {
   const res = await app.inject({ method: 'DELETE', url: '/api/editions/99999' })
   expect(res.statusCode).toBe(404)
   expect(res.json()).toEqual({ error: 'edition not found' })
+})
+
+/** Seed one flat edition ('Vol 7') that reorganize should nest under its series. */
+async function seedFlatEdition() {
+  const flat = join(app.config.comicsDir, 'Vol 7')
+  mkdirSync(flat, { recursive: true })
+  await makeCbz(flat, ['p1.png'], '001.cbz')
+  const edition = upsertEdition(app.db, { name: 'The Amazing Spider-Man (2025)', folder: 'Vol 7' })
+  updateEdition(app.db, edition.id, { seriesName: 'The Amazing Spider-Man' })
+  insertBook(app.db, { editionId: edition.id, filePath: 'Vol 7/001.cbz', pageCount: 1, fileSize: 100 })
+  return { flat }
+}
+
+// Dry-run is the only thing standing between a user's library and an unrequested mass
+// move, so every body shape that isn't an explicit dryRun:false must stay a dry run.
+test.each([
+  ['no body at all', undefined],
+  ['an empty body', {}],
+  ['an explicit dryRun:true', { dryRun: true }],
+])('POST /api/library/reorganize dry-runs by default (%s)', async (_label, payload) => {
+  const { flat } = await seedFlatEdition()
+
+  const res = await app.inject({ method: 'POST', url: '/api/library/reorganize', payload })
+
+  expect(res.statusCode).toBe(200)
+  const body = res.json()
+  expect(body.dryRun).toBe(true)
+  expect(body.planned).toEqual([{
+    bookId: expect.any(Number),
+    from: 'Vol 7/001.cbz',
+    to: 'The Amazing Spider-Man/The Amazing Spider-Man (2025)/001.cbz',
+  }])
+  expect(body.moved).toBeUndefined()
+  // Nothing moved: the file is exactly where it started.
+  expect(existsSync(join(flat, '001.cbz'))).toBe(true)
+})
+
+test('POST /api/library/reorganize with dryRun:false executes the plan', async () => {
+  const { flat } = await seedFlatEdition()
+
+  const res = await app.inject({
+    method: 'POST',
+    url: '/api/library/reorganize',
+    payload: { dryRun: false },
+  })
+
+  expect(res.statusCode).toBe(200)
+  const body = res.json()
+  expect(body.dryRun).toBe(false)
+  expect(body.moved).toBe(1)
+  const nested = 'The Amazing Spider-Man/The Amazing Spider-Man (2025)'
+  expect(existsSync(join(app.config.comicsDir, nested, '001.cbz'))).toBe(true)
+  expect(existsSync(flat)).toBe(false)
 })

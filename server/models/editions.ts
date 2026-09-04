@@ -10,6 +10,8 @@ interface EditionRow {
   summary: string | null
   comicvine_id: number | null
   series_name: string | null
+  cv_name: string | null
+  cv_start_year: number | null
   created_at: string
   book_count?: number
 }
@@ -20,16 +22,20 @@ function toEdition(row: EditionRow | undefined): Edition | undefined {
     id: row.id, name: row.name, folder: row.folder,
     publisher: row.publisher ?? null, summary: row.summary ?? null,
     comicvineId: row.comicvine_id ?? null, seriesName: row.series_name ?? null,
+    cvName: row.cv_name ?? null, cvStartYear: row.cv_start_year ?? null,
     createdAt: row.created_at, bookCount: row.book_count ?? undefined,
   }
 }
 
-export function upsertEdition(db: Db, { name, folder }: { name: string; folder: string }): Edition {
+export function upsertEdition(
+  db: Db,
+  { name, folder, seriesName }: { name: string; folder: string; seriesName?: string | null },
+): Edition {
   const existing = db.prepare('SELECT * FROM edition WHERE name = ?').get(name) as EditionRow | undefined
   if (existing) return toEdition(existing) as Edition
   const info = db
     .prepare('INSERT INTO edition (name, folder, series_name, created_at) VALUES (?,?,?,?)')
-    .run(name, folder, deriveSeriesName(name), new Date().toISOString())
+    .run(name, folder, seriesName?.trim() || deriveSeriesName(name), new Date().toISOString())
   return toEdition(db.prepare('SELECT * FROM edition WHERE id = ?').get(info.lastInsertRowid) as EditionRow) as Edition
 }
 
@@ -141,9 +147,9 @@ export function listPublishers(db: Db): PublisherFacet[] {
 // Name changes must go through renameEdition() in services/library.ts, which also
 // moves the files on disk and updates the `folder` column. Updating `name` directly
 // here will leave files in the old folder and break the path invariant.
-const EDITION_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name', seriesName: 'series_name' }
+const EDITION_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name', seriesName: 'series_name', cvName: 'cv_name', cvStartYear: 'cv_start_year' }
 
-export type EditionUpdate = Partial<Pick<Edition, 'publisher' | 'summary' | 'comicvineId' | 'name' | 'seriesName'>>
+export type EditionUpdate = Partial<Pick<Edition, 'publisher' | 'summary' | 'comicvineId' | 'name' | 'seriesName' | 'cvName' | 'cvStartYear'>>
 
 export const EDITION_UPDATABLE_FIELDS = Object.keys(EDITION_FIELDS) as (keyof EditionUpdate)[]
 
@@ -169,6 +175,15 @@ export function updateEdition(db: Db, id: number, fields: EditionUpdate): Editio
   }
   if (sets.length) db.prepare(`UPDATE edition SET ${sets.join(', ')} WHERE id = ?`).run(...vals, id)
   return getEdition(db, id)
+}
+
+/**
+ * Write the folder column directly. Legitimate only from the reorganizer, which moves
+ * the files this column describes in the same breath - see the warning above
+ * EDITION_FIELDS about keeping name, folder and the files on disk in agreement.
+ */
+export function setEditionFolder(db: Db, id: number, folder: string): void {
+  db.prepare('UPDATE edition SET folder = ? WHERE id = ?').run(folder, id)
 }
 
 export function getEditionByName(db: Db, name: string): Edition | undefined {

@@ -6,7 +6,9 @@ import { randomUUID } from 'node:crypto'
 import { listPages } from '../lib/cbz.js'
 import { isCbr, convertCbrToCbz } from '../lib/cbr.js'
 import { ingestFile } from '../services/indexer.js'
-import { sanitizeEditionFolder } from '../lib/paths.js'
+import { editionFolderPath } from '../lib/paths.js'
+import { deriveSeriesName } from '../lib/seriesName.js'
+import { getEditionByName } from '../models/editions.js'
 import type { App } from '../types.js'
 
 export default async function uploadRoutes(app: App) {
@@ -63,13 +65,27 @@ export default async function uploadRoutes(app: App) {
     // Clean up the original .cbr tmp file now that conversion succeeded
     if (cbrTmpPath) await unlink(cbrTmpPath).catch(() => {})
 
-    const finalEdition = sanitizeEditionFolder(editionName || 'Unsorted')
-    const destDir = join(app.config.comicsDir, finalEdition)
+    // An upload writes into the same library every other operation reads, so it files
+    // the issue exactly where they would: under `<series>/<edition>` for a new edition,
+    // and - for one that already exists - wherever its row says its files already are.
+    // The row, not a recomputation from the name, is the authority (see
+    // moveBookToEdition); recomputing would strand the upload in a second directory the
+    // edition does not claim.
+    const name = (editionName || '').trim() || 'Unsorted'
+    const existing = getEditionByName(app.db, name)
+    const folder = existing
+      ? existing.folder || editionFolderPath(existing.seriesName, name)
+      : editionFolderPath(deriveSeriesName(name), name)
+
+    const destDir = join(app.config.comicsDir, folder)
     await mkdir(destDir, { recursive: true })
     const destPath = join(destDir, originalName)
     await rename(cbzTmpPath, destPath)
 
-    const book = await ingestFile({ db: app.db, config: app.config }, destPath, finalEdition)
+    // The NAME the user typed, not the sanitised folder: sanitising is a filesystem
+    // concern, and passing the folder on as the name would rename the user's edition to
+    // whatever its directory had to be called.
+    const book = await ingestFile({ db: app.db, config: app.config }, destPath, name)
     return { book }
   })
 }

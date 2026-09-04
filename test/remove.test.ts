@@ -42,6 +42,37 @@ async function seedEdition(name: string, names: string[]) {
   return { edition, books, folder }
 }
 
+/** An edition folder nested under its series, holding one real .cbz. */
+async function seedNested(series: string, name: string, file: string) {
+  const folder = `${series}/${name}`
+  mkdirSync(join(ctx.config.comicsDir, folder), { recursive: true })
+  const edition = upsertEdition(ctx.db, { name, folder })
+  await makeCbz(join(ctx.config.comicsDir, folder), ['p1.png'], file)
+  const book = insertBook(ctx.db, {
+    editionId: edition.id, filePath: `${folder}/${file}`, pageCount: 1, fileSize: 100,
+  })!
+  return { edition, book }
+}
+
+test('emptying the last edition of a series removes the series folder too', async () => {
+  const { book } = await seedNested('Venom', 'Venom (2025)', '001.cbz')
+
+  await removeBook(ctx, book.id)
+
+  expect(existsSync(join(ctx.config.comicsDir, 'Venom/Venom (2025)'))).toBe(false)
+  expect(existsSync(join(ctx.config.comicsDir, 'Venom'))).toBe(false)
+})
+
+test('a series folder with another edition still in it is left alone', async () => {
+  const { book } = await seedNested('Venom', 'Venom (2025)', '001.cbz')
+  await seedNested('Venom', 'Venom (2022)', '001.cbz')
+
+  await removeBook(ctx, book.id)
+
+  expect(existsSync(join(ctx.config.comicsDir, 'Venom/Venom (2025)'))).toBe(false)
+  expect(existsSync(join(ctx.config.comicsDir, 'Venom/Venom (2022)'))).toBe(true)
+})
+
 test('removeBook deletes the file, its thumbnail and its row', async () => {
   const { books, folder } = await seedEdition('Saga', ['01.cbz', '02.cbz'])
   const [victim] = books

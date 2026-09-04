@@ -1627,6 +1627,15 @@ textarea.input:hover:not(:focus) {
   color: var(--accent);
 }
 
+.edition__cv-suggestion {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
 /* ============================================================
    Character card
    ============================================================ */

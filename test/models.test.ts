@@ -44,3 +44,21 @@ test('progress defaults then persists', () => {
   setProgress(db, book.id, { lastPage: 5, completed: false })
   expect(getProgress(db, book.id).lastPage).toBe(5)
 })
+
+test('an edition stores the Comic Vine volume name and start year', () => {
+  const db = openDb(':memory:')
+  const edition = upsertEdition(db, { name: 'Vol 7', folder: 'Vol 7' })
+  updateEdition(db, edition.id, { cvName: 'The Amazing Spider-Man', cvStartYear: 2025 })
+  expect(getEdition(db, edition.id)).toMatchObject({
+    cvName: 'The Amazing Spider-Man',
+    cvStartYear: 2025,
+  })
+  db.close()
+})
+
+test('an edition with no Comic Vine volume reports nulls, not undefined', () => {
+  const db = openDb(':memory:')
+  const edition = upsertEdition(db, { name: 'Unsorted', folder: 'Unsorted' })
+  expect(getEdition(db, edition.id)).toMatchObject({ cvName: null, cvStartYear: null })
+  db.close()
+})

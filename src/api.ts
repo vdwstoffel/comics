@@ -8,6 +8,8 @@ export interface ApiEdition {
   comicvineId?: number | null
   createdAt?: string
   bookCount?: number
+  cvName?: string | null
+  cvStartYear?: number | null
 }
 
 export interface ApiBook {
@@ -228,10 +230,13 @@ export const api = {
     json<BookResponse>(`/api/books/${id}/comicvine`, {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ issueId }),
     }),
-  renameEdition: (id: string | number, name: string) =>
+  renameEdition: (id: string | number, name: string, seriesName?: string) =>
     json<EditionResponse>(`/api/editions/${id}`, {
-      method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }),
+      method: 'PATCH', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(seriesName === undefined ? { name } : { name, seriesName }),
     }),
+  checkComicVineVolume: (id: string | number) =>
+    json<{ matched: boolean; edition?: ApiEdition }>(`/api/editions/${id}/comicvine-volume`, { method: 'POST' }),
   moveBookEdition: (id: string | number, name: string) =>
     json<MoveBookEditionResponse>(`/api/books/${id}/edition`, {
       method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ name }),

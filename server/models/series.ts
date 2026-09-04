@@ -32,6 +32,14 @@ function keyOf(edition: Edition): string {
   return (edition.seriesName?.trim() || edition.name).toLowerCase()
 }
 
+// "The Amazing Spider-Man" belongs under A, where a reader looks for it - so the sort
+// key drops a leading article. The stored name keeps it: Comic Vine's name is the name.
+const LEADING_ARTICLE = /^(the|an|a)\s+/i
+
+export function seriesSortKey(name: string): string {
+  return name.replace(LEADING_ARTICLE, '')
+}
+
 export function listSeries(db: Db, opts?: EditionFilter): Series[] {
   const series = new Map<string, Series>()
 
@@ -51,7 +59,11 @@ export function listSeries(db: Db, opts?: EditionFilter): Series[] {
     }
   }
 
-  return [...series.values()].sort((a, b) => a.name.localeCompare(b.name, undefined, { sensitivity: 'base' }))
+  return [...series.values()].sort((a, b) => {
+    const byKey = seriesSortKey(a.name).localeCompare(seriesSortKey(b.name), undefined, { sensitivity: 'base' })
+    // Two names that differ only by their article still need a stable order.
+    return byKey || a.name.localeCompare(b.name, undefined, { sensitivity: 'base' })
+  })
 }
 
 export function getSeries(

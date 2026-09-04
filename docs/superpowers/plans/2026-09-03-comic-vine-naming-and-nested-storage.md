@@ -39,7 +39,7 @@
 | `server/routes/library.ts` | **New** — `POST /api/library/reorganize` | 10 |
 | `src/api.ts`, `src/pages/Edition.tsx` | Suggestion banner and its actions | 11 |
 
-Tasks 1-4 (Comic Vine data) and 5-9 (storage) are independent of each other; 10 depends on 5, and 11 depends on 2 and 4.
+Tasks 1-4 (Comic Vine data) and 5-9 (storage) are independent as two groups. Within them: 3 and 4 need 1 and 2; 6 and 10 need 5; 9's test uses the `upsertEdition` signature from 7; 10 needs 6; 11 needs 2 and 4. Executing in numeric order satisfies all of it.
 
 ---
 
@@ -502,6 +502,15 @@ test('an edition with no series stays at the top level', () => {
   expect(editionFolderPath('   ', 'Unsorted')).toBe('Unsorted')
 })
 
+// deriveSeriesName returns a plain name unchanged, so most existing editions have a
+// series equal to their own name. Nesting those would give Unsorted/Unsorted and
+// Batman/Batman - a level that says nothing. A level is added only when the series is
+// genuinely distinct from the edition.
+test('a series identical to the edition name adds no level', () => {
+  expect(editionFolderPath('Unsorted', 'Unsorted')).toBe('Unsorted')
+  expect(editionFolderPath('Batman', 'Batman')).toBe('Batman')
+})
+
 // A series name may itself contain a slash - the library has "Amazing Spider-Man/Venom".
 // It must stay one folder, not become a nesting level.
 test('a slash inside a series name does not create a folder level', () => {
@@ -510,7 +519,8 @@ test('a slash inside a series name does not create a folder level', () => {
 })
 
 test('a traversal attempt survives as a literal segment', () => {
-  expect(editionFolderPath('..', '../etc')).toBe('_/_etc')
+  // sanitize('..') -> '_'; sanitize('../etc') -> '.._etc' -> '__etc'
+  expect(editionFolderPath('..', '../etc')).toBe('_/__etc')
 })
 ```
 
@@ -529,13 +539,17 @@ Append to `server/lib/paths.ts`:
  *
  * Each segment goes through sanitizeEditionFolder separately, so a slash inside a
  * name collapses to `_` instead of silently becoming another folder level - the
- * library contains a series literally named "Amazing Spider-Man/Venom". An edition
- * with no series of its own stays at the top level, which is where Unsorted lives.
+ * library contains a series literally named "Amazing Spider-Man/Venom". An edition with
+ * no series of its own - or whose series is just its own name - stays at the top level,
+ * which is where Unsorted lives.
  */
 export function editionFolderPath(seriesName: string | null | undefined, name: string): string {
   const leaf = sanitizeEditionFolder(name)
   const series = seriesName?.trim() ? sanitizeEditionFolder(seriesName) : ''
-  return series ? `${series}/${leaf}` : leaf
+  // A series equal to the edition name is not a grouping - deriveSeriesName returns a
+  // plain name unchanged, so nesting those would give Unsorted/Unsorted.
+  if (!series || series === leaf) return leaf
+  return `${series}/${leaf}`
 }
 ```
 
@@ -1114,10 +1128,11 @@ Register it in `server/index.ts` alongside the existing `app.register(...)` call
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run test/library.test.ts test/remove.test.ts`
-Expected: PASS. The pre-existing `reorganizeLibrary` test at line 155 must still pass —
-it uses a flat edition whose series derives to the same name, so its expected path is
-unchanged. If it now expects a nested path, update that expectation deliberately rather
-than weakening the new rule.
+Expected: PASS, including the pre-existing `reorganizeLibrary` test at line 155. That
+test uses a flat edition whose series derives to its own name, and `editionFolderPath`
+returns a single segment in exactly that case, so its expected path is unchanged. If it
+fails, the collapse rule from Task 5 is missing or wrong — fix that rather than editing
+the old test's expectation.
 
 - [ ] **Step 5: Commit**
 

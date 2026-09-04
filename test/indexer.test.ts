@@ -3,10 +3,11 @@ import { mkdtempSync, rmSync, mkdirSync, existsSync, writeFileSync } from 'node:
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openDb } from '../server/db.js'
-import { scanLibrary, walkComics } from '../server/services/indexer.js'
+import { scanLibrary, walkComics, ingestFile } from '../server/services/indexer.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import { embedComicInfo } from '../server/lib/embed.js'
 import { buildComicInfo } from '../server/lib/comicinfo.js'
+import { getEdition } from '../server/models/editions.js'
 import type { Ctx } from '../server/types.js'
 import type { Config } from '../server/config.js'
 
@@ -100,4 +101,28 @@ test('a scan of a file without ComicInfo.xml leaves no credits or tags behind', 
   const bookId = (ctx.db.prepare('SELECT id FROM book').get() as { id: number }).id
   expect(ctx.db.prepare('SELECT * FROM book_credit WHERE book_id = ?').all(bookId)).toEqual([])
   expect(ctx.db.prepare('SELECT * FROM book_tag WHERE book_id = ?').all(bookId)).toEqual([])
+})
+
+test('a file two levels deep belongs to an edition under that series', async () => {
+  const dir = join(ctx.config.comicsDir, 'The Amazing Spider-Man', 'The Amazing Spider-Man (2025)')
+  mkdirSync(dir, { recursive: true })
+  const cbz = await makeCbz(dir, ['p1.png'], '001.cbz')
+
+  const book = await ingestFile(ctx, cbz)
+
+  expect(getEdition(ctx.db, book!.editionId)).toMatchObject({
+    name: 'The Amazing Spider-Man (2025)',
+    seriesName: 'The Amazing Spider-Man',
+    folder: 'The Amazing Spider-Man/The Amazing Spider-Man (2025)',
+  })
+})
+
+test('a file directly in a top-level folder still makes a series-less edition', async () => {
+  const dir = join(ctx.config.comicsDir, 'Unsorted')
+  mkdirSync(dir, { recursive: true })
+  const cbz = await makeCbz(dir, ['p1.png'], 'loose.cbz')
+
+  const book = await ingestFile(ctx, cbz)
+
+  expect(getEdition(ctx.db, book!.editionId)).toMatchObject({ name: 'Unsorted', folder: 'Unsorted' })
 })

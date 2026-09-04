@@ -142,6 +142,7 @@ export interface CvVolume {
   name?: string
   publisher?: string
   summary?: string
+  startYear?: number
 }
 
 export interface ComicVineOptions {
@@ -284,7 +285,13 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
     async getVolume(id) {
       const data = await get(`/volume/${TYPE_PREFIX.volume}-${id}/`, {})
       const r = (data.results || {}) as CvResult
-      return { name: r.name, publisher: r.publisher?.name, summary: stripHtml(r.description) }
+      const started = Number(r.start_year)
+      return {
+        name: r.name,
+        publisher: r.publisher?.name,
+        summary: stripHtml(r.description),
+        startYear: Number.isInteger(started) ? started : undefined,
+      }
     },
   }
 }

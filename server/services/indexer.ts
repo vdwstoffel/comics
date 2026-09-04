@@ -1,6 +1,6 @@
 import { readdirSync, statSync } from 'node:fs'
 import { mkdir, rename, unlink } from 'node:fs/promises'
-import { join, relative, basename, dirname, extname } from 'node:path'
+import { join, relative, dirname, extname } from 'node:path'
 import { listPages } from '../lib/cbz.js'
 import { isCbr, convertCbrToCbz } from '../lib/cbr.js'
 import { generateCover } from '../lib/thumbnails.js'
@@ -75,8 +75,15 @@ export async function ingestFile(ctx: Ctx, absPath: string, editionName?: string
   const relPath = relative(config.comicsDir, absPath)
   const pages = await listPages(absPath)
   const info: ComicMeta = (await readComicInfo(absPath)) || {}
-  const name = editionName || info.series || basename(dirname(absPath))
-  const edition = upsertEdition(db, { name, folder: name })
+  // The folder an edition owns is where its files actually are, not a guess from its
+  // name. A path of `<series>/<edition>/file.cbz` yields both; a single level yields an
+  // edition with no series, which is how a loose `Unsorted/` keeps working.
+  const segments = relPath.split('/').slice(0, -1)
+  const leaf = segments[segments.length - 1]
+  const parent = segments.length >= 2 ? segments[segments.length - 2] : null
+  const name = editionName || info.series || leaf || 'Unsorted'
+  const folder = segments.join('/') || 'Unsorted'
+  const edition = upsertEdition(db, { name, folder, seriesName: parent })
   const book = insertBook(db, {
     editionId: edition.id,
     filePath: relPath,

@@ -139,6 +139,12 @@ export function openDb(dbPath: string): Db {
     db.exec('ALTER TABLE edition ADD COLUMN series_name TEXT')
   }
 
+  // The Comic Vine volume an edition belongs to: its canonical name and the year the
+  // run started. Together they are the name this edition should carry.
+  const editionCols = columnsOf(db, 'edition')
+  if (!editionCols.includes('cv_name')) db.exec('ALTER TABLE edition ADD COLUMN cv_name TEXT')
+  if (!editionCols.includes('cv_start_year')) db.exec('ALTER TABLE edition ADD COLUMN cv_start_year INTEGER')
+
   // Additive migration: comic_index gained year/number after first release
   const indexCols = columnsOf(db, 'comic_index')
   if (!indexCols.includes('year')) db.exec('ALTER TABLE comic_index ADD COLUMN year INTEGER')

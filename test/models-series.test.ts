@@ -6,6 +6,7 @@ import {
   backfillSeriesNames,
   listSeries,
   getSeries,
+  seriesSortKey,
 } from '../server/models/series.js'
 import type { Db } from '../server/types.js'
 
@@ -146,5 +147,26 @@ test('an edition moved into another series follows it', () => {
   const series = listSeries(db)
   expect(series.map((s) => s.name)).toEqual(['Amazing Spider-Man', 'Avengers', 'Batman'])
   expect(getSeries(db, 'Amazing Spider-Man')!.editions).toHaveLength(3)
+  db.close()
+})
+
+test('a leading article does not decide where a series sorts', () => {
+  expect(seriesSortKey('The Amazing Spider-Man')).toBe('Amazing Spider-Man')
+  expect(seriesSortKey('A Distant Soil')).toBe('Distant Soil')
+  expect(seriesSortKey('An Unkindness of Ravens')).toBe('Unkindness of Ravens')
+})
+
+test('a name that only looks like an article keeps it', () => {
+  expect(seriesSortKey('Theseus')).toBe('Theseus')
+  expect(seriesSortKey('Animal Man')).toBe('Animal Man')
+})
+
+test('The Amazing Spider-Man shelves before Batman, not after Thor', () => {
+  const db = openDb(':memory:')
+  for (const name of ['Thor', 'The Amazing Spider-Man', 'Batman']) {
+    upsertEdition(db, { name: `${name} (2025)`, folder: `${name}/${name} (2025)`, seriesName: name })
+  }
+  expect(listSeries(db).map((s) => s.name))
+    .toEqual(['The Amazing Spider-Man', 'Batman', 'Thor'])
   db.close()
 })

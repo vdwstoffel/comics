@@ -16,6 +16,9 @@ export interface Edition {
   comicvineId: number | null
   /** Series this edition belongs to; derived from the name, correctable by hand. */
   seriesName: string | null
+  /** Comic Vine's own name for this volume, and the year its run started. */
+  cvName: string | null
+  cvStartYear: number | null
   createdAt: string
   bookCount?: number
 }

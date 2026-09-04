@@ -3,9 +3,11 @@ import { join } from 'node:path'
 import {
   listEditions, getEdition, listPublishers, listReadStates, updateEdition,
 } from '../models/editions.js'
+import type { EditionUpdate } from '../models/editions.js'
 import { listBooksByEdition } from '../models/books.js'
 import { deriveReadState } from '../models/progress.js'
 import { renameEdition, removeEdition } from '../services/library.js'
+import { createComicVine } from '../lib/comicvine.js'
 import { editionFilterOf, readStateOf } from './filters.js'
 import type { LibraryQuery } from './filters.js'
 import type { App } from '../types.js'
@@ -60,6 +62,28 @@ export default async function editionRoutes(app: App) {
 
     const result = await renameEdition({ db: app.db, config: app.config }, existing.id, name)
     return { edition: result.edition }
+  })
+
+  // An edition whose books were matched before the volume was recorded has no
+  // suggestion to show. Walk to the first matched book and resolve its volume once.
+  app.post<{ Params: IdParams }>('/api/editions/:id/comicvine-volume', async (req, reply) => {
+    const edition = getEdition(app.db, Number(req.params.id))
+    if (!edition) return reply.code(404).send({ error: 'edition not found' })
+
+    const matched = listBooksByEdition(app.db, edition.id).find((b) => b.comicvineId)
+    if (!matched) return { matched: false }
+
+    const cv = createComicVine({ apiKey: app.config.comicVineApiKey })
+    const issue = await cv.getIssue(matched.comicvineId as number)
+    if (!issue.volumeId) return { matched: false }
+    const volume = await cv.getVolume(issue.volumeId)
+
+    const patch: EditionUpdate = { cvName: volume.name ?? null, cvStartYear: volume.startYear ?? null }
+    if (volume.publisher && !edition.publisher) patch.publisher = volume.publisher
+    if (!edition.comicvineId) patch.comicvineId = Number(issue.volumeId)
+    updateEdition(app.db, edition.id, patch)
+
+    return { matched: true, edition: getEdition(app.db, edition.id) }
   })
 
   app.delete<{ Params: IdParams }>('/api/editions/:id', async (req, reply) => {
