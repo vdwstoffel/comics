@@ -21,8 +21,8 @@ const ARC = {
   imageUrl: 'https://cv/death-spiral.jpg',
   siteUrl: 'https://comicvine.gamespot.com/death-spiral/4045-56676/',
   issues: [
-    { id: 1156915, name: 'Part One', siteUrl: 'https://cv/one', owned: true, bookId: 43 },
-    { id: 1158149, name: 'Part Two', siteUrl: 'https://cv/two', owned: true, bookId: 41 },
+    { id: 1156915, name: 'Part One', siteUrl: 'https://cv/one', owned: true, bookId: 43, readState: 'read', percent: 100 },
+    { id: 1158149, name: 'Part Two', siteUrl: 'https://cv/two', owned: true, bookId: 41, readState: 'reading', percent: 45 },
     { id: 9999999, name: 'Part Three', siteUrl: 'https://cv/three', owned: false },
   ],
 }
@@ -156,4 +156,25 @@ test('an arc that cannot be loaded says so', async () => {
   stub({ '/api/publishers': { publishers: [] }, '/api/editions': { editions: [] }, '/api/read-states': { readStates: [] } })
   renderAt('/arcs/Nothing')
   expect(await screen.findByText(/couldn't load/i)).toBeInTheDocument()
+})
+
+// The arc page should read like the edition grid: a finished issue dimmed with a check,
+// one you are partway through carrying its progress bar.
+test('an issue you have finished wears the read check', async () => {
+  renderAt('/arcs/Death%20Spiral')
+  const link = await screen.findByRole('link', { name: /Part One/ })
+  expect(within(link).getByLabelText('Read')).toBeInTheDocument()
+})
+
+test('an issue you are partway through shows how far', async () => {
+  renderAt('/arcs/Death%20Spiral')
+  const link = await screen.findByRole('link', { name: /Part Two/ })
+  expect(within(link).getByLabelText('In progress: 45%')).toBeInTheDocument()
+})
+
+test('an issue you do not own wears no read badge', async () => {
+  renderAt('/arcs/Death%20Spiral')
+  const link = await screen.findByRole('link', { name: /Part Three/ })
+  expect(within(link).queryByLabelText('Read')).toBeNull()
+  expect(within(link).queryByLabelText(/In progress/)).toBeNull()
 })

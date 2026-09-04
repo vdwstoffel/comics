@@ -13,7 +13,15 @@ import LibraryRail from '../components/LibraryRail'
 function ArcIssue({ issue }: { issue: ApiArcIssue }) {
   const title = issue.name || `Issue ${issue.id}`
   if (issue.owned && issue.bookId != null) {
-    return <CoverTile to={`/book/${issue.bookId}`} img={`/api/books/${issue.bookId}/thumbnail`} title={title} />
+    return (
+      <CoverTile
+        to={`/book/${issue.bookId}`}
+        img={`/api/books/${issue.bookId}/thumbnail`}
+        title={title}
+        readState={issue.readState}
+        percent={issue.percent}
+      />
+    )
   }
   return <CoverTile href={issue.siteUrl} title={title} subtitle="Missing" />
 }

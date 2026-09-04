@@ -5,6 +5,7 @@ import { openDb } from '../server/db.js'
 import { upsertEdition } from '../server/models/editions.js'
 import { insertBook, updateBook } from '../server/models/books.js'
 import { replaceBookTags, getBookTags } from '../server/models/metadata.js'
+import { setProgress } from '../server/models/progress.js'
 import type { Config } from '../server/config.js'
 
 const ARC = {
@@ -158,5 +159,46 @@ test('the arc page 400s when no API key is configured', async () => {
   replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
   try {
     expect((await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).statusCode).toBe(400)
+  } finally { await t.cleanup() }
+})
+
+// The arc page draws the same read badges the edition grid does, so it needs the same
+// two fields. An issue you do not own has no read state to report.
+test('an issue you own carries its read state into the arc', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const done = t.mk('Vol 7/1.cbz', 1156915)
+  const partway = t.mk('Vol 7/2.cbz', 1158149)
+  replaceBookTags(t.db, done.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  replaceBookTags(t.db, partway.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  setProgress(t.db, done.id, { lastPage: 19, completed: true })
+  setProgress(t.db, partway.id, { lastPage: 9 })
+  try {
+    const issues = (await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).json().arc.issues
+    const byId = Object.fromEntries(issues.map((i: { id: number }) => [i.id, i]))
+    expect(byId[1156915]).toMatchObject({ owned: true, readState: 'read' })
+    expect(byId[1158149]).toMatchObject({ owned: true, readState: 'reading' })
+    expect(byId[1158149].percent).toBeGreaterThan(0)
+  } finally { await t.cleanup() }
+})
+
+test('an issue you do not own reports no read state', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    const issues = (await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).json().arc.issues
+    const missing = issues.find((i: { owned: boolean }) => !i.owned)
+    expect(missing.readState).toBeUndefined()
+    expect(missing.percent).toBeUndefined()
+  } finally { await t.cleanup() }
+})
+
+test('an unread issue you own says so rather than saying nothing', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    const issues = (await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).json().arc.issues
+    expect(issues.find((i: { id: number }) => i.id === 1156915)).toMatchObject({ readState: 'unread' })
   } finally { await t.cleanup() }
 })

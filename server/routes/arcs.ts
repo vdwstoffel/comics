@@ -1,6 +1,8 @@
 import { createComicVine } from '../lib/comicvine.js'
 import { listStoryArcs, booksInArc, ownedIssueIds } from '../models/arcs.js'
 import { setTagIds } from '../models/metadata.js'
+import { getBook } from '../models/books.js'
+import { deriveReadState } from '../models/progress.js'
 import type { App } from '../types.js'
 
 interface NameParams { name: string }
@@ -39,9 +41,15 @@ export default async function arcRoutes(app: App) {
     return {
       arc: {
         ...arc,
+        // An issue you own carries its read state, so the arc draws the same badges the
+        // edition grid does. One you do not own has no read state to report.
         issues: arc.issues.map((issue) => {
           const bookId = owned.get(issue.id)
-          return bookId == null ? { ...issue, owned: false } : { ...issue, owned: true, bookId }
+          if (bookId == null) return { ...issue, owned: false }
+          const book = getBook(app.db, bookId)
+          if (!book) return { ...issue, owned: true, bookId }
+          const { readState, percent } = deriveReadState(app.db, book)
+          return { ...issue, owned: true, bookId, readState, percent }
         }),
       },
     }

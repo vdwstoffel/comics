@@ -113,6 +113,9 @@ export interface ApiArcIssue {
   owned: boolean
   /** Present only when owned — the issue in your library. */
   bookId?: number
+  /** Only for an issue you own — one you do not have has no read state. */
+  readState?: 'unread' | 'reading' | 'read'
+  percent?: number
 }
 
 export interface ApiStoryArc {
