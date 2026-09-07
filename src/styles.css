@@ -1869,3 +1869,33 @@ textarea.input:hover:not(:focus) {
   box-shadow: none;
   background: none;
 }
+
+/* What you can do with the comic that just finished uploading. */
+.upload-done {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.upload-done__matched {
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.upload-done__link {
+  font-size: 0.875rem;
+}
+
+/* The Comic Vine match chosen before the file is sent. */
+.upload-match {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.upload-match__picked {
+  font-size: 0.875rem;
+  color: var(--muted);
+}

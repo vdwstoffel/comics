@@ -9,6 +9,21 @@ import EditionEditDialog from '../components/EditionEditDialog'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 
 /**
+ * What to call a comic on a tile. A comic that has not been matched yet has neither a
+ * title nor an issue number, and "#?" says nothing about which comic it is — so the
+ * filename you uploaded stands in until Comic Vine fills the rest in.
+ */
+function tileLabel(book: ApiBook | undefined, fallbackNumber?: string | null, fallbackTitle?: string | null): string {
+  const title = book?.title || fallbackTitle
+  if (title) return title
+  const number = book?.number ?? fallbackNumber
+  if (number) return `#${number}`
+  const file = book?.filePath
+  if (file) return file.split('/').pop()!.replace(/\.[^.]+$/, '')
+  return 'Untitled'
+}
+
+/**
  * One issue of the run. Yours shows its cover and opens in the library; one you do not have
  * shows no art — a cover is a spoiler for a comic you have not read — but keeps its place in
  * the run and stays clickable through to Comic Vine.
@@ -96,8 +111,11 @@ export default function Edition() {
       return api.getEditionIssues(id!, force)
     },
     enabled: status === null,
-    // The server caches for a day, so re-reading it on every navigation buys nothing.
-    staleTime: 5 * 60 * 1000,
+    // Deliberately no staleTime. This response carries Comic Vine's issue list, which is
+    // worth caching, AND which of your books are in it, which is not: holding it for five
+    // minutes meant a comic you had just uploaded was absent from `extras` and so was not
+    // drawn at all. Re-reading costs nothing — the server serves the issue list from
+    // SQLite for a day, so a refetch never reaches Comic Vine.
   })
   const refreshRun = () => {
     forceRefresh.current = true
@@ -278,7 +296,7 @@ export default function Edition() {
                     key={extra.bookId}
                     to={`/book/${extra.bookId}`}
                     img={`/api/books/${extra.bookId}/thumbnail`}
-                    title={b?.title || extra.title || `#${extra.number ?? '?'}`}
+                    title={tileLabel(b, extra.number, extra.title)}
                     subtitle={extra.number ? `#${extra.number}` : ''}
                     readState={b?.readState}
                     percent={b?.percent}
@@ -292,7 +310,7 @@ export default function Edition() {
               key={b.id}
               to={`/book/${b.id}`}
               img={`/api/books/${b.id}/thumbnail`}
-              title={b.title || `#${b.number ?? '?'}`}
+              title={tileLabel(b)}
               subtitle={b.number ? `#${b.number}` : ''}
               readState={b.readState}
               percent={b.percent}

@@ -1,7 +1,7 @@
 import { mkdir, rename, rmdir, unlink } from 'node:fs/promises'
 import { existsSync, statSync } from 'node:fs'
 import { join, basename, extname, dirname, resolve, sep } from 'node:path'
-import { editionFolderPath } from '../lib/paths.js'
+import { editionFolderPath, dedupeDestPath } from '../lib/paths.js'
 import { deriveSeriesName } from '../lib/seriesName.js'
 import {
   upsertEdition, getEdition, getEditionByName, deleteEdition, updateEdition, carryableMetadata,
@@ -12,23 +12,6 @@ import { getSeries } from '../models/series.js'
 import type { Ctx, Db } from '../types.js'
 import type { Edition, Book } from '../types.js'
 import type { Config } from '../config.js'
-
-/**
- * Returns a dest path that does not yet exist, de-duping with (2), (3), … suffixes.
- * Pass srcAbsPath to exclude the source file itself from collision detection (self-move guard).
- */
-function dedupeDestPath(destDir: string, filename: string, srcAbsPath?: string): string {
-  const ext = extname(filename)
-  const base = filename.slice(0, filename.length - ext.length)
-  let candidate = join(destDir, filename)
-  let n = 2
-  while (existsSync(candidate) && candidate !== srcAbsPath) {
-    if (n > 9999) throw new Error('too many filename collisions')
-    candidate = join(destDir, `${base} (${n})${ext}`)
-    n++
-  }
-  return candidate
-}
 
 /**
  * Resolve a book's stored path against the library root, refusing anything that climbs

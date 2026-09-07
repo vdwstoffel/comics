@@ -47,8 +47,8 @@ function issue(number: string, year: number | null) {
 beforeEach(() => { mockFetch() })
 afterEach(() => { cleanup() })
 
-function renderPage(path = '/edition/9') {
-  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+function renderPage(path = '/edition/9', client?: QueryClient) {
+  const qc = client ?? new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const ui: ReactNode = (
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[path]}>
@@ -478,4 +478,55 @@ test('a run served from a stale cache says so', async () => {
   renderPage()
 
   expect(await screen.findByText(/could not reach comic vine/i)).toBeInTheDocument()
+})
+
+// Regression: uploading into an edition put the comic in the database, on disk, with a
+// thumbnail — and the page did not draw it. The grid renders from the run query, which
+// was cached for five minutes and matched by none of the page's invalidations, so its
+// `extras` predated the upload. Which books you own is live data and cannot be served
+// from a cache chosen for Comic Vine's issue list.
+test('a comic uploaded into the edition shows up on coming back to the page', async () => {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  mockFetchWithIssues({ ...VOLUME_ISSUES, extras: [], fetchedAt: '2026-09-04T10:00:00.000Z' })
+  const first = renderPage('/edition/9', qc)
+  await screen.findByText('#250')
+  first.unmount()
+
+  // The upload happened between the two visits.
+  mockFetchWithIssues({
+    ...VOLUME_ISSUES,
+    extras: [{ bookId: 46, number: null, title: 'Just uploaded' }],
+    fetchedAt: '2026-09-04T10:00:00.000Z',
+  })
+  renderPage('/edition/9', qc)
+
+  expect(await screen.findByText('Just uploaded')).toBeInTheDocument()
+})
+
+// A comic with no metadata yet has no title and no issue number, and "#?" tells you
+// nothing about which comic you are looking at. The filename is what you uploaded.
+test('a comic with no metadata is labelled with its filename', async () => {
+  mockFetchWithIssues(
+    { ...VOLUME_ISSUES, extras: [{ bookId: 46, number: null, title: null }] },
+    EDITION,
+    [{ id: 46, number: null, title: null, pageCount: 3, comicinfoSynced: false, year: null,
+       filePath: 'Venom/Venom (2025)/Venom 999 (2026).cbz' }],
+  )
+  renderPage()
+
+  expect(await screen.findByText('Venom 999 (2026)')).toBeInTheDocument()
+  expect(screen.queryByText('#?')).not.toBeInTheDocument()
+})
+
+// The same gap exists on an edition with no volume, which renders the plain book grid.
+test('a metadata-less comic in a volumeless edition is labelled with its filename too', async () => {
+  mockFetchWithIssues(
+    { volumeId: null, issues: [], extras: [], owned: 0, total: 0 },
+    EDITION,
+    [{ id: 47, number: null, title: null, pageCount: 3, comicinfoSynced: false, year: null,
+       filePath: 'Unsorted/Some Comic 001.cbz' }],
+  )
+  renderPage()
+
+  expect(await screen.findByText('Some Comic 001')).toBeInTheDocument()
 })

@@ -6,7 +6,10 @@ import { randomUUID } from 'node:crypto'
 import { listPages } from '../lib/cbz.js'
 import { isCbr, convertCbrToCbz } from '../lib/cbr.js'
 import { ingestFile } from '../services/indexer.js'
-import { editionFolderPath } from '../lib/paths.js'
+import { applyIssueToBook } from '../services/applyIssue.js'
+import { editionFolderPath, dedupeDestPath } from '../lib/paths.js'
+import { comicFileName } from '../lib/comicFileName.js'
+import { createComicVine } from '../lib/comicvine.js'
 import { deriveSeriesName } from '../lib/seriesName.js'
 import { getEditionByName } from '../models/editions.js'
 import type { App } from '../types.js'
@@ -15,12 +18,15 @@ export default async function uploadRoutes(app: App) {
   app.post('/api/upload', async (req, reply) => {
     const parts = req.parts()
     let editionName: string | undefined
+    let issueId: string | undefined
     let tmpPath: string | undefined
     let originalName: string | undefined
 
     for await (const part of parts) {
       if (part.type === 'field' && part.fieldname === 'edition') {
         editionName = String(part.value)
+      } else if (part.type === 'field' && part.fieldname === 'issueId') {
+        issueId = String(part.value)
       } else if (part.type === 'file' && part.fieldname === 'file') {
         originalName = basename(part.filename)
         const ext = extname(originalName).toLowerCase()
@@ -79,13 +85,43 @@ export default async function uploadRoutes(app: App) {
 
     const destDir = join(app.config.comicsDir, folder)
     await mkdir(destDir, { recursive: true })
-    const destPath = join(destDir, originalName)
+
+    // A confirmed match earns a clean name: venom_256.cbz rather than the four release
+    // tags a scene file arrives with. Resolved BEFORE the write so the file lands with
+    // its final name and there is no rename afterwards to unwind. Without a match the
+    // file keeps the name it came with - renaming on a guess loses track of what it is.
+    let finalName = originalName
+    if (issueId) {
+      try {
+        // Built per request, not per registration: the key is read from config at call
+        // time, so a key set after the routes were registered still works.
+        const cv = createComicVine({ apiKey: app.config.comicVineApiKey })
+        const issue = await cv.getIssue(issueId)
+        const volume = issue.volumeId ? await cv.getVolume(issue.volumeId) : undefined
+        const slugged = comicFileName(volume?.name, issue.number, extname(originalName))
+        if (slugged) finalName = slugged
+      } catch { /* a name we cannot improve is no reason to refuse the upload */ }
+    }
+
+    // Never rename onto a comic that is already there: that destroyed the existing file
+    // and then failed the unique constraint on book.file_path, so the upload 500'd with
+    // the original already gone. Same guard every move through the library uses.
+    const destPath = dedupeDestPath(destDir, finalName)
     await rename(cbzTmpPath, destPath)
 
     // The NAME the user typed, not the sanitised folder: sanitising is a filesystem
     // concern, and passing the folder on as the name would rename the user's edition to
     // whatever its directory had to be called.
     const book = await ingestFile({ db: app.db, config: app.config }, destPath, name)
-    return { book }
+    if (!book || !issueId) return { book }
+
+    // The file is on disk and indexed by now. Metadata is the bonus, so a Comic Vine that
+    // will not answer costs the metadata, never the upload.
+    try {
+      const applied = await applyIssueToBook({ db: app.db, config: app.config }, book.id, issueId)
+      return { book: applied.book, metadataApplied: true }
+    } catch {
+      return { book, metadataApplied: false }
+    }
   })
 }

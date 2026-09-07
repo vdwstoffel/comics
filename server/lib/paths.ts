@@ -1,3 +1,6 @@
+import { existsSync } from 'node:fs'
+import { extname, join } from 'node:path'
+
 /**
  * Sanitize an edition name into a safe folder name.
  * Replaces `/` and `\` runs with `_`, then replaces `..` runs with `_`, then trims.
@@ -29,4 +32,27 @@ export function editionFolderPath(seriesName: string | null | undefined, name: s
   // plain name unchanged, so nesting those would give Unsorted/Unsorted.
   if (!series || series === leaf) return leaf
   return `${series}/${leaf}`
+}
+
+/**
+ * A destination that does not yet exist, de-duping with (2), (3), … suffixes.
+ *
+ * Every write into the comics dir goes through this. Without it a second file of the same
+ * name renames straight over the first, destroying a comic and then failing the unique
+ * constraint on book.file_path — the caller sees a 500 and the original is already gone.
+ *
+ * Pass srcAbsPath to exclude the source file itself, so moving a file to where it already
+ * is does not dedupe against itself.
+ */
+export function dedupeDestPath(destDir: string, filename: string, srcAbsPath?: string): string {
+  const ext = extname(filename)
+  const base = filename.slice(0, filename.length - ext.length)
+  let candidate = join(destDir, filename)
+  let n = 2
+  while (existsSync(candidate) && candidate !== srcAbsPath) {
+    if (n > 9999) throw new Error('too many filename collisions')
+    candidate = join(destDir, `${base} (${n})${ext}`)
+    n++
+  }
+  return candidate
 }

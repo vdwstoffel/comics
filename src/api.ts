@@ -270,6 +270,11 @@ export const api = {
   getEditionIssues: (id: string | number, refresh = false) =>
     json<ApiEditionIssues>(`/api/editions/${id}/issues${refresh ? '?refresh=1' : ''}`),
 
+  issueVolume: (issueId: number | string) =>
+    json<{ volume: { id: number; name: string | null; startYear: number | null; publisher: string | null; editionName: string | null } | null }>(
+      `/api/comicvine/issues/${issueId}/volume`,
+    ),
+
   checkComicVineVolume: (id: string | number) =>
     json<{ matched: boolean; edition?: ApiEdition }>(`/api/editions/${id}/comicvine-volume`, { method: 'POST' }),
   moveBookEdition: (id: string | number, name: string) =>

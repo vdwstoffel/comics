@@ -135,3 +135,161 @@ test('an edition name that needs sanitising keeps its name and only sanitises th
   expect(edition.folder).toBe('Hellboy_BPRD')
   expect(res.json().book.filePath).toBe('Hellboy_BPRD/Issue 1.cbz')
 })
+
+// ---- matching as you upload ----
+
+const ISSUE = {
+  name: 'Death Spiral, Part 3 of 9', issue_number: '255', cover_date: '2026-05-01',
+  description: null, volume: { id: 167333, name: 'Venom' }, site_detail_url: 'https://cv/255',
+}
+const VOLUME = { name: 'Venom', start_year: '2025', publisher: { name: 'Marvel' } }
+
+function stubCv(ok = true) {
+  globalThis.fetch = (async (url: string) => {
+    if (!ok) return { ok: false, status: 500, json: async () => ({}) }
+    return url.includes('/volume/')
+      ? { ok: true, json: async () => ({ results: VOLUME }) }
+      : { ok: true, json: async () => ({ results: ISSUE }) }
+  }) as never
+}
+
+async function uploadWith(fields: Record<string, string>, fileName = 'Venom 255.cbz') {
+  const srcDir = mkdtempSync(join(tmpdir(), 'src-'))
+  const cbz = await makeCbz(srcDir, ['p1.png'], fileName)
+  const form = new FormData()
+  for (const [k, v] of Object.entries(fields)) form.set(k, v)
+  form.set('file', new Blob([readFileSync(cbz)]), fileName)
+  return app.inject({ method: 'POST', url: '/api/upload', payload: form })
+}
+
+test('a comic uploaded with a chosen issue arrives with its metadata already on it', async () => {
+  app.config.comicVineApiKey = 'k'
+  stubCv()
+
+  const res = await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' })
+
+  expect(res.statusCode).toBe(200)
+  const { book } = res.json()
+  expect(book).toMatchObject({ title: 'Death Spiral, Part 3 of 9', number: '255', comicvineId: 1159231 })
+})
+
+test('the edition of a matched upload learns its Comic Vine volume', async () => {
+  app.config.comicVineApiKey = 'k'
+  stubCv()
+
+  await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' })
+
+  const edition = getEditionByName(app.db, 'Venom (2025)')!
+  expect(edition).toMatchObject({ cvName: 'Venom', cvStartYear: 2025, comicvineId: 167333 })
+})
+
+test('uploading without an issue is unchanged', async () => {
+  const res = await uploadWith({ edition: 'Venom (2025)' })
+
+  expect(res.statusCode).toBe(200)
+  expect(res.json().book).toMatchObject({ comicvineId: null })
+})
+
+// The file is already on disk by the time the metadata is applied. Losing the upload
+// because Comic Vine had a bad minute would be the worst possible trade.
+test('a comic still uploads when its metadata cannot be applied', async () => {
+  app.config.comicVineApiKey = 'k'
+  stubCv(false)
+
+  const res = await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' })
+
+  expect(res.statusCode).toBe(200)
+  const body = res.json()
+  expect(body.book.id).toBeGreaterThan(0)
+  expect(body.metadataApplied).toBe(false)
+  // deriveSeriesName('Venom (2025)') is 'Venom', so it nests under its series.
+  expect(existsSync(join(dir, 'comics', 'Venom', 'Venom (2025)', 'Venom 255.cbz'))).toBe(true)
+})
+
+// A file whose name is already taken in the edition must not land on top of the comic
+// that is there. Upload renamed onto the existing path and then failed on the unique
+// constraint, so the original was destroyed and the caller got a 500.
+test('uploading a name that already exists does not overwrite the comic that has it', async () => {
+  const srcDir = mkdtempSync(join(tmpdir(), 'src-'))
+  const first = await makeCbz(srcDir, ['a.png', 'b.png', 'c.png'], 'Venom 256.cbz')
+  const firstForm = new FormData()
+  firstForm.set('edition', 'Venom')
+  firstForm.set('file', new Blob([readFileSync(first)]), 'Venom 256.cbz')
+  await app.inject({ method: 'POST', url: '/api/upload', payload: firstForm })
+
+  const original = readFileSync(join(dir, 'comics', 'Venom', 'Venom 256.cbz'))
+
+  // A different comic that happens to carry the same file name.
+  const secondDir = mkdtempSync(join(tmpdir(), 'src2-'))
+  const second = await makeCbz(secondDir, ['x.png'], 'Venom 256.cbz')
+  const secondForm = new FormData()
+  secondForm.set('edition', 'Venom')
+  secondForm.set('file', new Blob([readFileSync(second)]), 'Venom 256.cbz')
+
+  const res = await app.inject({ method: 'POST', url: '/api/upload', payload: secondForm })
+
+  expect(res.statusCode).toBe(200)
+  // The first comic is untouched, byte for byte.
+  expect(readFileSync(join(dir, 'comics', 'Venom', 'Venom 256.cbz'))).toEqual(original)
+  // And the second one is on disk under a name of its own.
+  expect(existsSync(join(dir, 'comics', 'Venom', 'Venom 256 (2).cbz'))).toBe(true)
+  expect(res.json().book.pageCount).toBe(1)
+})
+
+test('both comics survive as separate books', async () => {
+  const srcDir = mkdtempSync(join(tmpdir(), 'src-'))
+  const cbz = await makeCbz(srcDir, ['a.png'], 'Dupe.cbz')
+  for (let i = 0; i < 2; i++) {
+    const form = new FormData()
+    form.set('edition', 'Venom')
+    form.set('file', new Blob([readFileSync(cbz)]), 'Dupe.cbz')
+    expect((await app.inject({ method: 'POST', url: '/api/upload', payload: form })).statusCode).toBe(200)
+  }
+
+  const paths = (app.db.prepare('SELECT file_path FROM book ORDER BY id').all() as Array<{ file_path: string }>)
+    .map((r) => r.file_path)
+  expect(paths).toEqual(['Venom/Dupe.cbz', 'Venom/Dupe (2).cbz'])
+})
+
+// ---- naming a matched upload ----
+
+test('a matched upload is stored under its series and issue number', async () => {
+  app.config.comicVineApiKey = 'k'
+  stubCv()
+
+  const res = await uploadWith(
+    { edition: 'Venom (2025)', issueId: '1159231' },
+    'Venom 255 (2026) (Digital) (Shan-Empire).cbz',
+  )
+
+  expect(res.json().book.filePath).toBe('Venom/Venom (2025)/venom_255.cbz')
+  expect(existsSync(join(dir, 'comics', 'Venom', 'Venom (2025)', 'venom_255.cbz'))).toBe(true)
+})
+
+// Renaming on a guess is how you lose track of what a file is.
+test('an unmatched upload keeps the name it arrived with', async () => {
+  const res = await uploadWith({ edition: 'Venom (2025)' }, 'Venom 255 (2026) (Digital).cbz')
+
+  expect(res.json().book.filePath).toBe('Venom/Venom (2025)/Venom 255 (2026) (Digital).cbz')
+})
+
+test('uploading the same issue twice keeps both files', async () => {
+  app.config.comicVineApiKey = 'k'
+  stubCv()
+
+  await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' }, 'first.cbz')
+  const second = await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' }, 'second.cbz')
+
+  expect(second.statusCode).toBe(200)
+  expect(second.json().book.filePath).toBe('Venom/Venom (2025)/venom_255 (2).cbz')
+  expect(existsSync(join(dir, 'comics', 'Venom', 'Venom (2025)', 'venom_255.cbz'))).toBe(true)
+})
+
+test('a .cbr keeps its converted extension in the new name', async () => {
+  app.config.comicVineApiKey = 'k'
+  stubCv()
+
+  const res = await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' }, 'whatever.cbz')
+
+  expect(res.json().book.filePath.endsWith('.cbz')).toBe(true)
+})

@@ -1,4 +1,5 @@
 import { createComicVine } from '../lib/comicvine.js'
+import { applyIssueToBook } from '../services/applyIssue.js'
 import type { CvVolume } from '../lib/comicvine.js'
 import { getBook, updateBook } from '../models/books.js'
 import { getEdition, updateEdition } from '../models/editions.js'
@@ -26,54 +27,27 @@ export default async function comicvineRoutes(app: App) {
     if (!book) return reply.code(404).send({ error: 'book not found' })
     const { issueId } = req.body || {}
     if (!issueId) return reply.code(400).send({ error: 'missing issueId' })
-    const meta = await cv.getIssue(issueId)
+    return applyIssueToBook({ db: app.db, config: app.config }, book.id, issueId)
+  })
 
-    // Best-effort: fetch the volume BEFORE opening the transaction
-    // (better-sqlite3 transactions must be synchronous; no async calls inside)
-    let volume: CvVolume | undefined
-    try {
-      if (meta.volumeId) volume = await cv.getVolume(meta.volumeId)
-    } catch { /* best-effort; don't fail the match */ }
-    const publisher = volume?.publisher
-
-    const updatedBook = app.db.transaction(() => {
-      const b = updateBook(app.db, book.id, {
-        title: meta.title ?? null, number: meta.number ?? null, date: meta.date ?? null,
-        summary: meta.summary ?? null, writer: meta.writer ?? null, penciller: meta.penciller ?? null,
-        comicvineId: Number(issueId),
-        year: meta.year ?? null, coverUrl: meta.coverUrl ?? null, cvSiteUrl: meta.siteUrl ?? null,
-        publisher: publisher ?? null,
-      })
-      replaceBookCredits(app.db, book.id, meta.credits)
-      const tags = [
-        ...meta.characters.map((c) => ({ kind: 'character', value: c.name, extId: c.id })),
-        ...meta.teams.map((value) => ({ kind: 'team', value })),
-        ...meta.storyArcs.map((a) => ({ kind: 'story_arc', value: a.name, extId: a.id })),
-      ]
-      replaceBookTags(app.db, book.id, tags)
-      // Propagate the volume to the edition: publisher and Comic Vine identity if it
-      // has none, and the volume's own name/year, which is what the edition should be
-      // called. The name is offered as a suggestion, never applied here.
-      if (book.editionId && (publisher || volume)) {
-        const edition = getEdition(app.db, book.editionId)
-        if (edition) {
-          const patch: EditionUpdate = {}
-          if (publisher && !edition.publisher) patch.publisher = publisher
-          if (volume?.name) patch.cvName = volume.name
-          if (volume?.startYear !== undefined) patch.cvStartYear = volume.startYear
-          if (meta.volumeId && !edition.comicvineId) patch.comicvineId = Number(meta.volumeId)
-          if (Object.keys(patch).length > 0) updateEdition(app.db, book.editionId, patch)
-        }
-      }
-      return b
-    })()
-
-    // Everything Comic Vine just gave us goes into the file as well as the database.
-    const synced = await syncComicInfoFile({ db: app.db, config: app.config }, book.id)
-
-    const credits = getBookCredits(app.db, book.id)
-    const tags = getBookTags(app.db, book.id)
-    return { book: synced ?? updatedBook, credits, tags }
+  // What a matched issue implies about where the comic belongs, so the upload screen can
+  // show the edition before the file is sent. The issue's own year is its cover date; the
+  // edition needs the volume's START year - Venom #256 is a 2026 issue of the 2025 volume.
+  app.get<{ Params: IdParams }>('/api/comicvine/issues/:id/volume', async (req, reply) => {
+    if (!app.config.comicVineApiKey) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
+    const issue = await cv.getIssue(req.params.id)
+    if (!issue.volumeId) return { volume: null }
+    const volume = await cv.getVolume(issue.volumeId)
+    return {
+      volume: {
+        id: Number(issue.volumeId),
+        name: volume.name ?? null,
+        startYear: volume.startYear ?? null,
+        publisher: volume.publisher ?? null,
+        // The name this comic's edition should carry, composed here so one place decides it.
+        editionName: volume.name && volume.startYear ? `${volume.name} (${volume.startYear})` : null,
+      },
+    }
   })
 
   app.post<{ Params: IdParams; Body: { volumeId?: number | string } }>('/api/editions/:id/comicvine', async (req, reply) => {

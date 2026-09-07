@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { buildCvQuery } from '../src/lib/cvQuery'
+import { buildCvQuery, cvQueryFromFileName } from '../src/lib/cvQuery'
 import type { ApiBook, ApiEdition } from '../src/api'
 
 const book = (over: Partial<ApiBook> = {}): ApiBook => ({
@@ -105,4 +105,24 @@ test('a missing edition still yields the query the file name supports', () => {
     book({ filePath: 'Vol 7/Amazing Spider-Man 011 (2025) (Digital) (Shan-Empire).cbz' }),
     undefined,
   )).toBe('Amazing Spider-Man #11')
+})
+
+// Before an upload there is no book row — only the name of the file you picked. The same
+// parsing has to work from that alone, or the pre-upload search and the post-upload one
+// would read the same filename differently.
+test('a query can be built from a file name with no book behind it', () => {
+  expect(cvQueryFromFileName('Venom 256 (2026) (Digital) (Shan-Empire).cbz')).toBe('Venom #256')
+})
+
+test('the file name query drops padding the way the book one does', () => {
+  expect(cvQueryFromFileName('Amazing Spider-Man 007 (2025).cbz')).toBe('Amazing Spider-Man #7')
+})
+
+test('a file name with no trailing number searches on the name itself', () => {
+  expect(cvQueryFromFileName('Saga Book One (2019) (Digital).cbz')).toBe('Saga Book One')
+})
+
+test('an edition already chosen wins over the series read off the file name', () => {
+  expect(cvQueryFromFileName('Venom 256 (2026).cbz', 'The Amazing Spider-Man'))
+    .toBe('The Amazing Spider-Man #256')
 })
