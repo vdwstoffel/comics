@@ -280,3 +280,56 @@ test('POST /api/library/reorganize with dryRun:false executes the plan', async (
   expect(existsSync(join(app.config.comicsDir, nested, '001.cbz'))).toBe(true)
   expect(existsSync(flat)).toBe(false)
 })
+
+/** An edition whose Comic Vine volume is known, holding one scene-named file. */
+async function seedNamedEdition() {
+  const folder = join(app.config.comicsDir, 'Venom', 'Venom (2025)')
+  mkdirSync(folder, { recursive: true })
+  await makeCbz(folder, ['p1.png'], 'Venom 255 (2026) (Digital).cbz')
+  const edition = upsertEdition(app.db, {
+    name: 'Venom (2025)', folder: 'Venom/Venom (2025)', seriesName: 'Venom',
+  })
+  updateEdition(app.db, edition.id, { cvName: 'Venom', cvStartYear: 2025 })
+  const book = insertBook(app.db, {
+    editionId: edition.id, filePath: 'Venom/Venom (2025)/Venom 255 (2026) (Digital).cbz',
+    pageCount: 1, fileSize: 100,
+  })!
+  app.db.prepare('UPDATE book SET number = ?, comicvine_id = ? WHERE id = ?').run('255', 1, book.id)
+  return { folder, book }
+}
+
+// Same reasoning as reorganize: renaming rewrites the one handle you have on a file
+// outside the app, so nothing but an explicit dryRun:false may touch it.
+test.each([
+  ['no body', undefined],
+  ['empty body', {}],
+  ['dryRun true', { dryRun: true }],
+])('POST /api/library/rename-files dry-runs by default (%s)', async (_label, payload) => {
+  const { folder } = await seedNamedEdition()
+
+  const res = await app.inject({ method: 'POST', url: '/api/library/rename-files', payload })
+
+  expect(res.statusCode).toBe(200)
+  const body = res.json()
+  expect(body.dryRun).toBe(true)
+  expect(body.planned).toEqual([{
+    bookId: expect.any(Number),
+    from: 'Venom/Venom (2025)/Venom 255 (2026) (Digital).cbz',
+    to: 'Venom/Venom (2025)/venom_255.cbz',
+  }])
+  expect(body.renamed).toBeUndefined()
+  expect(existsSync(join(folder, 'Venom 255 (2026) (Digital).cbz'))).toBe(true)
+})
+
+test('POST /api/library/rename-files with dryRun false renames the file', async () => {
+  const { folder, book } = await seedNamedEdition()
+
+  const res = await app.inject({
+    method: 'POST', url: '/api/library/rename-files', payload: { dryRun: false },
+  })
+
+  expect(res.json()).toMatchObject({ dryRun: false, renamed: 1, skipped: 0 })
+  expect(existsSync(join(folder, 'venom_255.cbz'))).toBe(true)
+  expect(existsSync(join(folder, 'Venom 255 (2026) (Digital).cbz'))).toBe(false)
+  expect(getBook(app.db, book.id)!.filePath).toBe('Venom/Venom (2025)/venom_255.cbz')
+})
