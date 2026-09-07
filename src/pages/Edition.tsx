@@ -5,23 +5,9 @@ import { api } from '../api'
 import type { ApiVolumeIssue, ApiBook } from '../api'
 import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
+import { tileLabel } from '../lib/tileLabel'
 import EditionEditDialog from '../components/EditionEditDialog'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
-
-/**
- * What to call a comic on a tile. A comic that has not been matched yet has neither a
- * title nor an issue number, and "#?" says nothing about which comic it is — so the
- * filename you uploaded stands in until Comic Vine fills the rest in.
- */
-function tileLabel(book: ApiBook | undefined, fallbackNumber?: string | null, fallbackTitle?: string | null): string {
-  const title = book?.title || fallbackTitle
-  if (title) return title
-  const number = book?.number ?? fallbackNumber
-  if (number) return `#${number}`
-  const file = book?.filePath
-  if (file) return file.split('/').pop()!.replace(/\.[^.]+$/, '')
-  return 'Untitled'
-}
 
 /**
  * One issue of the run. Yours shows its cover and opens in the library; one you do not have

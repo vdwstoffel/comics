@@ -267,6 +267,12 @@ export const api = {
       method: 'PATCH', headers: { 'content-type': 'application/json' },
       body: JSON.stringify(seriesName === undefined ? { name } : { name, seriesName }),
     }),
+  getLibraryBooks: ({ readState, publisher }: { readState: ReadState; publisher?: string | null }) => {
+    const params = new URLSearchParams({ readState })
+    if (publisher) params.set('publisher', publisher)
+    return json<{ books: ApiBook[] }>(`/api/books?${params}`)
+  },
+
   getEditionIssues: (id: string | number, refresh = false) =>
     json<ApiEditionIssues>(`/api/editions/${id}/issues${refresh ? '?refresh=1' : ''}`),
 

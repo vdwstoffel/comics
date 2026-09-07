@@ -1,11 +1,12 @@
 import { createReadStream, existsSync } from 'node:fs'
 import { join, extname } from 'node:path'
-import { getBook, updateBook } from '../models/books.js'
+import { getBook, updateBook, listLibraryBooks } from '../models/books.js'
 import { getProgress, setProgress, deriveReadState } from '../models/progress.js'
 import { getBookCredits, getBookTags } from '../models/metadata.js'
 import { readPage } from '../lib/cbz.js'
 import { moveBookToEdition, removeBook } from '../services/library.js'
 import { syncComicInfoFile } from '../services/comicinfoSync.js'
+import { readStateOf } from './filters.js'
 import type { App, Book } from '../types.js'
 
 const MIME: Record<string, string> = { '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp', '.gif': 'image/gif' }
@@ -23,6 +24,15 @@ interface ContinueQuery { limit?: string; publisher?: string }
 
 
 export default async function booksRoutes(app: App) {
+  // The library-wide list behind the Unread and Reading views. The rail carries a
+  // publisher and a status at once, so both narrow together.
+  app.get<{ Querystring: { readState?: string; publisher?: string } }>('/api/books', async (req) => ({
+    books: listLibraryBooks(app.db, {
+      readState: readStateOf(req.query.readState),
+      publisher: req.query.publisher?.trim() || undefined,
+    }),
+  }))
+
 
   app.get<{ Params: IdParams }>('/api/books/:id', async (req, reply) => {
     const book = getBook(app.db, Number(req.params.id))

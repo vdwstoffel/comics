@@ -333,3 +333,45 @@ test('POST /api/library/rename-files with dryRun false renames the file', async 
   expect(existsSync(join(folder, 'Venom 255 (2026) (Digital).cbz'))).toBe(false)
   expect(getBook(app.db, book.id)!.filePath).toBe('Venom/Venom (2025)/venom_255.cbz')
 })
+
+/** Two editions, two publishers, one book each in a different read state. */
+function seedForBookList() {
+  const venom = upsertEdition(app.db, { name: 'Venom (2025)', folder: 'v', seriesName: 'Venom' })
+  updateEdition(app.db, venom.id, { publisher: 'Marvel' })
+  const batman = upsertEdition(app.db, { name: 'Batman (2016)', folder: 'b', seriesName: 'Batman' })
+  updateEdition(app.db, batman.id, { publisher: 'DC' })
+  const a = insertBook(app.db, { editionId: venom.id, filePath: 'v/1.cbz', pageCount: 20, fileSize: 1 })!
+  const b = insertBook(app.db, { editionId: batman.id, filePath: 'b/1.cbz', pageCount: 20, fileSize: 1 })!
+  const c = insertBook(app.db, { editionId: venom.id, filePath: 'v/2.cbz', pageCount: 20, fileSize: 1 })!
+  setProgress(app.db, c.id, { lastPage: 5 })
+  return { unreadMarvel: a, unreadDc: b, readingMarvel: c }
+}
+
+test('GET /api/books lists what is unread across the library', async () => {
+  const { unreadMarvel, unreadDc } = seedForBookList()
+
+  const res = await app.inject({ url: '/api/books?readState=unread' })
+
+  expect(res.statusCode).toBe(200)
+  expect(res.json().books.map((b: { id: number }) => b.id).sort())
+    .toEqual([unreadMarvel.id, unreadDc.id].sort())
+})
+
+test('GET /api/books narrows by publisher and state together', async () => {
+  const { unreadMarvel } = seedForBookList()
+
+  const res = await app.inject({ url: '/api/books?readState=unread&publisher=Marvel' })
+
+  expect(res.json().books.map((b: { id: number }) => b.id)).toEqual([unreadMarvel.id])
+})
+
+test('GET /api/books returns the progress its tiles draw', async () => {
+  const { readingMarvel } = seedForBookList()
+
+  const res = await app.inject({ url: '/api/books?readState=reading' })
+
+  const [book] = res.json().books
+  expect(book.id).toBe(readingMarvel.id)
+  expect(book.readState).toBe('reading')
+  expect(book.percent).toBeGreaterThan(0)
+})

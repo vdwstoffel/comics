@@ -52,9 +52,13 @@ export default function LibraryRail({
       />
       <FilterSidebar
         title="Status"
-        items={(readStateData?.readStates ?? []).map((s) => ({
-          key: s.name, label: STATUS_LABELS[s.name], count: s.count,
-        }))}
+        // Read is deliberately absent: browsing what you have finished is what the
+        // unfiltered shelf is for, while Unread and Reading both answer "what next".
+        // The state itself still exists — progress, counts and the per-edition filter
+        // all use it; this is one entry in a rail, not a change to what is tracked.
+        items={(readStateData?.readStates ?? [])
+          .filter((s) => s.name !== 'read')
+          .map((s) => ({ key: s.name, label: STATUS_LABELS[s.name], count: s.count }))}
         active={activeStatus}
         onSelect={onStatus ?? ((key) => navigate(key ? `/?status=${key}` : '/'))}
       />

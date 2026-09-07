@@ -1,5 +1,6 @@
 import { BOOK_STATE_SQL } from './editions.js'
-import type { ReadState } from './progress.js'
+import { deriveReadState } from './progress.js'
+import type { ReadState, BookWithProgress } from './progress.js'
 import type { Db, Book } from '../types.js'
 
 interface BookRow {
@@ -73,6 +74,46 @@ export function getBook(db: Db, id: number | bigint): Book | undefined {
 
 export function findBookByPath(db: Db, filePath: string): Book | undefined {
   return toBook(db.prepare('SELECT * FROM book WHERE file_path = ?').get(filePath) as BookRow | undefined)
+}
+
+/**
+ * Every book in the library matching a read state and/or a publisher.
+ *
+ * The rail carries both at once, so both narrow together — a view honouring only one
+ * would misdescribe what it is showing. The state fragments come from BOOK_STATE_SQL, the
+ * same ones the sidebar counts with, so "unread" cannot come to mean one thing in the
+ * rail and another in the grid.
+ *
+ * Ordered by series then issue number: this is the "what do I read next" list, so it
+ * reads in the order you would read it.
+ */
+export function listLibraryBooks(
+  db: Db,
+  { readState, publisher }: { readState?: ReadState; publisher?: string },
+): BookWithProgress[] {
+  const clauses: string[] = []
+  const params: unknown[] = []
+
+  if (readState) clauses.push(BOOK_STATE_SQL[readState])
+  if (publisher === '__unknown__') clauses.push('e.publisher IS NULL')
+  else if (publisher) { clauses.push('e.publisher = ?'); params.push(publisher) }
+
+  const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
+  const rows = db
+    .prepare(`SELECT b.*, e.series_name AS series_name
+              FROM book b
+              JOIN edition e ON e.id = b.edition_id
+              LEFT JOIN read_progress p ON p.book_id = b.id
+              ${where}`)
+    .all(...params) as Array<BookRow & { series_name: string | null }>
+
+  return rows
+    .sort((a, b) => {
+      const series = String(a.series_name ?? '').localeCompare(String(b.series_name ?? ''), undefined, { sensitivity: 'base' })
+      if (series !== 0) return series
+      return String(a.number ?? a.file_path).localeCompare(String(b.number ?? b.file_path), undefined, { numeric: true })
+    })
+    .map((r) => deriveReadState(db, toBook(r) as Book))
 }
 
 export function listBooksByEdition(db: Db, editionId: number, readState?: ReadState): Book[] {
