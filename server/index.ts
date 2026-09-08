@@ -15,6 +15,7 @@ import arcRoutes from './routes/arcs.js'
 import comicIndexRoutes from './routes/comicIndex.js'
 import downloadRoutes from './routes/downloads.js'
 import libraryRoutes from './routes/library.js'
+import { clearTmpDir } from './lib/tmpFiles.js'
 import { createDownloadRunner } from './services/downloader.js'
 import { createScrapeRunner } from './services/comicIndexScraper.js'
 import { backfillSeriesNames } from './models/series.js'
@@ -39,6 +40,11 @@ export async function buildServer(): Promise<App> {
   // One-off for editions that predate series_name; only fills rows that have none.
   const named = backfillSeriesNames(db)
   if (named) console.log(`assigned a series to ${named} editions`)
+
+  // A run that died mid-upload or mid-download left its staging file behind. Nothing has
+  // been accepted yet, so anything in tmp belongs to a run that is already over.
+  const swept = await clearTmpDir(config.tmpDir)
+  if (swept) console.log(`cleared ${swept} leftover file${swept === 1 ? '' : 's'} from tmp`)
 
   app.decorate('scraper', createScrapeRunner({ db, config }))
   app.decorate('downloader', createDownloadRunner({ db, config }))
