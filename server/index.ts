@@ -13,7 +13,9 @@ import uploadRoutes from './routes/upload.js'
 import comicvineRoutes from './routes/comicvine.js'
 import arcRoutes from './routes/arcs.js'
 import comicIndexRoutes from './routes/comicIndex.js'
+import downloadRoutes from './routes/downloads.js'
 import libraryRoutes from './routes/library.js'
+import { createDownloadRunner } from './services/downloader.js'
 import { createScrapeRunner } from './services/comicIndexScraper.js'
 import { backfillSeriesNames } from './models/series.js'
 import type { App } from './types.js'
@@ -39,6 +41,7 @@ export async function buildServer(): Promise<App> {
   if (named) console.log(`assigned a series to ${named} editions`)
 
   app.decorate('scraper', createScrapeRunner({ db, config }))
+  app.decorate('downloader', createDownloadRunner({ db, config }))
 
   app.get('/api/health', async () => ({ status: 'ok' }))
 
@@ -52,6 +55,7 @@ export async function buildServer(): Promise<App> {
   await app.register(arcRoutes)
   await app.register(comicIndexRoutes)
   await app.register(libraryRoutes)
+  await app.register(downloadRoutes)
 
   const distDir = join(process.cwd(), 'dist')
   if (existsSync(distDir)) {

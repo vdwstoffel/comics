@@ -1899,3 +1899,9 @@ textarea.input:hover:not(:focus) {
   font-size: 0.875rem;
   color: var(--muted);
 }
+
+/* The link box, as an alternative to picking a file. */
+.upload-url {
+  width: 100%;
+  margin-top: 6px;
+}

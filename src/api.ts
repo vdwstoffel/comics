@@ -72,6 +72,18 @@ export interface ApiCharacter {
   profile: ProfileBlock[]
 }
 
+export interface DownloadStatus {
+  running: boolean
+  url: string | null
+  fileName: string | null
+  received: number
+  total: number
+  error: string | null
+  bookId: number | null
+  startedAt: string | null
+  finishedAt: string | null
+}
+
 export interface ApiVolumeIssue {
   id: number
   number?: string
@@ -267,6 +279,22 @@ export const api = {
       method: 'PATCH', headers: { 'content-type': 'application/json' },
       body: JSON.stringify(seriesName === undefined ? { name } : { name, seriesName }),
     }),
+  resolveDownload: (url: string) =>
+    json<{ fileName: string | null; size: number }>('/api/downloads/resolve', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ url }),
+    }),
+
+  getDownload: () => json<DownloadStatus>('/api/downloads'),
+
+  startDownload: (body: { url: string; edition?: string; issueId?: number }) =>
+    json<{ started: boolean; status: DownloadStatus }>('/api/downloads', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }),
+
   getLibraryBooks: ({ readState, publisher }: { readState: ReadState; publisher?: string | null }) => {
     const params = new URLSearchParams({ readState })
     if (publisher) params.set('publisher', publisher)

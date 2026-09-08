@@ -245,3 +245,109 @@ test('a comic with no match still uploads', async () => {
   await waitFor(() => expect(xhrs).toHaveLength(1))
   expect((xhrs[0].sentBody as FormData).get('issueId')).toBeNull()
 })
+
+// ---- downloading from a url ----
+
+const RESOLVED = { fileName: 'Amazing Spider-Man 031 (2026) (Digital).cbz', size: 56524265 }
+
+/** Answers the download endpoints; `statuses` is served in order as the page polls. */
+function stubDownload(statuses: unknown[], urls: string[] = [], posts: { url: string; body: Record<string, unknown> }[] = []) {
+  let i = 0
+  globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    const u = String(url)
+    urls.push(u)
+    if (init?.method === 'POST') posts.push({ url: u, body: JSON.parse(String(init.body)) })
+    if (u.includes('/api/downloads/resolve')) return { ok: true, json: async () => RESOLVED }
+    if (u.includes('/api/downloads') && init?.method === 'POST') {
+      return { ok: true, json: async () => ({ started: true, status: {} }) }
+    }
+    if (u.includes('/api/downloads')) {
+      const body = statuses[Math.min(i++, statuses.length - 1)]
+      return { ok: true, json: async () => body }
+    }
+    if (u.includes('/api/comicvine/search')) {
+      return { ok: true, json: async () => ({ results: [{ id: 1159231, name: 'Amazing Spider-Man', issueNumber: '31', year: '2026', publisher: 'Marvel' }] }) }
+    }
+    if (u.includes('/volume')) {
+      return { ok: true, json: async () => ({ volume: { id: 163325, name: 'The Amazing Spider-Man', startYear: 2025, editionName: 'The Amazing Spider-Man (2025)' } }) }
+    }
+    return { ok: true, json: async () => ({ editions: [] }) }
+  }) as unknown as typeof fetch
+}
+
+const IDLE = { running: false, url: null, fileName: null, received: 0, total: 0, error: null, bookId: null }
+
+function pasteUrl(url = 'https://getcomics.example/dls/VihnoomBUb2Wfcz') {
+  fireEvent.change(screen.getByPlaceholderText(/paste a link/i), { target: { value: url } })
+}
+
+test('a pasted link offers to fetch its metadata', async () => {
+  stubDownload([IDLE])
+  renderUpload()
+  pasteUrl()
+
+  expect(await screen.findByRole('button', { name: /fetch metadata/i })).toBeEnabled()
+})
+
+// The pasted link says nothing about the comic; the name comes from resolving it.
+test('the search is built from the name the link resolves to', async () => {
+  const urls: string[] = []
+  stubDownload([IDLE], urls)
+  renderUpload()
+  pasteUrl()
+
+  fireEvent.click(await screen.findByRole('button', { name: /fetch metadata/i }))
+
+  await waitFor(() => expect(urls.some((u) => u.includes('/api/downloads/resolve'))).toBe(true))
+  await waitFor(() => expect(urls.some((u) => u.includes('/api/comicvine/search'))).toBe(true))
+  expect(decodeURIComponent(urls.find((u) => u.includes('search'))!)).toContain('Amazing Spider-Man #31')
+})
+
+test('the chosen issue and edition travel with the download', async () => {
+  const posts: { url: string; body: Record<string, unknown> }[] = []
+  stubDownload([IDLE], [], posts)
+  renderUpload()
+  pasteUrl()
+  fireEvent.click(await screen.findByRole('button', { name: /fetch metadata/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /Amazing Spider-Man/ }))
+  await waitFor(() => expect(screen.getByPlaceholderText('Edition name')).toHaveValue('The Amazing Spider-Man (2025)'))
+
+  fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
+
+  await waitFor(() => expect(posts.some((p) => p.url.endsWith('/api/downloads'))).toBe(true))
+  const start = posts.find((p) => p.url.endsWith('/api/downloads'))!
+  expect(start.body).toMatchObject({
+    url: 'https://getcomics.example/dls/VihnoomBUb2Wfcz',
+    edition: 'The Amazing Spider-Man (2025)',
+    issueId: 1159231,
+  })
+})
+
+test('progress is shown while the server downloads', async () => {
+  stubDownload([
+    { ...IDLE, running: true, received: 21400000, total: 52100000, fileName: 'x.cbz' },
+  ])
+  renderUpload()
+  pasteUrl()
+  fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
+
+  expect(await screen.findByText(/41%/)).toBeInTheDocument()
+})
+
+test('a finished download offers the comic it produced', async () => {
+  stubDownload([{ ...IDLE, running: false, bookId: 42, finishedAt: '2026-09-07T00:00:00Z' }])
+  renderUpload()
+  pasteUrl()
+  fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
+
+  expect(await screen.findByRole('link', { name: /view comic/i })).toHaveAttribute('href', '/book/42')
+})
+
+test('a download that failed says why', async () => {
+  stubDownload([{ ...IDLE, running: false, error: 'file too large', finishedAt: '2026-09-07T00:00:00Z' }])
+  renderUpload()
+  pasteUrl()
+  fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
+
+  expect(await screen.findByText(/file too large/i)).toBeInTheDocument()
+})
