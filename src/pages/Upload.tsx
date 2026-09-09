@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useState } from 'react'
 import type { FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
@@ -7,11 +7,6 @@ import type { ApiBook, CvSearchResult } from '../api'
 import EditionCombobox from '../components/EditionCombobox'
 import ComicVineMatchDialog from '../components/ComicVineMatchDialog'
 import { cvQueryFromFileName } from '../lib/cvQuery'
-
-/** Bytes as megabytes, for a progress line a person can read. */
-function mb(bytes: number): string {
-  return `${(bytes / 1_000_000).toFixed(1)} MB`
-}
 
 export default function Upload() {
   // Arriving from a search result carries the link its post page pointed at, so the page
@@ -34,7 +29,6 @@ export default function Upload() {
   // name only appears on the url it redirects to — and that name is what the Comic Vine
   // search is built from.
   const [resolvedName, setResolvedName] = useState<string | null>(null)
-  const [downloading, setDownloading] = useState(false)
 
   const qc = useQueryClient()
   const { data: editionsData } = useQuery({
@@ -70,28 +64,6 @@ export default function Upload() {
     onError: () => { setMatching(false); setMsg('Uploaded, but the metadata could not be applied.') },
   })
 
-  // Poll only while a download is in flight, so an idle page asks once and stops.
-  const { data: download } = useQuery({
-    queryKey: ['download'],
-    queryFn: api.getDownload,
-    enabled: downloading,
-    refetchInterval: (q) => (q.state.data?.running ? 500 : false),
-  })
-
-  // When a run ends, take in what it produced. In an effect, not in render: this both
-  // sets state and invalidates caches, and doing either while rendering is a side effect
-  // React makes no promises about.
-  useEffect(() => {
-    if (!downloading || !download || download.running || !download.finishedAt) return
-    setDownloading(false)
-    if (download.error) { setMsg(download.error); return }
-    setMsg('Downloaded!')
-    setMatch(null)
-    invalidateLibrary()
-    // invalidateLibrary is stable enough for this: it only closes over the query client.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [downloading, download])
-
   // Resolving reveals the file name; the dialog then opens on it as it would for a file.
   const resolve = useMutation({
     mutationFn: () => api.resolveDownload(url.trim()),
@@ -106,8 +78,19 @@ export default function Upload() {
       edition: edition || undefined,
       issueId: match?.id,
     }),
-    onSuccess: () => { setMsg(null); setUploaded(null); setDownloading(true) },
-    onError: () => setMsg('Could not start the download.'),
+    // Handing the run over: the download bar reports it from here, on whatever page you
+    // are on. Refreshing the status is what lets the bar show it now rather than
+    // whenever it next happens to look.
+    onSuccess: () => {
+      setMsg(null)
+      setUploaded(null)
+      setMatch(null)
+      qc.invalidateQueries({ queryKey: ['download'] })
+    },
+    // A 409 is the one downloader already being busy, which is worth saying plainly.
+    onError: (err: Error) => setMsg(err.message === '409'
+      ? 'A download is already running.'
+      : 'Could not start the download.'),
   })
 
   function choose(r: CvSearchResult) {
@@ -229,27 +212,14 @@ export default function Upload() {
           <button
             className="btn"
             type="submit"
-            disabled={(!file && !hasUrl) || pct !== null || downloading || startDownload.isPending}
+            disabled={(!file && !hasUrl) || pct !== null || startDownload.isPending}
           >
             {!file && hasUrl ? 'Download' : 'Upload'}
           </button>
         </form>
 
         {pct !== null && <p className="upload-progress">Uploading… {pct}%</p>}
-        {download?.running && (
-          <p className="upload-progress">
-            Downloading… {download.total > 0
-              ? `${Math.round((download.received / download.total) * 100)}% — ${mb(download.received)} of ${mb(download.total)}`
-              : mb(download.received)}
-          </p>
-        )}
         {msg && <p className="upload-msg">{msg}</p>}
-
-        {!uploaded && download?.bookId && !download.running && (
-          <div className="upload-done">
-            <Link to={`/book/${download.bookId}`} className="upload-done__link">View comic</Link>
-          </div>
-        )}
 
         {uploaded && (
           <div className="upload-done">

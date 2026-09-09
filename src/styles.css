@@ -63,6 +63,83 @@ img {
   align-items: center;
 }
 
+/* ============================================================
+   Download bar
+   ============================================================ */
+
+/* Sits under the sticky header and sticks with it, so a download in flight stays in
+   view while you browse. */
+.download-bar {
+  position: sticky;
+  top: 56px;
+  z-index: 99;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 8px 24px;
+  background: var(--elevated);
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.download-bar--failed .download-bar__label {
+  color: var(--accent);
+}
+
+.download-bar__label {
+  font-weight: 500;
+  flex-shrink: 0;
+}
+
+/* The name gives before the numbers do: which comic is a nicety, how far along is not. */
+.download-bar__name {
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+
+.download-bar__progress {
+  margin-left: auto;
+  color: var(--muted);
+  flex-shrink: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.download-bar__link {
+  margin-left: auto;
+  color: var(--accent);
+  text-decoration: none;
+  flex-shrink: 0;
+}
+
+.download-bar__link:hover {
+  color: var(--accent-hover);
+}
+
+.download-bar__dismiss {
+  margin-left: auto;
+  background: none;
+  border: none;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1.125rem;
+  line-height: 1;
+  padding: 0 4px;
+  flex-shrink: 0;
+}
+
+.download-bar__dismiss:hover {
+  color: var(--text);
+}
+
+/* A link already claims the right edge; without this the dismiss pushes off it. */
+.download-bar__link + .download-bar__dismiss {
+  margin-left: 0;
+}
+
 .app-header__inner {
   width: 100%;
   max-width: 1200px;

@@ -9,6 +9,7 @@ import Upload from './pages/Upload'
 import SearchComics from './pages/SearchComics'
 import Arcs from './pages/Arcs'
 import Arc from './pages/Arc'
+import DownloadBar from './components/DownloadBar'
 
 function Header() {
   return (
@@ -28,6 +29,7 @@ function Layout({ children }: { children: ReactNode }) {
   return (
     <>
       <Header />
+      <DownloadBar />
       <main className="page-container">{children}</main>
     </>
   )
@@ -38,6 +40,7 @@ function LibraryLayout({ children }: { children: ReactNode }) {
   return (
     <>
       <Header />
+      <DownloadBar />
       <div className="library-shell">{children}</div>
     </>
   )

@@ -323,7 +323,11 @@ test('the chosen issue and edition travel with the download', async () => {
   })
 })
 
-test('progress is shown while the server downloads', async () => {
+// Progress, the finished result and any failure are the download bar's job now — it
+// reports them on every page, not just this one. See DownloadBar.test.tsx. What is left
+// here is what the form itself still owns.
+
+test('the page does not report progress itself; the bar does', async () => {
   stubDownload([
     { ...IDLE, running: true, received: 21400000, total: 52100000, fileName: 'x.cbz' },
   ])
@@ -331,25 +335,25 @@ test('progress is shown while the server downloads', async () => {
   pasteUrl()
   fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
 
-  expect(await screen.findByText(/41%/)).toBeInTheDocument()
+  await new Promise((r) => setTimeout(r, 300))
+  expect(screen.queryByText(/41%/)).not.toBeInTheDocument()
 })
 
-test('a finished download offers the comic it produced', async () => {
-  stubDownload([{ ...IDLE, running: false, bookId: 42, finishedAt: '2026-09-07T00:00:00Z' }])
+test('asking for a download while one is already running says so', async () => {
+  globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    const u = String(url)
+    if (u.includes('/api/downloads') && init?.method === 'POST') {
+      return { ok: false, status: 409, json: async () => ({ started: false }) }
+    }
+    if (u.includes('/api/downloads')) return { ok: true, json: async () => IDLE }
+    return { ok: true, json: async () => ({ editions: [] }) }
+  }) as unknown as typeof fetch
+
   renderUpload()
   pasteUrl()
   fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
 
-  expect(await screen.findByRole('link', { name: /view comic/i })).toHaveAttribute('href', '/book/42')
-})
-
-test('a download that failed says why', async () => {
-  stubDownload([{ ...IDLE, running: false, error: 'file too large', finishedAt: '2026-09-07T00:00:00Z' }])
-  renderUpload()
-  pasteUrl()
-  fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
-
-  expect(await screen.findByText(/file too large/i)).toBeInTheDocument()
+  expect(await screen.findByText(/already running/i)).toBeInTheDocument()
 })
 
 // ---- arriving from a search result with the link already found ----
