@@ -351,3 +351,31 @@ test('a download that failed says why', async () => {
 
   expect(await screen.findByText(/file too large/i)).toBeInTheDocument()
 })
+
+// ---- arriving from a search result with the link already found ----
+
+function renderUploadAt(path: string) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={[path]}><Upload /></MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+const DLS = 'https://getcomics.org/dls/tC3kM3XUCQr:X1Em+N7z=='
+
+test('a url in the query string arrives already filled into the link field', () => {
+  renderUploadAt(`/upload?url=${encodeURIComponent(DLS)}`)
+  expect(screen.getByPlaceholderText(/Paste a link/i)).toHaveValue(DLS)
+})
+
+test('a seeded link enables the download button without picking a file', () => {
+  renderUploadAt(`/upload?url=${encodeURIComponent(DLS)}`)
+  expect(screen.getByRole('button', { name: 'Download' })).toBeEnabled()
+})
+
+test('no url in the query string leaves the link field empty', () => {
+  renderUploadAt('/upload')
+  expect(screen.getByPlaceholderText(/Paste a link/i)).toHaveValue('')
+})

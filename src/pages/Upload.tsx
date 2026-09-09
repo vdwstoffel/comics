@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import type { FormEvent } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ApiBook, CvSearchResult } from '../api'
@@ -14,6 +14,11 @@ function mb(bytes: number): string {
 }
 
 export default function Upload() {
+  // Arriving from a search result carries the link its post page pointed at, so the page
+  // opens ready to download rather than waiting for a paste.
+  const [urlParams] = useSearchParams()
+  const seededUrl = urlParams.get('url')?.trim() ?? ''
+
   const [edition, setEdition] = useState('')
   const [file, setFile] = useState<File | null>(null)
   const [pct, setPct] = useState<number | null>(null)
@@ -24,7 +29,7 @@ export default function Upload() {
   const [matching, setMatching] = useState(false)
   const [uploaded, setUploaded] = useState<ApiBook | null>(null)
   // A link to fetch server-side instead of sending a file. The two are alternatives.
-  const [url, setUrl] = useState('')
+  const [url, setUrl] = useState(seededUrl)
   // The name the link resolves to. A download link is often an opaque token, so the file
   // name only appears on the url it redirects to — and that name is what the Comic Vine
   // search is built from.

@@ -1462,7 +1462,7 @@ textarea.input:hover:not(:focus) {
 .search-comics__row {
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  flex-wrap: wrap;
   gap: 12px;
   padding: 10px 2px;
   border-bottom: 1px solid var(--border);
@@ -1502,6 +1502,19 @@ textarea.input:hover:not(:focus) {
   align-items: center;
   gap: 10px;
   flex-shrink: 0;
+  margin-left: auto;
+}
+
+.search-comics__download {
+  flex-shrink: 0;
+  padding: 4px 12px;
+  font-size: 0.8125rem;
+}
+
+/* Its own line under the row it belongs to, so a failure never reflows the results. */
+.search-comics__link-error {
+  flex-basis: 100%;
+  margin-top: 0;
 }
 
 .search-comics__number {

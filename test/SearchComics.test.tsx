@@ -2,7 +2,7 @@ import { test, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { ReactNode } from 'react'
 import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import SearchComics from '../src/pages/SearchComics'
 
 const CATEGORIES = {
@@ -310,4 +310,76 @@ test('arriving with no params leaves the page empty and prompting', async () => 
   renderPage()
   expect(screen.getByRole('searchbox')).toHaveValue('')
   expect(screen.getByText(/type to search the index/i)).toBeInTheDocument()
+})
+
+// ---- sending a result straight to the upload page ----
+
+const DLS = 'https://getcomics.org/dls/tC3kM3XUCQr:X1Em+N7z=='
+
+function LocationProbe() {
+  const loc = useLocation()
+  return <span data-testid="loc">{loc.pathname}{loc.search}</span>
+}
+
+function renderWithLocation() {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false }, mutations: { retry: false } } })
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={['/search']}>
+        <SearchComics />
+        <LocationProbe />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+const downloadButtons = () => screen.getAllByRole('button', { name: /^Download$/ })
+
+test('every result offers a download button', async () => {
+  renderWithLocation()
+  typeQuery('batman')
+  await screen.findByText('Batman (2011) #1')
+  expect(downloadButtons()).toHaveLength(2)
+})
+
+test('downloading a result asks the server for that row\'s link', async () => {
+  renderWithLocation()
+  typeQuery('batman')
+  await screen.findByText('Batman (2016) #1')
+  fireEvent.click(downloadButtons()[1])
+  await waitFor(() => expect(calls).toContain('/api/comic-index/2/download-link'))
+})
+
+test('a found link sends you to the upload page with it filled in', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return IDLE_SCRAPE
+    if (url.includes('/download-link')) return { url: DLS }
+    return { results: [result(1, 'Batman (2011) #1')], total: 1 }
+  })
+  renderWithLocation()
+  typeQuery('batman')
+  await screen.findByText('Batman (2011) #1')
+  fireEvent.click(downloadButtons()[0])
+  await waitFor(() =>
+    expect(screen.getByTestId('loc')).toHaveTextContent(`/upload?url=${encodeURIComponent(DLS)}`))
+})
+
+test('a post with no direct link says so and stays on the search page', async () => {
+  calls = []
+  globalThis.fetch = vi.fn(async (url: string) => {
+    calls.push(String(url))
+    if (String(url).includes('/download-link')) return { ok: false, status: 404, json: async () => ({}) }
+    if (String(url).includes('/categories')) return { ok: true, json: async () => CATEGORIES }
+    if (String(url).includes('/scrape')) return { ok: true, json: async () => IDLE_SCRAPE }
+    return { ok: true, json: async () => ({ results: [result(1, 'Batman (2011) #1')], total: 1 }) }
+  }) as unknown as typeof fetch
+
+  renderWithLocation()
+  typeQuery('batman')
+  await screen.findByText('Batman (2011) #1')
+  fireEvent.click(downloadButtons()[0])
+
+  expect(await screen.findByText(/no download link/i)).toBeInTheDocument()
+  expect(screen.getByTestId('loc')).toHaveTextContent('/search')
 })

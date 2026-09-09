@@ -4,6 +4,7 @@ import {
   upsertComicIndex,
   searchComicIndex,
   comicIndexCategories,
+  comicIndexById,
 } from '../server/models/comicIndex.js'
 
 const DC = 'DC Comics'
@@ -507,4 +508,23 @@ test('a genuine title change still updates, even for a multi-category url', () =
   expect(row.title).toBe('2026.08.19 Weekly Pack (Updated)')
   expect(row.category).toBe(DC)
   db.close()
+})
+
+test('comicIndexById returns the stored row', () => {
+  const db = openDb(':memory:')
+  seed(db)
+  const { id } = db.prepare("SELECT id FROM comic_index WHERE url = 'https://x.test/asm-300/'")
+    .get() as { id: number }
+  expect(comicIndexById(db, id)).toMatchObject({
+    id,
+    title: 'The Amazing Spider-Man #300',
+    url: 'https://x.test/asm-300/',
+    category: MARVEL,
+  })
+})
+
+test('comicIndexById returns undefined for an id that is not there', () => {
+  const db = openDb(':memory:')
+  seed(db)
+  expect(comicIndexById(db, 9999)).toBeUndefined()
 })

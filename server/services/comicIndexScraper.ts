@@ -1,4 +1,4 @@
-import { pageUrl, parsePage } from '../lib/comicIndexSource.js'
+import { pageUrl, parsePage, fetchSourcePage } from '../lib/comicIndexSource.js'
 import { upsertComicIndex } from '../models/comicIndex.js'
 import type { Ctx } from '../types.js'
 
@@ -34,14 +34,7 @@ export interface ScrapeRunner {
   start: (mode: ScrapeMode) => { started: boolean; status: ScrapeStatus; done: Promise<void> }
 }
 
-const UA = 'comic-app/0.1 (self-hosted personal comic library)'
 const BLANK_LIMIT = 3
-
-async function defaultFetchPage(url: string): Promise<string> {
-  const res = await fetch(url, { headers: { 'user-agent': UA } })
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`)
-  return res.text()
-}
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
@@ -55,7 +48,7 @@ function idle(): ScrapeStatus {
 
 export function createScrapeRunner(ctx: Ctx, deps: ScrapeDeps = {}): ScrapeRunner {
   const {
-    fetchPage = defaultFetchPage,
+    fetchPage = fetchSourcePage,
     delayMs = 1000,
     retries = 3,
     retryBackoffMs = 5000,

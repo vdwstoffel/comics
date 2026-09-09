@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ScrapeStatus } from '../api'
@@ -45,6 +45,25 @@ export default function SearchComics() {
   }, [yearInput])
 
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
+
+  // Which row's link lookup failed, and why. Held per row so the message sits under the
+  // result you clicked rather than floating at the top of the page.
+  const [linkError, setLinkError] = useState<{ id: number; message: string } | null>(null)
+
+  // A post page is only read when you ask for it: the index stores where a comic lives,
+  // not the link behind its download button. Finding it here rather than on the upload
+  // page keeps the wait and any failure on the button that was actually clicked.
+  const getLink = useMutation({
+    mutationFn: (id: number) => api.getComicIndexDownloadLink(id),
+    onSuccess: (d) => navigate(`/upload?url=${encodeURIComponent(d.url)}`),
+    onError: (err: Error, id) => setLinkError({
+      id,
+      message: err.message === '404'
+        ? 'No download link on that post — open it and try a mirror.'
+        : 'Could not read that post. Try again.',
+    }),
+  })
 
   // Poll only while a run is in flight, so an idle page makes one request and stops.
   const { data: scrape } = useQuery({
@@ -221,6 +240,19 @@ export default function SearchComics() {
                   {r.year && <span className="search-comics__year">{r.year}</span>}
                   <span className="chip search-comics__category">{r.category}</span>
                 </span>
+                <button
+                  type="button"
+                  className="btn btn-ghost search-comics__download"
+                  disabled={getLink.isPending}
+                  onClick={() => { setLinkError(null); getLink.mutate(r.id) }}
+                >
+                  {getLink.isPending && getLink.variables === r.id ? 'Reading…' : 'Download'}
+                </button>
+                {linkError?.id === r.id && (
+                  <span className="search-comics__error search-comics__link-error">
+                    {linkError.message}
+                  </span>
+                )}
               </li>
             ))}
           </ul>

@@ -198,3 +198,12 @@ export function comicIndexCategories(db: Db): { name: string; count: number }[] 
 export function comicIndexTotal(db: Db): number {
   return (db.prepare('SELECT COUNT(*) AS n FROM comic_index').get() as { n: number }).n
 }
+
+/** One indexed post by row id, or undefined when the id is not in the table. */
+export function comicIndexById(db: Db, id: number): ComicIndexRow | undefined {
+  const row = db
+    .prepare(`SELECT id, title, url, category, number, year, imported_at
+              FROM comic_index WHERE id = ?`)
+    .get(id) as Row | undefined
+  return row ? toRow(row) : undefined
+}

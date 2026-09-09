@@ -1,5 +1,7 @@
-import { test, expect } from 'vitest'
-import { pageUrl, parsePage, BASE_URL } from '../server/lib/comicIndexSource.js'
+import { test, expect, vi } from 'vitest'
+import {
+  pageUrl, parsePage, BASE_URL, fetchSourcePage, USER_AGENT,
+} from '../server/lib/comicIndexSource.js'
 
 const PAGE = `
 <div class="su-tabs">
@@ -72,4 +74,22 @@ test('parsePage returns nothing for a page with no panes', () => {
 test('parsePage skips a pane whose data-title is empty', () => {
   const entries = parsePage('<div class="su-tabs-pane" data-title=""><li><a href="/a/">T</a></li></div>', BASE_URL)
   expect(entries).toEqual([])
+})
+
+test('fetchSourcePage returns the body and identifies the app to the source', async () => {
+  const seen: { url: string; headers: Record<string, string> }[] = []
+  vi.stubGlobal('fetch', async (url: string, init: { headers: Record<string, string> }) => {
+    seen.push({ url, headers: init.headers })
+    return new Response('<html>page</html>', { status: 200 })
+  })
+  await expect(fetchSourcePage('https://x.test/a/')).resolves.toBe('<html>page</html>')
+  expect(seen[0].url).toBe('https://x.test/a/')
+  expect(seen[0].headers['user-agent']).toBe(USER_AGENT)
+  vi.unstubAllGlobals()
+})
+
+test('fetchSourcePage throws on a non-2xx response', async () => {
+  vi.stubGlobal('fetch', async () => new Response('nope', { status: 503, statusText: 'Service Unavailable' }))
+  await expect(fetchSourcePage('https://x.test/a/')).rejects.toThrow(/503/)
+  vi.unstubAllGlobals()
 })

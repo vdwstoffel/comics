@@ -331,6 +331,10 @@ export const api = {
     if (yearTo !== undefined) params.set('yearTo', String(yearTo))
     return json<ComicIndexSearchResponse>(`/api/comic-index/search?${params}`)
   },
+  /** The link behind a post's "DOWNLOAD NOW" button; 404 when it only lists mirrors. */
+  getComicIndexDownloadLink: (id: number) =>
+    json<{ url: string }>(`/api/comic-index/${id}/download-link`),
+
   getComicIndexCategories: () => json<ComicIndexCategoriesResponse>('/api/comic-index/categories'),
   getScrapeStatus: () => json<ScrapeStatus>('/api/comic-index/scrape'),
   startScrape: (mode: 'quick' | 'full') =>

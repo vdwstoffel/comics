@@ -3,6 +3,7 @@ import { stripHtml } from './html.js'
 import type { ComicIndexEntry } from '../types.js'
 
 export const BASE_URL = 'https://getcomics.org/sitemap/'
+export const USER_AGENT = 'comic-app/0.1 (self-hosted personal comic library)'
 const PAGE_PARAM = 'lcp_page0'
 const FRAGMENT = 'lcp_instance_0'
 
@@ -37,4 +38,15 @@ export function parsePage(html: string, baseUrl: string): ComicIndexEntry[] {
   })
 
   return entries
+}
+
+/**
+ * GET one page from the source as text, saying who we are. Both the listing scraper and
+ * the post-page reader come through here, so there is one place that decides how this
+ * app identifies itself and what counts as a failed fetch.
+ */
+export async function fetchSourcePage(url: string): Promise<string> {
+  const res = await fetch(url, { headers: { 'user-agent': USER_AGENT } })
+  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`.trim())
+  return res.text()
 }
