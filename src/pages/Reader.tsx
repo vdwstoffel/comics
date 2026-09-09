@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
 import { useFullscreen } from '../lib/useFullscreen'
+import { useZoom } from '../lib/useZoom'
 
 export default function Reader() {
   const { id } = useParams()
@@ -10,6 +11,7 @@ export default function Reader() {
   const [page, setPage] = useState<number | null>(null)
   const [scrubbing, setScrubbing] = useState<number | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
+  const zoom = useZoom()
   const { isFullscreen, enter, exit, toggle } = useFullscreen()
 
   // Reading takes the whole screen, and gives it back on the way out.
@@ -17,6 +19,11 @@ export default function Reader() {
     enter()
     return exit
   }, [enter, exit])
+
+  // A new page opens whole. Arriving on it zoomed into a corner of the last one is
+  // disorienting, and there is no reason to think the interesting part is in the same
+  // place twice.
+  useEffect(() => { zoom.reset() }, [page, zoom.reset])
 
   // Resume at last-read page once the book loads.
   useEffect(() => {
@@ -50,12 +57,21 @@ export default function Reader() {
   return (
     <div className="reader-root">
       <Link to={`/book/${id}`} className="reader-back" aria-label="Back">←</Link>
-      <div className="reader-viewport">
-        <img src={`/api/books/${id}/pages/${page}`} alt={`page ${page + 1}`} />
+      <div className="reader-viewport" ref={zoom.ref} {...zoom.handlers}>
+        <img
+          src={`/api/books/${id}/pages/${page}`}
+          alt={`page ${page + 1}`}
+          style={zoom.transform ? { transform: zoom.transform } : undefined}
+          draggable={false}
+        />
         {page + 1 < total && <img src={`/api/books/${id}/pages/${page + 1}`} alt="" style={{ display: 'none' }} />}
-        <button aria-label="previous" onClick={() => setPage((p) => Math.max((p ?? 0) - 1, 0))}
+        {/* The turn zones cover the left and right thirds. Zoomed in, a pan crosses them,
+            so they stand down and pages turn by key or scrubber until you zoom back out. */}
+        <button aria-label="previous" disabled={zoom.zoomed}
+          onClick={() => setPage((p) => Math.max((p ?? 0) - 1, 0))}
           className="reader-zone reader-zone--prev" />
-        <button aria-label="next" onClick={() => setPage((p) => Math.min((p ?? 0) + 1, total - 1))}
+        <button aria-label="next" disabled={zoom.zoomed}
+          onClick={() => setPage((p) => Math.min((p ?? 0) + 1, total - 1))}
           className="reader-zone reader-zone--next" />
       </div>
       <div className="reader-bottom-bar">

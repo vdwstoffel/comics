@@ -119,3 +119,98 @@ test('still reads normally when the browser refuses fullscreen', async () => {
   expect(await within(container).findByRole('button', { name: 'Enter fullscreen' })).toBeInTheDocument()
   fs.restore()
 })
+
+// ---- zoom ----
+
+/** jsdom gives every element a zero box; the zoom maths needs a real one. */
+function sizeViewport(width = 1000, height = 800) {
+  Object.defineProperty(HTMLElement.prototype, 'getBoundingClientRect', {
+    configurable: true,
+    value: () => ({ width, height, top: 0, left: 0, right: width, bottom: height, x: 0, y: 0, toJSON: () => ({}) }),
+  })
+}
+
+const viewportOf = () => document.querySelector('.reader-viewport') as HTMLElement
+const pageImg = () => screen.getByAltText('page 1') as HTMLImageElement
+
+test('a page opens unzoomed', async () => {
+  sizeViewport()
+  renderReader()
+  await screen.findByAltText('page 1')
+
+  expect(pageImg().style.transform).toBe('')
+})
+
+test('the wheel zooms the page in', async () => {
+  sizeViewport()
+  renderReader()
+  await screen.findByAltText('page 1')
+
+  fireEvent.wheel(viewportOf(), { deltaY: -100, clientX: 500, clientY: 400 })
+
+  expect(pageImg().style.transform).toMatch(/scale\((?!1\))/)
+})
+
+test('the wheel will not shrink a page below its fit', async () => {
+  sizeViewport()
+  renderReader()
+  await screen.findByAltText('page 1')
+
+  fireEvent.wheel(viewportOf(), { deltaY: 400, clientX: 500, clientY: 400 })
+
+  expect(pageImg().style.transform).toBe('')
+})
+
+// The turn zones cover the left and right thirds; panning across one would otherwise
+// flip the page out from under you.
+test('the page-turn zones stand down while zoomed', async () => {
+  sizeViewport()
+  renderReader()
+  await screen.findByAltText('page 1')
+  expect(screen.getByLabelText('next')).toBeEnabled()
+
+  fireEvent.wheel(viewportOf(), { deltaY: -100, clientX: 500, clientY: 400 })
+
+  expect(screen.getByLabelText('next')).toBeDisabled()
+  expect(screen.getByLabelText('previous')).toBeDisabled()
+})
+
+test('dragging pans a zoomed page', async () => {
+  sizeViewport()
+  renderReader()
+  await screen.findByAltText('page 1')
+  fireEvent.wheel(viewportOf(), { deltaY: -100, clientX: 500, clientY: 400 })
+  const before = pageImg().style.transform
+
+  fireEvent.pointerDown(viewportOf(), { pointerId: 1, clientX: 500, clientY: 400 })
+  fireEvent.pointerMove(viewportOf(), { pointerId: 1, clientX: 460, clientY: 380 })
+  fireEvent.pointerUp(viewportOf(), { pointerId: 1 })
+
+  expect(pageImg().style.transform).not.toBe(before)
+})
+
+test('double-clicking a zoomed page puts it back to fit', async () => {
+  sizeViewport()
+  renderReader()
+  await screen.findByAltText('page 1')
+  fireEvent.wheel(viewportOf(), { deltaY: -100, clientX: 500, clientY: 400 })
+  expect(pageImg().style.transform).not.toBe('')
+
+  fireEvent.doubleClick(viewportOf())
+
+  expect(pageImg().style.transform).toBe('')
+})
+
+// Landing on page 2 zoomed into a corner of page 1 is disorienting.
+test('turning the page returns to fit', async () => {
+  sizeViewport()
+  renderReader()
+  await screen.findByAltText('page 1')
+  fireEvent.wheel(viewportOf(), { deltaY: -100, clientX: 500, clientY: 400 })
+  expect(pageImg().style.transform).not.toBe('')
+
+  fireEvent.keyDown(window, { key: 'ArrowRight' })
+
+  await screen.findByAltText('page 2')
+  expect(screen.getByAltText('page 2').style.transform).toBe('')
+})
