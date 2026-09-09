@@ -1,6 +1,7 @@
 import {
-  searchComicIndex, comicIndexCategories, comicIndexTotal, comicIndexById,
+  searchComicIndex, groupComicIndex, comicIndexCategories, comicIndexTotal, comicIndexById,
 } from '../models/comicIndex.js'
+import type { ReleaseKind } from '../lib/comicGrouping.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import { parseDownloadLink } from '../lib/comicPostPage.js'
 import type { ScrapeMode } from '../services/comicIndexScraper.js'
@@ -24,6 +25,16 @@ interface SearchQuery {
   yearTo?: string
   limit?: string
   offset?: string
+  series?: string
+  kind?: string
+  run?: string
+}
+
+const KINDS: ReleaseKind[] = ['issue', 'miniseries', 'bundle', 'collection', 'other']
+
+// A kind we do not recognise is a stale link or a typo, not a request for nothing.
+function releaseKindParam(value: string | undefined): ReleaseKind | undefined {
+  return KINDS.includes(value as ReleaseKind) ? (value as ReleaseKind) : undefined
 }
 
 // Query params arrive as strings; fall back to the model default when they are junk.
@@ -68,16 +79,26 @@ export default async function comicIndexRoutes(app: App, opts: ComicIndexRouteOp
     return { url }
   })
 
+  // Two shapes, one route. Bare, it answers with one entry per series - which is what
+  // makes 499 hits for "thor" something a person can read. Named a series, it answers
+  // with that group's rows, in the flat shape the page already knows how to render.
   app.get<{ Querystring: SearchQuery }>('/api/comic-index/search', async (req) => {
-    const { q = '', category, yearFrom, yearTo, limit, offset } = req.query
-    return searchComicIndex(app.db, {
+    const { q = '', category, yearFrom, yearTo, limit, offset, series, kind, run } = req.query
+    const opts = {
       q,
       category: category?.trim() || undefined,
       yearFrom: year(yearFrom),
       yearTo: year(yearTo),
       limit: num(limit, 50),
       offset: num(offset, 0),
-    })
+    }
+    const chosen = series?.trim()
+    const chosenKind = releaseKindParam(kind?.trim())
+    const chosenRun = run?.trim()
+    if (chosen || chosenKind || chosenRun) {
+      return searchComicIndex(app.db, { ...opts, series: chosen, kind: chosenKind, run: chosenRun })
+    }
+    return groupComicIndex(app.db, opts)
   })
 
   app.get('/api/comic-index/categories', async () => ({

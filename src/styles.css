@@ -1529,6 +1529,84 @@ textarea.input:hover:not(:focus) {
   color: var(--accent);
 }
 
+.search-comics__groups {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.search-comics__group {
+  border-bottom: 1px solid var(--border);
+}
+
+/* Full-width so the whole heading is the hit target, not just the words. */
+.search-comics__group-header,
+.search-comics__kind-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 4px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.search-comics__group-header:hover,
+.search-comics__kind-header:hover {
+  background: var(--elevated);
+}
+
+.search-comics__group-name {
+  font-weight: 500;
+}
+
+/* Counts line up in a column of their own rather than trailing each name. */
+.search-comics__group-count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.search-comics__caret {
+  color: var(--muted);
+  font-size: 0.75rem;
+  width: 10px;
+  flex-shrink: 0;
+}
+
+.search-comics__kinds {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 4px 22px;
+}
+
+.search-comics__kind-header {
+  padding: 6px 4px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.search-comics__loading {
+  padding: 8px 4px 8px 26px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* Indented under whichever heading opened them, and the last row keeps no rule of its
+   own: the group below already draws one. */
+.search-comics__groups .search-comics__results {
+  padding-left: 22px;
+}
+
+.search-comics__groups .search-comics__row:last-child {
+  border-bottom: none;
+}
+
 .search-comics__results {
   list-style: none;
   margin: 8px 0 0;

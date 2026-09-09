@@ -205,6 +205,32 @@ export interface ComicIndexCategory {
 
 export interface ComicIndexSearchResponse { results: ComicIndexResult[]; total: number }
 
+export type ReleaseKind = 'issue' | 'miniseries' | 'bundle' | 'collection' | 'other'
+
+export interface IssueRun {
+  key: string
+  label: string
+  yearFrom: number
+  yearTo: number
+  first: number
+  last: number
+  total: number
+}
+
+export interface ComicIndexGroup {
+  key: string
+  name: string
+  total: number
+  kinds: Record<ReleaseKind, number>
+  runs: IssueRun[]
+}
+
+export interface ComicIndexGroupsResponse {
+  groups: ComicIndexGroup[]
+  totalGroups: number
+  totalResults: number
+}
+
 export interface ScrapeStatus {
   running: boolean
   mode: 'quick' | 'full' | null
@@ -221,6 +247,30 @@ export interface ScrapeStatus {
 
 export interface StartScrapeResponse { started: boolean; status: ScrapeStatus }
 export interface ComicIndexCategoriesResponse { categories: ComicIndexCategory[]; indexed: number }
+
+export interface ComicIndexQuery {
+  q: string
+  category?: string
+  yearFrom?: number
+  yearTo?: number
+  limit?: number
+  offset?: number
+}
+
+function indexParams(
+  o: ComicIndexQuery & { series?: string; kind?: ReleaseKind; run?: string },
+): URLSearchParams {
+  const params = new URLSearchParams({
+    q: o.q, limit: String(o.limit ?? 50), offset: String(o.offset ?? 0),
+  })
+  if (o.category) params.set('category', o.category)
+  if (o.yearFrom !== undefined) params.set('yearFrom', String(o.yearFrom))
+  if (o.yearTo !== undefined) params.set('yearTo', String(o.yearTo))
+  if (o.series) params.set('series', o.series)
+  if (o.kind) params.set('kind', o.kind)
+  if (o.run) params.set('run', o.run)
+  return params
+}
 
 async function json<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, opts)
@@ -321,16 +371,13 @@ export const api = {
     json<DeleteEditionResponse>(`/api/editions/${id}`, { method: 'DELETE' }),
   deleteSeries: (name: string) =>
     json<DeleteSeriesResponse>(`/api/series/${encodeURIComponent(name)}`, { method: 'DELETE' }),
-  searchComicIndex: ({ q, category, yearFrom, yearTo, limit = 50, offset = 0 }: {
-    q: string; category?: string; yearFrom?: number; yearTo?: number
-    limit?: number; offset?: number
-  }) => {
-    const params = new URLSearchParams({ q, limit: String(limit), offset: String(offset) })
-    if (category) params.set('category', category)
-    if (yearFrom !== undefined) params.set('yearFrom', String(yearFrom))
-    if (yearTo !== undefined) params.set('yearTo', String(yearTo))
-    return json<ComicIndexSearchResponse>(`/api/comic-index/search?${params}`)
-  },
+  /** Bare, the search answers with one entry per series. */
+  groupComicIndex: (opts: ComicIndexQuery) =>
+    json<ComicIndexGroupsResponse>(`/api/comic-index/search?${indexParams(opts)}`),
+
+  /** Named a series, it answers with that group's rows. */
+  searchComicIndex: (opts: ComicIndexQuery & { series?: string; kind?: ReleaseKind; run?: string }) =>
+    json<ComicIndexSearchResponse>(`/api/comic-index/search?${indexParams(opts)}`),
   /** The link behind a post's "DOWNLOAD NOW" button; 404 when it only lists mirrors. */
   getComicIndexDownloadLink: (id: number) =>
     json<{ url: string }>(`/api/comic-index/${id}/download-link`),

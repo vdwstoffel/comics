@@ -24,13 +24,15 @@ beforeEach(async () => {
 })
 afterEach(async () => { await app.close() })
 
+// A bare search now answers with one entry per series, so "how many rows matched" is
+// read from totalResults; the rows themselves come from naming the series.
 async function search(query: string) {
   const res = await app.inject({ method: 'GET', url: `/api/comic-index/search${query}` })
   return { status: res.statusCode, body: res.json() }
 }
 
 test('GET /api/comic-index/search returns matching title and url', async () => {
-  const { status, body } = await search('?q=batman')
+  const { status, body } = await search('?q=batman&series=batman')
   expect(status).toBe(200)
   expect(body.total).toBe(3)
   expect(body.results).toHaveLength(3)
@@ -42,17 +44,17 @@ test('GET /api/comic-index/search returns matching title and url', async () => {
 test('GET /api/comic-index/search with no q returns an empty result set, not an error', async () => {
   const { status, body } = await search('')
   expect(status).toBe(200)
-  expect(body).toMatchObject({ results: [], total: 0 })
+  expect(body).toMatchObject({ groups: [], totalGroups: 0, totalResults: 0 })
 })
 
 test('GET /api/comic-index/search filters by category', async () => {
-  expect((await search(`?q=batman&category=${encodeURIComponent(MARVEL)}`)).body.total).toBe(0)
-  expect((await search(`?q=batman&category=${encodeURIComponent(DC)}`)).body.total).toBe(3)
+  expect((await search(`?q=batman&category=${encodeURIComponent(MARVEL)}`)).body.totalResults).toBe(0)
+  expect((await search(`?q=batman&category=${encodeURIComponent(DC)}`)).body.totalResults).toBe(3)
 })
 
 test('GET /api/comic-index/search pages with limit and offset', async () => {
-  const page1 = (await search('?q=batman&limit=1&offset=0')).body
-  const page2 = (await search('?q=batman&limit=1&offset=1')).body
+  const page1 = (await search('?q=batman&series=batman&limit=1&offset=0')).body
+  const page2 = (await search('?q=batman&series=batman&limit=1&offset=1')).body
   expect(page1.total).toBe(3)
   expect(page1.results).toHaveLength(1)
   expect(page2.results).toHaveLength(1)
@@ -60,7 +62,7 @@ test('GET /api/comic-index/search pages with limit and offset', async () => {
 })
 
 test('GET /api/comic-index/search survives a junk limit', async () => {
-  const { status, body } = await search('?q=batman&limit=abc')
+  const { status, body } = await search('?q=batman&series=batman&limit=abc')
   expect(status).toBe(200)
   expect(body.results).toHaveLength(3)
 })
@@ -73,30 +75,30 @@ test('GET /api/comic-index/search escapes fts operators in user input', async ()
 })
 
 test('GET /api/comic-index/search filters by a year range', async () => {
-  expect((await search('?q=batman&yearFrom=2011&yearTo=2011')).body.total).toBe(1)
-  expect((await search('?q=batman&yearFrom=2011&yearTo=2016')).body.total).toBe(2)
-  expect((await search('?q=batman&yearFrom=2017')).body.total).toBe(0)
-  expect((await search('?q=batman&yearTo=2016')).body.total).toBe(2)
+  expect((await search('?q=batman&yearFrom=2011&yearTo=2011')).body.totalResults).toBe(1)
+  expect((await search('?q=batman&yearFrom=2011&yearTo=2016')).body.totalResults).toBe(2)
+  expect((await search('?q=batman&yearFrom=2017')).body.totalResults).toBe(0)
+  expect((await search('?q=batman&yearTo=2016')).body.totalResults).toBe(2)
 })
 
 test('GET /api/comic-index/search excludes undated rows once a bound is given', async () => {
-  const all = (await search('?q=batman')).body
+  const all = (await search('?q=batman&series=batman')).body
   expect(all.total).toBe(3)
   expect(all.results.some((r: { year: number | null }) => r.year === null)).toBe(true)
   const bounded = (await search('?q=batman&yearFrom=1900')).body
-  expect(bounded.total).toBe(2)
+  expect(bounded.totalResults).toBe(2)
 })
 
 test('GET /api/comic-index/search ignores junk year params instead of erroring', async () => {
   for (const params of ['yearFrom=abc', 'yearTo=abc', 'yearFrom=&yearTo=', 'yearFrom=abc&yearTo=2016']) {
     const { status, body } = await search(`?q=batman&${params}`)
     expect(status).toBe(200)
-    expect(body.total).toBeGreaterThanOrEqual(2)
+    expect(body.totalResults).toBeGreaterThanOrEqual(2)
   }
 })
 
 test('GET /api/comic-index/search returns number and year on each result', async () => {
-  const { body } = await search('?q=batman&yearFrom=2011&yearTo=2011')
+  const { body } = await search('?q=batman&yearFrom=2011&yearTo=2011&series=batman')
   expect(body.results[0]).toMatchObject({ number: '001' })
 })
 test('GET /api/comic-index/categories returns per-category counts and the indexed total', async () => {

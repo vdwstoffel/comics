@@ -14,6 +14,29 @@ function result(id: number, title: string, category = 'DC Comics') {
   return { id, title, url: `https://x.test/${id}/`, category }
 }
 
+function group(key: string, name: string, total: number, kinds: Record<string, number> = {}) {
+  return {
+    key, name, total,
+    kinds: { issue: total, bundle: 0, collection: 0, other: 0, ...kinds },
+    runs: [],
+  }
+}
+
+function grouped(groups: ReturnType<typeof group>[], totalResults?: number) {
+  return {
+    groups,
+    totalGroups: groups.length,
+    totalResults: totalResults ?? groups.reduce((n, g) => n + g.total, 0),
+  }
+}
+
+const BATMAN_ROWS = { results: [result(1, 'Batman (2011) #1'), result(2, 'Batman (2016) #1')], total: 2 }
+
+/** Open a collapsed series heading. */
+async function openGroup(name: RegExp = /Batman/) {
+  fireEvent.click(await screen.findByRole('button', { name }))
+}
+
 const IDLE_SCRAPE = {
   running: false, mode: null, page: 0, totalPages: 0,
   inserted: 0, updated: 0, unchanged: 0, failedPages: 0,
@@ -37,7 +60,8 @@ beforeEach(() => {
   mockFetch((url) => {
     if (url.includes('/categories')) return CATEGORIES
     if (url.includes('/scrape')) return IDLE_SCRAPE
-    return { results: [result(1, 'Batman (2011) #1'), result(2, 'Batman (2016) #1')], total: 2 }
+    if (url.includes('series=')) return BATMAN_ROWS
+    return grouped([group('batman', 'Batman', 2)])
   })
 })
 afterEach(() => { cleanup() })
@@ -56,16 +80,50 @@ function typeQuery(text: string) {
   fireEvent.change(screen.getByRole('searchbox'), { target: { value: text } })
 }
 
-test('typing a query lists matching comic names', async () => {
+test('typing a query lists one heading per series, not every comic', async () => {
   renderPage()
   typeQuery('batman')
+  expect(await screen.findByRole('button', { name: /Batman/ })).toBeInTheDocument()
+  expect(screen.queryByText('Batman (2011) #1')).not.toBeInTheDocument()
+})
+
+test('opening a series lists the comics in it', async () => {
+  renderPage()
+  typeQuery('batman')
+  await openGroup()
   expect(await screen.findByText('Batman (2011) #1')).toBeInTheDocument()
   expect(screen.getByText('Batman (2016) #1')).toBeInTheDocument()
+})
+
+test('opening a series asks only for that series', async () => {
+  renderPage()
+  typeQuery('batman')
+  await openGroup()
+  await waitFor(() => expect(calls.some((c) => c.includes('series=batman'))).toBe(true))
+})
+
+test('a series can be closed again', async () => {
+  renderPage()
+  typeQuery('batman')
+  await openGroup()
+  await screen.findByText('Batman (2011) #1')
+  await openGroup()
+  await waitFor(() => expect(screen.queryByText('Batman (2011) #1')).not.toBeInTheDocument())
+})
+
+test('changing the query closes whatever was open', async () => {
+  renderPage()
+  typeQuery('batman')
+  await openGroup()
+  await screen.findByText('Batman (2011) #1')
+  typeQuery('batgirl')
+  await waitFor(() => expect(screen.queryByText('Batman (2011) #1')).not.toBeInTheDocument())
 })
 
 test('each result links to its source page in a new tab', async () => {
   renderPage()
   typeQuery('batman')
+  await openGroup()
   const link = await screen.findByRole('link', { name: /Batman \(2011\) #1/ })
   expect(link).toHaveAttribute('href', 'https://x.test/1/')
   expect(link).toHaveAttribute('target', '_blank')
@@ -95,7 +153,7 @@ test('an empty query searches nothing and prompts instead', async () => {
 })
 
 test('a query with no matches says so', async () => {
-  mockFetch((url) => (url.includes('/categories') ? CATEGORIES : { results: [], total: 0 }))
+  mockFetch((url) => (url.includes('/categories') ? CATEGORIES : grouped([])))
   renderPage()
   typeQuery('zzzz')
   expect(await screen.findByText(/no matches/i)).toBeInTheDocument()
@@ -112,35 +170,44 @@ test('choosing a category sends it as a filter', async () => {
   })
 })
 
-test('load more fetches the next page and appends to the list', async () => {
+test('load more fetches the next page of series and appends them', async () => {
   mockFetch((url) => {
     if (url.includes('/categories')) return CATEGORIES
-    if (url.includes('offset=50')) return { results: [result(99, 'Batman Page Two')], total: 51 }
-    return { results: Array.from({ length: 50 }, (_, i) => result(i + 1, `Batman #${i + 1}`)), total: 51 }
+    if (url.includes('offset=50')) {
+      return { groups: [group('page-two', 'Series Page Two', 1)], totalGroups: 51, totalResults: 51 }
+    }
+    return {
+      groups: Array.from({ length: 50 }, (_, i) => group(`s${i}`, `Series ${i}`, 1)),
+      totalGroups: 51, totalResults: 51,
+    }
   })
   renderPage()
   typeQuery('batman')
   const more = await screen.findByRole('button', { name: /load more/i })
   fireEvent.click(more)
-  expect(await screen.findByText('Batman Page Two')).toBeInTheDocument()
-  expect(screen.getByText('Batman #1')).toBeInTheDocument()
+  expect(await screen.findByText('Series Page Two')).toBeInTheDocument()
+  expect(screen.getByText('Series 0')).toBeInTheDocument()
 })
 
-test('no load more button when everything is already shown', async () => {
+test('no load more button when every series is already shown', async () => {
   renderPage()
   typeQuery('batman')
-  await screen.findByText('Batman (2011) #1')
+  await screen.findByRole('button', { name: /Batman/ })
   expect(screen.queryByRole('button', { name: /load more/i })).not.toBeInTheDocument()
 })
 
 test('a row shows the padded issue number and the year alongside the title', async () => {
-  mockFetch((url) => (url.includes('/categories') ? CATEGORIES : {
-    results: [{ id: 1, title: 'Spider-Man #10 (2016)', url: 'https://x.test/1/',
-                category: 'Marvel Comics', number: '010', year: 2016 }],
-    total: 1,
-  }))
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('series=')) {
+      return { results: [{ id: 1, title: 'Spider-Man #10 (2016)', url: 'https://x.test/1/',
+                           category: 'Marvel Comics', number: '010', year: 2016 }], total: 1 }
+    }
+    return grouped([group('spider-man', 'Spider-Man', 1)])
+  })
   renderPage()
   typeQuery('spider')
+  await openGroup(/Spider-Man/)
   expect(await screen.findByText('#010')).toBeInTheDocument()
   expect(screen.getByText('2016')).toBeInTheDocument()
   // the link text stays exactly as scraped
@@ -148,13 +215,17 @@ test('a row shows the padded issue number and the year alongside the title', asy
 })
 
 test('a row with no issue number or year renders without empty columns', async () => {
-  mockFetch((url) => (url.includes('/categories') ? CATEGORIES : {
-    results: [{ id: 2, title: 'Big Omnibus', url: 'https://x.test/2/',
-                category: 'DC Comics', number: null, year: null }],
-    total: 1,
-  }))
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('series=')) {
+      return { results: [{ id: 2, title: 'Big Omnibus', url: 'https://x.test/2/',
+                           category: 'DC Comics', number: null, year: null }], total: 1 }
+    }
+    return grouped([group('big omnibus', 'Big Omnibus', 1, { issue: 0, collection: 1 })])
+  })
   renderPage()
   typeQuery('omnibus')
+  await openGroup(/Big Omnibus/)
   expect(await screen.findByRole('link', { name: 'Big Omnibus' })).toBeInTheDocument()
   expect(screen.queryByText('#null')).not.toBeInTheDocument()
   expect(screen.queryByText('#')).not.toBeInTheDocument()
@@ -278,7 +349,7 @@ test('results refresh once a run finishes', async () => {
   mockFetch((url) => {
     if (url.includes('/categories')) return CATEGORIES
     if (url.includes('/scrape')) return { ...IDLE_SCRAPE, running, mode: 'quick', totalPages: 5 }
-    return { results: [result(1, 'Batman (2011) #1')], total: 1 }
+    return grouped([group('batman', 'Batman', 1)])
   })
   renderPage()
   typeQuery('batman')
@@ -335,9 +406,10 @@ function renderWithLocation() {
 
 const downloadButtons = () => screen.getAllByRole('button', { name: /^Download$/ })
 
-test('every result offers a download button', async () => {
+test('every result inside an open series offers a download button', async () => {
   renderWithLocation()
   typeQuery('batman')
+  await openGroup()
   await screen.findByText('Batman (2011) #1')
   expect(downloadButtons()).toHaveLength(2)
 })
@@ -345,6 +417,7 @@ test('every result offers a download button', async () => {
 test('downloading a result asks the server for that row\'s link', async () => {
   renderWithLocation()
   typeQuery('batman')
+  await openGroup()
   await screen.findByText('Batman (2016) #1')
   fireEvent.click(downloadButtons()[1])
   await waitFor(() => expect(calls).toContain('/api/comic-index/2/download-link'))
@@ -355,10 +428,12 @@ test('a found link sends you to the upload page with it filled in', async () => 
     if (url.includes('/categories')) return CATEGORIES
     if (url.includes('/scrape')) return IDLE_SCRAPE
     if (url.includes('/download-link')) return { url: DLS }
-    return { results: [result(1, 'Batman (2011) #1')], total: 1 }
+    if (url.includes('series=')) return { results: [result(1, 'Batman (2011) #1')], total: 1 }
+    return grouped([group('batman', 'Batman', 1)])
   })
   renderWithLocation()
   typeQuery('batman')
+  await openGroup()
   await screen.findByText('Batman (2011) #1')
   fireEvent.click(downloadButtons()[0])
   await waitFor(() =>
@@ -372,14 +447,149 @@ test('a post with no direct link says so and stays on the search page', async ()
     if (String(url).includes('/download-link')) return { ok: false, status: 404, json: async () => ({}) }
     if (String(url).includes('/categories')) return { ok: true, json: async () => CATEGORIES }
     if (String(url).includes('/scrape')) return { ok: true, json: async () => IDLE_SCRAPE }
-    return { ok: true, json: async () => ({ results: [result(1, 'Batman (2011) #1')], total: 1 }) }
+    if (String(url).includes('series=')) {
+      return { ok: true, json: async () => ({ results: [result(1, 'Batman (2011) #1')], total: 1 }) }
+    }
+    return { ok: true, json: async () => grouped([group('batman', 'Batman', 1)]) }
   }) as unknown as typeof fetch
 
   renderWithLocation()
   typeQuery('batman')
+  await openGroup()
   await screen.findByText('Batman (2011) #1')
   fireEvent.click(downloadButtons()[0])
 
   expect(await screen.findByText(/no download link/i)).toBeInTheDocument()
   expect(screen.getByTestId('loc')).toHaveTextContent('/search')
+})
+
+// ---- splitting a big series by what kind of release each row is ----
+
+const BIG = group('thor', 'Thor', 159, { issue: 57, bundle: 12, collection: 27, other: 63 })
+
+function stubBig() {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return IDLE_SCRAPE
+    if (url.includes('kind=collection')) return { results: [result(7, 'Astonishing Thor (TPB)')], total: 27 }
+    if (url.includes('series=')) return { results: [result(1, 'Thor #1 (2018)')], total: 159 }
+    return grouped([BIG], 159)
+  })
+}
+
+test('a big series is broken down by kind rather than dumping every row', async () => {
+  stubBig()
+  renderPage()
+  typeQuery('thor')
+  await openGroup(/Thor/)
+  expect(await screen.findByRole('button', { name: /Issues/ })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Collections/ })).toBeInTheDocument()
+  expect(screen.queryByText('Thor #1 (2018)')).not.toBeInTheDocument()
+})
+
+test('a kind with nothing in it is not offered', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return IDLE_SCRAPE
+    if (url.includes('series=')) return { results: [], total: 0 }
+    return grouped([group('thor', 'Thor', 40, { issue: 40 })], 40)
+  })
+  renderPage()
+  typeQuery('thor')
+  await openGroup(/Thor/)
+  await waitFor(() => expect(screen.queryByRole('button', { name: /Collections/ })).not.toBeInTheDocument())
+})
+
+test('opening a kind lists just those rows', async () => {
+  stubBig()
+  renderPage()
+  typeQuery('thor')
+  await openGroup(/Thor/)
+  fireEvent.click(await screen.findByRole('button', { name: /Collections/ }))
+  expect(await screen.findByText('Astonishing Thor (TPB)')).toBeInTheDocument()
+  await waitFor(() => expect(calls.some((c) => c.includes('kind=collection'))).toBe(true))
+})
+
+test('a small series skips the extra layer and shows its rows', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return IDLE_SCRAPE
+    if (url.includes('series=')) return { results: [result(1, 'Red Thorn #1')], total: 3 }
+    return grouped([group('red thorn', 'Red Thorn', 3, { issue: 2, collection: 1 })], 3)
+  })
+  renderPage()
+  typeQuery('thorn')
+  await openGroup(/Red Thorn/)
+  expect(await screen.findByText('Red Thorn #1')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Collections/ })).not.toBeInTheDocument()
+})
+
+test('the count line reports comics and series separately', async () => {
+  stubBig()
+  renderPage()
+  typeQuery('thor')
+  expect(await screen.findByText(/159 matches/i)).toBeInTheDocument()
+  expect(screen.getByText(/1 series/i)).toBeInTheDocument()
+})
+
+// ---- runs standing in for the Issues heading ----
+
+const RUNS = [
+  { key: '2021_2023_1', label: '2021-2023 · #1-35', yearFrom: 2021, yearTo: 2023, first: 1, last: 35, total: 35 },
+  { key: '2018_2019_1', label: '2018-2019 · #1-16', yearFrom: 2018, yearTo: 2019, first: 1, last: 16, total: 16 },
+]
+
+function stubRuns(runs = RUNS, kinds: Record<string, number> = { issue: 51, collection: 27 }) {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return IDLE_SCRAPE
+    if (url.includes('run=2021_2023_1')) return { results: [result(9, 'Thor #1 (2021)')], total: 35 }
+    if (url.includes('series=')) return { results: [result(1, 'Thor #1 (2018)')], total: 78 }
+    return { groups: [{ key: 'thor', name: 'Thor', total: 78, kinds: { bundle: 0, other: 0, ...kinds }, runs }],
+             totalGroups: 1, totalResults: 78 }
+  })
+}
+
+test('a series offers its runs in place of a single Issues heading', async () => {
+  stubRuns()
+  renderPage()
+  typeQuery('thor')
+  await openGroup(/Thor/)
+  expect(await screen.findByRole('button', { name: /2021-2023/ })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /2018-2019/ })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Issues/ })).not.toBeInTheDocument()
+})
+
+test('the other kinds are still listed alongside the runs', async () => {
+  stubRuns()
+  renderPage()
+  typeQuery('thor')
+  await openGroup(/Thor/)
+  expect(await screen.findByRole('button', { name: /Collections/ })).toBeInTheDocument()
+})
+
+test('opening a run asks for just that run', async () => {
+  stubRuns()
+  renderPage()
+  typeQuery('thor')
+  await openGroup(/Thor/)
+  fireEvent.click(await screen.findByRole('button', { name: /2021-2023/ }))
+  expect(await screen.findByText('Thor #1 (2021)')).toBeInTheDocument()
+  await waitFor(() => expect(calls.some((c) => c.includes('run=2021_2023_1'))).toBe(true))
+})
+
+test('a series with no trustworthy runs falls back to an Issues heading', async () => {
+  stubRuns([])
+  renderPage()
+  typeQuery('thor')
+  await openGroup(/Thor/)
+  expect(await screen.findByRole('button', { name: /Issues/ })).toBeInTheDocument()
+})
+
+test('runs split a series even when every row is the same kind', async () => {
+  stubRuns(RUNS, { issue: 51 })
+  renderPage()
+  typeQuery('thor')
+  await openGroup(/Thor/)
+  expect(await screen.findByRole('button', { name: /2021-2023/ })).toBeInTheDocument()
 })

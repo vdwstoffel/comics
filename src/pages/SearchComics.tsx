@@ -1,12 +1,50 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import type { ScrapeStatus } from '../api'
+import type { ComicIndexGroup, ComicIndexQuery, IssueRun, ReleaseKind, ScrapeStatus } from '../api'
 
 const PAGE_SIZE = 50
 const DEBOUNCE_MS = 250
 const POLL_MS = 1000
+
+/** Below this a series is short enough to read whole; splitting it is just more clicks. */
+const KIND_SPLIT_MIN = 12
+const KIND_ORDER: ReleaseKind[] = ['issue', 'miniseries', 'bundle', 'collection', 'other']
+const KIND_LABEL: Record<ReleaseKind, string> = {
+  issue: 'Issues', miniseries: 'Miniseries', bundle: 'Bundles',
+  collection: 'Collections', other: 'Specials',
+}
+
+function kindsPresent(group: ComicIndexGroup): ReleaseKind[] {
+  return KIND_ORDER.filter((k) => (group.kinds[k] ?? 0) > 0)
+}
+
+/**
+ * The kinds worth listing beside the runs. When runs are on offer they already account
+ * for every issue, so listing "Issues" as well would show each one twice.
+ */
+function kindsBesideRuns(group: ComicIndexGroup): ReleaseKind[] {
+  const present = kindsPresent(group)
+  return group.runs.length ? present.filter((k) => k !== 'issue') : present
+}
+
+/**
+ * Worth breaking up when there is enough in it AND there is more than one heading to
+ * break it into — either several kinds, or several runs of the same kind.
+ */
+function splitByKind(group: ComicIndexGroup): boolean {
+  const headings = kindsBesideRuns(group).length + group.runs.length
+  return group.total > KIND_SPLIT_MIN && headings > 1
+}
+
+/** What a row's download button is doing, threaded down to the rows inside a series. */
+export interface DownloadControl {
+  start: (id: number) => void
+  pendingId: number | null
+  error: { id: number; message: string } | null
+}
 
 function fullYear(value: string): number | undefined {
   return /^\d{4}$/.test(value.trim()) ? Number(value) : undefined
@@ -95,29 +133,49 @@ export default function SearchComics() {
   const categories = categoryData?.categories ?? []
   const indexed = categoryData?.indexed ?? 0
 
+  // Everything that decides which rows match, in one object: the group list is keyed on
+  // it, and each opened series re-sends it so its rows come from the same search.
+  const filters: ComicIndexQuery = {
+    q: query,
+    category: category ?? undefined,
+    yearFrom: years.from,
+    yearTo: years.to,
+  }
+
   const { data, isFetching, isFetchingNextPage, hasNextPage, fetchNextPage, error } =
     useInfiniteQuery({
       queryKey: ['comic-index', query, category, years.from, years.to],
       queryFn: ({ pageParam }) =>
-        api.searchComicIndex({
-          q: query,
-          category: category ?? undefined,
-          yearFrom: years.from,
-          yearTo: years.to,
-          limit: PAGE_SIZE,
-          offset: pageParam,
-        }),
+        api.groupComicIndex({ ...filters, limit: PAGE_SIZE, offset: pageParam }),
       initialPageParam: 0,
+      // The window counts series, not comics: another page means more headings.
       getNextPageParam: (lastPage, allPages) => {
-        const loaded = allPages.reduce((n, page) => n + page.results.length, 0)
-        return loaded < lastPage.total ? loaded : undefined
+        const loaded = allPages.reduce((n, page) => n + page.groups.length, 0)
+        return loaded < lastPage.totalGroups ? loaded : undefined
       },
       enabled: query.length > 0,
     })
 
-  const results = data?.pages.flatMap((page) => page.results) ?? []
-  const total = data?.pages[0]?.total ?? 0
+  const groups = data?.pages.flatMap((page) => page.groups) ?? []
+  const totalGroups = data?.pages[0]?.totalGroups ?? 0
+  const totalResults = data?.pages[0]?.totalResults ?? 0
   const searching = query.length > 0
+
+  // Which headings are open, by group key and by `key|kind`. A new search invalidates
+  // every one of them, so it starts closed rather than half-open on the last search.
+  const [open, setOpen] = useState<Set<string>>(new Set())
+  useEffect(() => setOpen(new Set()), [query, category, years.from, years.to])
+  const toggle = (key: string) => setOpen((prev) => {
+    const next = new Set(prev)
+    if (!next.delete(key)) next.add(key)
+    return next
+  })
+
+  const download: DownloadControl = {
+    start: (id) => { setLinkError(null); getLink.mutate(id) },
+    pendingId: getLink.isPending ? getLink.variables ?? null : null,
+    error: linkError,
+  }
 
   return (
     <div className="search-comics">
@@ -217,43 +275,23 @@ export default function SearchComics() {
       {searching && !error && (
         <>
           <p className="search-comics__count">
-            {isFetching && !isFetchingNextPage && results.length === 0
+            {isFetching && !isFetchingNextPage && groups.length === 0
               ? 'Searching…'
-              : total === 0
+              : totalResults === 0
                 ? 'No matches'
-                : `${total.toLocaleString()} matches`}
+                : `${totalResults.toLocaleString()} matches in ${totalGroups.toLocaleString()} series`}
           </p>
 
-          <ul className="search-comics__results">
-            {results.map((r) => (
-              <li key={r.id} className="search-comics__row">
-                <a
-                  href={r.url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="search-comics__link"
-                >
-                  {r.title}
-                </a>
-                <span className="search-comics__meta">
-                  {r.number && <span className="search-comics__number">#{r.number}</span>}
-                  {r.year && <span className="search-comics__year">{r.year}</span>}
-                  <span className="chip search-comics__category">{r.category}</span>
-                </span>
-                <button
-                  type="button"
-                  className="btn btn-ghost search-comics__download"
-                  disabled={getLink.isPending}
-                  onClick={() => { setLinkError(null); getLink.mutate(r.id) }}
-                >
-                  {getLink.isPending && getLink.variables === r.id ? 'Reading…' : 'Download'}
-                </button>
-                {linkError?.id === r.id && (
-                  <span className="search-comics__error search-comics__link-error">
-                    {linkError.message}
-                  </span>
-                )}
-              </li>
+          <ul className="search-comics__groups">
+            {groups.map((g) => (
+              <GroupRow
+                key={g.key}
+                group={g}
+                filters={filters}
+                open={open}
+                toggle={toggle}
+                download={download}
+              />
             ))}
           </ul>
 
@@ -290,4 +328,136 @@ function ScrapeProgress({ status }: { status: ScrapeStatus }) {
     return <span className="search-comics__scrape-status">Last run: {counts}</span>
   }
   return null
+}
+
+
+/** One series heading, and whatever it is showing underneath. */
+function GroupRow({ group, filters, open, toggle, download }: {
+  group: ComicIndexGroup
+  filters: ComicIndexQuery
+  open: Set<string>
+  toggle: (key: string) => void
+  download: DownloadControl
+}) {
+  const isOpen = open.has(group.key)
+  return (
+    <li className="search-comics__group">
+      <button
+        type="button"
+        className="search-comics__group-header"
+        aria-expanded={isOpen}
+        onClick={() => toggle(group.key)}
+      >
+        <span className="search-comics__caret" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
+        <span className="search-comics__group-name">{group.name}</span>
+        <span className="search-comics__group-count">{group.total.toLocaleString()}</span>
+      </button>
+
+      {isOpen && (splitByKind(group)
+        ? (
+          <ul className="search-comics__kinds">
+            {/* Runs first: the issues are what you are usually after, newest at the top. */}
+            {group.runs.map((run) => (
+              <SubHeading
+                key={run.key}
+                id={`${group.key}|run|${run.key}`}
+                label={run.label}
+                count={run.total}
+                open={open}
+                toggle={toggle}
+              >
+                <ItemList filters={filters} series={group.key} run={run.key} download={download} />
+              </SubHeading>
+            ))}
+            {kindsBesideRuns(group).map((kind) => (
+              <SubHeading
+                key={kind}
+                id={`${group.key}|${kind}`}
+                label={KIND_LABEL[kind]}
+                count={group.kinds[kind]}
+                open={open}
+                toggle={toggle}
+              >
+                <ItemList filters={filters} series={group.key} kind={kind} download={download} />
+              </SubHeading>
+            ))}
+          </ul>
+        )
+        : <ItemList filters={filters} series={group.key} download={download} />)}
+    </li>
+  )
+}
+
+/** One collapsed line under a series: a run of issues, or a kind of release. */
+function SubHeading({ id, label, count, open, toggle, children }: {
+  id: string
+  label: string
+  count: number
+  open: Set<string>
+  toggle: (key: string) => void
+  children: ReactNode
+}) {
+  const isOpen = open.has(id)
+  return (
+    <li className="search-comics__kind">
+      <button
+        type="button"
+        className="search-comics__kind-header"
+        aria-expanded={isOpen}
+        onClick={() => toggle(id)}
+      >
+        <span className="search-comics__caret" aria-hidden="true">{isOpen ? '▾' : '▸'}</span>
+        <span>{label}</span>
+        <span className="search-comics__group-count">{count.toLocaleString()}</span>
+      </button>
+      {isOpen && children}
+    </li>
+  )
+}
+
+/** The rows of one series, or of one run or kind within it. Fetched only once opened. */
+function ItemList({ filters, series, kind, run, download }: {
+  filters: ComicIndexQuery
+  series: string
+  kind?: ReleaseKind
+  run?: string
+  download: DownloadControl
+}) {
+  const { data, isPending } = useQuery({
+    queryKey: ['comic-index-rows', filters.q, filters.category, filters.yearFrom, filters.yearTo, series, kind, run],
+    queryFn: () => api.searchComicIndex({ ...filters, series, kind, run, limit: 200 }),
+  })
+
+  if (isPending) return <p className="search-comics__loading">Loading…</p>
+
+  const results = data?.results ?? []
+  return (
+    <ul className="search-comics__results">
+      {results.map((r) => (
+        <li key={r.id} className="search-comics__row">
+          <a href={r.url} target="_blank" rel="noopener noreferrer" className="search-comics__link">
+            {r.title}
+          </a>
+          <span className="search-comics__meta">
+            {r.number && <span className="search-comics__number">#{r.number}</span>}
+            {r.year && <span className="search-comics__year">{r.year}</span>}
+            <span className="chip search-comics__category">{r.category}</span>
+          </span>
+          <button
+            type="button"
+            className="btn btn-ghost search-comics__download"
+            disabled={download.pendingId !== null}
+            onClick={() => download.start(r.id)}
+          >
+            {download.pendingId === r.id ? 'Reading…' : 'Download'}
+          </button>
+          {download.error?.id === r.id && (
+            <span className="search-comics__error search-comics__link-error">
+              {download.error.message}
+            </span>
+          )}
+        </li>
+      ))}
+    </ul>
+  )
 }
