@@ -179,6 +179,29 @@ One request per press:
 5. Start the existing downloader with `{ url, edition: edition.name, issueId: cvIssueId }`.
 6. 202 with the download status.
 
+### 4.3.1 Metadata comes with it, and is certain here
+
+Passing `issueId` to the downloader drives the existing `storeComic` path, so
+no new metadata handling is written:
+
+- **Before the write**, the filename is rebuilt from the volume name and issue
+  number (`comicFileName`), so the comic lands as `Venom 250.cbz` rather than
+  the post's scene name. Resolved pre-write so there is no rename to unwind.
+- **After ingest**, `applyIssueToBook` writes title, number, cover date, summary,
+  writer, penciller, year, cover url, Comic Vine id and site url, and publisher;
+  replaces the credits; stores characters, teams and story arcs as tags; and
+  syncs a `ComicInfo.xml` into the cbz.
+
+This is the only import path in the app where the Comic Vine issue identity is
+**known rather than inferred**. Every other route reaches an issue id by
+searching Comic Vine from a filename and choosing a match; here the id comes
+from the volume's own issue list, because the press started from "this specific
+issue is missing". The metadata is therefore correct by construction, and it is
+the same certainty that makes §3's refusal to guess worth having.
+
+Metadata is applied after the comic is on disk and indexed, in its own
+try/catch: a Comic Vine outage costs the metadata, never the download.
+
 **Step 3 is a safety requirement, not an optimisation.** Trusting an `indexId`
 posted by the page would let a tile rendered before a scrape act on a row that
 has since moved. Re-deciding server-side means the rule that showed the button
