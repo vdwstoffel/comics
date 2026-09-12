@@ -225,6 +225,29 @@ export interface ComicIndexGroup {
   runs: IssueRun[]
 }
 
+/**
+ * One Comic Vine volume a series heading could mean. Offered rather than resolved — a
+ * scraped heading cannot be matched to a volume reliably, so the list is shown as Comic
+ * Vine ranked it and the reader picks.
+ */
+export interface CvVolumeMatch {
+  id: number
+  name?: string
+  startYear?: number
+  publisher?: string
+  issueCount?: number
+  deck?: string
+  thumbnail?: string
+  siteUrl?: string
+}
+
+export interface CvVolumesResponse {
+  volumes: CvVolumeMatch[]
+  fetchedAt: string | null
+  /** True when Comic Vine could not be reached and this list is what we already held. */
+  stale: boolean
+}
+
 export interface ComicIndexGroupsResponse {
   groups: ComicIndexGroup[]
   totalGroups: number
@@ -384,6 +407,9 @@ export const api = {
 
   getComicIndexCategories: () => json<ComicIndexCategoriesResponse>('/api/comic-index/categories'),
   getScrapeStatus: () => json<ScrapeStatus>('/api/comic-index/scrape'),
+  /** Which Comic Vine volumes a series heading could mean. Cached server-side for a day. */
+  getComicVineVolumes: (series: string) =>
+    json<CvVolumesResponse>(`/api/comicvine/volumes?series=${encodeURIComponent(series)}`),
   startScrape: (mode: 'quick' | 'full') =>
     json<StartScrapeResponse>('/api/comic-index/scrape', {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode }),

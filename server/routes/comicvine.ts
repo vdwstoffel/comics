@@ -5,12 +5,14 @@ import { getBook, updateBook } from '../models/books.js'
 import { getEdition, updateEdition } from '../models/editions.js'
 import type { EditionUpdate } from '../models/editions.js'
 import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags, setTagIds } from '../models/metadata.js'
+import { cacheVolumeSearch, getCachedVolumeSearch } from '../models/volumeSearch.js'
 import { syncComicInfoFile } from '../services/comicinfoSync.js'
 import type { App } from '../types.js'
 
 interface IdParams { id: string }
 interface SearchQuery { q?: string; type?: string }
 interface NameQuery { name?: string }
+interface SeriesQuery { series?: string }
 
 export default async function comicvineRoutes(app: App) {
   const cv = createComicVine({ apiKey: app.config.comicVineApiKey })
@@ -47,6 +49,41 @@ export default async function comicvineRoutes(app: App) {
         // The name this comic's edition should carry, composed here so one place decides it.
         editionName: volume.name && volume.startYear ? `${volume.name} (${volume.startYear})` : null,
       },
+    }
+  })
+
+  /**
+   * Which Comic Vine volumes a series name could mean, for the search page to link out to.
+   *
+   * The candidates are offered rather than resolved. A scraped heading and a Comic Vine
+   * volume cannot be matched reliably — "The Mighty Thor" is six volumes, the right one
+   * ranks third, its start year is a year off the run's first cover date, and its #1-23
+   * and #700-706 runs are the same volume under Marvel's legacy renumbering. So the reader
+   * picks, and Comic Vine's own relevance order is left exactly as it came.
+   *
+   * Answers are cached for a day. One search can list two dozen series and Comic Vine
+   * allows 200 requests an hour, so a heading opened twice must not cost two of them.
+   */
+  app.get<{ Querystring: SeriesQuery }>('/api/comicvine/volumes', async (req, reply) => {
+    if (!app.config.comicVineApiKey) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
+    const series = req.query.series?.trim()
+    if (!series) return reply.code(400).send({ error: 'missing series' })
+
+    const fresh = getCachedVolumeSearch(app.db, series)
+    if (fresh) return { volumes: fresh.volumes, fetchedAt: fresh.fetchedAt, stale: false }
+
+    try {
+      const volumes = await cv.searchVolumes(series)
+      cacheVolumeSearch(app.db, series, volumes)
+      return { volumes, fetchedAt: getCachedVolumeSearch(app.db, series)?.fetchedAt ?? null, stale: false }
+    } catch (err) {
+      // Whatever we already hold beats nothing at all — the links in it still work, they
+      // are just however old the stamp says. Only a series we have never looked up has
+      // nothing to fall back on.
+      const held = getCachedVolumeSearch(app.db, series, Infinity)
+      if (held) return { volumes: held.volumes, fetchedAt: held.fetchedAt, stale: true }
+      app.log.warn({ err, series }, 'Comic Vine volume lookup failed')
+      return reply.code(502).send({ error: 'Comic Vine did not answer' })
     }
   })
 

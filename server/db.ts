@@ -85,6 +85,29 @@ CREATE TABLE IF NOT EXISTS volume_issue (
   PRIMARY KEY (volume_id, cv_issue_id)
 );
 
+-- The volumes Comic Vine offers for a series name, so opening the same search heading
+-- twice costs one request rather than two. Comic Vine allows 200 requests an hour and a
+-- single search can list two dozen series, which is what makes this a cache rather than a
+-- convenience. Split in two for the same reason as volume_cache above: a series Comic Vine
+-- knows nothing about still has to record that we asked, or it would be asked forever.
+CREATE TABLE IF NOT EXISTS cv_volume_search (
+  query      TEXT PRIMARY KEY,
+  fetched_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS cv_volume_match (
+  query        TEXT NOT NULL,
+  cv_volume_id INTEGER NOT NULL,
+  rank         INTEGER NOT NULL,
+  name         TEXT,
+  start_year   INTEGER,
+  publisher    TEXT,
+  issue_count  INTEGER,
+  deck         TEXT,
+  thumb_url    TEXT,
+  site_url     TEXT,
+  PRIMARY KEY (query, cv_volume_id)
+);
+
 -- Full-text index over titles. External-content table: the fts rows mirror comic_index
 -- and are kept in sync by the triggers below, so any writer (server or the python
 -- scraper) gets a correct index without having to remember to rebuild it.

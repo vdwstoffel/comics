@@ -593,3 +593,124 @@ test('runs split a series even when every row is the same kind', async () => {
   await openGroup(/Thor/)
   expect(await screen.findByRole('button', { name: /2021-2023/ })).toBeInTheDocument()
 })
+
+/* ── Comic Vine lookup ─────────────────────────────────────────────────────── */
+
+const VOLUMES = {
+  volumes: [
+    {
+      id: 86113, name: 'Mighty Thor', startYear: 2016, publisher: 'Marvel',
+      issueCount: 30, deck: 'Jane Foster lifts the hammer.', thumbnail: 't.jpg',
+      siteUrl: 'https://comicvine.gamespot.com/mighty-thor/4050-86113/',
+    },
+    { id: 39763, name: 'The Mighty Thor', startYear: 2011, publisher: 'Marvel', issueCount: 23 },
+  ],
+  fetchedAt: '2026-09-12T00:00:00.000Z',
+  stale: false,
+}
+
+/** The search page, with a Comic Vine lookup answering for the Batman heading. */
+function mockWithVolumes(volumes: unknown = VOLUMES) {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return IDLE_SCRAPE
+    if (url.includes('/comicvine/volumes')) return volumes
+    if (url.includes('series=')) return BATMAN_ROWS
+    return grouped([group('batman', 'Batman', 2)])
+  })
+}
+
+async function lookUp() {
+  fireEvent.click(await screen.findByRole('button', { name: /Look up on Comic Vine/i }))
+}
+
+test('opening a series offers a Comic Vine lookup', async () => {
+  mockWithVolumes()
+  renderPage()
+  typeQuery('batman')
+  await openGroup()
+  expect(await screen.findByRole('button', { name: /Look up on Comic Vine/i })).toBeInTheDocument()
+})
+
+test('opening a series does not reach Comic Vine until the lookup is asked for', async () => {
+  mockWithVolumes()
+  renderPage()
+  typeQuery('batman')
+  await openGroup()
+  await screen.findByText('Batman (2011) #1')
+  expect(calls.some((c) => c.includes('/comicvine/volumes'))).toBe(false)
+})
+
+test('the lookup asks Comic Vine for the series on the heading', async () => {
+  mockWithVolumes()
+  renderPage()
+  typeQuery('batman')
+  await openGroup()
+  await lookUp()
+  await waitFor(() => expect(calls.some((c) => c.includes('/comicvine/volumes?series=Batman'))).toBe(true))
+})
+
+test('each candidate names the volume, its year, publisher and issue count', async () => {
+  mockWithVolumes()
+  renderPage()
+  typeQuery('batman')
+  await openGroup()
+  await lookUp()
+  expect(await screen.findByText('Mighty Thor (2016)')).toBeInTheDocument()
+  expect(screen.getByText(/Marvel · 30 issues/)).toBeInTheDocument()
+  expect(screen.getByText('Jane Foster lifts the hammer.')).toBeInTheDocument()
+})
+
+test('a candidate links out to its Comic Vine page in a new tab', async () => {
+  mockWithVolumes()
+  renderPage()
+  typeQuery('batman')
+  await openGroup()
+  await lookUp()
+  const link = await screen.findByRole('link', { name: /Mighty Thor \(2016\)/ })
+  expect(link).toHaveAttribute('href', 'https://comicvine.gamespot.com/mighty-thor/4050-86113/')
+  expect(link).toHaveAttribute('target', '_blank')
+  expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+})
+
+test('a candidate with no deck still lists what it is', async () => {
+  mockWithVolumes()
+  renderPage()
+  typeQuery('batman')
+  await openGroup()
+  await lookUp()
+  expect(await screen.findByText('The Mighty Thor (2011)')).toBeInTheDocument()
+  expect(screen.getByText(/Marvel · 23 issues/)).toBeInTheDocument()
+})
+
+test('a series Comic Vine knows nothing about says so rather than showing an empty list', async () => {
+  mockWithVolumes({ volumes: [], fetchedAt: null, stale: false })
+  renderPage()
+  typeQuery('batman')
+  await openGroup()
+  await lookUp()
+  expect(await screen.findByText(/Nothing on Comic Vine/i)).toBeInTheDocument()
+})
+
+test('a failed lookup reports it under the button that was clicked', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return IDLE_SCRAPE
+    if (url.includes('series=')) return BATMAN_ROWS
+    return grouped([group('batman', 'Batman', 2)])
+  })
+  const ok = globalThis.fetch as unknown as typeof fetch
+  globalThis.fetch = (async (url: string, init?: RequestInit) => {
+    if (String(url).includes('/comicvine/volumes')) {
+      calls.push(String(url))
+      return { ok: false, status: 502, json: async () => ({ error: 'Comic Vine did not answer' }) }
+    }
+    return ok(url as never, init as never)
+  }) as unknown as typeof fetch
+
+  renderPage()
+  typeQuery('batman')
+  await openGroup()
+  await lookUp()
+  expect(await screen.findByText(/Could not reach Comic Vine/i)).toBeInTheDocument()
+})

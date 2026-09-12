@@ -16,6 +16,12 @@ const CHARACTER_FIELDS =
 // one-line deck and links out for the rest.
 const STORY_ARC_FIELDS = 'id,name,deck,publisher,image,site_detail_url,issues'
 const VOLUME_ISSUE_FIELDS = 'id,issue_number,name,cover_date,site_detail_url'
+// What a candidate row under a search heading shows, and nothing more. The volume's own
+// description is deliberately absent: a search returns ten of these, and the reading of a
+// series happens on Comic Vine rather than here.
+const VOLUME_SEARCH_FIELDS = 'id,name,start_year,publisher,count_of_issues,deck,image,site_detail_url'
+/** Enough candidates to hold the one you meant, few enough not to bury the heading. */
+const VOLUME_SEARCH_LIMIT = 10
 // Comic Vine caps a list response at 100 regardless of what `limit` asks for.
 const LIST_PAGE = 100
 
@@ -39,6 +45,8 @@ interface CvResult {
   issue_number?: string
   cover_date?: string
   start_year?: string
+  count_of_issues?: number
+  deck?: string
   description?: string
   image?: CvImage
   volume?: { name?: string; id?: number }
@@ -150,6 +158,23 @@ export interface CvVolumeIssue {
   siteUrl?: string
 }
 
+/**
+ * A volume as a search offers it: enough to tell which of six Thors you meant, plus the
+ * link that answers everything else. Comic Vine ranks these by relevance and we keep that
+ * order - the right volume is routinely third, and no re-rank we could write here would
+ * beat a guess the reader can make by eye.
+ */
+export interface CvVolumeMatch {
+  id: number
+  name?: string
+  startYear?: number
+  publisher?: string
+  issueCount?: number
+  deck?: string
+  thumbnail?: string
+  siteUrl?: string
+}
+
 export interface CvVolume {
   name?: string
   publisher?: string
@@ -165,6 +190,7 @@ export interface ComicVineOptions {
 
 export interface ComicVineClient {
   search(query: string, type?: string): Promise<CvSearchResult[]>
+  searchVolumes(query: string): Promise<CvVolumeMatch[]>
   getIssue(id: number | string): Promise<CvIssue>
   getVolume(id: number | string): Promise<CvVolume>
   listVolumeIssues(volumeId: number | string): Promise<CvVolumeIssue[]>
@@ -210,6 +236,32 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         // Big enough to read as art in a grid; thumb_url is a 104x160 avatar.
         cover: r.image?.small_url || r.image?.thumb_url,
       }))
+    },
+    async searchVolumes(query) {
+      const data = await get('/search/', {
+        query,
+        resources: 'volume',
+        limit: String(VOLUME_SEARCH_LIMIT),
+        field_list: VOLUME_SEARCH_FIELDS,
+      })
+      const results = (Array.isArray(data.results) ? data.results : []) as CvResult[]
+      // A result with no id names no volume and has nothing to link to; drop it rather
+      // than render a row that goes nowhere.
+      return results.flatMap((r) => {
+        if (r.id == null) return []
+        const started = Number(r.start_year)
+        return [{
+          id: r.id,
+          name: r.name,
+          startYear: Number.isInteger(started) ? started : undefined,
+          publisher: r.publisher?.name,
+          issueCount: r.count_of_issues,
+          deck: r.deck,
+          // thumb_url is the 104x160 avatar, which is the size this row wants.
+          thumbnail: r.image?.thumb_url || r.image?.small_url,
+          siteUrl: r.site_detail_url,
+        }]
+      })
     },
     async getIssue(id) {
       const data = await get(`/issue/${TYPE_PREFIX.issue}-${id}/`, {

@@ -3,7 +3,9 @@ import type { ReactNode } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import type { ComicIndexGroup, ComicIndexQuery, IssueRun, ReleaseKind, ScrapeStatus } from '../api'
+import type {
+  ComicIndexGroup, ComicIndexQuery, CvVolumeMatch, IssueRun, ReleaseKind, ScrapeStatus,
+} from '../api'
 
 const PAGE_SIZE = 50
 const DEBOUNCE_MS = 250
@@ -353,6 +355,8 @@ function GroupRow({ group, filters, open, toggle, download }: {
         <span className="search-comics__group-count">{group.total.toLocaleString()}</span>
       </button>
 
+      {isOpen && <ComicVineLookup series={group.name} />}
+
       {isOpen && (splitByKind(group)
         ? (
           <ul className="search-comics__kinds">
@@ -384,6 +388,94 @@ function GroupRow({ group, filters, open, toggle, download }: {
           </ul>
         )
         : <ItemList filters={filters} series={group.key} download={download} />)}
+    </li>
+  )
+}
+
+/**
+ * Which Comic Vine volumes this series could be, for reading up on a run before
+ * downloading it.
+ *
+ * Candidates, not an answer. A scraped heading and a Comic Vine volume cannot be matched
+ * reliably — "The Mighty Thor" is six volumes, the right one ranks third, and a volume's
+ * start year is routinely a year off the first cover date in its run. So the list arrives
+ * in Comic Vine's own relevance order and the reader picks the one they meant.
+ *
+ * Fetched on click rather than on expand: opening a series to reach its download buttons
+ * is the common case, and it should not spend one of Comic Vine's 200 requests an hour.
+ */
+function ComicVineLookup({ series }: { series: string }) {
+  const [asked, setAsked] = useState(false)
+  const { data, isPending, isError } = useQuery({
+    queryKey: ['comicvine-volumes', series],
+    queryFn: () => api.getComicVineVolumes(series),
+    enabled: asked,
+  })
+
+  if (!asked) {
+    return (
+      <button
+        type="button"
+        className="btn btn-ghost search-comics__cv-lookup"
+        onClick={() => setAsked(true)}
+      >
+        Look up on Comic Vine
+      </button>
+    )
+  }
+
+  if (isPending) return <p className="search-comics__loading">Looking up Comic Vine…</p>
+  if (isError) {
+    return <p className="search-comics__error search-comics__cv-error">Could not reach Comic Vine.</p>
+  }
+
+  const volumes = data?.volumes ?? []
+  if (!volumes.length) {
+    return <p className="search-comics__cv-empty">Nothing on Comic Vine for this series.</p>
+  }
+
+  return (
+    <div className="search-comics__cv">
+      {data?.stale && (
+        <p className="search-comics__cv-stale">Comic Vine is not answering — showing what we last read.</p>
+      )}
+      <ul className="search-comics__cv-list">
+        {volumes.map((v) => <VolumeCandidate key={v.id} volume={v} />)}
+      </ul>
+    </div>
+  )
+}
+
+/** One volume on offer. The whole row is the link out; nothing here needs a second click. */
+function VolumeCandidate({ volume }: { volume: CvVolumeMatch }) {
+  const name = volume.name ?? 'Untitled volume'
+  const title = volume.startYear ? `${name} (${volume.startYear})` : name
+  // Publisher and issue count identify a volume between two same-named ones; either may
+  // be missing, so the separator is joined rather than written into the markup.
+  const facts = [
+    volume.publisher,
+    volume.issueCount == null
+      ? undefined
+      : `${volume.issueCount.toLocaleString()} ${volume.issueCount === 1 ? 'issue' : 'issues'}`,
+  ].filter(Boolean).join(' · ')
+
+  return (
+    <li className="search-comics__cv-row">
+      {volume.thumbnail && (
+        <img className="search-comics__cv-thumb" src={volume.thumbnail} alt="" loading="lazy" />
+      )}
+      <div className="search-comics__cv-text">
+        <a
+          className="search-comics__cv-link"
+          href={volume.siteUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          {title}
+        </a>
+        {facts && <span className="search-comics__cv-facts">{facts}</span>}
+        {volume.deck && <span className="search-comics__cv-deck">{volume.deck}</span>}
+      </div>
     </li>
   )
 }

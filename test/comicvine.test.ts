@@ -649,3 +649,80 @@ test('listVolumeIssues pages until every issue has been read', async () => {
   expect(issues).toHaveLength(250)
   expect(offsets).toEqual(['0', '100', '200'])
 })
+
+test('searchVolumes maps the fields a candidate row renders', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([
+      ['/search/', { results: [{
+        id: 86113,
+        name: 'Mighty Thor',
+        start_year: '2016',
+        publisher: { name: 'Marvel' },
+        count_of_issues: 30,
+        deck: 'Jane Foster lifts the hammer.',
+        image: { thumb_url: 't.jpg', small_url: 's.jpg' },
+        site_detail_url: 'https://comicvine.gamespot.com/mighty-thor/4050-86113/',
+      }] }],
+    ]),
+  })
+
+  const volumes = await cv.searchVolumes('mighty thor')
+
+  expect(volumes[0]).toEqual({
+    id: 86113,
+    name: 'Mighty Thor',
+    startYear: 2016,
+    publisher: 'Marvel',
+    issueCount: 30,
+    deck: 'Jane Foster lifts the hammer.',
+    thumbnail: 't.jpg',
+    siteUrl: 'https://comicvine.gamespot.com/mighty-thor/4050-86113/',
+  })
+})
+
+test('searchVolumes asks only for the volume resource and the fields a row renders', async () => {
+  let seen = ''
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async (url: string) => {
+      seen = url
+      return { ok: true, json: async () => ({ results: [] }) }
+    },
+  })
+
+  await cv.searchVolumes('mighty thor')
+
+  const params = new URL(seen).searchParams
+  expect(params.get('resources')).toBe('volume')
+  expect(params.get('limit')).toBe('10')
+  expect(params.get('field_list')).toBe(
+    'id,name,start_year,publisher,count_of_issues,deck,image,site_detail_url'
+  )
+  expect(params.get('field_list')).not.toContain('description')
+})
+
+test('a volume search result with no start year has no year rather than NaN', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/search/', { results: [{ id: 1, name: 'Thor' }] }]]),
+  })
+
+  const volumes = await cv.searchVolumes('thor')
+
+  expect(volumes[0]!.startYear).toBeUndefined()
+})
+
+test('searchVolumes drops a result with no id, which could not be linked to', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/search/', { results: [
+      { name: 'Nameless' },
+      { id: 7, name: 'Thor' },
+    ] }]]),
+  })
+
+  const volumes = await cv.searchVolumes('thor')
+
+  expect(volumes.map((v) => v.id)).toEqual([7])
+})
