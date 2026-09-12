@@ -31,6 +31,11 @@ download that lands in the edition you pressed from.
   first; revisit once the rule has been trusted in real use.
 - **Improving the scraped index itself.** The rule reads what the scraper
   already stores and changes none of it.
+- **Fixing the metadata search on the manual upload path.** `buildCvQuery` sends
+  a bare `series #number` to Comic Vine's global search, which cannot identify an
+  issue of a relaunched title (§4.3.1 has the measured `Captain America #4`
+  case). This is a real, separate weakness, knowingly left alone for now — the
+  one-touch path does not use that search and must never start (§4.3.1).
 - **Matching across series.** A missing `Venom` issue is only ever matched
   against index rows whose series key is `venom`. Offshoots
   (`All-New Venom`, `Venom Inc. Alpha`) are different series and stay out.
@@ -199,6 +204,35 @@ from the volume's own issue list, because the press started from "this specific
 issue is missing". The metadata is therefore correct by construction, and it is
 the same certainty that makes §3's refusal to guess worth having.
 
+**Invariant: this path must never reach `cv.search()`.**
+
+That is not a preference, it is the whole value of the feature. A name-based
+search cannot identify an issue of a relaunched title, and this was confirmed
+against the live API rather than assumed. Searching Comic Vine for
+`Captain America #4` — exactly what `buildCvQuery` sends — returns:
+
+```
+1. Captain America #4  2013-07-31
+2. Captain America #4  2009-11-01
+3. Captain America #4  2001-09-01
+4. Captain America #4  (no date)
+5. Captain America #4  1999-04-01
+...
+```
+
+The issue actually wanted, `Captain America (2025) #4` — Comic Vine id
+`1138109`, "Our Secret Wars, Part 4" — **is not in the top ten at all**.
+Meanwhile the correct id is already sitting in the local `volume_issue` cache
+for volume 165232, and was verified to be the same id a volume-scoped API
+lookup returns.
+
+The path is id-only today: `storeComic` with an `issueId` calls only
+`getIssue(id)`, `getVolume(id)` and `applyIssueToBook(id)`, while `ingestFile`
+and the downloader make no Comic Vine calls at all. Nothing must reintroduce a
+name-based lookup as a "fallback" — a fallback here would silently restore the
+exact failure above. §8 pins this with a test that asserts no `/search/`
+request is made during a press.
+
 Metadata is applied after the comic is on disk and indexed, in its own
 try/catch: a Comic Vine outage costs the metadata, never the download.
 
@@ -281,6 +315,12 @@ absent for owned issues, and matching skipped for an edition with no `cvName`.
 **Route — download.** Happy path starts the downloader with the right edition
 and issue id; 409 when the match is no longer unique; 404 for an issue not in
 this volume; 404 when the post has no direct link.
+
+**Invariant — no name-based lookup (§4.3.1).** A press against a stubbed Comic
+Vine asserts that **no `/search/` request is made**, and that the issue id used
+is the one from the volume's issue list. This is the test that stops a future
+"fall back to searching by name" from quietly reintroducing the
+`Captain America #4` failure.
 
 **Component.** `↓ Get` renders with a match and `Find ↗` without; the Find link
 carries series and year; a failed press reports on its own tile.
