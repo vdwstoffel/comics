@@ -20,6 +20,9 @@ export interface Edition {
   /** Comic Vine's own name for this volume, and the year its run started. */
   cvName: string | null
   cvStartYear: number | null
+  /** Comic Vine's own page for this volume, stored rather than built: the canonical url
+   *  carries a slug we cannot derive from the id. */
+  cvSiteUrl: string | null
   createdAt: string
   bookCount?: number
 }

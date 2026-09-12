@@ -94,7 +94,8 @@ export default async function comicvineRoutes(app: App) {
     if (!volumeId) return reply.code(400).send({ error: 'missing volumeId' })
     const meta = await cv.getVolume(volumeId)
     return { edition: updateEdition(app.db, edition.id, {
-      name: meta.name || edition.name, publisher: meta.publisher ?? null, summary: meta.summary ?? null, comicvineId: Number(volumeId),
+      name: meta.name || edition.name, publisher: meta.publisher ?? null, summary: meta.summary ?? null,
+      comicvineId: Number(volumeId), cvSiteUrl: meta.siteUrl ?? null,
     }) }
   })
 

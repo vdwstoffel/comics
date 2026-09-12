@@ -187,6 +187,7 @@ export function openDb(dbPath: string): Db {
   const editionCols = columnsOf(db, 'edition')
   if (!editionCols.includes('cv_name')) db.exec('ALTER TABLE edition ADD COLUMN cv_name TEXT')
   if (!editionCols.includes('cv_start_year')) db.exec('ALTER TABLE edition ADD COLUMN cv_start_year INTEGER')
+  if (!editionCols.includes('cv_site_url')) db.exec('ALTER TABLE edition ADD COLUMN cv_site_url TEXT')
 
   // Additive migration: comic_index gained year/number after first release
   const indexCols = columnsOf(db, 'comic_index')

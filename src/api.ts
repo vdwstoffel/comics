@@ -111,6 +111,9 @@ export interface ApiEditionIssues {
   fetchedAt?: string
   /** True when Comic Vine could not be reached and this list is what we already held. */
   stale?: boolean
+  /** Comic Vine's own page for this volume. Null when the edition has no volume, or when
+   *  Comic Vine could not be asked for the link. */
+  siteUrl?: string | null
 }
 
 export interface ApiStoryArcSummary {

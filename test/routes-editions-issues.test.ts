@@ -14,11 +14,25 @@ const VOLUME_ISSUES = [
   { id: 1159231, issue_number: '255', name: 'Death Spiral, Part 3 of 9', cover_date: '2026-05-01', site_detail_url: 'https://cv/255' },
 ]
 
+/** Reads of the issue list. Counted apart from volume reads, which are a separate
+ *  question: the issue list is the expensive, paged one these tests are about. */
 let cvCalls = 0
+/** Reads of the volume record, which the route makes once to learn its Comic Vine link. */
+let cvVolumeCalls = 0
+
+const VOLUME_RECORD = {
+  name: 'Venom', start_year: '2025',
+  site_detail_url: 'https://comicvine.gamespot.com/venom/4050-167333/',
+}
 
 function stubCv(issues: unknown[] = VOLUME_ISSUES, ok = true) {
   cvCalls = 0
-  globalThis.fetch = (async () => {
+  cvVolumeCalls = 0
+  globalThis.fetch = (async (url: string) => {
+    if (String(url).includes('/volume/')) {
+      cvVolumeCalls++
+      return { ok: true, json: async () => ({ results: VOLUME_RECORD }) }
+    }
     cvCalls++
     if (!ok) return { ok: false, status: 500, json: async () => ({}) }
     return { ok: true, json: async () => ({ number_of_total_results: issues.length, results: issues }) }
@@ -119,6 +133,7 @@ test('a second view of the same edition asks Comic Vine nothing', async () => {
   const second = (await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })).json()
 
   expect(cvCalls).toBe(1)
+  expect(cvVolumeCalls).toBe(1)
   expect(second.issues.map((i: { number: string }) => i.number)).toEqual(first.issues.map((i: { number: string }) => i.number))
   expect(second.fetchedAt).toBe(first.fetchedAt)
   await server.close(); db.close()
@@ -170,4 +185,127 @@ test('a Comic Vine failure serves the stale cache rather than nothing', async ()
   expect(body.fetchedAt).toBe('2020-01-01T00:00:00.000Z')
   expect(body.issues.find((i: { number: string }) => i.number === '255').bookId).toBe(book.id)
   await server.close(); db.close()
+})
+
+/* ── The link to the volume on Comic Vine ──────────────────────────────────── */
+
+/** Comic Vine answering both the issue list and the volume record behind it. */
+function stubCvWithVolume(siteUrl: string | null = 'https://comicvine.gamespot.com/venom/4050-167333/') {
+  cvCalls = 0
+  let volumeCalls = 0
+  globalThis.fetch = (async (url: string) => {
+    cvCalls++
+    if (String(url).includes('/volume/')) {
+      volumeCalls++
+      return { ok: true, json: async () => ({ results: {
+        name: 'Venom', start_year: '2025',
+        ...(siteUrl === null ? {} : { site_detail_url: siteUrl }),
+      } }) }
+    }
+    return { ok: true, json: async () => ({ number_of_total_results: VOLUME_ISSUES.length, results: VOLUME_ISSUES }) }
+  }) as never
+  return { volumeCalls: () => volumeCalls }
+}
+
+test('an edition matched before the link was recorded picks it up on first view', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seedVenom(db)
+  stubCvWithVolume()
+  const server = await app(db)
+
+  const res = await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })
+
+  expect(res.json().siteUrl).toBe('https://comicvine.gamespot.com/venom/4050-167333/')
+  await server.close()
+  db.close()
+})
+
+test('the link is remembered, so a second view does not ask Comic Vine for it again', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seedVenom(db)
+  const cv = stubCvWithVolume()
+  const server = await app(db)
+
+  await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })
+  const before = cv.volumeCalls()
+  const second = await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })
+
+  expect(before).toBe(1)
+  expect(cv.volumeCalls()).toBe(1)
+  expect(second.json().siteUrl).toBe('https://comicvine.gamespot.com/venom/4050-167333/')
+  await server.close()
+  db.close()
+})
+
+test('a link already held is served without asking Comic Vine for the volume at all', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seedVenom(db)
+  updateEdition(db, edition.id, { cvSiteUrl: 'https://comicvine.gamespot.com/venom/4050-167333/' })
+  const cv = stubCvWithVolume()
+  const server = await app(db)
+
+  const res = await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })
+
+  expect(cv.volumeCalls()).toBe(0)
+  expect(res.json().siteUrl).toBe('https://comicvine.gamespot.com/venom/4050-167333/')
+  await server.close()
+  db.close()
+})
+
+test('a volume lookup that fails does not take the issue list down with it', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seedVenom(db)
+  cvCalls = 0
+  globalThis.fetch = (async (url: string) => {
+    cvCalls++
+    if (String(url).includes('/volume/')) return { ok: false, status: 500, json: async () => ({}) }
+    return { ok: true, json: async () => ({ number_of_total_results: VOLUME_ISSUES.length, results: VOLUME_ISSUES }) }
+  }) as never
+  const server = await app(db)
+
+  const res = await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })
+
+  expect(res.statusCode).toBe(200)
+  expect(res.json().total).toBe(3)
+  expect(res.json().siteUrl).toBeNull()
+  await server.close()
+  db.close()
+})
+
+test('an edition with no volume has no link to offer', async () => {
+  const db = openDb(':memory:')
+  const edition = upsertEdition(db, { name: 'Loose ends', folder: 'Loose ends' })
+  stubCvWithVolume()
+  const server = await app(db)
+
+  const res = await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })
+
+  expect(res.json().siteUrl).toBeNull()
+  await server.close()
+  db.close()
+})
+
+test('resolving an edition volume records the link to it', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seedVenom(db)
+  updateEdition(db, edition.id, { comicvineId: null })
+  cvCalls = 0
+  globalThis.fetch = (async (url: string) => {
+    cvCalls++
+    if (String(url).includes('/volume/')) {
+      return { ok: true, json: async () => ({ results: {
+        name: 'Venom', start_year: '2025',
+        site_detail_url: 'https://comicvine.gamespot.com/venom/4050-167333/',
+      } }) }
+    }
+    return { ok: true, json: async () => ({ results: { name: 'Naked and Afraid', volume: { id: 167333 } } }) }
+  }) as never
+  const server = await app(db)
+
+  await server.inject({ method: 'POST', url: `/api/editions/${edition.id}/comicvine-volume` })
+
+  const { getEdition } = await import('../server/models/editions.js')
+  expect(getEdition(db, edition.id)?.cvSiteUrl).toBe('https://comicvine.gamespot.com/venom/4050-167333/')
+  await server.close()
+  db.close()
 })

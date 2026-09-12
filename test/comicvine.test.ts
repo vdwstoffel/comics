@@ -726,3 +726,19 @@ test('searchVolumes drops a result with no id, which could not be linked to', as
 
   expect(volumes.map((v) => v.id)).toEqual([7])
 })
+
+test('getVolume carries the link to the volume on Comic Vine', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([
+      ['/volume/', { results: {
+        name: 'Venom', start_year: '2025',
+        site_detail_url: 'https://comicvine.gamespot.com/venom/4050-167333/',
+      } }],
+    ]),
+  })
+
+  const volume = await cv.getVolume(167333)
+
+  expect(volume.siteUrl).toBe('https://comicvine.gamespot.com/venom/4050-167333/')
+})

@@ -261,6 +261,25 @@ img {
   padding: 2px 8px;
 }
 
+/* Sits at the end of the run meta, pushed clear of the refresh button so the two do not
+   read as one control. Muted like the line it joins - it is a way out, not the point of
+   the page. */
+.edition-header__run-sep {
+  color: var(--muted);
+  opacity: 0.6;
+}
+
+.edition-header__cv-link {
+  color: var(--muted);
+  text-decoration: none;
+  white-space: nowrap;
+}
+
+.edition-header__cv-link:hover {
+  color: var(--text);
+  text-decoration: underline;
+}
+
 .edition-header__summary {
   color: var(--muted);
   font-size: 0.9375rem;

@@ -12,6 +12,7 @@ interface EditionRow {
   series_name: string | null
   cv_name: string | null
   cv_start_year: number | null
+  cv_site_url: string | null
   created_at: string
   book_count?: number
 }
@@ -23,6 +24,7 @@ function toEdition(row: EditionRow | undefined): Edition | undefined {
     publisher: row.publisher ?? null, summary: row.summary ?? null,
     comicvineId: row.comicvine_id ?? null, seriesName: row.series_name ?? null,
     cvName: row.cv_name ?? null, cvStartYear: row.cv_start_year ?? null,
+    cvSiteUrl: row.cv_site_url ?? null,
     createdAt: row.created_at, bookCount: row.book_count ?? undefined,
   }
 }
@@ -147,9 +149,9 @@ export function listPublishers(db: Db): PublisherFacet[] {
 // Name changes must go through renameEdition() in services/library.ts, which also
 // moves the files on disk and updates the `folder` column. Updating `name` directly
 // here will leave files in the old folder and break the path invariant.
-const EDITION_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name', seriesName: 'series_name', cvName: 'cv_name', cvStartYear: 'cv_start_year' }
+const EDITION_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name', seriesName: 'series_name', cvName: 'cv_name', cvStartYear: 'cv_start_year', cvSiteUrl: 'cv_site_url' }
 
-export type EditionUpdate = Partial<Pick<Edition, 'publisher' | 'summary' | 'comicvineId' | 'name' | 'seriesName' | 'cvName' | 'cvStartYear'>>
+export type EditionUpdate = Partial<Pick<Edition, 'publisher' | 'summary' | 'comicvineId' | 'name' | 'seriesName' | 'cvName' | 'cvStartYear' | 'cvSiteUrl'>>
 
 export const EDITION_UPDATABLE_FIELDS = Object.keys(EDITION_FIELDS) as (keyof EditionUpdate)[]
 

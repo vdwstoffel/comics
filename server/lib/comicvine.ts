@@ -180,6 +180,7 @@ export interface CvVolume {
   publisher?: string
   summary?: string
   startYear?: number
+  siteUrl?: string
 }
 
 export interface ComicVineOptions {
@@ -356,6 +357,7 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         publisher: r.publisher?.name,
         summary: stripHtml(r.description),
         startYear: Number.isInteger(started) ? started : undefined,
+        siteUrl: r.site_detail_url,
       }
     },
 

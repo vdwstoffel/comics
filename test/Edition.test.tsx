@@ -530,3 +530,31 @@ test('a metadata-less comic in a volumeless edition is labelled with its filenam
 
   expect(await screen.findByText('Some Comic 001')).toBeInTheDocument()
 })
+
+/* ── The link to the volume on Comic Vine ──────────────────────────────────── */
+
+const CV_URL = 'https://comicvine.gamespot.com/venom/4050-167333/'
+
+test('an edition links out to its volume on Comic Vine', async () => {
+  mockFetchWithIssues({ ...VOLUME_ISSUES, fetchedAt: '2026-09-04T10:00:00.000Z', siteUrl: CV_URL })
+  renderPage()
+  const link = await screen.findByRole('link', { name: /on Comic Vine/i })
+  expect(link).toHaveAttribute('href', CV_URL)
+  expect(link).toHaveAttribute('target', '_blank')
+  expect(link).toHaveAttribute('rel', expect.stringContaining('noopener'))
+})
+
+test('an edition with no Comic Vine volume offers no link to one', async () => {
+  mockFetchWithIssues({ volumeId: null, issues: [], extras: [], owned: 0, total: 0, siteUrl: null })
+  renderPage()
+  await screen.findByText(/Amazing Spider-Man \(2025\)/)
+  expect(screen.queryByRole('link', { name: /on Comic Vine/i })).not.toBeInTheDocument()
+})
+
+// The link must not depend on Comic Vine having given us a run: an edition whose run we
+// could not read is exactly when you most want to go and look it up.
+test('the link still shows when Comic Vine gave us no run to draw', async () => {
+  mockFetchWithIssues({ volumeId: 167333, issues: [], extras: [], owned: 0, total: 0, unavailable: true, siteUrl: CV_URL })
+  renderPage()
+  expect(await screen.findByRole('link', { name: /on Comic Vine/i })).toHaveAttribute('href', CV_URL)
+})

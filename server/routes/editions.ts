@@ -80,7 +80,11 @@ export default async function editionRoutes(app: App) {
     if (!issue.volumeId) return { matched: false }
     const volume = await cv.getVolume(issue.volumeId)
 
-    const patch: EditionUpdate = { cvName: volume.name ?? null, cvStartYear: volume.startYear ?? null }
+    const patch: EditionUpdate = {
+      cvName: volume.name ?? null,
+      cvStartYear: volume.startYear ?? null,
+      cvSiteUrl: volume.siteUrl ?? null,
+    }
     if (volume.publisher && !edition.publisher) patch.publisher = volume.publisher
     if (!edition.comicvineId) patch.comicvineId = Number(issue.volumeId)
     updateEdition(app.db, edition.id, patch)
@@ -106,7 +110,26 @@ export default async function editionRoutes(app: App) {
     const extraOf = (b: (typeof books)[number]) => ({ bookId: b.id, number: b.number, title: b.title })
 
     if (!edition.comicvineId || !app.config.comicVineApiKey) {
-      return { volumeId: edition.comicvineId ?? null, issues: [], extras: books.map(extraOf), owned: 0, total: 0 }
+      return {
+        volumeId: edition.comicvineId ?? null, issues: [], extras: books.map(extraOf),
+        owned: 0, total: 0, siteUrl: edition.cvSiteUrl ?? null,
+      }
+    }
+
+    // Comic Vine's own page for this volume, carried on this response because the line
+    // that renders it is drawn from this response. An edition matched before the link was
+    // recorded resolves it once, here, and is served from its own row forever after: the
+    // canonical url carries a slug that cannot be derived from the volume id.
+    let siteUrl = edition.cvSiteUrl ?? null
+    if (!siteUrl) {
+      try {
+        const cv = createComicVine({ apiKey: app.config.comicVineApiKey })
+        siteUrl = (await cv.getVolume(edition.comicvineId)).siteUrl ?? null
+        if (siteUrl) updateEdition(app.db, edition.id, { cvSiteUrl: siteUrl })
+      } catch {
+        // A link is the smallest thing on this page. Losing it must not cost the run.
+        siteUrl = null
+      }
     }
 
     // Serve what we hold unless it has aged out or a refresh was asked for. A running
@@ -134,7 +157,7 @@ export default async function editionRoutes(app: App) {
         if (!anyAge) {
           return {
             volumeId: edition.comicvineId, issues: [], extras: books.map(extraOf),
-            owned: 0, total: 0, unavailable: true,
+            owned: 0, total: 0, unavailable: true, siteUrl,
           }
         }
         volumeIssues = anyAge.issues
@@ -157,6 +180,7 @@ export default async function editionRoutes(app: App) {
       owned: accounted.size,
       total: issues.length,
       fetchedAt,
+      siteUrl,
       ...(stale ? { stale: true } : {}),
     }
   })

@@ -178,6 +178,11 @@ export default function Edition() {
   const runIssues = volume?.issues ?? []
   const runExtras = volume?.extras ?? []
   const showRun = runIssues.length > 0 || runExtras.length > 0
+  const cvUrl = volume?.siteUrl ?? null
+  // The meta line carries two independent things - when the run was read, and where the
+  // volume lives on Comic Vine. Either alone is reason enough to draw it: an edition whose
+  // run Comic Vine would not give us is when you most want to go and look it up.
+  const showRunMeta = (showRun && !!volume?.fetchedAt) || !!cvUrl
 
   return (
     <div>
@@ -195,19 +200,36 @@ export default function Edition() {
         <p className="edition-header__count">
           {volume?.total ? `${volume.owned} of ${volume.total} issues` : bookLabel}
         </p>
-        {showRun && volume?.fetchedAt && (
+        {showRunMeta && (
           <p className="edition-header__run-meta">
-            {volume.stale
-              ? `Could not reach Comic Vine — showing the run as of ${runAsOf}`
-              : `Run as of ${runAsOf}`}
-            <button
-              type="button"
-              className="btn btn-ghost edition-header__refresh"
-              disabled={volumeFetching}
-              onClick={refreshRun}
-            >
-              {volumeFetching ? 'Refreshing…' : 'Refresh'}
-            </button>
+            {showRun && volume?.fetchedAt && (
+              <>
+                {volume.stale
+                  ? `Could not reach Comic Vine — showing the run as of ${runAsOf}`
+                  : `Run as of ${runAsOf}`}
+                <button
+                  type="button"
+                  className="btn btn-ghost edition-header__refresh"
+                  disabled={volumeFetching}
+                  onClick={refreshRun}
+                >
+                  {volumeFetching ? 'Refreshing…' : 'Refresh'}
+                </button>
+              </>
+            )}
+            {showRun && volume?.fetchedAt && cvUrl && (
+              <span className="edition-header__run-sep" aria-hidden="true">·</span>
+            )}
+            {cvUrl && (
+              <a
+                className="edition-header__cv-link"
+                href={cvUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                See this volume on Comic Vine ↗
+              </a>
+            )}
           </p>
         )}
         {status && (
