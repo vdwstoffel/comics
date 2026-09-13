@@ -10,6 +10,10 @@ import { renameEdition, removeEdition } from '../services/library.js'
 import { createComicVine } from '../lib/comicvine.js'
 import type { CvVolumeIssue } from '../lib/comicvine.js'
 import { cacheVolumeIssues, getCachedVolumeIssues } from '../models/volumeIssues.js'
+import { findMatchForIssue } from '../services/issueMatching.js'
+import { comicIndexById } from '../models/comicIndex.js'
+import { parseDownloadLink } from '../lib/comicPostPage.js'
+import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import { editionFilterOf, readStateOf } from './filters.js'
 import type { LibraryQuery } from './filters.js'
 import type { App } from '../types.js'
@@ -17,7 +21,13 @@ import type { App } from '../types.js'
 interface IdParams { id: string }
 interface EditEditionBody { name?: string; seriesName?: string }
 
-export default async function editionRoutes(app: App) {
+export interface EditionRouteOpts {
+  /** Injected so tests never touch the network. */
+  fetchPage?: (url: string) => Promise<string>
+}
+
+export default async function editionRoutes(app: App, opts: EditionRouteOpts = {}) {
+  const { fetchPage = fetchSourcePage } = opts
   app.get<{ Querystring: LibraryQuery }>('/api/editions', async (req) => {
     return { editions: listEditions(app.db, editionFilterOf(req.query)) }
   })
@@ -169,7 +179,10 @@ export default async function editionRoutes(app: App) {
     const byCvId = new Map(books.filter((b) => b.comicvineId).map((b) => [b.comicvineId as number, b]))
     const issues = volumeIssues.map((issue) => {
       const book = byCvId.get(issue.id)
-      return book ? { ...issue, owned: true, bookId: book.id } : { ...issue, owned: false }
+      if (book) return { ...issue, owned: true, bookId: book.id }
+      // Only what you are missing is worth matching; a match for a comic you already
+      // have would be computed and thrown away.
+      return { ...issue, owned: false, match: findMatchForIssue(app.db, edition.cvName, issue) }
     })
 
     const accounted = new Set(issues.filter((i) => i.owned).map((i) => (i as { bookId: number }).bookId))
@@ -184,6 +197,53 @@ export default async function editionRoutes(app: App) {
       ...(stale ? { stale: true } : {}),
     }
   })
+
+  /**
+   * Download the one scraped release that is this missing issue, into this edition.
+   *
+   * The match is decided again here rather than taken from the page. A tile rendered
+   * before a scrape could otherwise act on a row that has since moved, so the rule that
+   * showed the button is the rule that acts - and a match that has become ambiguous in
+   * the interval refuses instead of proceeding.
+   *
+   * The issue id is carried into the download, which is what makes this the one import
+   * path where Comic Vine's identity for a comic is known rather than inferred from a
+   * filename. Nothing here may fall back to searching Comic Vine by name: that search
+   * cannot tell a dozen relaunches of "Captain America" apart, and a fallback would
+   * quietly reintroduce exactly that failure.
+   */
+  app.post<{ Params: { id: string; cvIssueId: string } }>(
+    '/api/editions/:id/issues/:cvIssueId/download',
+    async (req, reply) => {
+      const edition = getEdition(app.db, Number(req.params.id))
+      if (!edition) return reply.code(404).send({ error: 'edition not found' })
+      if (!edition.comicvineId) return reply.code(404).send({ error: 'edition has no volume' })
+
+      // Any age: a press only follows a page view that filled this cache, and a
+      // published issue's number and cover date do not change.
+      const held = getCachedVolumeIssues(app.db, edition.comicvineId, Infinity)
+      const issue = held?.issues.find((i) => i.id === Number(req.params.cvIssueId))
+      if (!issue) return reply.code(404).send({ error: 'issue not in this volume' })
+
+      const match = findMatchForIssue(app.db, edition.cvName, issue)
+      if (!match) return reply.code(409).send({ error: 'no unique match for that issue' })
+
+      const row = comicIndexById(app.db, match.indexId)
+      if (!row) return reply.code(409).send({ error: 'no unique match for that issue' })
+
+      let url: string | null = null
+      try {
+        url = parseDownloadLink(await fetchPage(row.url), row.url)
+      } catch {
+        return reply.code(502).send({ error: 'could not read that post' })
+      }
+      if (!url) return reply.code(404).send({ error: 'no download link on that post' })
+
+      const { started, status } = app.downloader.start({ url, edition: edition.name, issueId: issue.id })
+      if (!started) return reply.code(409).send({ started, status })
+      return reply.code(202).send({ started, status })
+    },
+  )
 
   app.delete<{ Params: IdParams }>('/api/editions/:id', async (req, reply) => {
     const edition = getEdition(app.db, Number(req.params.id))

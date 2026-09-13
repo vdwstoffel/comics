@@ -309,3 +309,74 @@ test('resolving an edition volume records the link to it', async () => {
   await server.close()
   db.close()
 })
+
+/* ── matching missing issues to the scraped index ──────────────────────────── */
+
+/** Put a scraped row in the index. Titles are what the rule reads, so they are real ones. */
+function indexRow(db: ReturnType<typeof openDb>, title: string, number: string | null, year: number | null) {
+  return db.prepare(
+    "INSERT INTO comic_index (title, url, category, number, year, imported_at) VALUES (?,?,?,?,?,?)"
+  ).run(title, `https://x.test/${title}`, 'Marvel Comics', number, year, '2026-09-13T00:00:00.000Z').lastInsertRowid as number
+}
+
+test('a missing issue with one possible scraped row carries that match', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seedVenom(db)
+  updateEdition(db, edition.id, { cvName: 'Venom' })
+  const rowId = indexRow(db, 'Venom #250 (2025)', '250', 2025)
+  stubCv()
+  const server = await app(db)
+
+  const body = (await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })).json()
+
+  const issue = body.issues.find((i: { number: string }) => i.number === '250')
+  expect(issue.match).toEqual({ indexId: rowId, title: 'Venom #250 (2025)' })
+  await server.close(); db.close()
+})
+
+test('a missing issue with two possible rows carries no match', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seedVenom(db)
+  updateEdition(db, edition.id, { cvName: 'Venom' })
+  indexRow(db, 'Venom #250 (2025)', '250', 2025)
+  indexRow(db, 'Venom #250 (2026)', '250', 2026)
+  stubCv()
+  const server = await app(db)
+
+  const body = (await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })).json()
+
+  expect(body.issues.find((i: { number: string }) => i.number === '250').match).toBeNull()
+  await server.close(); db.close()
+})
+
+test('an issue you own is not matched against the index', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seedVenom(db)
+  updateEdition(db, edition.id, { cvName: 'Venom' })
+  indexRow(db, 'Venom #255 (2026)', '255', 2026)
+  stubCv()
+  const server = await app(db)
+
+  const body = (await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })).json()
+
+  const owned = body.issues.find((i: { number: string }) => i.number === '255')
+  expect(owned.owned).toBe(true)
+  expect(owned.match).toBeUndefined()
+  await server.close(); db.close()
+})
+
+// cvName is Comic Vine's name for the volume. Without it there is nothing trustworthy
+// to key on - the edition's own name may be "Vol 7" or "Unsorted".
+test('an edition with no Comic Vine name matches nothing', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seedVenom(db)
+  updateEdition(db, edition.id, { cvName: null })
+  indexRow(db, 'Venom #250 (2025)', '250', 2025)
+  stubCv()
+  const server = await app(db)
+
+  const body = (await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })).json()
+
+  expect(body.issues.find((i: { number: string }) => i.number === '250').match).toBeNull()
+  await server.close(); db.close()
+})

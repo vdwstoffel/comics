@@ -10,12 +10,28 @@ import EditionEditDialog from '../components/EditionEditDialog'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 
 /**
- * One issue of the run. Yours shows its cover and opens in the library; one you do not have
- * shows no art — a cover is a spoiler for a comic you have not read — but keeps its place in
- * the run and stays clickable through to Comic Vine.
+ * One issue of the run: the comic if you have it, otherwise its place in the run and a
+ * way to fill it.
+ *
+ * A missing issue shows no art - a cover is a spoiler for a comic you have not read -
+ * and offers `Get` only when exactly one scraped release can be this issue. Anything
+ * less certain offers `Find`, which opens the search with the series and year filled
+ * in so you choose by eye. The button never guesses; that is the whole point of it.
  */
-function VolumeIssue({ issue, book }: { issue: ApiVolumeIssue; book?: ApiBook }) {
+function VolumeIssue({ issue, book, editionId, seriesName }: {
+  issue: ApiVolumeIssue
+  book?: ApiBook
+  editionId: string
+  seriesName: string
+}) {
+  const qc = useQueryClient()
   const label = `#${issue.number ?? '?'}`
+
+  const get = useMutation({
+    mutationFn: () => api.downloadMissingIssue(editionId, issue.id),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['download'] }),
+  })
+
   if (issue.owned && issue.bookId != null) {
     return (
       <CoverTile
@@ -28,7 +44,37 @@ function VolumeIssue({ issue, book }: { issue: ApiVolumeIssue; book?: ApiBook })
       />
     )
   }
-  return <CoverTile href={issue.siteUrl} title={label} subtitle="Missing" />
+
+  const findParams = new URLSearchParams({ q: seriesName })
+  // Comic Vine's cover date runs ahead of the scraped release year (Venom #251 has a
+  // 2026-01 cover date but is posted as "Venom #251 (2025)" - see issueMatch's
+  // YEAR_SLACK), so a floor set to the cover year exactly would filter out the very
+  // row Find is meant to surface. Back it off by the same one year the matching rule
+  // tolerates. (Not importing YEAR_SLACK here: src/ never reaches into server/.)
+  const coverYear = issue.coverDate ? Number(String(issue.coverDate).slice(0, 4)) : NaN
+  if (Number.isInteger(coverYear)) findParams.set('yearFrom', String(coverYear - 1))
+
+  return (
+    <div className="volume-issue">
+      <CoverTile href={issue.siteUrl} title={label} subtitle="Missing" />
+      {issue.match ? (
+        <button
+          type="button"
+          className="btn btn-ghost volume-issue__get"
+          disabled={get.isPending}
+          onClick={() => get.mutate()}
+          title={issue.match.title}
+        >
+          {get.isPending ? 'Getting…' : `↓ Get ${label}`}
+        </button>
+      ) : (
+        <Link className="volume-issue__find" to={`/search?${findParams}`}>
+          {`Find ${label} ↗`}
+        </Link>
+      )}
+      {get.isError && <span className="volume-issue__error">Could not get that one.</span>}
+    </div>
+  )
 }
 
 export default function Edition() {
@@ -295,7 +341,13 @@ export default function Edition() {
           ? (
             <>
               {runIssues.map((issue) => (
-                <VolumeIssue key={issue.id} issue={issue} book={bookById.get(issue.bookId ?? -1)} />
+                <VolumeIssue
+                  key={issue.id}
+                  issue={issue}
+                  book={bookById.get(issue.bookId ?? -1)}
+                  editionId={id!}
+                  seriesName={data.edition.seriesName?.trim() || data.edition.cvName || data.edition.name}
+                />
               ))}
               {runExtras.map((extra) => {
                 const b = bookById.get(extra.bookId)

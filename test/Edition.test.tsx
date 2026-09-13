@@ -23,6 +23,7 @@ const CV_EDITION = {
 
 let patched: { url: string; body: Record<string, unknown> }[]
 let deleted: string[]
+let posted: { url: string; body: string }[]
 
 function mockFetch(edition: Record<string, unknown> = EDITION, books: unknown[] = []) {
   patched = []
@@ -380,8 +381,28 @@ const VOLUME_ISSUES = {
   ],
 }
 
-function mockFetchWithIssues(issuesBody: unknown, edition: Record<string, unknown> = EDITION, books: unknown[] = []) {
+// `downloadOk` lets a test make the press itself fail (a 409 from "no unique match",
+// a 502 from an unreadable post, and so on all look the same to the page: res.ok is
+// false and api.ts's json() throws). Defaults to true so existing callers, which only
+// care that the POST was made, are unaffected.
+function mockFetchWithIssues(
+  issuesBody: unknown,
+  edition: Record<string, unknown> = EDITION,
+  books: unknown[] = [],
+  downloadOk = true,
+) {
+  posted = []
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    // Must return here: the download URL itself contains "/issues"
+    // (/api/editions/9/issues/1/download), so falling through would answer a download
+    // POST with the whole issues body instead of the endpoint's real { started, status }
+    // shape.
+    if (init?.method === 'POST') {
+      posted.push({ url: String(url), body: String(init.body ?? '') })
+      return downloadOk
+        ? { ok: true, json: async () => ({ started: true, status: { running: true } }) }
+        : { ok: false, status: 409, json: async () => ({ error: 'no unique match for that issue' }) }
+    }
     if (String(url).includes('/issues')) return { ok: true, json: async () => issuesBody }
     if (init?.method === 'PATCH') return { ok: true, json: async () => ({ edition }) }
     if (String(url).includes('/api/editions?') || String(url).endsWith('/api/editions')) {
@@ -557,4 +578,64 @@ test('the link still shows when Comic Vine gave us no run to draw', async () => 
   mockFetchWithIssues({ volumeId: 167333, issues: [], extras: [], owned: 0, total: 0, unavailable: true, siteUrl: CV_URL })
   renderPage()
   expect(await screen.findByRole('link', { name: /on Comic Vine/i })).toHaveAttribute('href', CV_URL)
+})
+
+/* ── Getting a missing issue ───────────────────────────────────────────────── */
+
+const MATCHED = {
+  ...VOLUME_ISSUES,
+  fetchedAt: '2026-09-04T10:00:00.000Z',
+  issues: [
+    { id: 1, number: '1', owned: false, match: { indexId: 77, title: 'Venom #1 (2025)' } },
+    // Cover date deliberately a year ahead of the scraped release (see YEAR_SLACK in
+    // server/lib/issueMatch.ts) - this is the fixture Finding 1's yearFrom bug hid in.
+    { id: 2, number: '2', owned: false, match: null, coverDate: '2026-01-15' },
+  ],
+  extras: [],
+  owned: 0,
+  total: 2,
+}
+
+test('a missing issue the index can supply offers to get it', async () => {
+  mockFetchWithIssues(MATCHED)
+  renderPage()
+  expect(await screen.findByRole('button', { name: /Get #1/i })).toBeInTheDocument()
+})
+
+// The year floor must be backed off by one from the cover year: Comic Vine's cover
+// dates run ahead of the scraped release year, so a floor set to the cover year exactly
+// (yearFrom=2026) would filter out the very row posted as "(2025)" that Find exists to
+// surface. This is exactly the bug Finding 1 fixed - a stringContaining assertion here
+// let it hide, because the MATCHED fixture used to carry no coverDate at all.
+test('a missing issue with no certain match offers to find it instead, floor backed off by a year', async () => {
+  mockFetchWithIssues(MATCHED)
+  renderPage()
+  const find = await screen.findByRole('link', { name: /Find #2/i })
+  expect(find).toHaveAttribute('href', '/search?q=Amazing+Spider-Man&yearFrom=2025')
+})
+
+test('a missing issue with no certain match offers no get button', async () => {
+  mockFetchWithIssues(MATCHED)
+  renderPage()
+  await screen.findByRole('button', { name: /Get #1/i })
+  expect(screen.queryByRole('button', { name: /Get #2/i })).not.toBeInTheDocument()
+})
+
+test('pressing get asks the server to download that issue into this edition', async () => {
+  mockFetchWithIssues(MATCHED)
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: /Get #1/i }))
+  await waitFor(() => {
+    expect(posted.some((p) => p.url.includes('/api/editions/9/issues/1/download'))).toBe(true)
+  })
+})
+
+// Spec §8: a failed press reports on its own tile, not as a page-wide error - two
+// missing issues can be mid-press independently, and only the one that failed should
+// say so.
+test('a failed press shows the error on that tile', async () => {
+  mockFetchWithIssues(MATCHED, EDITION, [], false)
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: /Get #1/i }))
+  expect(await screen.findByText(/could not get that one/i)).toBeInTheDocument()
 })

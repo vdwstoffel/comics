@@ -92,6 +92,9 @@ export interface ApiVolumeIssue {
   siteUrl?: string
   owned: boolean
   bookId?: number
+  /** The one scraped row that is this issue, when there is exactly one. Present only on
+   *  issues you do not own; null when nothing matched or several things did. */
+  match?: { indexId: number; title: string } | null
 }
 
 export interface ApiEditionExtra {
@@ -379,6 +382,10 @@ export const api = {
 
   getEditionIssues: (id: string | number, refresh = false) =>
     json<ApiEditionIssues>(`/api/editions/${id}/issues${refresh ? '?refresh=1' : ''}`),
+
+  /** Download the one scraped release that is this missing issue, into this edition. */
+  downloadMissingIssue: (editionId: string | number, cvIssueId: number) =>
+    json<{ started: boolean }>(`/api/editions/${editionId}/issues/${cvIssueId}/download`, { method: 'POST' }),
 
   issueVolume: (issueId: number | string) =>
     json<{ volume: { id: number; name: string | null; startYear: number | null; publisher: string | null; editionName: string | null } | null }>(

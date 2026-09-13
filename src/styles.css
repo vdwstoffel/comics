@@ -328,6 +328,33 @@ img {
   gap: 24px;
 }
 
+/* A missing issue and the one action that can fill it. The wrapper takes the grid cell
+   the tile used to, so the run's layout is unchanged. */
+.volume-issue {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.volume-issue__get,
+.volume-issue__find {
+  align-self: start;
+  font-size: 0.8125rem;
+  padding: 2px 8px;
+  color: var(--muted);
+  text-decoration: none;
+}
+
+.volume-issue__find:hover,
+.volume-issue__get:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.volume-issue__error {
+  font-size: 0.75rem;
+  color: var(--accent);
+}
+
 /* ============================================================
    CoverTile card
    ============================================================ */
