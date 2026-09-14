@@ -15,6 +15,9 @@ const CHARACTER_FIELDS =
 // `issues` is the point of the arc page. `description` stays out — the arc page shows the
 // one-line deck and links out for the rest.
 const STORY_ARC_FIELDS = 'id,name,deck,publisher,image,site_detail_url,issues'
+// The arc response names its issues and nothing else. These are the fields that put them
+// in order and give a tile something to say beyond "Issue 1182995".
+const ARC_ISSUE_FIELDS = 'id,issue_number,cover_date,store_date,volume'
 const VOLUME_ISSUE_FIELDS = 'id,issue_number,name,cover_date,site_detail_url'
 // What a candidate row under a search heading shows, and nothing more. The volume's own
 // description is deliberately absent: a search returns ten of these, and the reading of a
@@ -44,6 +47,7 @@ interface CvResult {
   name?: string
   issue_number?: string
   cover_date?: string
+  store_date?: string
   start_year?: string
   count_of_issues?: number
   deck?: string
@@ -135,11 +139,20 @@ export interface CvCharacter {
   /** The full profile, parsed into blocks so no Comic Vine HTML reaches the page. */
   profile: Block[]
 }
-/** An issue as a story arc lists it. Comic Vine gives no number, volume or date here. */
+/**
+ * An issue as the arc page shows it. The arc response itself carries only id, title and
+ * link; everything below the link comes from a second, batched lookup, so any of it may be
+ * absent when that lookup fails.
+ */
 export interface CvArcIssue {
   id: number
   name?: string
   siteUrl?: string
+  number?: string
+  volumeName?: string
+  coverDate?: string
+  /** The day it reached shops. Runs about two months behind the cover date. */
+  storeDate?: string
 }
 export interface CvStoryArc {
   id?: number
@@ -221,6 +234,32 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
   const credit = (list: CvPerson[] | undefined, roleRe: RegExp) => {
     const p = (list || []).find((c) => roleRe.test(c.role || ''))
     return p ? p.name : undefined
+  }
+
+  /**
+   * Number, volume and dates for a set of issue ids. One request per 100 ids, because
+   * Comic Vine caps a list response at 100 however many the filter names — an 86-issue
+   * crossover is one call, not 86 against a one-per-second throttle.
+   *
+   * A chunk that fails is skipped rather than thrown: see getStoryArc.
+   */
+  async function issueDetails(ids: number[]): Promise<Map<number, CvResult>> {
+    const found = new Map<number, CvResult>()
+    for (let i = 0; i < ids.length; i += LIST_PAGE) {
+      try {
+        const data = await get('/issues/', {
+          filter: `id:${ids.slice(i, i + LIST_PAGE).join('|')}`,
+          field_list: ARC_ISSUE_FIELDS,
+          limit: String(LIST_PAGE),
+        })
+        for (const row of (Array.isArray(data.results) ? data.results : []) as CvResult[]) {
+          if (row.id != null) found.set(row.id, row)
+        }
+      } catch {
+        // Whatever the other chunks returned still beats losing the arc.
+      }
+    }
+    return found
   }
 
   return {
@@ -332,11 +371,43 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
       const data = await get(`/story_arc/${TYPE_PREFIX.storyArc}-${id}/`, { field_list: STORY_ARC_FIELDS })
       const r = (data.results || {}) as CvStoryArcResult
 
-      // The issues arrive unordered and carry no number, volume or date to sort on. Ascending
-      // id recovers reading order, because issues enter Comic Vine roughly as published.
-      const issues = (r.issues || [])
-        .flatMap((i) => (i.id == null ? [] : [{ id: i.id, name: i.name, siteUrl: i.site_detail_url }]))
-        .sort((a, b) => a.id - b.id)
+      const issues: CvArcIssue[] = (r.issues || []).flatMap((i) =>
+        i.id == null ? [] : [{ id: i.id, name: i.name ?? undefined, siteUrl: i.site_detail_url }])
+
+      // The issues arrive unordered and carry nothing to sort on, so fetch the dates. This
+      // is an enrichment, not the page: if the lookup fails the arc still renders, in id
+      // order and labelled by the few titles Comic Vine bothered to record.
+      const detail = await issueDetails(issues.map((i) => i.id))
+      for (const issue of issues) {
+        const d = detail.get(issue.id)
+        if (!d) continue
+        issue.number = d.issue_number
+        issue.volumeName = d.volume?.name
+        issue.coverDate = d.cover_date
+        issue.storeDate = d.store_date
+      }
+
+      // Cover dates run about two months ahead of on-sale dates, so an arc where only some
+      // issues carry a store date sorts on cover dates throughout — mixing the two scales
+      // would shuffle the halves into each other.
+      const byStore = issues.length > 0 && issues.every((i) => i.storeDate)
+      const day = (i: CvArcIssue) => (byStore ? i.storeDate : i.coverDate) || ''
+
+      issues.sort((a, b) => {
+        const ad = day(a)
+        const bd = day(b)
+        // An undated issue can't be placed at all; it goes last rather than first.
+        if (!ad !== !bd) return ad ? -1 : 1
+        if (ad !== bd) return ad < bd ? -1 : 1
+        // Same Wednesday: the series the arc is named for reads before its tie-ins.
+        const vol = (a.volumeName || '').localeCompare(b.volumeName || '')
+        if (vol !== 0) return vol
+        const an = Number(a.number)
+        const bn = Number(b.number)
+        if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn
+        // With no detail at all every comparison lands here, which is the old id order.
+        return a.id - b.id
+      })
 
       return {
         id: r.id,

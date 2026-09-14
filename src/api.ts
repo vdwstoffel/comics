@@ -126,8 +126,14 @@ export interface ApiStoryArcSummary {
 
 export interface ApiArcIssue {
   id: number
+  /** The story title, which Comic Vine records for only a fraction of issues. */
   name?: string
   siteUrl?: string
+  /** Series and number — what the tile is labelled with. Absent if the lookup failed. */
+  volumeName?: string
+  number?: string
+  coverDate?: string
+  storeDate?: string
   owned: boolean
   /** Present only when owned — the issue in your library. */
   bookId?: number

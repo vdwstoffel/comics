@@ -27,6 +27,21 @@ const ARC = {
   ],
 }
 
+// Comic Vine titles only a fraction of issues — nine of the twelve in Queen in Black have
+// none — so the series and number are what a tile has to say for itself.
+const QIB = {
+  id: 61353,
+  name: '"Avengers" Queen in Black',
+  publisher: 'Marvel',
+  siteUrl: 'https://cv/qib',
+  issues: [
+    { id: 1182995, siteUrl: 'https://cv/qib1', owned: true, bookId: 63, volumeName: 'Queen in Black', number: '1' },
+    { id: 1182997, name: "The Queen's Gambit", siteUrl: 'https://cv/hela', owned: true, bookId: 68, volumeName: 'Queen in Black: Hela', number: '1' },
+    { id: 1186160, siteUrl: 'https://cv/venom260', owned: false, volumeName: 'Venom', number: '260' },
+    { id: 1192026, siteUrl: 'https://cv/bc14', owned: false },
+  ],
+}
+
 function stub(routes: Record<string, unknown>) {
   globalThis.fetch = vi.fn(async (url: string) => {
     for (const [needle, body] of Object.entries(routes)) {
@@ -139,6 +154,45 @@ test('the issues stay in reading order', async () => {
     expect.stringContaining('Part Two'),
     expect.stringContaining('Part Three'),
   ])
+})
+
+function stubQib() {
+  stub({
+    'Queen%20in%20Black': { arc: QIB },
+    '/api/arcs': { arcs: ARCS },
+    '/api/publishers': { publishers: [] },
+    '/api/editions': { editions: [] },
+    '/api/read-states': { readStates: [] },
+  })
+}
+
+test('an issue is labelled with its series and number', async () => {
+  stubQib()
+  renderAt('/arcs/Queen%20in%20Black')
+  const link = await screen.findByRole('link', { name: /Queen in Black #1/ })
+  expect(link).toHaveAttribute('href', '/book/63')
+})
+
+// The old tile read "Issue 1186160", which names nothing and sorts against nothing.
+test('an issue Comic Vine never titled still says what it is', async () => {
+  stubQib()
+  renderAt('/arcs/Queen%20in%20Black')
+  expect(await screen.findByRole('link', { name: /Venom #260/ })).toBeInTheDocument()
+  expect(screen.queryByText(/Issue 1186160/)).toBeNull()
+})
+
+test('an issue that has a story title keeps it under the series', async () => {
+  stubQib()
+  renderAt('/arcs/Queen%20in%20Black')
+  const link = await screen.findByRole('link', { name: /Queen in Black: Hela #1/ })
+  expect(within(link).getByText("The Queen's Gambit")).toBeInTheDocument()
+})
+
+// The detail lookup can fail, and then a tile has nothing but its id to go on.
+test('an issue with no series falls back to its id', async () => {
+  stubQib()
+  renderAt('/arcs/Queen%20in%20Black')
+  expect(await screen.findByRole('link', { name: /Issue 1192026/ })).toBeInTheDocument()
 })
 
 test('the arc page counts what you have against the whole arc', async () => {

@@ -461,20 +461,36 @@ const ARC = {
   publisher: { name: 'BOOM! Studios' },
   image: { medium_url: 'arc.jpg', original_url: 'arc-big.jpg' },
   site_detail_url: 'https://comicvine.gamespot.com/redemption/4045-56676/',
-  // As Comic Vine returns them: out of reading order.
+  // As Comic Vine returns them: out of reading order, and a tie-in carries no title.
   issues: [
     { id: 308492, name: 'Redemption, Part Two', site_detail_url: 'https://cv/part-two' },
     { id: 306000, name: 'Redemption, Part One', site_detail_url: 'https://cv/part-one' },
-    { id: 312721, name: 'Redemption, Part Four', site_detail_url: 'https://cv/part-four' },
+    { id: 312721, name: null, site_detail_url: 'https://cv/tie-in-7' },
     { id: 309601, name: 'Redemption, Part Three', site_detail_url: 'https://cv/part-three' },
+    { id: 305000, name: null, site_detail_url: 'https://cv/tie-in-8' },
   ],
 }
 
+// What /issues/ gives back for those five. The ids deliberately disagree with the dates:
+// Sidekicks #7 has the highest id and shipped first, #8 the lowest and shipped in week three.
+const ARC_ISSUE_DETAILS = {
+  results: [
+    { id: 306000, issue_number: '1', name: 'Redemption, Part One', cover_date: '2015-06-01', store_date: '2015-04-01', volume: { id: 1, name: 'Redemption' } },
+    { id: 308492, issue_number: '2', name: 'Redemption, Part Two', cover_date: '2015-07-01', store_date: '2015-05-06', volume: { id: 1, name: 'Redemption' } },
+    { id: 309601, issue_number: '3', name: 'Redemption, Part Three', cover_date: '2015-08-01', store_date: '2015-06-03', volume: { id: 1, name: 'Redemption' } },
+    { id: 312721, issue_number: '7', name: null, cover_date: '2015-05-01', store_date: '2015-03-04', volume: { id: 2, name: 'Sidekicks' } },
+    { id: 305000, issue_number: '8', name: null, cover_date: '2015-07-01', store_date: '2015-05-06', volume: { id: 2, name: 'Sidekicks' } },
+  ],
+  number_of_total_results: 5,
+}
+
+const arcRoutes: Array<[string, unknown]> = [
+  ['/story_arc/', { results: ARC }],
+  ['/issues/', ARC_ISSUE_DETAILS],
+]
+
 test('getStoryArc maps the fields the arc page renders', async () => {
-  const cv = createComicVine({
-    apiKey: 'k', now: () => 0,
-    fetchImpl: mockFetch([['/story_arc/', { results: ARC }]]),
-  })
+  const cv = createComicVine({ apiKey: 'k', now: () => 0, fetchImpl: mockFetch(arcRoutes) })
   const arc = await cv.getStoryArc(56676)
   expect(arc).toMatchObject({
     id: 56676,
@@ -486,26 +502,112 @@ test('getStoryArc maps the fields the arc page renders', async () => {
   })
 })
 
-// The issues carry no number, volume or date — id order is the only signal for reading
-// order, and it holds because issues enter Comic Vine roughly as they are published.
-test('getStoryArc puts the issues back into reading order', async () => {
-  const cv = createComicVine({
-    apiKey: 'k', now: () => 0,
-    fetchImpl: mockFetch([['/story_arc/', { results: ARC }]]),
-  })
+// The arc response carries no date, number or volume, so the order has to come from a
+// second lookup. Ascending id used to stand in for it and is wrong whenever a tie-in was
+// entered into Comic Vine out of step with its release.
+test('getStoryArc orders the issues by the day they went on sale', async () => {
+  const cv = createComicVine({ apiKey: 'k', now: () => 0, fetchImpl: mockFetch(arcRoutes) })
   const arc = await cv.getStoryArc(56676)
-  expect(arc.issues.map((i) => i.name)).toEqual([
-    'Redemption, Part One', 'Redemption, Part Two', 'Redemption, Part Three', 'Redemption, Part Four',
-  ])
+  expect(arc.issues.map((i) => i.id)).toEqual([312721, 306000, 308492, 305000, 309601])
 })
 
-test('getStoryArc keeps each issue id and link', async () => {
+// Two books ship on the same Wednesday; the one whose series the arc is named for reads first.
+test('getStoryArc puts the main series ahead of a tie-in that shipped the same day', async () => {
+  const cv = createComicVine({ apiKey: 'k', now: () => 0, fetchImpl: mockFetch(arcRoutes) })
+  const arc = await cv.getStoryArc(56676)
+  const sameDay = arc.issues.filter((i) => i.storeDate === '2015-05-06').map((i) => i.id)
+  expect(sameDay).toEqual([308492, 305000])
+})
+
+// A tile reading "Issue 1182995" tells you nothing. Comic Vine titles only a fraction of
+// issues, so the series and number are what the arc page actually has to label with.
+test('getStoryArc carries the series and number the arc response leaves out', async () => {
+  const cv = createComicVine({ apiKey: 'k', now: () => 0, fetchImpl: mockFetch(arcRoutes) })
+  const arc = await cv.getStoryArc(56676)
+  const tieIn = arc.issues.find((i) => i.id === 312721)
+  expect(tieIn).toMatchObject({ volumeName: 'Sidekicks', number: '7', storeDate: '2015-03-04' })
+})
+
+// Cover dates run about two months ahead of on-sale dates, so an arc where only some books
+// carry a store date must sort on cover dates throughout rather than interleave the two.
+test('getStoryArc sorts on cover dates when an issue has no on-sale date', async () => {
+  const partial = {
+    results: ARC_ISSUE_DETAILS.results.map((r) =>
+      r.id === 312721 ? { ...r, store_date: null } : r),
+    number_of_total_results: 5,
+  }
   const cv = createComicVine({
     apiKey: 'k', now: () => 0,
-    fetchImpl: mockFetch([['/story_arc/', { results: ARC }]]),
+    fetchImpl: mockFetch([['/story_arc/', { results: ARC }], ['/issues/', partial]]),
   })
-  const [first] = (await cv.getStoryArc(56676)).issues
-  expect(first).toEqual({ id: 306000, name: 'Redemption, Part One', siteUrl: 'https://cv/part-one' })
+  const arc = await cv.getStoryArc(56676)
+  // By cover date: Sidekicks #7 (05-01), Redemption #1 (06-01), then the 07-01 pair, then #3.
+  expect(arc.issues.map((i) => i.id)).toEqual([312721, 306000, 308492, 305000, 309601])
+})
+
+test('getStoryArc keeps each issue id, title and link', async () => {
+  const cv = createComicVine({ apiKey: 'k', now: () => 0, fetchImpl: mockFetch(arcRoutes) })
+  const arc = await cv.getStoryArc(56676)
+  expect(arc.issues.find((i) => i.id === 306000)).toMatchObject({
+    id: 306000, name: 'Redemption, Part One', siteUrl: 'https://cv/part-one',
+  })
+})
+
+// One request for the whole arc, not one per issue: an 86-issue crossover would otherwise
+// take 86 seconds against Comic Vine's one-call-per-second throttle.
+test('getStoryArc looks up every issue detail in one batched request', async () => {
+  const urls: string[] = []
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async (url: string) => {
+      urls.push(url)
+      for (const [needle, body] of arcRoutes) if (url.includes(needle)) return { ok: true, json: async () => body }
+      throw new Error(`unexpected url ${url}`)
+    },
+  })
+  await cv.getStoryArc(56676)
+  const issueCalls = urls.filter((u) => u.includes('/issues/'))
+  expect(issueCalls).toHaveLength(1)
+  expect(new URL(issueCalls[0]).searchParams.get('filter'))
+    .toBe('id:308492|306000|312721|309601|305000')
+})
+
+// Comic Vine caps a list response at 100 however many ids the filter names.
+test('getStoryArc splits an arc of more than a hundred issues across requests', async () => {
+  const many = Array.from({ length: 150 }, (_, n) => ({ id: 1000 + n, name: null, site_detail_url: `https://cv/${n}` }))
+  const urls: string[] = []
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async (url: string) => {
+      urls.push(url)
+      if (url.includes('/story_arc/')) return { ok: true, json: async () => ({ results: { id: 9, name: 'Big', issues: many } }) }
+      const ids = new URL(url).searchParams.get('filter')!.replace('id:', '').split('|')
+      return { ok: true, json: async () => ({
+        results: ids.map((id) => ({ id: Number(id), issue_number: String(Number(id) - 999), store_date: '2015-01-07', volume: { id: 1, name: 'Big' } })),
+        number_of_total_results: ids.length,
+      }) }
+    },
+  })
+  const arc = await cv.getStoryArc(9)
+  const issueCalls = urls.filter((u) => u.includes('/issues/'))
+  expect(issueCalls).toHaveLength(2)
+  expect(new URL(issueCalls[0]).searchParams.get('filter')!.split('|')).toHaveLength(100)
+  expect(new URL(issueCalls[1]).searchParams.get('filter')!.split('|')).toHaveLength(50)
+  expect(arc.issues).toHaveLength(150)
+})
+
+// The detail lookup is an enrichment. Losing it costs the labels and the exact order, but
+// an arc page that renders in id order beats an arc page that errors.
+test('getStoryArc still returns the arc in id order when the issue lookup fails', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async (url: string) => {
+      if (url.includes('/story_arc/')) return { ok: true, json: async () => ({ results: ARC }) }
+      return { ok: false, status: 500, json: async () => ({}) }
+    },
+  })
+  const arc = await cv.getStoryArc(56676)
+  expect(arc.issues.map((i) => i.id)).toEqual([305000, 306000, 308492, 309601, 312721])
 })
 
 test('getStoryArc addresses the arc by its 4045 prefix and skips the description', async () => {
@@ -514,7 +616,8 @@ test('getStoryArc addresses the arc by its 4045 prefix and skips the description
     apiKey: 'k', now: () => 0,
     fetchImpl: async (url: string) => {
       urls.push(url)
-      return { ok: true, json: async () => ({ results: ARC }) }
+      for (const [needle, body] of arcRoutes) if (url.includes(needle)) return { ok: true, json: async () => body }
+      throw new Error(`unexpected url ${url}`)
     },
   })
   await cv.getStoryArc(56676)
@@ -522,15 +625,22 @@ test('getStoryArc addresses the arc by its 4045 prefix and skips the description
   expect(new URL(urls[0]).searchParams.get('field_list')).not.toContain('description')
 })
 
+// No issues means nothing to look up, so it must not fire an /issues/ call with an empty filter.
 test('an arc with no issues listed is still an arc', async () => {
+  const urls: string[] = []
   const cv = createComicVine({
     apiKey: 'k', now: () => 0,
-    fetchImpl: mockFetch([['/story_arc/', { results: { id: 1, name: 'Lonely Arc' } }]]),
+    fetchImpl: async (url: string) => {
+      urls.push(url)
+      return { ok: true, json: async () => ({ results: { id: 1, name: 'Lonely Arc' } }) }
+    },
   })
   const arc = await cv.getStoryArc(1)
   expect(arc.name).toBe('Lonely Arc')
   expect(arc.issues).toEqual([])
+  expect(urls.filter((u) => u.includes('/issues/'))).toHaveLength(0)
 })
+
 
 test('applying an issue stores the Comic Vine id alongside each story arc tag', async () => {
   const dir = mkdtempSync(join(tmpdir(), 'cv-arcid-'))

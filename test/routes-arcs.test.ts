@@ -22,6 +22,16 @@ const ARC = {
   ],
 }
 
+// What /issues/ returns for the three above, so the route runs the real ordering path.
+const ARC_ISSUE_DETAILS = {
+  results: [
+    { id: 1156915, issue_number: '1', cover_date: '2015-03-01', store_date: '2015-01-07', volume: { id: 7, name: 'Death Spiral' } },
+    { id: 1158149, issue_number: '2', cover_date: '2015-04-01', store_date: '2015-02-04', volume: { id: 7, name: 'Death Spiral' } },
+    { id: 9999999, issue_number: '3', cover_date: '2015-05-01', store_date: '2015-03-04', volume: { id: 7, name: 'Death Spiral' } },
+  ],
+  number_of_total_results: 3,
+}
+
 const ISSUE = { name: 'Part One', issue_number: '1', description: null, story_arc_credits: [{ id: 56676, name: 'Death Spiral' }] }
 
 function recordingFetch(routes: Array<[string, unknown]>) {
@@ -39,7 +49,7 @@ async function setup(routes: Array<[string, unknown]> = [], apiKey = 'test-key')
   const db = openDb(':memory:')
   app.decorate('db', db)
   app.decorate('config', { comicVineApiKey: apiKey } as Config)
-  const { urls, impl } = recordingFetch(routes)
+  const { urls, impl } = recordingFetch([...routes, ['/issues/', ARC_ISSUE_DETAILS]])
   const origFetch = globalThis.fetch
   globalThis.fetch = impl as unknown as typeof fetch
   await app.register(arcRoutes)
@@ -133,7 +143,9 @@ test('an arc with no id backfills it from an issue that carries the tag', async 
   } finally { await t.cleanup() }
 })
 
-test('a second visit to a backfilled arc costs one request, not two', async () => {
+// The backfill writes the arc id onto the tag, so the second visit must not re-read an
+// issue to rediscover it. The arc itself and its issue dates are fetched either way.
+test('a second visit to a backfilled arc does not re-read an issue to find the id', async () => {
   const t = await setup([['/issue/', { results: ISSUE }], ['/story_arc/', { results: ARC }]])
   const a = t.mk('Vol 7/1.cbz', 1156915)
   replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral' }])
@@ -141,7 +153,21 @@ test('a second visit to a backfilled arc costs one request, not two', async () =
     await t.app.inject({ url: '/api/arcs/Death%20Spiral' })
     const afterFirst = t.urls.length
     await t.app.inject({ url: '/api/arcs/Death%20Spiral' })
-    expect(t.urls.length - afterFirst).toBe(1)
+    const second = t.urls.slice(afterFirst)
+    expect(second.some((u) => u.includes('/issue/4000-'))).toBe(false)
+    expect(second.filter((u) => u.includes('/story_arc/'))).toHaveLength(1)
+  } finally { await t.cleanup() }
+})
+
+// The arc page labels a tile with its series and number, because Comic Vine titles only a
+// fraction of issues. Those fields have to survive the route, not just the client.
+test('an arc issue carries its series and number through to the page', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    const issues = (await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).json().arc.issues
+    expect(issues[0]).toMatchObject({ id: 1156915, volumeName: 'Death Spiral', number: '1', storeDate: '2015-01-07' })
   } finally { await t.cleanup() }
 })
 
