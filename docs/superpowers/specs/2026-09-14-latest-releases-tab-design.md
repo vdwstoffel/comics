@@ -223,11 +223,47 @@ issues that are not owned, as the editions route already does.
 
 Returns 400 when no Comic Vine API key is configured, matching `/api/arcs/:name`.
 
-### 4.5 `POST /api/downloads` (unchanged)
+### 4.5 `POST /api/releases/issues/:cvIssueId/download` (new)
 
-The page posts `{ url, edition: volumeName, issueId: cvIssueId }`. No route
-change is needed: `edition` is already optional, and `storeComic` resolves an
-edition *name* to an existing edition or derives a folder for a new one.
+**Correction to an earlier draft of this spec.** It claimed the page could post
+`{ url, edition, issueId }` straight to `POST /api/downloads` with no route
+change. It cannot: the client never holds the `url`. Deriving one is four steps
+of server-side work — re-match the issue, read the index row, fetch the post
+page, parse the download link — all of which
+`POST /api/editions/:id/issues/:cvIssueId/download` already does before it calls
+`downloader.start`. A releases page needs the same four steps, so it needs its
+own route.
+
+The route finds the issue in `release_issue` by id at any age (a press only ever
+follows a page view that filled that cache, and a published issue's number and
+cover date do not change), re-derives the match server-side rather than trusting
+anything the client sends, and starts the downloader with the volume name as the
+edition.
+
+Status codes match the editions route exactly: 404 for an issue not in any
+cached release day, 409 when the match is no longer unique or a download is
+already running, 502 when the post cannot be read, 404 when it carries no link,
+202 on success.
+
+### 4.5.1 `server/services/issueDownload.ts` (new, extracted)
+
+Those four steps are now needed in two places. Extract them:
+
+```ts
+export type IssueDownloadResult =
+  | { ok: true; status: DownloadStatus }
+  | { ok: false; code: 404 | 409 | 502; error: string }
+
+export async function startIssueDownload(
+  app: App,
+  { volumeName, editionName, issue }:
+    { volumeName: string | null; editionName: string; issue: CvVolumeIssue },
+): Promise<IssueDownloadResult>
+```
+
+The editions route changes to call it, so its existing tests — including the
+invariant test that asserts no `/search/` request is ever made — carry over
+unchanged and are the proof the extraction altered nothing.
 
 **Consequence, accepted deliberately.** Until now a one-press download only ever
 filled a gap in an edition the library already had. From this page it can create
@@ -364,6 +400,18 @@ previous Wednesday when the latest holds nothing — including when the latest i
 one fallback; `?refresh=1` refetches; serves a cached day with `stale: true` when
 Comic Vine fails; reports `unavailable` when it fails with nothing cached; 400
 with no API key.
+
+**Service — `startIssueDownload`.** Happy path starts the downloader with the
+given edition name and issue id; 409 when no unique match; 409 when a download
+is already running; 502 when the post cannot be fetched; 404 when the post
+carries no link. The editions route's existing tests pass unchanged, including
+the invariant that no `/search/` request is ever made — that is the proof the
+extraction changed nothing.
+
+**Route — releases download.** Starts a download for an issue held in a cached
+release day, with the edition name taken from the volume; 404 for an issue in no
+cached day. One test asserts the edition name sent is Comic Vine's volume name,
+because that is what makes a newly created edition predictable (§4.5).
 
 **Component — `MissingIssueTile`.** `↓ Get` renders with a match, `Find ↗`
 without; a failed press reports on its own tile. Edition's existing tests pass
