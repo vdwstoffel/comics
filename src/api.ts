@@ -152,6 +152,35 @@ export interface ApiStoryArc {
   issues: ApiArcIssue[]
 }
 
+export interface ApiReleaseIssue {
+  id: number
+  number?: string
+  name?: string
+  /** Comic Vine's publisher for the volume — always one of the two the tab shows. */
+  publisher: string
+  volumeId: number
+  volumeName?: string
+  /** Runs ahead of the on-sale date by about two months — the Find link's year seed. */
+  coverDate?: string
+  /** The day the issue went on sale, which is the day being shown. */
+  storeDate?: string
+  coverUrl?: string
+  siteUrl?: string
+  owned: boolean
+  /** Present only when owned — the issue in your library. */
+  bookId?: number
+  /** Only for an issue you do not own; null when no single scraped row can be it. */
+  match?: { indexId: number; title: string } | null
+}
+
+export interface ApiReleases {
+  day: string
+  fetchedAt: string | null
+  stale?: boolean
+  unavailable?: boolean
+  publishers: Array<{ name: string; issues: ApiReleaseIssue[] }>
+}
+
 export interface ApiProgress {
   bookId: number
   lastPage: number
@@ -351,6 +380,11 @@ export const api = {
     }),
   getArcs: () => json<ArcsListResponse>('/api/arcs'),
   getArc: (name: string) => json<ArcResponse>(`/api/arcs/${encodeURIComponent(name)}`),
+
+  getReleases: () => json<ApiReleases>('/api/releases'),
+
+  downloadRelease: (cvIssueId: number) =>
+    json<{ started: boolean }>(`/api/releases/issues/${cvIssueId}/download`, { method: 'POST' }),
   getCharacter: (bookId: string | number, name: string) =>
     json<CharacterResponse>(`/api/books/${bookId}/character?name=${encodeURIComponent(name)}`),
   cvSearch: (q: string, type: string) =>

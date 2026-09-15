@@ -1,4 +1,4 @@
-import { Routes, Route, Link } from 'react-router-dom'
+import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import Library from './pages/Library'
 import Series from './pages/Series'
@@ -9,13 +9,45 @@ import Upload from './pages/Upload'
 import SearchComics from './pages/SearchComics'
 import Arcs from './pages/Arcs'
 import Arc from './pages/Arc'
+import Releases from './pages/Releases'
 import DownloadBar from './components/DownloadBar'
+
+/**
+ * The two things you browse: what you have, and what just came out. They are peers rather
+ * than a brand and a link, because they are the same kind of thing.
+ *
+ * A page that is neither - a book, an arc, the search - marks neither, rather than leaving
+ * the library lit while you are somewhere else.
+ */
+function Tabs() {
+  const { pathname } = useLocation()
+  const tabs = [
+    { to: '/', label: 'Library', active: pathname === '/' },
+    { to: '/releases', label: 'Latest releases', active: pathname.startsWith('/releases') },
+  ]
+  return (
+    <nav className="app-header__tabs">
+      {tabs.map(({ to, label, active }) => (
+        <Link
+          key={to}
+          to={to}
+          className="app-header__tab"
+          // Styling hangs off this too, so the mark a screen reader hears and the mark you
+          // see can never disagree.
+          aria-current={active ? 'page' : undefined}
+        >
+          {label}
+        </Link>
+      ))}
+    </nav>
+  )
+}
 
 function Header() {
   return (
     <header className="app-header">
       <div className="app-header__inner">
-        <Link to="/" className="app-header__brand">Comics</Link>
+        <Tabs />
         <nav className="app-header__nav">
           <Link to="/search" className="app-header__link">Search</Link>
           <Link to="/upload" className="app-header__upload">+ Upload</Link>
@@ -62,6 +94,7 @@ export default function App() {
       <Route path="/read/:id" element={<ReaderLayout><Reader /></ReaderLayout>} />
       <Route path="/upload" element={<Layout><Upload /></Layout>} />
       <Route path="/search" element={<Layout><SearchComics /></Layout>} />
+      <Route path="/releases" element={<Layout><Releases /></Layout>} />
     </Routes>
   )
 }

@@ -188,6 +188,19 @@ export function setEditionFolder(db: Db, id: number, folder: string): void {
   db.prepare('UPDATE edition SET folder = ? WHERE id = ?').run(folder, id)
 }
 
+/**
+ * The edition that already holds a Comic Vine volume's run, if you have one.
+ * `comicvine_id` IS the volume id, so this answers "do I already own some of this
+ * series?" by identity rather than by name - the only reliable way to tell your
+ * "Wolverine (2024)" from the 2026 relaunch that Comic Vine also just calls "Wolverine".
+ * The column carries no unique constraint, so the lowest id wins for a stable answer.
+ */
+export function getEditionByComicvineId(db: Db, comicvineId: number): Edition | undefined {
+  return toEdition(db
+    .prepare('SELECT * FROM edition WHERE comicvine_id = ? ORDER BY id LIMIT 1')
+    .get(comicvineId) as EditionRow | undefined)
+}
+
 export function getEditionByName(db: Db, name: string): Edition | undefined {
   return toEdition(db.prepare('SELECT * FROM edition WHERE name = ?').get(name) as EditionRow | undefined)
 }

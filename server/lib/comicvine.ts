@@ -27,6 +27,13 @@ const VOLUME_SEARCH_FIELDS = 'id,name,start_year,publisher,count_of_issues,deck,
 const VOLUME_SEARCH_LIMIT = 10
 // Comic Vine caps a list response at 100 regardless of what `limit` asks for.
 const LIST_PAGE = 100
+// What a release tile renders. `image` is here because covers are the point of the
+// Latest tab, and they come back on the same request that lists the day - see the
+// exception recorded in src/pages/Releases.tsx.
+const RELEASE_FIELDS = 'id,issue_number,name,cover_date,store_date,image,site_detail_url,volume'
+// Publisher is not on an issue record and /issues/ has no publisher filter, so the
+// Marvel/DC split costs one batched volume lookup per day.
+const VOLUME_PUBLISHER_FIELDS = 'id,publisher'
 
 interface CvImage {
   thumb_url?: string
@@ -86,6 +93,9 @@ interface CvStoryArcResult {
 interface CvResponse {
   results?: CvResult | CvResult[]
   number_of_total_results?: number
+  /** Comic Vine's own outcome code. 1 is "OK"; everything else is a failure - see get(). */
+  status_code?: number
+  error?: string
 }
 
 export interface CvSearchResult {
@@ -171,6 +181,19 @@ export interface CvVolumeIssue {
   siteUrl?: string
 }
 
+/** An issue as the Latest tab lists it: one day's on-sale comics. */
+export interface CvReleaseIssue {
+  id: number
+  number?: string
+  name?: string
+  coverDate?: string
+  storeDate?: string
+  volumeId: number
+  volumeName?: string
+  coverUrl?: string
+  siteUrl?: string
+}
+
 /**
  * A volume as a search offers it: enough to tell which of six Thors you meant, plus the
  * link that answers everything else. Comic Vine ranks these by relevance and we keep that
@@ -210,6 +233,8 @@ export interface ComicVineClient {
   listVolumeIssues(volumeId: number | string): Promise<CvVolumeIssue[]>
   getCharacter(id: number | string): Promise<CvCharacter>
   getStoryArc(id: number | string): Promise<CvStoryArc>
+  listIssuesOnSale(day: string): Promise<CvReleaseIssue[]>
+  getVolumePublishers(ids: number[]): Promise<Map<number, string | undefined>>
 }
 
 export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.now() }: ComicVineOptions): ComicVineClient {
@@ -226,7 +251,17 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
     const qs = new URLSearchParams({ api_key: apiKey, format: 'json', ...params })
     const res = await fetchImpl(`${BASE}${path}?${qs}`, { headers: { 'User-Agent': UA } })
     if (!res.ok) throw new Error(`Comic Vine HTTP ${res.status}`)
-    return (await res.json()) as CvResponse
+    const data = (await res.json()) as CvResponse
+    // Comic Vine answers a rate limit, a bad key or a malformed filter with HTTP 200 and
+    // the failure in the body; `status_code` 1 is its only success. Checked here so every
+    // caller is covered at once - listIssuesOnSale in particular would otherwise read the
+    // absent `results` as a genuinely quiet Wednesday, return [], and have that cached as
+    // a real empty day. A response with no status_code at all is taken as success: the
+    // field is what signals failure, and absence is not a failure signal.
+    if (data.status_code != null && data.status_code !== 1) {
+      throw new Error(`Comic Vine error ${data.status_code}${data.error ? `: ${data.error}` : ''}`)
+    }
+    return data
   }
 
   const year = (d: string | undefined) => (d ? String(d).slice(0, 4) : undefined)
@@ -237,26 +272,32 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
   }
 
   /**
-   * Number, volume and dates for a set of issue ids. One request per 100 ids, because
-   * Comic Vine caps a list response at 100 however many the filter names — an 86-issue
+   * Fetch a set of records by id, keyed by id. One request per 100 ids, because Comic
+   * Vine caps a list response at 100 however many the filter names - an 86-issue
    * crossover is one call, not 86 against a one-per-second throttle.
    *
-   * A chunk that fails is skipped rather than thrown: see getStoryArc.
+   * A chunk that fails is skipped rather than thrown: whatever the other chunks returned
+   * beats losing the lot. What that costs differs by caller, and callers must know which
+   * they are. For getStoryArc it is an enrichment - the arc still renders, just in id
+   * order. For getVolumePublishers it is not: a volume whose publisher stayed unknown is
+   * dropped from the day, so a swallowed chunk silently deletes real issues from the
+   * page. routes/releases.ts therefore compares the returned map's size against the ids
+   * it asked for, and refuses to cache - and flags stale - when they disagree.
    */
-  async function issueDetails(ids: number[]): Promise<Map<number, CvResult>> {
+  async function byIds(path: string, fieldList: string, ids: number[]): Promise<Map<number, CvResult>> {
     const found = new Map<number, CvResult>()
     for (let i = 0; i < ids.length; i += LIST_PAGE) {
       try {
-        const data = await get('/issues/', {
+        const data = await get(path, {
           filter: `id:${ids.slice(i, i + LIST_PAGE).join('|')}`,
-          field_list: ARC_ISSUE_FIELDS,
+          field_list: fieldList,
           limit: String(LIST_PAGE),
         })
         for (const row of (Array.isArray(data.results) ? data.results : []) as CvResult[]) {
           if (row.id != null) found.set(row.id, row)
         }
       } catch {
-        // Whatever the other chunks returned still beats losing the arc.
+        // Whatever the other chunks returned still beats losing everything.
       }
     }
     return found
@@ -377,7 +418,7 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
       // The issues arrive unordered and carry nothing to sort on, so fetch the dates. This
       // is an enrichment, not the page: if the lookup fails the arc still renders, in id
       // order and labelled by the few titles Comic Vine bothered to record.
-      const detail = await issueDetails(issues.map((i) => i.id))
+      const detail = await byIds('/issues/', ARC_ISSUE_FIELDS, issues.map((i) => i.id))
       for (const issue of issues) {
         const d = detail.get(issue.id)
         if (!d) continue
@@ -479,6 +520,52 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         if (Number.isFinite(an) !== Number.isFinite(bn)) return Number.isFinite(an) ? -1 : 1
         return (a.number ?? '').localeCompare(b.number ?? '')
       })
+    },
+    async listIssuesOnSale(day) {
+      const issues: CvReleaseIssue[] = []
+      let offset = 0
+      let total = Infinity
+
+      // Paged one day at a time rather than over a date range: rows sharing a store_date
+      // have no deterministic tiebreak, so a range paged by offset returns some rows
+      // twice and skips others (measured: 26 of 300). One day has an exact total.
+      while (offset < total) {
+        const data = await get('/issues/', {
+          filter: `store_date:${day}|${day}`,
+          field_list: RELEASE_FIELDS,
+          limit: String(LIST_PAGE),
+          offset: String(offset),
+        })
+        const page = (Array.isArray(data.results) ? data.results : []) as CvResult[]
+        total = data.number_of_total_results ?? page.length
+        for (const r of page) {
+          if (r.id == null || r.volume?.id == null) continue
+          issues.push({
+            id: r.id,
+            ...(r.issue_number == null ? {} : { number: r.issue_number }),
+            ...(r.name == null ? {} : { name: r.name }),
+            ...(r.cover_date == null ? {} : { coverDate: r.cover_date }),
+            ...(r.store_date == null ? {} : { storeDate: r.store_date }),
+            volumeId: r.volume.id,
+            ...(r.volume.name == null ? {} : { volumeName: r.volume.name }),
+            // small_url reads as a cover in a grid; thumb_url is a 104x160 avatar.
+            ...((r.image?.small_url || r.image?.thumb_url) == null
+              ? {} : { coverUrl: r.image?.small_url || r.image?.thumb_url }),
+            ...(r.site_detail_url == null ? {} : { siteUrl: r.site_detail_url }),
+          })
+        }
+        // A page that comes back empty would otherwise spin forever against a wrong total.
+        if (page.length === 0) break
+        offset += page.length
+      }
+
+      return issues
+    },
+    async getVolumePublishers(ids) {
+      const rows = await byIds('/volumes/', VOLUME_PUBLISHER_FIELDS, ids)
+      // Every id that came back is in the map, publisher or not: "asked and had none"
+      // must stay distinguishable from "never asked".
+      return new Map([...rows].map(([id, r]) => [id, r.publisher?.name]))
     },
   }
 }

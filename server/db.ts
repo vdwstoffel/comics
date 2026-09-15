@@ -128,6 +128,33 @@ CREATE TRIGGER IF NOT EXISTS comic_index_au AFTER UPDATE ON comic_index BEGIN
   INSERT INTO comic_index_fts(comic_index_fts, rowid, title) VALUES('delete', old.id, old.title);
   INSERT INTO comic_index_fts(rowid, title) VALUES (new.id, new.title);
 END;
+
+-- The release days we have asked Comic Vine about. Separate from the issues for the
+-- reason volume_cache is separate: a Wednesday we hold no issues for still has to record
+-- that we asked, or "no rows" and "never asked" are the same thing and it refetches
+-- forever. Filtering to two publishers makes an empty day a normal outcome rather than a
+-- rare one, so this matters more here, not less.
+CREATE TABLE IF NOT EXISTS release_day (
+  day        TEXT PRIMARY KEY,
+  fetched_at TEXT NOT NULL
+);
+
+-- Marvel and DC issues only. The publisher is carried on the row rather than joined from
+-- the volume, so reading a day is one query: there is no separate publisher table,
+-- because with a day cached forever it would save about one request a week.
+CREATE TABLE IF NOT EXISTS release_issue (
+  day         TEXT NOT NULL,
+  cv_issue_id INTEGER NOT NULL,
+  publisher   TEXT NOT NULL,
+  volume_id   INTEGER NOT NULL,
+  volume_name TEXT,
+  number      TEXT,
+  name        TEXT,
+  cover_date  TEXT,
+  cover_url   TEXT,
+  site_url    TEXT,
+  PRIMARY KEY (day, cv_issue_id)
+);
 `
 
 function columnsOf(db: Db, table: string): string[] {

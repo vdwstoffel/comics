@@ -852,3 +852,159 @@ test('getVolume carries the link to the volume on Comic Vine', async () => {
 
   expect(volume.siteUrl).toBe('https://comicvine.gamespot.com/venom/4050-167333/')
 })
+
+// --- releases ----------------------------------------------------------------
+
+function onSaleRow(id: number, volumeId: number, volumeName: string, number: string) {
+  return {
+    id, issue_number: number, name: null,
+    cover_date: '2026-11-01', store_date: '2026-09-09',
+    image: { small_url: `cover-${id}.jpg`, thumb_url: `thumb-${id}.jpg` },
+    site_detail_url: `https://cv/${id}`,
+    volume: { id: volumeId, name: volumeName },
+  }
+}
+
+test('listIssuesOnSale maps the fields a release tile renders', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/issues/', {
+      results: [onSaleRow(1192026, 176900, 'Black Cat', '14')],
+      number_of_total_results: 1,
+    }]]),
+  })
+  const [issue] = await cv.listIssuesOnSale('2026-09-09')
+  expect(issue).toEqual({
+    id: 1192026, number: '14', coverDate: '2026-11-01', storeDate: '2026-09-09',
+    volumeId: 176900, volumeName: 'Black Cat',
+    coverUrl: 'cover-1192026.jpg', siteUrl: 'https://cv/1192026',
+  })
+})
+
+// The day is both ends of the filter: Comic Vine's store_date filter is a range.
+test('listIssuesOnSale asks for one day and for the cover art', async () => {
+  const urls: string[] = []
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async (url: string) => {
+      urls.push(url)
+      return { ok: true, json: async () => ({ results: [], number_of_total_results: 0 }) }
+    },
+  })
+  await cv.listIssuesOnSale('2026-09-09')
+  const params = new URL(urls[0]).searchParams
+  expect(params.get('filter')).toBe('store_date:2026-09-09|2026-09-09')
+  // Covers are the point of the page, and they come back on this same call.
+  expect(params.get('field_list')).toContain('image')
+})
+
+// A real Wednesday is 116 issues and the page cap is 100.
+test('listIssuesOnSale pages a day that does not fit in one response', async () => {
+  const rows = Array.from({ length: 116 }, (_, n) => onSaleRow(1000 + n, 50, 'Big', String(n + 1)))
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async (url: string) => {
+      const offset = Number(new URL(url).searchParams.get('offset') ?? 0)
+      return { ok: true, json: async () => ({
+        results: rows.slice(offset, offset + 100), number_of_total_results: 116,
+      }) }
+    },
+  })
+  expect(await cv.listIssuesOnSale('2026-09-09')).toHaveLength(116)
+})
+
+test('getVolumePublishers maps each volume to its publisher', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/volumes/', { results: [
+      { id: 91078, publisher: { name: 'DC Comics' } },
+      { id: 167333, publisher: { name: 'Marvel' } },
+    ] }]]),
+  })
+  const pubs = await cv.getVolumePublishers([91078, 167333])
+  expect(pubs.get(91078)).toBe('DC Comics')
+  expect(pubs.get(167333)).toBe('Marvel')
+})
+
+// A volume in the map with no publisher is different from a volume not in the map:
+// the first was asked about and had none, the second was never asked.
+test('getVolumePublishers keeps a volume Comic Vine credits to nobody', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/volumes/', { results: [{ id: 42 }] }]]),
+  })
+  const pubs = await cv.getVolumePublishers([42])
+  expect(pubs.has(42)).toBe(true)
+  expect(pubs.get(42)).toBeUndefined()
+})
+
+test('getVolumePublishers batches a hundred ids per request', async () => {
+  const urls: string[] = []
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async (url: string) => {
+      urls.push(url)
+      const ids = new URL(url).searchParams.get('filter')!.replace('id:', '').split('|')
+      return { ok: true, json: async () => ({
+        results: ids.map((id) => ({ id: Number(id), publisher: { name: 'Marvel' } })),
+      }) }
+    },
+  })
+  const pubs = await cv.getVolumePublishers(Array.from({ length: 150 }, (_, n) => 1000 + n))
+  expect(urls).toHaveLength(2)
+  expect(new URL(urls[0]).searchParams.get('filter')!.split('|')).toHaveLength(100)
+  expect(new URL(urls[1]).searchParams.get('filter')!.split('|')).toHaveLength(50)
+  expect(pubs.size).toBe(150)
+})
+
+// --- Finding 4: Comic Vine answers a rate limit or a bad key with HTTP 200 and the
+// failure in the body. `res.ok` alone sees nothing wrong, and listIssuesOnSale would
+// read the absent `results` as a genuinely quiet Wednesday and return [].
+
+test('a 200 carrying a Comic Vine error throws rather than reading as no results', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async () => ({
+      ok: true,
+      json: async () => ({ status_code: 107, error: 'Rate Limit Exceeded', results: undefined }),
+    }),
+  })
+  await expect(cv.listIssuesOnSale('2026-09-09')).rejects.toThrow(/107|Rate Limit/)
+})
+
+test('a bad key reported as a 200 throws too', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async () => ({ ok: true, json: async () => ({ status_code: 100, error: 'Invalid API Key' }) }),
+  })
+  await expect(cv.getIssue(42)).rejects.toThrow(/Invalid API Key/)
+})
+
+test('status_code 1 is Comic Vine saying OK', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/issue/', { status_code: 1, results: { name: 'Year One', issue_number: '1' } }]]),
+  })
+  expect((await cv.getIssue(42)).title).toBe('Year One')
+})
+
+// The field is what signals failure; its absence is not a failure signal. Comic Vine
+// always sends it, but a fixture or a proxy need not, and treating a missing one as an
+// error would break every caller at once.
+test('a response with no status_code at all is taken as success', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/issue/', { results: { name: 'Year One', issue_number: '1' } }]]),
+  })
+  expect((await cv.getIssue(42)).title).toBe('Year One')
+})
+
+// getVolumePublishers is built on byIds, which swallows a failed chunk - so an API-level
+// error must still be visible to the route as a short map rather than as a full answer.
+test('an API-level error on a volume chunk leaves that chunk out of the map', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async () => ({ ok: true, json: async () => ({ status_code: 107, error: 'Rate Limit Exceeded' }) }),
+  })
+  expect((await cv.getVolumePublishers([1, 2, 3])).size).toBe(0)
+})

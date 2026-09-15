@@ -17,6 +17,7 @@ beforeEach(() => {
     if (u.includes('/api/series')) return { ok: true, json: async () => ({ series: [] }) }
     if (u.includes('/api/editions')) return { ok: true, json: async () => ({ editions: [] }) }
     if (u.includes('/api/books/')) return { ok: true, json: async () => ({ book: { id: 1, pageCount: 1 }, progress: { lastPage: 0, completed: false } }) }
+    if (u.includes('/api/releases')) return { ok: true, json: async () => ({ day: '2026-09-09', fetchedAt: null, publishers: [] }) }
     return { ok: true, json: async () => ({}) }
   }) as unknown as typeof fetch
 })
@@ -73,4 +74,34 @@ test('starting a download puts it on the bar straight away', async () => {
   fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
 
   await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent(/Downloading/i))
+})
+
+// --- the header tabs ------------------------------------------------------
+
+// Library and Latest releases are peers, not a brand and a link: the two things you
+// browse, side by side, with the one you are on marked.
+test('the header offers Library and Latest releases as tabs', async () => {
+  renderAt('/')
+  expect(await screen.findByRole('link', { name: 'Library' })).toHaveAttribute('href', '/')
+  expect(screen.getByRole('link', { name: 'Latest releases' })).toHaveAttribute('href', '/releases')
+})
+
+test('the library tab is marked when you are on the library', async () => {
+  renderAt('/')
+  expect(await screen.findByRole('link', { name: 'Library', current: 'page' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Latest releases' })).not.toHaveAttribute('aria-current')
+})
+
+test('the latest releases tab is marked when you are on it', async () => {
+  renderAt('/releases')
+  expect(await screen.findByRole('link', { name: 'Latest releases', current: 'page' })).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Library' })).not.toHaveAttribute('aria-current')
+})
+
+// A page that is neither marks neither, rather than leaving the library lit while you
+// are somewhere else entirely.
+test('neither tab is marked on a page that is neither', async () => {
+  renderAt('/upload')
+  await screen.findByRole('link', { name: 'Library' })
+  expect(screen.queryByRole('link', { current: 'page' })).toBeNull()
 })

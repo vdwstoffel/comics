@@ -5,6 +5,7 @@ import { api } from '../api'
 import type { ApiVolumeIssue, ApiBook } from '../api'
 import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
+import MissingIssueTile from '../components/MissingIssueTile'
 import { tileLabel } from '../lib/tileLabel'
 import EditionEditDialog from '../components/EditionEditDialog'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
@@ -55,25 +56,16 @@ function VolumeIssue({ issue, book, editionId, seriesName }: {
   if (Number.isInteger(coverYear)) findParams.set('yearFrom', String(coverYear - 1))
 
   return (
-    <div className="volume-issue">
-      <CoverTile href={issue.siteUrl} title={label} subtitle="Missing" />
-      {issue.match ? (
-        <button
-          type="button"
-          className="btn btn-ghost volume-issue__get"
-          disabled={get.isPending}
-          onClick={() => get.mutate()}
-          title={issue.match.title}
-        >
-          {get.isPending ? 'Getting…' : `↓ Get ${label}`}
-        </button>
-      ) : (
-        <Link className="volume-issue__find" to={`/search?${findParams}`}>
-          {`Find ${label} ↗`}
-        </Link>
-      )}
-      {get.isError && <span className="volume-issue__error">Could not get that one.</span>}
-    </div>
+    <MissingIssueTile
+      label={label}
+      siteUrl={issue.siteUrl}
+      hasMatch={issue.match != null}
+      matchTitle={issue.match?.title}
+      findTo={`/search?${findParams}`}
+      onGet={() => get.mutate()}
+      pending={get.isPending}
+      failed={get.isError}
+    />
   )
 }
 

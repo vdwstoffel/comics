@@ -15,6 +15,7 @@ import arcRoutes from './routes/arcs.js'
 import comicIndexRoutes from './routes/comicIndex.js'
 import downloadRoutes from './routes/downloads.js'
 import libraryRoutes from './routes/library.js'
+import releaseRoutes from './routes/releases.js'
 import { clearTmpDir } from './lib/tmpFiles.js'
 import { createDownloadRunner } from './services/downloader.js'
 import { createScrapeRunner } from './services/comicIndexScraper.js'
@@ -62,6 +63,7 @@ export async function buildServer(): Promise<App> {
   await app.register(comicIndexRoutes)
   await app.register(libraryRoutes)
   await app.register(downloadRoutes)
+  await app.register(releaseRoutes)
 
   const distDir = join(process.cwd(), 'dist')
   if (existsSync(distDir)) {

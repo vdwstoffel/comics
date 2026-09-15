@@ -11,8 +11,7 @@ import { createComicVine } from '../lib/comicvine.js'
 import type { CvVolumeIssue } from '../lib/comicvine.js'
 import { cacheVolumeIssues, getCachedVolumeIssues } from '../models/volumeIssues.js'
 import { findMatchForIssue } from '../services/issueMatching.js'
-import { comicIndexById } from '../models/comicIndex.js'
-import { parseDownloadLink } from '../lib/comicPostPage.js'
+import { startIssueDownload } from '../services/issueDownload.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import { editionFilterOf, readStateOf } from './filters.js'
 import type { LibraryQuery } from './filters.js'
@@ -225,23 +224,20 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
       const issue = held?.issues.find((i) => i.id === Number(req.params.cvIssueId))
       if (!issue) return reply.code(404).send({ error: 'issue not in this volume' })
 
-      const match = findMatchForIssue(app.db, edition.cvName, issue)
-      if (!match) return reply.code(409).send({ error: 'no unique match for that issue' })
-
-      const row = comicIndexById(app.db, match.indexId)
-      if (!row) return reply.code(409).send({ error: 'no unique match for that issue' })
-
-      let url: string | null = null
-      try {
-        url = parseDownloadLink(await fetchPage(row.url), row.url)
-      } catch {
-        return reply.code(502).send({ error: 'could not read that post' })
+      const result = await startIssueDownload(app, {
+        volumeName: edition.cvName,
+        editionName: edition.name,
+        issue,
+        fetchPage,
+      })
+      if (!result.ok) {
+        // A refused start still reports the runner's state, as it always did.
+        if (result.reason === 'busy') {
+          return reply.code(409).send({ started: false, status: app.downloader.status() })
+        }
+        return reply.code(result.code).send({ error: result.error })
       }
-      if (!url) return reply.code(404).send({ error: 'no download link on that post' })
-
-      const { started, status } = app.downloader.start({ url, edition: edition.name, issueId: issue.id })
-      if (!started) return reply.code(409).send({ started, status })
-      return reply.code(202).send({ started, status })
+      return reply.code(202).send({ started: true, status: result.status })
     },
   )
 

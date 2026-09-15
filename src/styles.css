@@ -150,16 +150,36 @@ img {
   justify-content: space-between;
 }
 
-.app-header__brand {
-  font-size: 1.125rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  color: var(--text);
-  transition: color 0.15s;
+/* Library and Latest releases, side by side. The active one is underlined rather than
+   just recoloured, so it reads as the current tab and not merely as a hover. */
+.app-header__tabs {
+  display: flex;
+  gap: 22px;
+  /* Full header height rather than fixed padding: the underline has to sit on the
+     header's bottom edge, and padding that happened to add up to 56px today would
+     overflow the moment the font or its line-height changed. */
+  align-self: stretch;
 }
 
-.app-header__brand:hover {
-  color: var(--accent);
+.app-header__tab {
+  display: inline-flex;
+  align-items: center;
+  font-size: 1.0625rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--muted);
+  text-decoration: none;
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+
+.app-header__tab:hover {
+  color: var(--text);
+}
+
+.app-header__tab[aria-current='page'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
 }
 
 .app-header__upload {
