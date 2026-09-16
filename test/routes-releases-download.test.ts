@@ -30,8 +30,16 @@ async function setup(fetchPage: (url: string) => Promise<string> = async () => {
   const db = openDb(':memory:')
   app.decorate('db', db)
   app.decorate('config', { comicVineApiKey: 'test-key' } as Config)
-  const start = vi.fn(() => ({ started: true, status: { running: true } }))
-  app.decorate('downloader', { start, status: () => ({ running: false }) } as never)
+  const enqueue = vi.fn(() => ({
+    queued: true,
+    entry: { id: 1, position: 0, state: 'queued', url: '', attempts: 0, queuedAt: new Date().toISOString() },
+  }))
+  app.decorate('downloader', {
+    enqueue, status: () => ({ active: [], queue: [], history: [] }),
+    // Nothing calls these yet - Task 4/5 add the routes that do. A stub missing a method
+    // fails with a confusing "is not a function" rather than a useful assertion.
+    cancel: vi.fn(), wake: vi.fn(),
+  } as never)
   await app.register(releaseRoutes, { fetchPage })
 
   // One index row that can only be Black Cat #14. Cover date 2026-11 and the scraped
@@ -45,7 +53,7 @@ async function setup(fetchPage: (url: string) => Promise<string> = async () => {
   ).run('Black Cat #14 (2026)', 'https://index/black-cat-14', 'comics', '2026-09-14', '014', 2026)
 
   cacheRelease(db, '2026-09-09', [ISSUE], '2026-09-14T12:00:00.000Z')
-  return { app, db, start, cleanup: async () => { await app.close() } }
+  return { app, db, enqueue, cleanup: async () => { await app.close() } }
 }
 
 test('an issue with no cached release day 404s', async () => {
@@ -63,7 +71,7 @@ test('the download lands under the volume name', async () => {
   try {
     const res = await t.app.inject({ method: 'POST', url: '/api/releases/issues/1192026/download' })
     expect(res.statusCode).toBe(202)
-    expect(t.start).toHaveBeenCalledWith(
+    expect(t.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ edition: 'Black Cat', issueId: 1192026 }),
     )
   } finally { await t.cleanup() }
@@ -74,7 +82,7 @@ test('an unreadable post reports 502 rather than starting anything', async () =>
   try {
     const res = await t.app.inject({ method: 'POST', url: '/api/releases/issues/1192026/download' })
     expect(res.statusCode).toBe(502)
-    expect(t.start).not.toHaveBeenCalled()
+    expect(t.enqueue).not.toHaveBeenCalled()
   } finally { await t.cleanup() }
 })
 
@@ -93,7 +101,7 @@ test('an issue whose volume you already own files into that edition, by its real
 
     const res = await t.app.inject({ method: 'POST', url: '/api/releases/issues/1192026/download' })
     expect(res.statusCode).toBe(202)
-    expect(t.start).toHaveBeenCalledWith(
+    expect(t.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ edition: 'Black Cat (2019)', issueId: 1192026 }),
     )
   } finally { await t.cleanup() }
@@ -112,8 +120,35 @@ test('an edition for a different volume does not claim the issue', async () => {
     expect(res.statusCode).toBe(202)
     // No edition claims volume 176900, so §4.5's promise applies: the volume name, which
     // creates the edition for a series you own nothing of.
-    expect(t.start).toHaveBeenCalledWith(
+    expect(t.enqueue).toHaveBeenCalledWith(
       expect.objectContaining({ edition: 'Black Cat', issueId: 1192026 }),
     )
+  } finally { await t.cleanup() }
+})
+
+// Spec §4.4: a duplicate is a 409, and `reason` is how a client tells it from the 409 an
+// ambiguous match returns - the message is for a person, not for code to match on.
+test('an issue already in the queue is refused as a duplicate, and says so', async () => {
+  const t = await setup(async () => POST_HTML)
+  try {
+    t.enqueue.mockReturnValueOnce({
+      queued: false,
+      duplicate: { id: 7, position: 0, state: 'queued', url: '', attempts: 0, queuedAt: new Date().toISOString() },
+    } as never)
+
+    const res = await t.app.inject({ method: 'POST', url: '/api/releases/issues/1192026/download' })
+
+    expect(res.statusCode).toBe(409)
+    expect(res.json().reason).toBe('duplicate')
+    expect(res.json().entry.id).toBe(7)
+  } finally { await t.cleanup() }
+})
+
+// What the queue calls the row, built in one place both download routes share.
+test('the queue row is labelled with the volume and issue number', async () => {
+  const t = await setup(async () => POST_HTML)
+  try {
+    await t.app.inject({ method: 'POST', url: '/api/releases/issues/1192026/download' })
+    expect(t.enqueue).toHaveBeenCalledWith(expect.objectContaining({ label: 'Black Cat #14' }))
   } finally { await t.cleanup() }
 })

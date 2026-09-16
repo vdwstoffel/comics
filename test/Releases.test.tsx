@@ -26,7 +26,13 @@ const RELEASES = {
 }
 
 function stub(body: unknown) {
-  globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => body })) as unknown as typeof fetch
+  globalThis.fetch = vi.fn(async (url: string) => {
+    // Releases now reads useDownload() too, to know which missing issues are queued.
+    if (String(url).includes('/api/downloads')) {
+      return { ok: true, json: async () => ({ active: [], queue: [], history: [] }) }
+    }
+    return { ok: true, json: async () => body }
+  }) as unknown as typeof fetch
 }
 
 beforeEach(() => stub(RELEASES))

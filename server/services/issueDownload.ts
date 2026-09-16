@@ -2,13 +2,24 @@ import { findMatchForIssue } from './issueMatching.js'
 import { comicIndexById } from '../models/comicIndex.js'
 import { parseDownloadLink } from '../lib/comicPostPage.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
-import type { DownloadStatus } from './downloader.js'
+import type { QueueEntry } from '../models/downloadQueue.js'
 import type { CvVolumeIssue } from '../lib/comicvine.js'
 import type { App } from '../types.js'
 
 export type IssueDownloadResult =
-  | { ok: true; status: DownloadStatus }
-  | { ok: false; code: 404 | 409 | 502; reason: 'no-match' | 'busy' | 'unreadable' | 'no-link'; error: string }
+  | { ok: true; entry: QueueEntry }
+  | { ok: false; code: 404 | 409 | 502; reason: 'no-match' | 'duplicate' | 'unreadable' | 'no-link'; error: string; entry?: QueueEntry }
+
+/**
+ * What the queue calls an issue: Comic Vine's volume name and the issue number,
+ * `Wolverine #27`. Both halves are nullable, so the join can come out empty - and an empty
+ * string is not null, so it would survive every `?? entry.url` fallback downstream and
+ * render as a blank row with an aria-label reading "Cancel ". Nothing to say returns
+ * nothing, and the caller falls back.
+ */
+export function issueLabel(volumeName?: string | null, number?: string | null): string | undefined {
+  return [volumeName, number && `#${number}`].filter(Boolean).join(' ').trim() || undefined
+}
 
 /**
  * Everything between "this issue is missing" and "the downloader is running": re-derive
@@ -24,10 +35,12 @@ export type IssueDownloadResult =
  */
 export async function startIssueDownload(
   app: App,
-  { volumeName, editionName, issue, fetchPage = fetchSourcePage }: {
+  { volumeName, editionName, issue, label, fetchPage = fetchSourcePage }: {
     volumeName: string | null
     editionName: string
     issue: CvVolumeIssue
+    /** What the queue shows for this row; the url stands in when there is no name. */
+    label?: string
     /** Injected so tests never touch the network. */
     fetchPage?: (url: string) => Promise<string>
   },
@@ -46,7 +59,12 @@ export async function startIssueDownload(
   }
   if (!url) return { ok: false, code: 404, reason: 'no-link', error: 'no download link on that post' }
 
-  const { started, status } = app.downloader.start({ url, edition: editionName, issueId: issue.id })
-  if (!started) return { ok: false, code: 409, reason: 'busy', error: 'a download is already running' }
-  return { ok: true, status }
+  const res = app.downloader.enqueue({ url, edition: editionName, issueId: issue.id, label: label || url })
+  if (!res.queued) {
+    return {
+      ok: false, code: 409, reason: 'duplicate',
+      error: 'that issue is already queued', entry: res.duplicate,
+    }
+  }
+  return { ok: true, entry: res.entry }
 }

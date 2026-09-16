@@ -9,52 +9,58 @@ function mb(bytes: number): string {
 /**
  * What the server is downloading, on every page that has a header.
  *
- * It lives beside the header rather than on the upload form because the download does:
- * it is a job on the server that outlives whichever page started it. The reader has no
- * header and so gets no bar, which is the intent — that page is meant to be nothing but
- * the comic.
+ * It summarises rather than lists: with a queue there can be more than one thing waiting,
+ * and the bar is a glance, not a screen. /downloads is where the detail lives.
+ *
+ * A failure keeps it on screen. The bar holds the app's ONLY link to /downloads, so
+ * disappearing the moment the queue empties hid it exactly when it was needed: a download
+ * that failed twice lands in history with nothing running, and the user was never told it
+ * failed - Retry and Clear reachable only by typing the url. The newest history row being
+ * a failure is what stands in for "not acknowledged yet"; retrying it or clearing history
+ * is the acknowledgement, and both change what `history[0]` is.
  */
+
+/**
+ * A cancel is recorded as a failure - there is no separate cancelled state, and there does
+ * not need to be. But it is the one failure nobody has to be told about: the user stopped
+ * it themselves, and raising a persistent "Download failed" over their own deliberate act
+ * is both wrong and unclearable without a trip to /downloads. The runner writes this exact
+ * word (see `fail(db, id, 'cancelled')` in services/downloader.ts).
+ */
+const CANCELLED = 'cancelled'
+
 export default function DownloadBar() {
-  const { status, result, dismiss } = useDownload()
+  const { active, queue, history } = useDownload()
+  const waiting = queue.filter((e) => e.state === 'queued').length
+  const [current] = active
+  const [newest] = history
 
-  if (status?.running) {
-    // Content-Length is a claim the server may not make; without it there is no
-    // percentage to show, only how much has arrived.
-    const progress = status.total > 0
-      ? `${Math.round((status.received / status.total) * 100)}% — ${mb(status.received)} of ${mb(status.total)}`
-      : mb(status.received)
-    return (
-      <div className="download-bar" role="status">
-        <span className="download-bar__label">Downloading…</span>
-        {status.fileName && <span className="download-bar__name">{status.fileName}</span>}
-        <span className="download-bar__progress">{progress}</span>
-      </div>
-    )
-  }
+  const busy = Boolean(current) || waiting > 0
+  const failure = !busy && newest?.state === 'failed' && newest.error !== CANCELLED ? newest : null
 
-  if (!result) return null
+  if (!busy && !failure) return null
+
+  // Content-Length is a claim the server may not make; without it there is no percentage
+  // to show, only how much has arrived.
+  const progress = !current ? null
+    : current.total > 0
+      ? `${Math.round((current.received / current.total) * 100)}% — ${mb(current.received)} of ${mb(current.total)}`
+      : mb(current.received)
 
   return (
-    <div className={`download-bar${result.error ? ' download-bar--failed' : ''}`} role="status">
-      {result.error
-        ? <span className="download-bar__label">Download failed: {result.error}</span>
-        : (
-          <>
-            <span className="download-bar__label">✓ Downloaded</span>
-            {result.fileName && <span className="download-bar__name">{result.fileName}</span>}
-          </>
-        )}
-      {result.bookId && (
-        <Link to={`/book/${result.bookId}`} className="download-bar__link">View comic</Link>
+    <div className={`download-bar${failure ? ' download-bar--failed' : ''}`} role="status">
+      <span className="download-bar__label">
+        {failure ? 'Download failed' : current ? 'Downloading…' : 'Queued'}
+      </span>
+      {(current || failure) && (
+        <span className="download-bar__name">
+          {failure ? failure.label ?? failure.url : current!.label || current!.fileName}
+        </span>
       )}
-      <button
-        type="button"
-        className="download-bar__dismiss"
-        aria-label="Dismiss"
-        onClick={dismiss}
-      >
-        ×
-      </button>
+      {progress && <span className="download-bar__progress">{progress}</span>}
+      {failure?.error && <span className="download-bar__progress">{failure.error}</span>}
+      {waiting > 0 && <span className="download-bar__progress">{waiting} queued</span>}
+      <Link to="/downloads" className="download-bar__link">Queue</Link>
     </div>
   )
 }

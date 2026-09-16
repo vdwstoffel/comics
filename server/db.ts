@@ -155,6 +155,39 @@ CREATE TABLE IF NOT EXISTS release_issue (
   site_url    TEXT,
   PRIMARY KEY (day, cv_issue_id)
 );
+
+-- Every download, alive or finished. \`position\` orders the live ones; the finished ones
+-- are history until cleared. Live byte counts are deliberately NOT here - \`received\`
+-- changes on every chunk and would be thousands of writes per download.
+CREATE TABLE IF NOT EXISTS download_queue (
+  id          INTEGER PRIMARY KEY,
+  position    INTEGER NOT NULL,
+  state       TEXT NOT NULL,
+  url         TEXT NOT NULL,
+  edition     TEXT,
+  cv_issue_id INTEGER,
+  label       TEXT,
+  attempts    INTEGER NOT NULL DEFAULT 0,
+  -- Set only when a retry is deferred, so a lone failing item cannot be taken again the
+  -- instant it fails.
+  not_before  TEXT,
+  file_name   TEXT,
+  book_id     INTEGER,
+  error       TEXT,
+  queued_at   TEXT NOT NULL,
+  started_at  TEXT,
+  finished_at TEXT
+);
+
+-- The duplicate guard. Partial, so it covers live rows only: a comic that finished or
+-- failed can be queued again, and two simultaneous presses are separated by the database
+-- rather than by a check that could interleave.
+CREATE UNIQUE INDEX IF NOT EXISTS idx_download_queue_live_issue
+  ON download_queue(cv_issue_id)
+  WHERE cv_issue_id IS NOT NULL AND state IN ('queued', 'running');
+
+CREATE INDEX IF NOT EXISTS idx_download_queue_state_position
+  ON download_queue(state, position);
 `
 
 function columnsOf(db: Db, table: string): string[] {

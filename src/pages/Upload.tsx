@@ -73,10 +73,14 @@ export default function Upload() {
   })
 
   const startDownload = useMutation({
-    mutationFn: () => api.startDownload({
+    mutationFn: () => api.queueDownload({
       url: url.trim(),
       edition: edition || undefined,
       issueId: match?.id,
+      // What the queue will call this row. A pasted link is usually an opaque token, so
+      // the name resolving it revealed is the only readable thing we have; without it the
+      // server falls back to the url itself.
+      label: resolvedName ?? undefined,
     }),
     // Handing the run over: the download bar reports it from here, on whatever page you
     // are on. Refreshing the status is what lets the bar show it now rather than
@@ -87,9 +91,10 @@ export default function Upload() {
       setMatch(null)
       qc.invalidateQueries({ queryKey: ['download'] })
     },
-    // A 409 is the one downloader already being busy, which is worth saying plainly.
+    // A 409 no longer means the downloader is busy - you can queue as many as you like.
+    // It means this exact issue is already waiting, which is worth saying plainly.
     onError: (err: Error) => setMsg(err.message === '409'
-      ? 'A download is already running.'
+      ? 'That is already in the queue.'
       : 'Could not start the download.'),
   })
 

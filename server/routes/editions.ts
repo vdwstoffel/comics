@@ -11,7 +11,7 @@ import { createComicVine } from '../lib/comicvine.js'
 import type { CvVolumeIssue } from '../lib/comicvine.js'
 import { cacheVolumeIssues, getCachedVolumeIssues } from '../models/volumeIssues.js'
 import { findMatchForIssue } from '../services/issueMatching.js'
-import { startIssueDownload } from '../services/issueDownload.js'
+import { startIssueDownload, issueLabel } from '../services/issueDownload.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import { editionFilterOf, readStateOf } from './filters.js'
 import type { LibraryQuery } from './filters.js'
@@ -228,16 +228,15 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
         volumeName: edition.cvName,
         editionName: edition.name,
         issue,
+        label: issueLabel(edition.cvName, issue.number),
         fetchPage,
       })
+      // `reason` is the machine-readable half of the refusal: a client cannot tell a
+      // no-match 409 from a duplicate one by string-matching the message.
       if (!result.ok) {
-        // A refused start still reports the runner's state, as it always did.
-        if (result.reason === 'busy') {
-          return reply.code(409).send({ started: false, status: app.downloader.status() })
-        }
-        return reply.code(result.code).send({ error: result.error })
+        return reply.code(result.code).send({ reason: result.reason, error: result.error, entry: result.entry })
       }
-      return reply.code(202).send({ started: true, status: result.status })
+      return reply.code(202).send({ queued: true, entry: result.entry })
     },
   )
 

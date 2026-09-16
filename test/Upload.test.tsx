@@ -339,7 +339,39 @@ test('the page does not report progress itself; the bar does', async () => {
   expect(screen.queryByText(/41%/)).not.toBeInTheDocument()
 })
 
-test('asking for a download while one is already running says so', async () => {
+// Spec §3: the queue calls a pasted row by the name resolving the link revealed - the url
+// itself is an opaque token nobody can read, and the server only falls back to it.
+test('the name the link resolved to travels as the queue label', async () => {
+  const posts: { url: string; body: Record<string, unknown> }[] = []
+  stubDownload([IDLE], [], posts)
+  renderUpload()
+  pasteUrl()
+  fireEvent.click(await screen.findByRole('button', { name: /fetch metadata/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /Amazing Spider-Man/ }))
+  await waitFor(() => expect(screen.getByPlaceholderText('Edition name')).toHaveValue('The Amazing Spider-Man (2025)'))
+
+  fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
+
+  await waitFor(() => expect(posts.some((p) => p.url.endsWith('/api/downloads'))).toBe(true))
+  expect(posts.find((p) => p.url.endsWith('/api/downloads'))!.body)
+    .toMatchObject({ label: RESOLVED.fileName })
+})
+
+// A link nobody resolved has no name to send; the server puts the url in itself.
+test('a link sent without resolving it carries no label at all', async () => {
+  const posts: { url: string; body: Record<string, unknown> }[] = []
+  stubDownload([IDLE], [], posts)
+  renderUpload()
+  pasteUrl()
+
+  fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
+
+  await waitFor(() => expect(posts.some((p) => p.url.endsWith('/api/downloads'))).toBe(true))
+  expect(posts.find((p) => p.url.endsWith('/api/downloads'))!.body.label).toBeUndefined()
+})
+
+// A queue cannot be "busy" - the 409 now means this exact issue is already waiting.
+test('asking for a download of something already queued says so', async () => {
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
     const u = String(url)
     if (u.includes('/api/downloads') && init?.method === 'POST') {
@@ -353,7 +385,8 @@ test('asking for a download while one is already running says so', async () => {
   pasteUrl()
   fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
 
-  expect(await screen.findByText(/already running/i)).toBeInTheDocument()
+  expect(await screen.findByText(/already in the queue/i)).toBeInTheDocument()
+  expect(screen.queryByText(/already running/i)).toBeNull()
 })
 
 // ---- arriving from a search result with the link already found ----

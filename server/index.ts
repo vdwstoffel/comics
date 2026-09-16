@@ -20,6 +20,7 @@ import { clearTmpDir } from './lib/tmpFiles.js'
 import { createDownloadRunner } from './services/downloader.js'
 import { createScrapeRunner } from './services/comicIndexScraper.js'
 import { backfillSeriesNames } from './models/series.js'
+import { recoverRunning } from './models/downloadQueue.js'
 import type { App } from './types.js'
 
 export function registerSpa(app: App, _distDir: string): void {
@@ -48,6 +49,11 @@ export async function buildServer(): Promise<App> {
   if (swept) console.log(`cleared ${swept} leftover file${swept === 1 ? '' : 's'} from tmp`)
 
   app.decorate('scraper', createScrapeRunner({ db, config }))
+
+  // A row still marked running belongs to a process that is gone. Its staging file went
+  // with the tmp sweep above; the row goes back to the front of the queue.
+  const requeued = recoverRunning(db)
+  if (requeued) console.log(`requeued ${requeued} interrupted download${requeued === 1 ? '' : 's'}`)
   app.decorate('downloader', createDownloadRunner({ db, config }))
 
   app.get('/api/health', async () => ({ status: 'ok' }))

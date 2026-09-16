@@ -72,16 +72,36 @@ export interface ApiCharacter {
   profile: ProfileBlock[]
 }
 
-export interface DownloadStatus {
-  running: boolean
-  url: string | null
+export interface QueueEntry {
+  id: number
+  position: number
+  state: 'queued' | 'running' | 'done' | 'failed'
+  url: string
+  edition?: string
+  cvIssueId?: number
+  label?: string
+  attempts: number
+  fileName?: string
+  bookId?: number
+  error?: string
+  queuedAt: string
+  startedAt?: string
+  finishedAt?: string
+}
+
+export interface ActiveDownload {
+  id: number
+  label?: string
   fileName: string | null
   received: number
   total: number
-  error: string | null
-  bookId: number | null
-  startedAt: string | null
-  finishedAt: string | null
+  startedAt: string
+}
+
+export interface DownloadsView {
+  active: ActiveDownload[]
+  queue: QueueEntry[]
+  history: QueueEntry[]
 }
 
 export interface ApiVolumeIssue {
@@ -405,14 +425,18 @@ export const api = {
       body: JSON.stringify({ url }),
     }),
 
-  getDownload: () => json<DownloadStatus>('/api/downloads'),
-
-  startDownload: (body: { url: string; edition?: string; issueId?: number }) =>
-    json<{ started: boolean; status: DownloadStatus }>('/api/downloads', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
+  getDownloads: () => json<DownloadsView>('/api/downloads'),
+  queueDownload: (body: { url: string; edition?: string; issueId?: number; label?: string }) =>
+    json<{ queued: boolean }>('/api/downloads', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     }),
+  cancelDownload: (id: number) => json<{ cancelled: boolean }>(`/api/downloads/queue/${id}`, { method: 'DELETE' }),
+  retryDownload: (id: number) => json<{ retried: boolean }>(`/api/downloads/queue/${id}/retry`, { method: 'POST' }),
+  moveDownload: (id: number, index: number) =>
+    json<{ moved: boolean }>(`/api/downloads/queue/${id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index }),
+    }),
+  clearDownloadHistory: () => json<{ cleared: boolean }>('/api/downloads/history', { method: 'DELETE' }),
 
   getLibraryBooks: ({ readState, publisher }: { readState: ReadState; publisher?: string | null }) => {
     const params = new URLSearchParams({ readState })

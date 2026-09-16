@@ -2,6 +2,7 @@ import { mkdir, rename, rmdir, unlink } from 'node:fs/promises'
 import { existsSync, statSync } from 'node:fs'
 import { join, basename, extname, dirname, resolve, sep } from 'node:path'
 import { editionFolderPath, dedupeDestPath } from '../lib/paths.js'
+import { renameLock } from '../lib/mutex.js'
 import { deriveSeriesName } from '../lib/seriesName.js'
 import {
   upsertEdition, getEdition, getEditionByName, deleteEdition, updateEdition, carryableMetadata,
@@ -147,20 +148,30 @@ export async function moveBookToEdition(
     return { book: updatedBook, edition }
   }
 
-  // Pass currentAbsPath so dedupeDestPath skips the source file when checking collisions
-  const destAbsPath = dedupeDestPath(destDir, filename, currentAbsPath)
-  const destRelPath = `${targetFolder}/${basename(destAbsPath)}`
-
-  // Explicit no-op: file is already at the computed destination (same edition, same name)
-  if (destAbsPath === currentAbsPath) {
+  // Explicit no-op: file is already at the computed destination (same edition, same name).
+  // Decided on the naive path rather than the deduped one so the dedupe can stay inside the
+  // lock below: dedupeDestPath is passed currentAbsPath and skips it, so it can only ever
+  // return currentAbsPath when the naive destination IS currentAbsPath - the two tests are
+  // the same test.
+  if (naiveDestAbsPath === currentAbsPath) {
     // Ensure DB is consistent (edition_id and file_path match) but skip rename and pruning
-    const updatedBook = setBookEdition(db, bookId, targetEdition.id, destRelPath)
+    const updatedBook = setBookEdition(db, bookId, targetEdition.id, `${targetFolder}/${filename}`)
     const edition = getEdition(db, targetEdition.id) as Edition
     return { book: updatedBook, edition }
   }
 
   await mkdir(destDir, { recursive: true })
-  await rename(currentAbsPath, destAbsPath)
+
+  // Claiming a free name and renaming onto it is one step, under the lock every writer
+  // into comicsDir shares. Without it a download filing a comic of this name into the same
+  // edition is handed the same free name, and one of the two files is destroyed.
+  // Pass currentAbsPath so dedupeDestPath skips the source file when checking collisions.
+  const destAbsPath = await renameLock(async () => {
+    const claimed = dedupeDestPath(destDir, filename, currentAbsPath)
+    await rename(currentAbsPath, claimed)
+    return claimed
+  })
+  const destRelPath = `${targetFolder}/${basename(destAbsPath)}`
 
   const updatedBook = setBookEdition(db, bookId, targetEdition.id, destRelPath)
 

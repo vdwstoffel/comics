@@ -29,6 +29,10 @@ function mockFetch(edition: Record<string, unknown> = EDITION, books: unknown[] 
   patched = []
   deleted = []
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    // Edition now reads useDownload() too, to know which missing issues are queued.
+    if (String(url).includes('/api/downloads')) {
+      return { ok: true, json: async () => ({ active: [], queue: [], history: [] }) }
+    }
     if (init?.method === 'DELETE') {
       deleted.push(String(url))
       return { ok: true, json: async () => ({ deleted: true, books: 3, seriesName: 'Amazing Spider-Man' }) }
@@ -221,6 +225,9 @@ test('cancelling the edition removal sends nothing', async () => {
 test('the removal counts every issue in the edition, not just the filtered ones', async () => {
   const all = [issue('1', 2025), issue('2', 2025), issue('3', 2025)]
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).includes('/api/downloads')) {
+      return { ok: true, json: async () => ({ active: [], queue: [], history: [] }) }
+    }
     if (init?.method === 'DELETE') return { ok: true, json: async () => ({ deleted: true, books: 3 }) }
     const filtered = String(url).includes('readState=unread')
     return { ok: true, json: async () => ({ edition: EDITION, books: filtered ? all.slice(0, 1) : all }) }
@@ -276,6 +283,9 @@ test('accepting the name sends the series alongside it', async () => {
 // editions exist, so it reuses the same /api/editions list EditionCombobox draws from.
 test('an edition colliding with an existing name offers to merge instead of rename', async () => {
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).includes('/api/downloads')) {
+      return { ok: true, json: async () => ({ active: [], queue: [], history: [] }) }
+    }
     if (init?.method === 'PATCH') {
       patched.push({ url: String(url), body: JSON.parse(String(init.body)) })
       return { ok: true, json: async () => ({ edition: CV_EDITION }) }
@@ -310,6 +320,9 @@ test('the button stays disabled until we know whether this is a rename or a merg
   const editionsPending = new Promise<void>((resolve) => { resolveEditions = resolve })
 
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).includes('/api/downloads')) {
+      return { ok: true, json: async () => ({ active: [], queue: [], history: [] }) }
+    }
     if (init?.method === 'PATCH') {
       patched.push({ url: String(url), body: JSON.parse(String(init.body)) })
       return { ok: true, json: async () => ({ edition: CV_EDITION }) }
@@ -349,6 +362,9 @@ test('the button stays disabled until we know whether this is a rename or a merg
 // error, and any future paused state alike.
 test('the button stays disabled if the editions list fails to load', async () => {
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).includes('/api/downloads')) {
+      return { ok: true, json: async () => ({ active: [], queue: [], history: [] }) }
+    }
     if (init?.method === 'PATCH') {
       patched.push({ url: String(url), body: JSON.parse(String(init.body)) })
       return { ok: true, json: async () => ({ edition: CV_EDITION }) }
@@ -393,6 +409,9 @@ function mockFetchWithIssues(
 ) {
   posted = []
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).includes('/api/downloads')) {
+      return { ok: true, json: async () => ({ active: [], queue: [], history: [] }) }
+    }
     // Must return here: the download URL itself contains "/issues"
     // (/api/editions/9/issues/1/download), so falling through would answer a download
     // POST with the whole issues body instead of the endpoint's real { started, status }
@@ -479,6 +498,9 @@ test('refreshing the run asks Comic Vine again', async () => {
   const urls: string[] = []
   globalThis.fetch = vi.fn(async (url: string) => {
     urls.push(String(url))
+    if (String(url).includes('/api/downloads')) {
+      return { ok: true, json: async () => ({ active: [], queue: [], history: [] }) }
+    }
     if (String(url).includes('/issues')) {
       return { ok: true, json: async () => ({ ...VOLUME_ISSUES, fetchedAt: '2026-09-04T10:00:00.000Z' }) }
     }

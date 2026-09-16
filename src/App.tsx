@@ -10,6 +10,7 @@ import SearchComics from './pages/SearchComics'
 import Arcs from './pages/Arcs'
 import Arc from './pages/Arc'
 import Releases from './pages/Releases'
+import Downloads from './pages/Downloads'
 import DownloadBar from './components/DownloadBar'
 
 /**
@@ -95,6 +96,7 @@ export default function App() {
       <Route path="/upload" element={<Layout><Upload /></Layout>} />
       <Route path="/search" element={<Layout><SearchComics /></Layout>} />
       <Route path="/releases" element={<Layout><Releases /></Layout>} />
+      <Route path="/downloads" element={<Layout><Downloads /></Layout>} />
     </Routes>
   )
 }

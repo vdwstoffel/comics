@@ -19,6 +19,8 @@ interface MissingIssueTileProps {
   onGet: () => void
   pending: boolean
   failed: boolean
+  /** Already in the download queue — pressing Get again would just 409 on the server. */
+  queued?: boolean
 }
 
 /**
@@ -26,12 +28,16 @@ interface MissingIssueTileProps {
  * Latest tab so the two offer the same thing in the same words.
  */
 export default function MissingIssueTile({
-  label, siteUrl, hasMatch, matchTitle, findTo, coverUrl, onGet, pending, failed,
+  label, siteUrl, hasMatch, matchTitle, findTo, coverUrl, onGet, pending, failed, queued,
 }: MissingIssueTileProps) {
   return (
     <div className="volume-issue">
       <CoverTile href={siteUrl} img={coverUrl} title={label} subtitle="Missing" />
-      {hasMatch ? (
+      {queued ? (
+        <button type="button" className="btn btn-ghost volume-issue__get" disabled>
+          Queued
+        </button>
+      ) : hasMatch ? (
         <button
           type="button"
           className="btn btn-ghost volume-issue__get"

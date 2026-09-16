@@ -3,6 +3,7 @@ import { api } from '../api'
 import type { ApiReleaseIssue } from '../api'
 import CoverTile from '../components/CoverTile'
 import MissingIssueTile from '../components/MissingIssueTile'
+import { useDownload } from '../lib/useDownload'
 
 /** `2026-09-09` -> `Wednesday 9 September 2026`. Parsed as UTC: the day has no timezone. */
 function writeOutDay(day: string): string {
@@ -28,6 +29,7 @@ function label(issue: ApiReleaseIssue): string {
 function ReleaseIssue({ issue }: { issue: ApiReleaseIssue }) {
   const qc = useQueryClient()
   const text = label(issue)
+  const { liveByIssue } = useDownload()
 
   const get = useMutation({
     mutationFn: () => api.downloadRelease(issue.id),
@@ -66,6 +68,7 @@ function ReleaseIssue({ issue }: { issue: ApiReleaseIssue }) {
       onGet={() => get.mutate()}
       pending={get.isPending}
       failed={get.isError}
+      queued={liveByIssue.has(issue.id)}
     />
   )
 }

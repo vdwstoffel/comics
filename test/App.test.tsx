@@ -5,9 +5,11 @@ import { MemoryRouter } from 'react-router-dom'
 import App from '../src/App'
 
 const RUNNING = {
-  running: true, url: 'https://x.test/dls/tok', fileName: 'Knull 005 (2026).cbz',
-  received: 20_000_000, total: 50_000_000, error: null, bookId: null,
-  startedAt: '2026-09-09T00:00:00Z', finishedAt: null,
+  active: [{
+    id: 1, fileName: 'Knull 005 (2026).cbz',
+    received: 20_000_000, total: 50_000_000, startedAt: '2026-09-09T00:00:00Z',
+  }],
+  queue: [], history: [],
 }
 
 beforeEach(() => {
@@ -59,10 +61,10 @@ test('starting a download puts it on the bar straight away', async () => {
     const u = String(url)
     if (u.includes('/api/downloads') && init?.method === 'POST') {
       running = true
-      return { ok: true, json: async () => ({ started: true, status: {} }) }
+      return { ok: true, json: async () => ({ queued: true }) }
     }
     if (u.includes('/api/downloads')) {
-      return { ok: true, json: async () => (running ? RUNNING : { ...RUNNING, running: false, finishedAt: null, fileName: null }) }
+      return { ok: true, json: async () => (running ? RUNNING : { active: [], queue: [], history: [] }) }
     }
     return { ok: true, json: async () => ({ editions: [] }) }
   }) as unknown as typeof fetch

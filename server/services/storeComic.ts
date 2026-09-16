@@ -9,6 +9,7 @@ import { deriveSeriesName } from '../lib/seriesName.js'
 import { getEditionByName } from '../models/editions.js'
 import { ingestFile } from './indexer.js'
 import { applyIssueToBook } from './applyIssue.js'
+import { renameLock } from '../lib/mutex.js'
 import type { Ctx, Book } from '../types.js'
 
 export interface StoreComicInput {
@@ -97,9 +98,15 @@ export async function storeComic(
   }
 
   // Never rename onto a comic that is already there: that destroyed the existing file and
-  // then failed the unique constraint on book.file_path. Same guard every library move uses.
-  const destPath = dedupeDestPath(destDir, finalName)
-  await rename(cbzTmpPath, destPath)
+  // then failed the unique constraint on book.file_path. Picking the name and renaming
+  // onto it is one step, under the lock every writer into comicsDir shares - deliberately
+  // narrow, so the Comic Vine naming lookup above stays outside it and one slow API call
+  // cannot hold up every other download.
+  const destPath = await renameLock(async () => {
+    const claimed = dedupeDestPath(destDir, finalName)
+    await rename(cbzTmpPath, claimed)
+    return claimed
+  })
 
   // The NAME given, not the sanitised folder: sanitising is a filesystem concern, and
   // passing the folder on would rename the edition to whatever its directory had to be.

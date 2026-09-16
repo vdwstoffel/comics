@@ -208,6 +208,111 @@ img {
 }
 
 /* ============================================================
+   Download queue (the /downloads page)
+   ============================================================ */
+.queue-list {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 12px 0;
+}
+
+/* A FIXED height, not a minimum. QueueList measures row 0 and divides every pointer
+   offset by that one height, so the drag lands on the wrong row the moment two rows
+   differ - one long label wrapping is enough to break every row below it. 56px is the
+   44px touch target the controls need plus 6px of breathing room above and below. */
+.queue-list__row {
+  height: 56px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 0 12px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  font-size: 0.875rem;
+}
+
+/* touch-action: none is load-bearing on a tablet - without it the browser claims the
+   gesture and scrolls the page instead of letting the handle drag the row. */
+.queue-list__handle {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 44px;
+  min-height: 44px;
+  background: none;
+  border: none;
+  border-radius: 8px;
+  color: var(--muted);
+  font-size: 1.125rem;
+  line-height: 1;
+  font-family: inherit;
+  cursor: grab;
+  touch-action: none;
+}
+
+.queue-list__handle:hover:not(:disabled) {
+  color: var(--text);
+}
+
+.queue-list__handle:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+/* The one thing that must never grow a row: a long name is cut, not wrapped, or the fixed
+   height above is a lie and the drag arithmetic goes with it. */
+.queue-list__label {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.queue-list__state {
+  flex-shrink: 0;
+  color: var(--accent);
+  font-size: 0.8125rem;
+}
+
+.queue-list__error {
+  min-width: 0;
+  max-width: 40%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+/* Every control in a row is a tablet touch target first and a button second. */
+.queue-list__row .btn {
+  flex-shrink: 0;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 9px 14px;
+}
+
+.queue-list__row--dragging {
+  opacity: 0.6;
+  cursor: grabbing;
+}
+
+/* Where the row would land if you let go now. */
+.queue-list__row--drop {
+  border-color: var(--accent);
+}
+
+.queue-list__empty {
+  margin: 12px 0;
+  color: var(--muted);
+}
+
+/* ============================================================
    Typography helpers
    ============================================================ */
 .page-title {

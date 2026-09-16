@@ -3,6 +3,7 @@ import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ApiVolumeIssue, ApiBook } from '../api'
+import { useDownload } from '../lib/useDownload'
 import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import MissingIssueTile from '../components/MissingIssueTile'
@@ -27,6 +28,7 @@ function VolumeIssue({ issue, book, editionId, seriesName }: {
 }) {
   const qc = useQueryClient()
   const label = `#${issue.number ?? '?'}`
+  const { liveByIssue } = useDownload()
 
   const get = useMutation({
     mutationFn: () => api.downloadMissingIssue(editionId, issue.id),
@@ -65,6 +67,7 @@ function VolumeIssue({ issue, book, editionId, seriesName }: {
       onGet={() => get.mutate()}
       pending={get.isPending}
       failed={get.isError}
+      queued={liveByIssue.has(issue.id)}
     />
   )
 }

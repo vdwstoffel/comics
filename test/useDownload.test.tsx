@@ -1,22 +1,25 @@
 import type { ReactNode } from 'react'
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { renderHook, waitFor, act, cleanup } from '@testing-library/react'
+import { renderHook, waitFor, cleanup } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { useDownload } from '../src/lib/useDownload'
 
 const RUNNING = {
-  running: true, url: 'https://x.test/dls/tok', fileName: 'Knull 005 (2026).cbz',
-  received: 20_000_000, total: 50_000_000, error: null, bookId: null,
-  startedAt: '2026-09-09T00:00:00Z', finishedAt: null,
+  active: [{
+    id: 1, fileName: 'Knull 005 (2026).cbz',
+    received: 20_000_000, total: 50_000_000, startedAt: '2026-09-09T00:00:00Z',
+  }],
+  queue: [], history: [],
 }
 const DONE = {
-  ...RUNNING, running: false, received: 50_000_000, bookId: 42,
-  finishedAt: '2026-09-09T00:01:00Z',
+  active: [], queue: [],
+  history: [{
+    id: 1, position: 0, state: 'done' as const, url: 'https://x.test/dls/tok',
+    fileName: 'Knull 005 (2026).cbz', bookId: 42, attempts: 1,
+    queuedAt: '2026-09-09T00:00:00Z', startedAt: '2026-09-09T00:00:00Z', finishedAt: '2026-09-09T00:01:00Z',
+  }],
 }
-const IDLE = {
-  running: false, url: null, fileName: null, received: 0, total: 0,
-  error: null, bookId: null, startedAt: null, finishedAt: null,
-}
+const IDLE = { active: [], queue: [], history: [] }
 
 let served: unknown
 let polls: number
@@ -43,7 +46,8 @@ afterEach(() => { cleanup() })
 test('a run in flight is picked up with nothing telling the hook to look', async () => {
   served = RUNNING
   const { result } = renderHook(() => useDownload(), { wrapper })
-  await waitFor(() => expect(result.current.status?.running).toBe(true))
+  await waitFor(() => expect(result.current.active).toHaveLength(1))
+  expect(result.current.active[0].fileName).toBe('Knull 005 (2026).cbz')
 })
 
 test('an in-flight run keeps being polled', async () => {
@@ -70,57 +74,68 @@ test('a finished run invalidates the library so the new comic shows up', async (
 test('a run already dealt with is not invalidated again when the page remounts', async () => {
   served = DONE
   const first = renderHook(() => useDownload(), { wrapper })
-  await waitFor(() => expect(first.result.current.result?.bookId).toBe(42))
+  await waitFor(() => expect(first.result.current.history[0]?.bookId).toBe(42))
 
   // Whatever the completion did has been done; prove a remount does not redo it.
-  qc.setQueryData(['series'], { series: [] })
+  const spy = vi.spyOn(qc, 'invalidateQueries')
   first.unmount()
   renderHook(() => useDownload(), { wrapper })
   await new Promise((r) => setTimeout(r, 300))
-  expect(qc.getQueryState(['series'])?.isInvalidated).toBe(false)
+  expect(spy).not.toHaveBeenCalled()
 })
 
-test('a finished run is offered as a result to show', async () => {
+test('a finished run appears in history', async () => {
   served = DONE
   const { result } = renderHook(() => useDownload(), { wrapper })
-  await waitFor(() => expect(result.current.result).toMatchObject({ bookId: 42, fileName: 'Knull 005 (2026).cbz' }))
+  await waitFor(() => expect(result.current.history[0]).toMatchObject({ bookId: 42, fileName: 'Knull 005 (2026).cbz' }))
 })
 
-test('a run still going is not offered as a result', async () => {
+test('a run still going does not appear in history', async () => {
   served = RUNNING
   const { result } = renderHook(() => useDownload(), { wrapper })
-  await waitFor(() => expect(result.current.status?.running).toBe(true))
-  expect(result.current.result).toBeNull()
+  await waitFor(() => expect(result.current.active).toHaveLength(1))
+  expect(result.current.history).toHaveLength(0)
 })
 
-test('dismissing a result puts it away', async () => {
+test('a later run finishing invalidates the library again, even after an earlier one already has', async () => {
   served = DONE
   const { result } = renderHook(() => useDownload(), { wrapper })
-  await waitFor(() => expect(result.current.result).not.toBeNull())
-  act(() => result.current.dismiss())
-  await waitFor(() => expect(result.current.result).toBeNull())
-})
+  await waitFor(() => expect(result.current.history[0]?.bookId).toBe(42))
 
-test('a dismissed result stays dismissed when the page remounts', async () => {
-  served = DONE
-  const first = renderHook(() => useDownload(), { wrapper })
-  await waitFor(() => expect(first.result.current.result).not.toBeNull())
-  act(() => first.result.current.dismiss())
-  first.unmount()
-
-  const second = renderHook(() => useDownload(), { wrapper })
-  await new Promise((r) => setTimeout(r, 300))
-  expect(second.result.current.result).toBeNull()
-})
-
-test('a fresh run after a dismissed one is shown again', async () => {
-  served = DONE
-  const { result } = renderHook(() => useDownload(), { wrapper })
-  await waitFor(() => expect(result.current.result).not.toBeNull())
-  act(() => result.current.dismiss())
-  await waitFor(() => expect(result.current.result).toBeNull())
-
-  served = { ...DONE, bookId: 43, finishedAt: '2026-09-09T00:05:00Z' }
+  const spy = vi.spyOn(qc, 'invalidateQueries')
+  served = {
+    active: [], queue: [],
+    history: [{ ...DONE.history[0], id: 2, bookId: 43, finishedAt: '2026-09-09T00:05:00Z' }],
+  }
   await qc.refetchQueries({ queryKey: ['download'] })
-  await waitFor(() => expect(result.current.result?.bookId).toBe(43))
+  await waitFor(() => expect(spy).toHaveBeenCalled())
+})
+
+// `retry` reuses the row id - it only clears `finishedAt` and resets `attempts` - so a
+// guard keyed on id alone would skip the refresh for a download that failed and was then
+// retried successfully. The comic would land on disk while the library never heard about
+// it.
+test('a retried download that then succeeds still refreshes the library', async () => {
+  const FAILED_ROW = {
+    id: 1, position: 0, state: 'failed' as const, url: 'https://x.test/dls/tok',
+    fileName: 'Knull 005 (2026).cbz', attempts: 1, error: 'network error',
+    queuedAt: '2026-09-09T00:00:00Z', startedAt: '2026-09-09T00:00:00Z',
+    finishedAt: '2026-09-09T00:01:00Z',
+  }
+  served = { active: [], queue: [], history: [FAILED_ROW] }
+  const { result } = renderHook(() => useDownload(), { wrapper })
+  await waitFor(() => expect(result.current.history[0]?.state).toBe('failed'))
+
+  // The retry succeeds: same row id, but restamped `done` with a later `finishedAt`.
+  const spy = vi.spyOn(qc, 'invalidateQueries')
+  served = {
+    active: [], queue: [],
+    history: [{
+      ...FAILED_ROW, state: 'done' as const, error: undefined, bookId: 43, attempts: 2,
+      finishedAt: '2026-09-09T00:05:00Z',
+    }],
+  }
+  await qc.refetchQueries({ queryKey: ['download'] })
+  await waitFor(() => expect(result.current.history[0]?.bookId).toBe(43))
+  expect(spy).toHaveBeenCalled()
 })

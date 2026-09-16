@@ -36,6 +36,15 @@ test('a failed press reports on its own tile', () => {
   expect(screen.getByText(/Could not get that one/i)).toBeInTheDocument()
 })
 
+// Pressing Get twice on the same issue is refused by the server; saying so up front is
+// better than letting someone press a button that will 409.
+test('an issue already queued says so instead of offering Get', () => {
+  draw({ hasMatch: true, queued: true })
+  expect(screen.getByText(/queued/i)).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Get/ })).toBeNull()
+  expect(screen.queryByRole('link', { name: /Find/ })).toBeNull()
+})
+
 // The releases tab passes a cover; an edition page does not.
 test('cover art is drawn when one is given and absent when not', () => {
   const { unmount } = draw({ hasMatch: false, coverUrl: 'https://cv/cover.jpg' })

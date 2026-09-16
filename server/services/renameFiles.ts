@@ -2,6 +2,7 @@ import { rename } from 'node:fs/promises'
 import { dirname, extname, join } from 'node:path'
 import { comicFileName } from '../lib/comicFileName.js'
 import { dedupeDestPath } from '../lib/paths.js'
+import { renameLock } from '../lib/mutex.js'
 import { listEditions } from '../models/editions.js'
 import { listBooksByEdition, setBookEdition } from '../models/books.js'
 import type { Ctx, Db, Book } from '../types.js'
@@ -86,9 +87,14 @@ export async function renameLibraryFiles(ctx: Ctx): Promise<{ renamed: number; s
     const from = join(config.comicsDir, plan.from)
     const destDir = join(config.comicsDir, dirname(plan.to))
     try {
-      // Never rename onto a comic that is already there.
-      const to = dedupeDestPath(destDir, plan.to.split('/').pop()!)
-      await rename(from, to)
+      // Never rename onto a comic that is already there. Claiming the name and moving
+      // onto it is one step, under the lock every writer into comicsDir shares - a
+      // download filing a comic mid-run must not be handed the name this plan just took.
+      const to = await renameLock(async () => {
+        const claimed = dedupeDestPath(destDir, plan.to.split('/').pop()!)
+        await rename(from, claimed)
+        return claimed
+      })
       const relative = `${dirname(plan.to)}/${to.split('/').pop()!}`
       const row = db.prepare('SELECT edition_id FROM book WHERE id = ?').get(plan.bookId) as { edition_id: number }
       setBookEdition(db, plan.bookId, row.edition_id, relative)

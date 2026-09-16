@@ -1,4 +1,4 @@
-import { test, expect } from 'vitest'
+import { test, expect, vi } from 'vitest'
 import Fastify from 'fastify'
 import editionRoutes from '../server/routes/editions.js'
 import { openDb } from '../server/db.js'
@@ -11,7 +11,7 @@ const POST_HTML = '<div class="aio-button-center"><a href="https://dl.test/venom
 /** Every Comic Vine url the server asks for, so the no-search invariant is testable. */
 let cvUrls: string[] = []
 
-function server(db: ReturnType<typeof openDb>, html: string | null = POST_HTML) {
+function server(db: ReturnType<typeof openDb>, html: string | null = POST_HTML, alreadyQueued = false) {
   cvUrls = []
   globalThis.fetch = (async (url: string) => {
     cvUrls.push(String(url))
@@ -23,8 +23,17 @@ function server(db: ReturnType<typeof openDb>, html: string | null = POST_HTML) 
   app.decorate('db', db)
   app.decorate('config', { comicsDir: '/tmp/comics', thumbsDir: '/tmp/thumbs', comicVineApiKey: 'k' } as Config)
   app.decorate('downloader', {
-    start(req: unknown) { started.push(req); return { started: true, status: { running: true }, done: Promise.resolve() } },
-    status() { return { running: false } },
+    enqueue(req: unknown) {
+      started.push(req)
+      const { url } = req as { url: string }
+      const entry = { id: 1, position: 0, state: 'queued', url, attempts: 0, queuedAt: new Date().toISOString() }
+      return alreadyQueued ? { queued: false, duplicate: entry } : { queued: true, entry }
+    },
+    status() { return { active: [], queue: [], history: [] } },
+    // Nothing calls these yet - Task 4/5 add the routes that do. A stub missing a method
+    // fails with a confusing "is not a function" rather than a useful assertion.
+    cancel: vi.fn(),
+    wake: vi.fn(),
   } as never)
   return { app, started, fetchPage: async () => { if (html === null) throw new Error('nope'); return html } }
 }
@@ -48,7 +57,9 @@ test('pressing get starts the download in this edition, for this issue', async (
   const res = await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/1136140/download` })
 
   expect(res.statusCode).toBe(202)
-  expect(started).toEqual([{ url: 'https://dl.test/venom-250.cbz', edition: 'Venom (2025)', issueId: 1136140 }])
+  expect(started).toEqual([
+    { url: 'https://dl.test/venom-250.cbz', edition: 'Venom (2025)', issueId: 1136140, label: 'Venom #250' },
+  ])
   await app.close(); db.close()
 })
 
@@ -78,7 +89,25 @@ test('a match that has become ambiguous refuses rather than guessing', async () 
   const res = await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/1136140/download` })
 
   expect(res.statusCode).toBe(409)
+  // Two different things are 409 here. Only `reason` tells them apart.
+  expect(res.json().reason).toBe('no-match')
   expect(started).toEqual([])
+  await app.close(); db.close()
+})
+
+// Spec §4.4: the queue refuses a second copy of an issue it already holds, and says which
+// kind of 409 that is - the same status an ambiguous match returns.
+test('an issue already in the queue is refused as a duplicate, and says so', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seed(db)
+  const { app, fetchPage } = server(db, POST_HTML, true)
+  await app.register(editionRoutes, { fetchPage })
+
+  const res = await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/1136140/download` })
+
+  expect(res.statusCode).toBe(409)
+  expect(res.json().reason).toBe('duplicate')
+  expect(res.json().entry.id).toBe(1)
   await app.close(); db.close()
 })
 

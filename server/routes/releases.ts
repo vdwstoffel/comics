@@ -7,7 +7,7 @@ import type { ReleaseIssue } from '../models/releases.js'
 import { ownedIssueIds } from '../models/arcs.js'
 import { getEditionByComicvineId } from '../models/editions.js'
 import { findMatchForIssue } from '../services/issueMatching.js'
-import { startIssueDownload } from '../services/issueDownload.js'
+import { startIssueDownload, issueLabel } from '../services/issueDownload.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import type { App } from '../types.js'
 
@@ -158,16 +158,15 @@ export default async function releaseRoutes(app: App, opts: ReleaseRouteOpts = {
         volumeName,
         editionName: existing?.name ?? volumeName ?? 'Unsorted',
         issue: { id: issue.id, number: issue.number, coverDate: issue.coverDate },
+        label: issueLabel(issue.volumeName, issue.number),
         fetchPage,
       })
+      // `reason` is the machine-readable half of the refusal: a client cannot tell a
+      // no-match 409 from a duplicate one by string-matching the message.
       if (!result.ok) {
-        // A refused start still reports the runner's state, as it always did.
-        if (result.reason === 'busy') {
-          return reply.code(409).send({ started: false, status: app.downloader.status() })
-        }
-        return reply.code(result.code).send({ error: result.error })
+        return reply.code(result.code).send({ reason: result.reason, error: result.error, entry: result.entry })
       }
-      return reply.code(202).send({ started: true, status: result.status })
+      return reply.code(202).send({ queued: true, entry: result.entry })
     },
   )
 }
