@@ -23,13 +23,19 @@ retry what failed, clear what finished.
   clear history.
 - Retry a failure once automatically before giving up on it.
 - Refuse a duplicate rather than downloading the same comic twice.
+- Make concurrency a number, not an assumption: the drain is a worker pool whose
+  size is one constant, defaulting to 1.
 
 ### Non-goals
 
-- **Parallel downloads.** Serial, as today. The source is a scraped file host,
-  and the ask was to queue rather than to parallelise. The drain loop is serial
-  by construction; making it parallel later is a change to that loop, not to the
-  schema.
+- **Deciding how many downloads should run at once.** The pool supports more
+  than one and ships set to 1. Whether 2 or 3 is faster depends on where the
+  bottleneck is — a saturated home link gains nothing, a host that throttles per
+  connection gains nearly linearly — and that is measured on the real link, not
+  guessed here.
+- **Per-host concurrency limits.** The pool size is global. Downloads all come
+  from the same scraped index today; a rule per host is a problem for the day
+  there are several.
 - **Scheduling.** No "download at 3am", no rate windows. `not_before` exists for
   the retry backoff (§3) and is not a scheduling feature.
 - **Queueing a whole Wednesday in one press.** Inherited from the missing-issue
@@ -87,14 +93,44 @@ belongs to a run that is already over."*
 This is why the schema below carries **no** `tmp_path` column. Recovery does not
 need to track individual staging files; they are gone before the runner exists.
 
+### 2.5 Storing two comics at once has exactly one race
+
+`server/services/storeComic.ts` picks a free filename and then renames onto it:
+
+```ts
+const destPath = dedupeDestPath(destDir, finalName)   // synchronous; finds a free name
+await rename(cbzTmpPath, destPath)                     // yields
+```
+
+`dedupeDestPath` is synchronous, so it cannot interleave with itself — but the
+`await` after it can. Two downloads can both be handed the same free name,
+because the first has not renamed yet when the second looks. Both then rename
+onto it: the second destroys the first's file, and the second `book.file_path`
+insert fails its unique constraint. The comment above that line names this exact
+failure, which is today prevented by there only ever being one download.
+
+The window is wide, not theoretical: the `issueId` branch a few lines earlier
+makes two Comic Vine requests.
+
+What was checked and is **not** a race:
+
+- `upsertEdition` runs its SELECT and INSERT with no `await` between them, and
+  better-sqlite3 is synchronous, so two downloads creating the same new edition
+  cannot interleave.
+- SQLite statements cannot interleave for the same reason, so no DB write needs
+  a lock of its own.
+
 ## 3. The rules
 
 **Order.** `position`, a plain integer. Reordering renumbers the live rows in one
 transaction. The queue is short; fractional positions would be cleverness with
 nobody to pay for it.
 
-**Serial.** One download at a time, because the drain loop takes one row at a
-time.
+**Concurrency.** `DOWNLOAD_CONCURRENCY`, one constant, default 1. The drain is a
+pool of that many workers, each looping independently over `takeNext`. At 1 it
+behaves exactly as a single loop; above 1 the only thing that changes is how many
+workers are asking. `takeNext` marking the row in the statement that selects it
+is what makes that safe — it is not an optimisation, it is the whole mechanism.
 
 **Duplicates.** An issue already `queued` or `running` cannot be queued again.
 Enforced by a partial unique index, not by a read-then-write, so two near-
@@ -172,7 +208,7 @@ depend on that — cannot take the same row.
 
 ```ts
 export interface DownloadRunner {
-  status: () => { active: ActiveDownload | null; queue: QueueEntry[]; history: QueueEntry[] }
+  status: () => { active: ActiveDownload[]; queue: QueueEntry[]; history: QueueEntry[] }
   enqueue: (req: DownloadRequest) => { queued: true; entry: QueueEntry } | { queued: false; duplicate: QueueEntry }
   cancel: (id: number) => boolean
   /** Resolves when the queue is empty. Tests await it; nothing in production does. */
@@ -194,19 +230,38 @@ to SQLite would be thousands of writes per download. The in-memory `ActiveDownlo
 is the only mutable state the runner keeps, and it is discarded when the row
 finishes.
 
-**The drain loop.** `enqueue` inserts and kicks the loop if it is not already
-running. The loop calls `takeNext`; when nothing is takeable but queued rows
-exist with a future `not_before`, it sets a timer for the earliest and stops.
-The download body itself — the fetch, the byte cap, the `storeComic` call — is
-unchanged from today's `run`.
+**The worker pool.** `enqueue` inserts and wakes the pool. Each of the
+`DOWNLOAD_CONCURRENCY` workers loops on `takeNext` until it comes back empty;
+when nothing is takeable but queued rows exist with a future `not_before`, the
+last worker to stop sets a timer for the earliest. The download body itself —
+the fetch, the byte cap, the `storeComic` call — is unchanged from today's `run`.
 
-**Cancelling.** The runner holds an `AbortController` for the active row. Cancel
-on a queued row removes it. Cancel on the running row aborts the fetch, which
+**Progress is a map, not a field.** `ActiveDownload` is keyed by row id, because
+at concurrency above 1 there is more than one. At 1 the map holds one entry and
+the bar renders it exactly as before.
+
+**Cancelling.** The runner holds an `AbortController` per in-flight row, keyed
+by id — which is what lets a cancel name which download it means once there can
+be more than one. Cancel on a queued row removes it. Cancel on the running row aborts the fetch, which
 lands in the existing catch — so the catch must be able to tell an abort from a
 failure, or the retry rule would put back the very thing that was just stopped.
 The runner tracks which id it cancelled and routes that one to `fail(id,
 'cancelled')` with no `retryAt`: final, not auto-retried. A manual retry from
 the history list is still offered, because changing your mind twice is allowed.
+
+### 4.2.1 `server/services/storeComic.ts` (changed)
+
+The dedupe-then-rename of §2.5 is wrapped in an in-process async mutex, so the
+name a download is handed is still free when it renames onto it. One process
+means a plain promise chain is a sufficient lock; no file locking, no advisory
+lock in SQLite.
+
+The critical section is those two statements and nothing more — the Comic Vine
+naming round-trip above it stays outside, or every parallel download would queue
+behind one slow lookup and the pool would be a pool in name only.
+
+This fix is required by the pool and correct without it. It goes in whether or
+not concurrency is ever raised above 1.
 
 ### 4.3 `server/services/issueDownload.ts` (changed)
 
@@ -254,10 +309,13 @@ Both call the same `PATCH`, with the 0-based index the row should end up at.
 
 ### 4.7 `src/pages/Downloads.tsx` (new), `src/components/DownloadBar.tsx` (changed)
 
-The page has three sections: *Now downloading*, *Queue*, *Recent*. The bar gains
-the queued count and a link to the page.
+The page has three sections: *Now downloading*, *Queue*, *Recent*. *Now
+downloading* renders every active row, which is one of them at the shipped
+concurrency and is why it is a list rather than a block. The bar gains the queued
+count and a link to the page; with more than one in flight it summarises rather
+than growing — the page is where the detail lives.
 
-`useDownload` polls while `active` exists **or** the queue is non-empty, and its
+`useDownload` polls while anything is `active` **or** the queue is non-empty, and its
 single-`finishedAt` dismissal is replaced by the history list — several runs
 finishing in a row each land there, which the old keying could not represent.
 
@@ -276,11 +334,12 @@ POST .../download
   │    └─ partial unique index rejects a live duplicate → 409 { reason: 'duplicate' }
   └─ 202 { entry }                         → kicks the drain loop if idle
 
-drain loop
-  ├─ entry := takeNext(now)                → marks it running in one statement
+each of N workers
+  ├─ entry := takeNext(now)                → marks it running in one statement,
+  │                                          so two workers cannot take one row
   │    └─ nothing takeable, but a future not_before exists → set a timer, stop
   ├─ progress := in-memory { received, total, fileName }
-  ├─ download → storeComic                 (unchanged)
+  ├─ download → storeComic                 (rename now behind a mutex, §4.2.1)
   ├─ ok      → finish(id, { bookId, fileName })
   ├─ aborted → fail(id, 'cancelled')       -- no retryAt: final, never auto-retried
   └─ failed  → fail(id, error, { retryAt: attempts === 0 ? now + BACKOFF : undefined })
@@ -307,6 +366,16 @@ startup
 - **A failing host is not hammered.** `not_before` spaces a retry out; the loop
   moves to other work in the meantime rather than blocking on a sleep.
 - **History cannot grow without bound.** Pruned to 50 on write.
+- **Two workers cannot take one row**, because `takeNext` marks it in the
+  statement that selects it rather than in a second statement afterwards.
+- **Two workers cannot claim one filename**, because the dedupe and the rename
+  are one critical section (§4.2.1).
+- **Raising concurrency multiplies the Comic Vine request rate.** `storeComic`
+  builds its own client per call, so each in-flight download carries its own
+  1-per-second throttle. At the default of 1 this is today's behaviour; at 3 it
+  is three times the rate, against a 200-per-hour budget. Two calls per download
+  makes that a non-issue at any pool size this app would use, but it is the
+  reason the constant is not a user-facing setting.
 
 ## 7. Schema
 
@@ -353,8 +422,11 @@ running and returns nothing when the only queued row has a future `not_before`.
 puts a running row at the front and leaves `attempts` alone. `pruneHistory` keeps
 the newest 50.
 
-**Runner.** Three enqueued items download in order, one at a time — asserted by
-recording the order the stub fetch is called in, not by timing. A failure is
+**Runner.** At concurrency 1, three enqueued items download in order, one at a
+time — asserted by recording the order the stub fetch is called in, not by
+timing. At concurrency 2, two are in flight at once and no row is taken twice —
+asserted by holding both stub fetches open and checking what `takeNext` handed
+out, again not by timing. A failure is
 retried once then marked failed, and `attempts` reflects it. A cancel on the
 running row aborts it and it is **not** retried. A cancel on a queued row removes
 it without touching the running one. Two enqueues in the same tick produce one
@@ -363,6 +435,12 @@ row and one duplicate result.
 **Routes.** Each of the eight in §4.4, including the 409 duplicate carrying the
 existing entry, and a `PATCH` to an index outside the live queue being rejected
 with 400 rather than corrupting the order.
+
+**The rename race (§2.5).** Two `storeComic` calls resolving to the same final
+filename, started together: both comics end up on disk under different names,
+neither file is destroyed, and both `book` rows insert. Run against the mutex
+removed, this test must fail — a concurrency test that passes either way is
+testing nothing.
 
 **`dropIndex`.** A table: above the first item, below the last, exactly on a
 boundary, and a single-item list. Numbers in, index out — no DOM.
@@ -389,3 +467,7 @@ queue and **Get** otherwise.
   comic because a cancel arrived late — is worse.
 - **The history cap is a number, not a policy.** Fifty is a guess. It is a
   constant in one place.
+- **Concurrency above 1 is shipped untested against the real host.** The pool is
+  covered by tests, but whether the file host tolerates — or rewards — parallel
+  connections is only answerable on the real link. The default of 1 is why that
+  is a measurement rather than a risk.
