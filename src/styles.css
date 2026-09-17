@@ -2476,3 +2476,34 @@ textarea.input:hover:not(:focus) {
   max-height: 60vh;
   overflow-y: auto;
 }
+
+/* Scaled up under the blur so the softened edges stay outside the frame; without it the
+   box's own background shows through around the rim. */
+.cover-tile__image-box--blurred img {
+  filter: blur(14px);
+  transform: scale(1.15);
+}
+
+.volume-issues__issue {
+  position: relative;
+}
+
+/* Over the cover it hides, not inside the tile's link. */
+.volume-issues__reveal {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  padding: 6px 14px;
+  min-height: 36px;
+  font-size: 0.8125rem;
+  color: var(--text);
+  background: rgba(0, 0, 0, 0.72);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  cursor: pointer;
+}
+
+.volume-issues__reveal:hover {
+  background: rgba(0, 0, 0, 0.85);
+}

@@ -441,8 +441,10 @@ test('opening a volume shows its issues, each linking to the comic', async () =>
 
   const dialog = await screen.findByRole('dialog', { name: 'Amazing Spider-Man (2025)' })
   expect(within(dialog).getByRole('link', { name: /Bad Things/ })).toHaveAttribute('href', '/book/7')
-  expect(within(dialog).getByText('Worse Things')).toBeInTheDocument()
-  expect(within(dialog).getByText('Worst Things')).toBeInTheDocument()
+  // The two behind it are covered against spoilers, so they are named by their numbers.
+  // Each is still a way through to the comic.
+  expect(within(dialog).getByRole('link', { name: /#30/ })).toHaveAttribute('href', '/book/8')
+  expect(within(dialog).getByRole('link', { name: /#31/ })).toHaveAttribute('href', '/book/10')
 })
 
 // One volume at a time: opening another replaces what is on screen rather than adding to
@@ -511,4 +513,19 @@ test('reading is not grouped - its comics are drawn directly', async () => {
   expect(await screen.findByText('Bad Things')).toBeInTheDocument()
   expect(screen.getByRole('link', { name: /Bad Things/ })).toHaveAttribute('href', '/book/7')
   expect(screen.queryByRole('button', { name: /^Issues of/ })).not.toBeInTheDocument()
+})
+
+// The blur must not erode over a session: a volume you opened, peeked into and closed is
+// covered again next time, because the dialog carrying that state is gone with it.
+test('reopening a volume hides its covers again', async () => {
+  fireEvent.click(await showUnread())
+  fireEvent.click(await screen.findByRole('button', { name: /reveal the cover of #30/i }))
+  expect(screen.getByText('Worse Things')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: /close/i }))
+  fireEvent.click(screen.getByRole('button', { name: 'Issues of Amazing Spider-Man (2025)' }))
+
+  await screen.findByRole('dialog')
+  expect(screen.queryByText('Worse Things')).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /reveal the cover of #30/i })).toBeInTheDocument()
 })

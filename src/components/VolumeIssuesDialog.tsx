@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import CoverTile from './CoverTile'
 import { tileLabel } from '../lib/tileLabel'
@@ -26,7 +26,14 @@ export default function VolumeIssuesDialog({ group, onClose }: VolumeIssuesDialo
     return () => document.removeEventListener('keydown', onKey)
   }, [onClose])
 
+  // Reset every time the dialog is built, so the protection does not quietly erode as a
+  // session goes on: closing a volume and opening it again hides its covers afresh.
+  const [revealed, setRevealed] = useState<ReadonlySet<number>>(new Set())
+
   const count = group.books.length
+  // A volume with one unread issue has nothing to spoil - that issue is the one you are
+  // about to read.
+  const hiding = count > 1
 
   return (
     <div className="modal-backdrop" data-testid="volume-issues-backdrop" onClick={onClose}>
@@ -48,17 +55,41 @@ export default function VolumeIssuesDialog({ group, onClose }: VolumeIssuesDialo
         </div>
 
         <div className="volume-issues__grid">
-          {group.books.map((book) => (
-            <CoverTile
-              key={book.id}
-              to={`/book/${book.id}`}
-              img={`/api/books/${book.id}/thumbnail`}
-              title={tileLabel(book)}
-              subtitle={book.number ? `#${book.number}` : ''}
-              readState={book.readState}
-              percent={book.percent}
-            />
-          ))}
+          {group.books.map((book, index) => {
+            // The first is the one you would read next, so its cover is not a surprise you
+            // are being protected from - it is the one you came here for.
+            const hidden = hiding && index > 0 && !revealed.has(book.id)
+            // The title spoils as readily as the art beneath it, so a hidden issue is
+            // named by its number alone. That name is also the image's alt text, which
+            // would otherwise read the spoiler out loud.
+            const name = book.number ? `#${book.number}` : 'Hidden issue'
+            return (
+              <div className="volume-issues__issue" key={book.id}>
+                <CoverTile
+                  to={`/book/${book.id}`}
+                  img={`/api/books/${book.id}/thumbnail`}
+                  title={hidden ? name : tileLabel(book)}
+                  subtitle={hidden ? '' : (book.number ? `#${book.number}` : '')}
+                  readState={book.readState}
+                  percent={book.percent}
+                  blurred={hidden}
+                />
+                {/* A sibling of the tile, never a child: the tile wraps its whole body in
+                    a link, so a button inside it would be invalid markup and every reveal
+                    would open the comic instead of uncovering it. */}
+                {hidden && (
+                  <button
+                    type="button"
+                    className="volume-issues__reveal"
+                    aria-label={`Reveal the cover of ${name}`}
+                    onClick={() => setRevealed((seen) => new Set(seen).add(book.id))}
+                  >
+                    Reveal
+                  </button>
+                )}
+              </div>
+            )
+          })}
         </div>
 
         <div className="modal-actions">

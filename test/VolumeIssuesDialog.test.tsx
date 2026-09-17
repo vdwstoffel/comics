@@ -34,7 +34,9 @@ test('it lists the volume\'s unread issues, each linking to the comic', () => {
   const dialog = screen.getByRole('dialog')
 
   expect(within(dialog).getByRole('link', { name: /Bad Things/ })).toHaveAttribute('href', '/book/1')
-  expect(within(dialog).getByRole('link', { name: /Worse Things/ })).toHaveAttribute('href', '/book/2')
+  // The second is hidden behind the spoiler blur, so it is named by its number rather
+  // than its title. It is still a way through to the comic.
+  expect(within(dialog).getByRole('link', { name: /#256/ })).toHaveAttribute('href', '/book/2')
 })
 
 test('it says how many there are', () => {
@@ -77,4 +79,74 @@ test('the close button closes it', () => {
 test('a volume holding one issue reads in the singular', () => {
   renderDialog({ ...GROUP, books: [book(1, '255', 'Bad Things')] })
   expect(within(screen.getByRole('dialog')).getByText('1 unread')).toBeInTheDocument()
+})
+
+// --- spoiler blur ------------------------------------------------------------
+
+const THREE: VolumeGroup = {
+  editionId: 9,
+  editionName: 'Venom (2025)',
+  books: [book(1, '255', 'Bad Things'), book(2, '256', 'Worse Things'), book(3, '257', 'Worst Things')],
+}
+
+// The next one you would read is the one you have already decided to see. Everything
+// after it is a cover for a story you have not read yet.
+test('everything after the first unread issue is hidden', () => {
+  renderDialog(THREE)
+
+  expect(screen.queryByRole('button', { name: /reveal the cover of #255/i })).not.toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /reveal the cover of #256/i })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /reveal the cover of #257/i })).toBeInTheDocument()
+})
+
+test('the first issue is shown in full', () => {
+  renderDialog(THREE)
+  expect(screen.getByText('Bad Things')).toBeInTheDocument()
+})
+
+// A title spoils as readily as the art it sits under - "Death Spiral, Part 3 of 9" tells
+// you the thing the blur is there to hide. A hidden issue is named by its number alone.
+test('a hidden issue shows its number rather than its title', () => {
+  renderDialog(THREE)
+
+  expect(screen.queryByText('Worse Things')).not.toBeInTheDocument()
+  expect(screen.queryByText('Worst Things')).not.toBeInTheDocument()
+  expect(screen.getByText('#256')).toBeInTheDocument()
+})
+
+test('a hidden cover is actually blurred', () => {
+  renderDialog(THREE)
+  const hidden = screen.getByAltText('#256')
+  expect(hidden.closest('.cover-tile__image-box')).toHaveClass('cover-tile__image-box--blurred')
+})
+
+test('revealing one issue leaves the rest hidden', () => {
+  renderDialog(THREE)
+  fireEvent.click(screen.getByRole('button', { name: /reveal the cover of #256/i }))
+
+  expect(screen.getByText('Worse Things')).toBeInTheDocument()
+  expect(screen.getByAltText('Worse Things').closest('.cover-tile__image-box'))
+    .not.toHaveClass('cover-tile__image-box--blurred')
+  expect(screen.queryByText('Worst Things')).not.toBeInTheDocument()
+})
+
+test('a revealed issue loses its reveal button', () => {
+  renderDialog(THREE)
+  fireEvent.click(screen.getByRole('button', { name: /reveal the cover of #256/i }))
+  expect(screen.queryByRole('button', { name: /reveal the cover of #256/i })).not.toBeInTheDocument()
+})
+
+// The tile wraps its whole body in a link. A reveal button nested inside it would be
+// invalid markup and every reveal would open the comic instead of uncovering it.
+test('revealing does not open the comic', () => {
+  renderDialog(THREE)
+  const reveal = screen.getByRole('button', { name: /reveal the cover of #256/i })
+  expect(reveal.closest('a')).toBeNull()
+})
+
+// Nothing to spoil: the one unread issue is the one you are about to read.
+test('a volume with a single unread issue hides nothing', () => {
+  renderDialog({ ...GROUP, books: [book(1, '255', 'Bad Things')] })
+  expect(screen.queryByRole('button', { name: /reveal/i })).not.toBeInTheDocument()
+  expect(screen.getByText('Bad Things')).toBeInTheDocument()
 })

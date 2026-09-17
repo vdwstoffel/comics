@@ -9,15 +9,20 @@ interface CoverTileProps {
   subtitle?: string
   readState?: 'unread' | 'reading' | 'read'
   percent?: number
+  /** Obscure the art. For a comic you have not read yet, whose cover is a spoiler. */
+  blurred?: boolean
 }
 
-export default function CoverTile({ to, href, img, title, subtitle, readState, percent }: CoverTileProps) {
+export default function CoverTile({ to, href, img, title, subtitle, readState, percent, blurred = false }: CoverTileProps) {
   const isRead = readState === 'read'
   const isReading = readState === 'reading'
 
   const inner = (
     <>
-      <div className="cover-tile__image-box" style={isRead ? { filter: 'brightness(0.6)' } : undefined}>
+      <div
+        className={`cover-tile__image-box${blurred ? ' cover-tile__image-box--blurred' : ''}`}
+        style={isRead ? { filter: 'brightness(0.6)' } : undefined}
+      >
         {img && <img src={img} alt={title} />}
         {isRead && (
           <div className="tile-check" aria-label="Read">
