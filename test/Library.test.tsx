@@ -163,9 +163,11 @@ const READ_STATES = {
 }
 
 const LIBRARY_BOOKS = [
-  { id: 7, number: '29', title: 'Bad Things', pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0,
+  { id: 7, editionId: 9, editionName: 'The Amazing Spider-Man (2025)', number: '29', title: 'Bad Things',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0,
     filePath: 'The Amazing Spider-Man/The Amazing Spider-Man (2025)/the_amazing_spider-man_029.cbz' },
-  { id: 9, number: null, title: null, pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0,
+  { id: 9, editionId: 4, editionName: 'Knull (2026)', number: null, title: null,
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0,
     filePath: 'Knull/Knull (2026)/knull_untagged.cbz' },
 ]
 
@@ -212,14 +214,19 @@ test('choosing Unread asks the server for the unread comics themselves', async (
     expect(calls.some((c) => c.includes('/api/books') && c.includes('readState=unread'))).toBe(true))
 })
 
+// Unread still answers with comics rather than with the series holding them; it now
+// gathers them by volume first, so the comic is one expander away instead of on the shelf.
 test('the unread view draws the comics, not the series they belong to', async () => {
   statusFetch()
   renderWithProviders(<Library />)
   fireEvent.click(await screen.findByRole('button', { name: /Unread/ }))
 
+  const volume = await screen.findByRole('button', { name: 'Issues of The Amazing Spider-Man (2025)' })
+  expect(screen.queryByText('Amazing Spider-Man')).not.toBeInTheDocument()
+
+  fireEvent.click(volume)
   expect(await screen.findByText('Bad Things')).toBeInTheDocument()
-  const link = screen.getByRole('link', { name: /Bad Things/ })
-  expect(link).toHaveAttribute('href', '/book/7')
+  expect(screen.getByRole('link', { name: /Bad Things/ })).toHaveAttribute('href', '/book/7')
 })
 
 test('a comic with no metadata is still named by its file', async () => {
@@ -227,6 +234,7 @@ test('a comic with no metadata is still named by its file', async () => {
   renderWithProviders(<Library />)
   fireEvent.click(await screen.findByRole('button', { name: /Unread/ }))
 
+  fireEvent.click(await screen.findByRole('button', { name: 'Issues of Knull (2026)' }))
   expect(await screen.findByText('knull_untagged')).toBeInTheDocument()
 })
 
@@ -309,7 +317,8 @@ test('arriving on a status URL shows comics rather than series tiles', async () 
   statusFetch([BATMAN_SERIES])
   renderWithProviders(<Library />, '/?status=unread')
 
-  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
+  // The volumes the unread comics belong to, not the series shelf.
+  expect(await screen.findByText('The Amazing Spider-Man (2025)')).toBeInTheDocument()
   expect(screen.queryByText('Batman')).not.toBeInTheDocument()
 })
 
@@ -331,7 +340,7 @@ test('choosing a status puts it in the url', async () => {
 
   await waitFor(() =>
     expect(calls.some((c) => c.includes('/api/books?') && c.includes('readState=unread'))).toBe(true))
-  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
+  expect(await screen.findByText('The Amazing Spider-Man (2025)')).toBeInTheDocument()
 })
 
 // --- story arcs rail --------------------------------------------------------
@@ -372,4 +381,121 @@ test('the Story Arcs entry stays out of the way when there are no arcs', async (
   renderWithProviders(<Library />)
   await screen.findByLabelText('Publishers')
   expect(screen.queryByLabelText('Story Arcs')).not.toBeInTheDocument()
+})
+
+// --- unread grouped by volume ------------------------------------------------
+
+// Four unread comics across two volumes: three of one, one of the other. The counts
+// differ so a tile showing the wrong group's size is visible in the assertion.
+const GROUPED_BOOKS = [
+  { id: 7, editionId: 9, editionName: 'Amazing Spider-Man (2025)', number: '29', title: 'Bad Things',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'a/b/asm_029.cbz' },
+  { id: 8, editionId: 9, editionName: 'Amazing Spider-Man (2025)', number: '30', title: 'Worse Things',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'a/b/asm_030.cbz' },
+  { id: 10, editionId: 9, editionName: 'Amazing Spider-Man (2025)', number: '31', title: 'Worst Things',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'a/b/asm_031.cbz' },
+  { id: 11, editionId: 4, editionName: 'Knull (2026)', number: '1', title: 'God of the Abyss',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'k/knull_001.cbz' },
+]
+
+function groupedFetch(books: unknown[] = GROUPED_BOOKS) {
+  calls = []
+  globalThis.fetch = vi.fn(async (url: string) => {
+    const u = String(url)
+    calls.push(u)
+    const body =
+      u.includes('/api/read-states') ? READ_STATES
+        : u.includes('/api/books') ? { books }
+        : u.includes('/api/series') ? { series: [ASM_SERIES] }
+        : u.includes('/api/publishers') ? { publishers: [] }
+        : { editions: [] }
+    return { ok: true, json: async () => body }
+  }) as unknown as typeof fetch
+}
+
+async function showUnread(books: unknown[] = GROUPED_BOOKS) {
+  groupedFetch(books)
+  renderWithProviders(<Library />, '/?status=unread')
+  return screen.findByRole('button', { name: 'Issues of Amazing Spider-Man (2025)' })
+}
+
+test('unread collapses a volume to one tile counting its issues', async () => {
+  await showUnread()
+
+  expect(screen.getByText('Amazing Spider-Man (2025)')).toBeInTheDocument()
+  expect(screen.getByText('3 unread')).toBeInTheDocument()
+  expect(screen.getByText('Knull (2026)')).toBeInTheDocument()
+  expect(screen.getByText('1 unread')).toBeInTheDocument()
+})
+
+// The point of the grouping: twenty unread issues of one volume take one tile, not twenty.
+test('the issues inside a volume stay hidden until it is expanded', async () => {
+  const toggle = await showUnread()
+
+  expect(screen.queryByText('Bad Things')).not.toBeInTheDocument()
+  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+})
+
+test('expanding a volume reveals its issues, each linking to the comic', async () => {
+  const toggle = await showUnread()
+  fireEvent.click(toggle)
+
+  expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: /Bad Things/ })).toHaveAttribute('href', '/book/7')
+  expect(screen.getByText('Worse Things')).toBeInTheDocument()
+  expect(screen.getByText('Worst Things')).toBeInTheDocument()
+})
+
+test('expanding one volume leaves the others closed', async () => {
+  const toggle = await showUnread()
+  fireEvent.click(toggle)
+
+  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
+  expect(screen.queryByText('God of the Abyss')).not.toBeInTheDocument()
+})
+
+test('a volume can be collapsed again', async () => {
+  const toggle = await showUnread()
+  fireEvent.click(toggle)
+  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
+
+  fireEvent.click(toggle)
+  expect(screen.queryByText('Bad Things')).not.toBeInTheDocument()
+})
+
+// Expanding is the common action, so it owns the cover. The name stays a way through to
+// the volume itself, carrying the filter you are already looking at.
+test('the volume name opens that volume filtered to unread', async () => {
+  await showUnread()
+  expect(screen.getByRole('link', { name: 'Amazing Spider-Man (2025)' }))
+    .toHaveAttribute('href', '/edition/9?status=unread')
+})
+
+test('a volume tile shows that volume as its cover', async () => {
+  await showUnread()
+  expect(screen.getByAltText('Amazing Spider-Man (2025)'))
+    .toHaveAttribute('src', '/api/editions/9/thumbnail')
+})
+
+// One code path, one uniform grid. A singleton group is a little silly, but a second
+// rendering rule for it would be worse.
+test('a volume with a single unread issue is still a volume tile', async () => {
+  groupedFetch([GROUPED_BOOKS[3]])
+  renderWithProviders(<Library />, '/?status=unread')
+
+  expect(await screen.findByText('Knull (2026)')).toBeInTheDocument()
+  expect(screen.getByText('1 unread')).toBeInTheDocument()
+  expect(screen.queryByText('God of the Abyss')).not.toBeInTheDocument()
+})
+
+// Reading is one or two comics you are partway through, so there is nothing to collapse
+// and a group would only add a click between you and a comic you are already reading.
+test('reading is not grouped - its comics are drawn directly', async () => {
+  groupedFetch(GROUPED_BOOKS.map((b) => ({ ...b, readState: 'reading', percent: 40 })))
+  renderWithProviders(<Library />, '/?status=reading')
+
+  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: /Bad Things/ })).toHaveAttribute('href', '/book/7')
+  expect(screen.queryByRole('button', { name: /^Issues of/ })).not.toBeInTheDocument()
 })

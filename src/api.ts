@@ -122,6 +122,13 @@ export interface ApiVolumeIssue {
   match?: { indexId: number; title: string } | null
 }
 
+/** A comic as the library shelf receives it: the book plus the volume holding it, which
+ *  is what lets the shelf group by volume without a request per group. */
+export interface ApiLibraryBook extends ApiBook {
+  editionId: number
+  editionName: string
+}
+
 export interface ApiEditionExtra {
   bookId: number
   number?: string | null
@@ -464,7 +471,7 @@ export const api = {
   getLibraryBooks: ({ readState, publisher }: { readState: ReadState; publisher?: string | null }) => {
     const params = new URLSearchParams({ readState })
     if (publisher) params.set('publisher', publisher)
-    return json<{ books: ApiBook[] }>(`/api/books?${params}`)
+    return json<{ books: ApiLibraryBook[] }>(`/api/books?${params}`)
   },
 
   getEditionIssues: (id: string | number, refresh = false) =>

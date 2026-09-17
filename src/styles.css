@@ -2396,3 +2396,90 @@ textarea.input:hover:not(:focus) {
   width: 100%;
   margin-top: 6px;
 }
+
+/* ============================================================
+   Volume group tile (the unread shelf)
+   ============================================================ */
+
+/* Shaped like a cover tile so the two read as the same kind of thing on a shelf that
+   mixes neither — the unread grid is entirely these. */
+.volume-tile {
+  display: flex;
+  flex-direction: column;
+}
+
+.volume-tile__cover {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding: 0;
+  aspect-ratio: 2 / 3;
+  background: var(--elevated);
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
+  cursor: pointer;
+  transition: box-shadow 0.2s ease;
+}
+
+.volume-tile__cover:hover {
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.volume-tile__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Bottom-right, where it does not sit over the part of a cover that identifies it. */
+.volume-tile__chevron {
+  position: absolute;
+  right: 8px;
+  bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.65);
+  transition: transform 0.2s ease;
+}
+
+.volume-tile__chevron--open {
+  transform: rotate(180deg);
+}
+
+.volume-tile__name {
+  margin-top: 8px;
+  color: var(--text);
+  text-decoration: none;
+  font-size: 0.875rem;
+  line-height: 1.3;
+}
+
+.volume-tile__name:hover {
+  text-decoration: underline;
+}
+
+.volume-tile__count {
+  margin-top: 2px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+/* A row of its own across the whole grid. Growing the tile's own cell instead would
+   leave a tall column of empty space beside it. */
+.volume-tile__issues {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
+  gap: 24px;
+  padding: 16px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--elevated);
+}

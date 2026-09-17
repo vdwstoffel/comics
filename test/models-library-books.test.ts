@@ -82,3 +82,19 @@ test('no state at all lists the whole library', () => {
   expect(listLibraryBooks(db, {})).toHaveLength(4)
   db.close()
 })
+
+// The unread shelf groups its comics by the volume they belong to, and a group needs
+// something to call itself. The name lives on the edition, which this query already
+// joins - without carrying it out, the page would need a second request per volume.
+test('each book carries the name of the volume it belongs to', () => {
+  const db = openDb(':memory:')
+  seed(db)
+
+  const byNumber = Object.fromEntries(
+    listLibraryBooks(db, { readState: 'unread' }).map((b) => [b.number, b.editionName]),
+  )
+
+  expect(byNumber['255']).toBe('Venom (2025)')
+  expect(byNumber['1']).toBe('Batman (2016)')
+  db.close()
+})

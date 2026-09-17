@@ -7,6 +7,8 @@ import { statusFrom } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import LibraryRail from '../components/LibraryRail'
 import { tileLabel } from '../lib/tileLabel'
+import { groupByVolume } from '../lib/volumeGroups'
+import VolumeGroupTile from '../components/VolumeGroupTile'
 
 /** What an empty result should say, so a blank grid never reads like a failure. */
 const NOTHING: Record<ReadState, string> = {
@@ -68,17 +70,26 @@ export default function Library() {
             ? <p>{NOTHING[selectedStatus]}</p>
             : (
               <div className="tile-grid">
-                {books.data.books.map((b) => (
-                  <CoverTile
-                    key={b.id}
-                    to={`/book/${b.id}`}
-                    img={`/api/books/${b.id}/thumbnail`}
-                    title={tileLabel(b)}
-                    subtitle={b.number ? `#${b.number}` : ''}
-                    readState={b.readState}
-                    percent={b.percent}
-                  />
-                ))}
+                {/* Unread is the shelf that accumulates - a run you are behind on puts
+                    every one of its issues here at once - so it collapses to a tile per
+                    volume. Reading holds the one or two comics you are partway through,
+                    where a group would only add a click to reach a comic you are already
+                    in the middle of. */}
+                {selectedStatus === 'unread'
+                  ? groupByVolume(books.data.books).map((group) => (
+                    <VolumeGroupTile key={group.editionId} group={group} />
+                  ))
+                  : books.data.books.map((b) => (
+                    <CoverTile
+                      key={b.id}
+                      to={`/book/${b.id}`}
+                      img={`/api/books/${b.id}/thumbnail`}
+                      title={tileLabel(b)}
+                      subtitle={b.number ? `#${b.number}` : ''}
+                      readState={b.readState}
+                      percent={b.percent}
+                    />
+                  ))}
               </div>
             )
         )}

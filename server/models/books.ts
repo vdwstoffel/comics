@@ -77,6 +77,16 @@ export function findBookByPath(db: Db, filePath: string): Book | undefined {
 }
 
 /**
+ * A book as the library shelf needs it: the book, its progress, and the name of the
+ * volume holding it. The name comes from the edition rather than the book because that
+ * is where it lives; carrying it here is what lets the shelf group by volume without a
+ * second request per group.
+ */
+export interface LibraryBook extends BookWithProgress {
+  editionName: string
+}
+
+/**
  * Every book in the library matching a read state and/or a publisher.
  *
  * The rail carries both at once, so both narrow together — a view honouring only one
@@ -90,7 +100,7 @@ export function findBookByPath(db: Db, filePath: string): Book | undefined {
 export function listLibraryBooks(
   db: Db,
   { readState, publisher }: { readState?: ReadState; publisher?: string },
-): BookWithProgress[] {
+): LibraryBook[] {
   const clauses: string[] = []
   const params: unknown[] = []
 
@@ -100,12 +110,12 @@ export function listLibraryBooks(
 
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
   const rows = db
-    .prepare(`SELECT b.*, e.series_name AS series_name
+    .prepare(`SELECT b.*, e.series_name AS series_name, e.name AS edition_name
               FROM book b
               JOIN edition e ON e.id = b.edition_id
               LEFT JOIN read_progress p ON p.book_id = b.id
               ${where}`)
-    .all(...params) as Array<BookRow & { series_name: string | null }>
+    .all(...params) as Array<BookRow & { series_name: string | null; edition_name: string }>
 
   return rows
     .sort((a, b) => {
@@ -113,7 +123,7 @@ export function listLibraryBooks(
       if (series !== 0) return series
       return String(a.number ?? a.file_path).localeCompare(String(b.number ?? b.file_path), undefined, { numeric: true })
     })
-    .map((r) => deriveReadState(db, toBook(r) as Book))
+    .map((r) => ({ ...deriveReadState(db, toBook(r) as Book), editionName: r.edition_name }))
 }
 
 export function listBooksByEdition(db: Db, editionId: number, readState?: ReadState): Book[] {
