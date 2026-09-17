@@ -94,6 +94,12 @@ test('a book with no Comic Vine match still appears, as an extra', async () => {
 // The other half of the guard at editions.ts:122 - a volume is matched, but no key is
 // configured. Every other suite here seeds a key unconditionally, so this half never
 // fired without a test that withholds one on purpose.
+//
+// `unavailable` is what makes this test bite. Deleting the key clause leaves the shape
+// almost identical: the client throws before it fetches, so nothing is requested either
+// way and the route's own catch answers with the same empty list. The difference is that
+// the catch flags the day unavailable - Comic Vine was asked and could not answer -
+// where the guard says only that there is nothing to show.
 test('an edition with a Comic Vine volume but no key configured degrades quietly', async () => {
   const db = openDb(':memory:')
   const { edition } = seedVenom(db)
@@ -106,6 +112,24 @@ test('an edition with a Comic Vine volume but no key configured degrades quietly
   expect(res.statusCode).toBe(200)
   expect(called).toBe(false)
   expect(res.json()).toMatchObject({ issues: [], owned: 0, total: 0 })
+  expect(res.json().unavailable).toBeUndefined()
+  await server.close(); db.close()
+})
+
+// The guard short-circuits before the cache is consulted, so an unconfigured install
+// shows nothing even where it holds a perfectly good list. Recorded as a test because it
+// is the behaviour, not because it is obviously the right one: serving what we already
+// hold would arguably be kinder, and that choice should be made deliberately rather than
+// discovered by deleting a clause.
+test('no key configured shows nothing even when a fresh issue list is cached', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seedVenom(db)
+  cacheVolumeIssues(db, 167333, [{ id: 1136140, number: '250' }], new Date().toISOString())
+  const server = await app(db, { apiKey: '' })
+
+  const body = (await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })).json()
+
+  expect(body.issues).toEqual([])
   await server.close(); db.close()
 })
 

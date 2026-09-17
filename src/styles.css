@@ -2434,25 +2434,6 @@ textarea.input:hover:not(:focus) {
   display: block;
 }
 
-/* Bottom-right, where it does not sit over the part of a cover that identifies it. */
-.volume-tile__chevron {
-  position: absolute;
-  right: 8px;
-  bottom: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.65);
-  transition: transform 0.2s ease;
-}
-
-.volume-tile__chevron--open {
-  transform: rotate(180deg);
-}
-
 .volume-tile__name {
   margin-top: 8px;
   color: var(--text);
@@ -2471,15 +2452,27 @@ textarea.input:hover:not(:focus) {
   color: var(--muted);
 }
 
-/* A row of its own across the whole grid. Growing the tile's own cell instead would
-   leave a tall column of empty space beside it. */
-.volume-tile__issues {
-  grid-column: 1 / -1;
+
+/* The unread issues of one volume. A grid inside the panel rather than the shelf's own,
+   so the number of columns follows the dialog's width and not the page's. */
+.volume-issues__head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.volume-issues__head h3 {
+  margin: 0;
+}
+
+.volume-issues__grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(168px, 1fr));
-  gap: 24px;
-  padding: 16px;
-  border: 1px solid var(--border);
-  border-radius: var(--radius);
-  background: var(--elevated);
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 16px;
+  margin: 16px 0;
+  /* A run you are thirty issues behind on must scroll inside the panel rather than
+     growing it past the height of the window. */
+  max-height: 60vh;
+  overflow-y: auto;
 }

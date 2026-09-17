@@ -316,7 +316,12 @@ concurrency assertions to `Settings.test.tsx`.
   exists to prevent — passes the client test, typechecks, and leaves all of
   them green. What actually guards the migration is a route-level test that
   seeds the key *after* registering routes and asserts the second request
-  succeeds where the first, keyless one failed.
+  succeeds where the first, keyless one failed. All three boot-time routes
+  now carry one. Each had to be checked by actually reverting its
+  construction: the releases route answers a Comic Vine failure with a 200
+  carrying its usual two publishers, both empty, so a test asserting only a
+  status code — or only the publisher names — passes against the regression
+  it was written to catch.
 - **The key being readable is a decision with an expiry date.** It is correct for
   a free key on a single-user LAN app and wrong the moment either of those stops
   being true.

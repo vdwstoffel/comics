@@ -232,3 +232,21 @@ test('an unread issue you own says so rather than saying nothing', async () => {
     expect(issues.find((i: { id: number }) => i.id === 1156915)).toMatchObject({ readState: 'unread' })
   } finally { await t.cleanup() }
 })
+
+// This plugin builds its Comic Vine client once, when it registers. A client that
+// captured the key at that moment would hold an empty one for the life of the process,
+// so a key entered under Settings would do nothing until a restart. Every other test in
+// this suite seeds the key BEFORE registering, which is exactly why none of them can
+// catch that - reverting the construction to `apiKey: getComicVineKey(app.db)` leaves
+// them all green.
+test('a key entered after the routes registered is used without a restart', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]], '')
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    expect((await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).statusCode).toBe(400)
+
+    setComicVineKey(t.db, 'test-key')
+    expect((await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).statusCode).toBe(200)
+  } finally { await t.cleanup() }
+})

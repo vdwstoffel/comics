@@ -9,6 +9,7 @@ import LibraryRail from '../components/LibraryRail'
 import { tileLabel } from '../lib/tileLabel'
 import { groupByVolume } from '../lib/volumeGroups'
 import VolumeGroupTile from '../components/VolumeGroupTile'
+import VolumeIssuesDialog from '../components/VolumeIssuesDialog'
 
 /** What an empty result should say, so a blank grid never reads like a failure. */
 const NOTHING: Record<ReadState, string> = {
@@ -19,6 +20,9 @@ const NOTHING: Record<ReadState, string> = {
 
 export default function Library() {
   const [selectedPublisher, setSelectedPublisher] = useState<string | null>(null)
+  // Which volume is open, held by the shelf rather than by each tile, which is what makes
+  // "one at a time" structural instead of a rule every tile has to keep.
+  const [openVolumeId, setOpenVolumeId] = useState<number | null>(null)
   // The status lives in the url so it survives a refresh and can be carried into
   // every link, which is what keeps the filter applied as you drill down.
   const [searchParams, setSearchParams] = useSearchParams()
@@ -41,6 +45,11 @@ export default function Library() {
   })
 
   const { isLoading, error } = showingBooks ? books : series
+
+  const volumes = showingBooks && selectedStatus === 'unread' && books.data
+    ? groupByVolume(books.data.books)
+    : []
+  const openVolume = volumes.find((g) => g.editionId === openVolumeId) ?? null
 
   // The two rails are alternatives, not layers: choosing one clears the other.
   const choosePublisher = (key: string | null) => {
@@ -76,8 +85,12 @@ export default function Library() {
                     where a group would only add a click to reach a comic you are already
                     in the middle of. */}
                 {selectedStatus === 'unread'
-                  ? groupByVolume(books.data.books).map((group) => (
-                    <VolumeGroupTile key={group.editionId} group={group} />
+                  ? volumes.map((group) => (
+                    <VolumeGroupTile
+                      key={group.editionId}
+                      group={group}
+                      onOpen={() => setOpenVolumeId(group.editionId)}
+                    />
                   ))
                   : books.data.books.map((b) => (
                     <CoverTile
@@ -114,6 +127,13 @@ export default function Library() {
           </div>
         )}
       </main>
+
+      {/* Resolved from the current books rather than stored, so a refetch that empties a
+          volume closes it instead of leaving a dialog describing comics that are no
+          longer unread. */}
+      {openVolume && (
+        <VolumeIssuesDialog group={openVolume} onClose={() => setOpenVolumeId(null)} />
+      )}
     </>
   )
 }

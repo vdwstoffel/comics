@@ -440,3 +440,23 @@ test('a repeated Comic Vine id renders once, and identically cold and cached', a
     expect(dcIds((await t.app.inject({ url: '/api/releases' })).json())).toEqual(coldIds)
   } finally { await t.cleanup() }
 })
+
+// The releases plugin builds its Comic Vine client once, at registration, and closes over
+// it - see the comment at the construction site. A client capturing the key there would
+// hold the key that existed at boot forever, so a key entered under Settings would not
+// reach this page until a restart. Every other test here seeds the key before
+// registering, so this is the only one that can catch that.
+test('a key entered after the routes registered is used without a restart', async () => {
+  const t = await setup(LIVE, '')
+  try {
+    expect((await t.app.inject({ url: '/api/releases' })).statusCode).toBe(400)
+
+    setComicVineKey(t.db, 'test-key')
+    // The issues themselves. Neither the status code nor the publisher names can tell a
+    // client that read the key from one that could not: this route answers a Comic Vine
+    // failure with a 200 carrying the same two publishers, each holding nothing.
+    const body = (await t.app.inject({ url: '/api/releases' })).json()
+    expect(body.unavailable).toBeFalsy()
+    expect(body.publishers.flatMap((p: { issues: unknown[] }) => p.issues)).toHaveLength(2)
+  } finally { await t.cleanup() }
+})

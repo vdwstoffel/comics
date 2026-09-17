@@ -429,39 +429,44 @@ test('unread collapses a volume to one tile counting its issues', async () => {
 })
 
 // The point of the grouping: twenty unread issues of one volume take one tile, not twenty.
-test('the issues inside a volume stay hidden until it is expanded', async () => {
-  const toggle = await showUnread()
+test('the issues inside a volume stay out of the shelf until it is opened', async () => {
+  await showUnread()
 
   expect(screen.queryByText('Bad Things')).not.toBeInTheDocument()
-  expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
 })
 
-test('expanding a volume reveals its issues, each linking to the comic', async () => {
-  const toggle = await showUnread()
-  fireEvent.click(toggle)
+test('opening a volume shows its issues, each linking to the comic', async () => {
+  fireEvent.click(await showUnread())
 
-  expect(toggle).toHaveAttribute('aria-expanded', 'true')
-  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: /Bad Things/ })).toHaveAttribute('href', '/book/7')
-  expect(screen.getByText('Worse Things')).toBeInTheDocument()
-  expect(screen.getByText('Worst Things')).toBeInTheDocument()
+  const dialog = await screen.findByRole('dialog', { name: 'Amazing Spider-Man (2025)' })
+  expect(within(dialog).getByRole('link', { name: /Bad Things/ })).toHaveAttribute('href', '/book/7')
+  expect(within(dialog).getByText('Worse Things')).toBeInTheDocument()
+  expect(within(dialog).getByText('Worst Things')).toBeInTheDocument()
 })
 
-test('expanding one volume leaves the others closed', async () => {
-  const toggle = await showUnread()
-  fireEvent.click(toggle)
-
-  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
-  expect(screen.queryByText('God of the Abyss')).not.toBeInTheDocument()
-})
-
-test('a volume can be collapsed again', async () => {
-  const toggle = await showUnread()
-  fireEvent.click(toggle)
+// One volume at a time: opening another replaces what is on screen rather than adding to
+// it, so there is never a question of which issues belong to which volume.
+test('opening a second volume closes the first', async () => {
+  fireEvent.click(await showUnread())
   expect(await screen.findByText('Bad Things')).toBeInTheDocument()
 
-  fireEvent.click(toggle)
+  fireEvent.click(screen.getByRole('button', { name: 'Issues of Knull (2026)' }))
+
+  expect(await screen.findByText('God of the Abyss')).toBeInTheDocument()
   expect(screen.queryByText('Bad Things')).not.toBeInTheDocument()
+  expect(screen.getAllByRole('dialog')).toHaveLength(1)
+})
+
+test('closing returns to the shelf', async () => {
+  fireEvent.click(await showUnread())
+  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: /close/i }))
+
+  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.queryByText('Bad Things')).not.toBeInTheDocument()
+  expect(screen.getByText('Amazing Spider-Man (2025)')).toBeInTheDocument()
 })
 
 // Expanding is the common action, so it owns the cover. The name stays a way through to
@@ -470,6 +475,14 @@ test('the volume name opens that volume filtered to unread', async () => {
   await showUnread()
   expect(screen.getByRole('link', { name: 'Amazing Spider-Man (2025)' }))
     .toHaveAttribute('href', '/edition/9?status=unread')
+})
+
+// The shelf must not quietly stop grouping the moment a volume is open.
+test('the shelf stays behind the open volume', async () => {
+  fireEvent.click(await showUnread())
+  await screen.findByRole('dialog')
+
+  expect(screen.getByRole('button', { name: 'Issues of Knull (2026)' })).toBeInTheDocument()
 })
 
 test('a volume tile shows that volume as its cover', async () => {
