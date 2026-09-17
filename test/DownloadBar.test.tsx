@@ -50,6 +50,40 @@ test('what is waiting is counted', async () => {
   expect(await screen.findByRole('status')).toHaveTextContent(/2 queued/)
 })
 
+// At a pool size above 1, naming the first of several active entries claimed one running
+// and the rest waiting when they were all live - and the named file, and its percentage,
+// swapped out from under an unchanged label the moment that one finished. A count is the
+// only thing about "which one" that stays true for as long as it is shown.
+test('several running downloads are reported as a count, not one of them by name', async () => {
+  const other = { ...ACTIVE, id: 2, label: 'Cyclops #12', fileName: 'c12.cbz', received: 100, total: 900 }
+  stub(view({ active: [ACTIVE, other] }))
+  draw()
+
+  const bar = await screen.findByRole('status')
+  expect(bar).toHaveTextContent(/Downloading 2/)
+  expect(bar).not.toHaveTextContent(/Wolverine #27/)
+  expect(bar).not.toHaveTextContent(/Cyclops #12/)
+  expect(bar).not.toHaveTextContent('%')
+})
+
+// One running is still named, exactly as before a pool could ever hold more than one.
+test('exactly one running download is still named', async () => {
+  stub(view({ active: [ACTIVE] }))
+  draw()
+
+  const bar = await screen.findByRole('status')
+  expect(bar).toHaveTextContent(/Downloading…/)
+  expect(bar).toHaveTextContent(/Wolverine #27/)
+})
+
+// The waiting count means "not yet started" regardless of how many already have.
+test('the queued count does not depend on how many are running', async () => {
+  const queue = [{ id: 4, state: 'queued', label: 'a' }, { id: 5, state: 'queued', label: 'b' }]
+  stub(view({ active: [ACTIVE, { ...ACTIVE, id: 2 }, { ...ACTIVE, id: 3 }], queue }))
+  draw()
+  expect(await screen.findByRole('status')).toHaveTextContent(/2 queued/)
+})
+
 test('the bar links to the queue page', async () => {
   stub(view({ active: [ACTIVE] }))
   draw()

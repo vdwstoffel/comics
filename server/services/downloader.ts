@@ -10,17 +10,8 @@ import {
   enqueue as enqueueRow, takeNext, finish, fail, listQueue, listHistory, removeIfLive,
 } from '../models/downloadQueue.js'
 import type { QueueEntry } from '../models/downloadQueue.js'
+import { getDownloadConcurrency } from '../models/settings.js'
 import type { Ctx } from '../types.js'
-
-/**
- * How many downloads run at once. One constant, and it ships as 1.
- *
- * The pool supports more because `takeNext` marks a row in the statement that selects it,
- * so two workers cannot take the same one. Whether more is FASTER depends on where the
- * bottleneck is - a saturated link gains nothing, a host that throttles per connection
- * gains nearly linearly - and that is measured on the real link, not guessed here.
- */
-export const DOWNLOAD_CONCURRENCY = 1
 
 /** How long a failed download waits before it is eligible again. */
 export const RETRY_BACKOFF_MS = 30_000
@@ -49,8 +40,12 @@ export interface DownloadDeps {
   fetchImpl?: typeof fetch
   maxBytes?: number
   timeoutMs?: number
-  /** How many downloads run at once. Defaults to the shipped `DOWNLOAD_CONCURRENCY`. */
-  concurrency?: number
+  /**
+   * How many downloads run at once. A number is treated as fixed; a getter is read
+   * on every wake, which is how the setting takes effect without a restart.
+   * Defaults to reading the `setting` table.
+   */
+  concurrency?: number | (() => number)
   /** How long a failed download waits before its retry is eligible. */
   retryBackoffMs?: number
 }
@@ -113,8 +108,15 @@ export async function resolveDownload(
 export function createDownloadRunner(ctx: Ctx, deps: DownloadDeps = {}): DownloadRunner {
   const {
     fetchImpl = fetch, maxBytes = ctx.config.maxUploadBytes, timeoutMs = HOUR,
-    concurrency = DOWNLOAD_CONCURRENCY, retryBackoffMs = RETRY_BACKOFF_MS,
+    concurrency, retryBackoffMs = RETRY_BACKOFF_MS,
   } = deps
+
+  // Normalised once. A plain number stays accepted because every existing pool test
+  // passes one, and rewriting them to pass a thunk would be churn for no gain.
+  const readConcurrency: () => number =
+    typeof concurrency === 'function' ? concurrency
+      : concurrency != null ? () => concurrency
+        : () => getDownloadConcurrency(ctx.db)
 
   const active = new Map<number, ActiveDownload>()
   const controllers = new Map<number, AbortController>()
@@ -231,7 +233,7 @@ export function createDownloadRunner(ctx: Ctx, deps: DownloadDeps = {}): Downloa
 
   function wake(): void {
     if (retryTimer) { clearTimeout(retryTimer); retryTimer = undefined }
-    while (workers < concurrency) {
+    while (workers < readConcurrency()) {
       const entry = takeNext(ctx.db)
       if (!entry) break
       workers++
@@ -246,7 +248,7 @@ export function createDownloadRunner(ctx: Ctx, deps: DownloadDeps = {}): Downloa
     // for as long as the pool stays busy. It is also unnecessary - the `.finally` above
     // wakes the pool again the moment a worker frees, which is the only moment the retry
     // could have been started anyway.
-    if (workers < concurrency) {
+    if (workers < readConcurrency()) {
       const at = nextEligibleAt()
       if (at !== undefined) {
         const delay = Math.max(0, at - Date.now())

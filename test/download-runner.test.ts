@@ -5,6 +5,7 @@ import { join } from 'node:path'
 import { openDb } from '../server/db.js'
 import { createDownloadRunner } from '../server/services/downloader.js'
 import { enqueue, takeNext, recoverRunning, clearHistory } from '../server/models/downloadQueue.js'
+import { setDownloadConcurrency } from '../server/models/settings.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import type { Ctx } from '../server/types.js'
 import type { Config } from '../server/config.js'
@@ -410,4 +411,63 @@ test('a retry that comes due while every worker is busy does not spin the pool',
   // 0 with the fix. The bound leaves room for one check on the way past without leaving
   // any room at all for a loop.
   expect(spin).toBeLessThanOrEqual(2)
+})
+
+// The whole point of the setting: the pool must notice a change without being
+// rebuilt. A pool that reads the value once at construction passes every other
+// test in this file and fails only this one.
+test('raising the setting lets the next wake take more work', async () => {
+  let inFlight = 0
+  let maxInFlight = 0
+  let release: () => void = () => {}
+  const held = new Promise<void>((resolve) => { release = resolve })
+
+  const runner = createDownloadRunner(ctx, {
+    fetchImpl: async () => {
+      inFlight++
+      maxInFlight = Math.max(maxInFlight, inFlight)
+      await held
+      inFlight--
+      return respond(cbzBytes, { url: REDIRECTED })
+    },
+  })
+
+  for (const n of [1, 2, 3]) runner.enqueue({ url: `${OPAQUE}/${n}`, edition: 'ASM', label: `i${n}` })
+  // Default of 1: exactly one is in flight, and the others are waiting.
+  await new Promise((r) => setTimeout(r, 20))
+  expect(maxInFlight).toBe(1)
+
+  setDownloadConcurrency(ctx.db, 3)
+  runner.wake()
+  await new Promise((r) => setTimeout(r, 20))
+  expect(maxInFlight).toBe(3)
+
+  release()
+  await runner.idle()
+})
+
+// Lowering is a ceiling on NEW work, not a kill signal.
+test('lowering the setting does not abort what is already running', async () => {
+  let started = 0
+  let release: () => void = () => {}
+  const held = new Promise<void>((resolve) => { release = resolve })
+
+  // The setting, not a fixed dep: passing `concurrency: 2` here would make the runner
+  // ignore the table entirely and this test would pass without proving anything.
+  setDownloadConcurrency(ctx.db, 2)
+  const runner = createDownloadRunner(ctx, {
+    fetchImpl: async () => { started++; await held; return respond(cbzBytes, { url: REDIRECTED }) },
+  })
+  runner.enqueue({ url: `${OPAQUE}/1`, edition: 'ASM', label: 'a' })
+  runner.enqueue({ url: `${OPAQUE}/2`, edition: 'ASM', label: 'b' })
+  await new Promise((r) => setTimeout(r, 20))
+  expect(started).toBe(2)
+
+  setDownloadConcurrency(ctx.db, 1)
+  runner.wake()
+  release()
+  await runner.idle()
+
+  // Both finished. Nothing was cancelled, and neither carries an error.
+  expect(runner.status().history.map((e) => e.state)).toEqual(['done', 'done'])
 })

@@ -188,6 +188,15 @@ CREATE UNIQUE INDEX IF NOT EXISTS idx_download_queue_live_issue
 
 CREATE INDEX IF NOT EXISTS idx_download_queue_state_position
   ON download_queue(state, position);
+
+-- Settings changed from the app rather than from the environment. One row per
+-- setting; config.ts still owns everything read at boot. Generic on purpose: a
+-- key/value table costs no more than a purpose-built one, and the next setting
+-- then needs no migration.
+CREATE TABLE IF NOT EXISTS setting (
+  key   TEXT PRIMARY KEY,
+  value TEXT NOT NULL
+);
 `
 
 function columnsOf(db: Db, table: string): string[] {

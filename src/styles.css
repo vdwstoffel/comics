@@ -312,6 +312,40 @@ img {
   color: var(--muted);
 }
 
+/* The heading and its control share a row; the control sits to the right of the
+   section it governs rather than in a settings screen of its own. */
+.downloads__queue-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+
+.downloads__concurrency {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* 44px so it is a real target on the tablet this page was built for. */
+.downloads__concurrency select {
+  min-height: 44px;
+  padding: 0 10px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.downloads__hint {
+  margin: 4px 0 12px;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
 /* ============================================================
    Typography helpers
    ============================================================ */

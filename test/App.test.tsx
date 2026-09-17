@@ -100,6 +100,23 @@ test('the latest releases tab is marked when you are on it', async () => {
   expect(screen.getByRole('link', { name: 'Library' })).not.toHaveAttribute('aria-current')
 })
 
+// The queue page used to be reachable only from the download bar, which appears only
+// while something is downloading - so you could not change a setting there until you had
+// already started the thing the setting governs.
+test('the header links to downloads without waiting for one to start', async () => {
+  renderAt('/')
+  const link = await screen.findByRole('link', { name: 'Downloads' })
+  expect(link).toHaveAttribute('href', '/downloads')
+})
+
+// It is a utility beside Search, not one of the two things you browse, so it never takes
+// the tab underline even when you are on it.
+test('the downloads link is not one of the tabs', async () => {
+  renderAt('/downloads')
+  await screen.findByRole('link', { name: 'Downloads' })
+  expect(screen.queryByRole('link', { current: 'page' })).toBeNull()
+})
+
 // A page that is neither marks neither, rather than leaving the library lit while you
 // are somewhere else entirely.
 test('neither tab is marked on a page that is neither', async () => {

@@ -32,16 +32,21 @@ const CANCELLED = 'cancelled'
 export default function DownloadBar() {
   const { active, queue, history } = useDownload()
   const waiting = queue.filter((e) => e.state === 'queued').length
-  const [current] = active
+  // Naming a single file is only honest when there is exactly one running. With more than
+  // one active, `current` stays unset and the label reports a count instead - otherwise
+  // finishing the named one would silently swap the name (and the percentage) under an
+  // unchanged label, for a file the reader never asked about.
+  const current = active.length === 1 ? active[0] : null
   const [newest] = history
 
-  const busy = Boolean(current) || waiting > 0
+  const busy = active.length > 0 || waiting > 0
   const failure = !busy && newest?.state === 'failed' && newest.error !== CANCELLED ? newest : null
 
   if (!busy && !failure) return null
 
   // Content-Length is a claim the server may not make; without it there is no percentage
-  // to show, only how much has arrived.
+  // to show, only how much has arrived. Only meaningful for a single named download - with
+  // several running at once there is no one file's progress for a percentage to describe.
   const progress = !current ? null
     : current.total > 0
       ? `${Math.round((current.received / current.total) * 100)}% — ${mb(current.received)} of ${mb(current.total)}`
@@ -50,7 +55,11 @@ export default function DownloadBar() {
   return (
     <div className={`download-bar${failure ? ' download-bar--failed' : ''}`} role="status">
       <span className="download-bar__label">
-        {failure ? 'Download failed' : current ? 'Downloading…' : 'Queued'}
+        {failure
+          ? 'Download failed'
+          : active.length > 1
+            ? `Downloading ${active.length}`
+            : current ? 'Downloading…' : 'Queued'}
       </span>
       {(current || failure) && (
         <span className="download-bar__name">

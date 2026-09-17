@@ -50,6 +50,11 @@ function Header() {
       <div className="app-header__inner">
         <Tabs />
         <nav className="app-header__nav">
+          {/* A utility beside Search rather than a third tab: the tabs are the two things
+              you browse. It lives here permanently because the download bar - the only
+              other way in - appears only once something is already downloading, which
+              made the queue's settings unreachable until you had committed to a download. */}
+          <Link to="/downloads" className="app-header__link">Downloads</Link>
           <Link to="/search" className="app-header__link">Search</Link>
           <Link to="/upload" className="app-header__upload">+ Upload</Link>
         </nav>

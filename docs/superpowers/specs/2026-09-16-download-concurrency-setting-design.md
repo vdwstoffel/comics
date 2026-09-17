@@ -32,10 +32,17 @@ read by the pool without a restart.
   screen is a problem for the day there is a second setting worth showing.
 - **Per-host limits.** Inherited from the queue spec: the pool size is global,
   and downloads all come from one scraped index today.
-- **Changing the Comic Vine throttle.** Each `storeComic` builds its own client
-  with its own 1-per-second limit, so N parallel downloads make N times the
-  requests. At two calls per download against a 200-per-hour budget this does
-  not bite at 5, and it is the reason the cap is 5 rather than higher.
+- **Changing the Comic Vine throttle.** A matched download makes four Comic
+  Vine calls, not two: `storeComic` builds a client for `getIssue` and
+  `getVolume` to name the file, and `applyIssue.ts` builds a **second** client
+  for the same pair of calls to apply the metadata. Each client's 1-per-second
+  limit lives in that client's own closure, so the two do not serialise
+  against each other, even within a single download. At the maximum of 5 that
+  is up to 20 requests per batch of five, from ten throttles that share
+  nothing with each other — roughly half the headroom a two-calls-per-download
+  figure would suggest. It still does not bite against a 200-per-hour budget,
+  which is why the cap stays at 5 rather than being lowered; it is also why it
+  does not go higher.
 
 ## 2. What is there now
 

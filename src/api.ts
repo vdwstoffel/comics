@@ -104,6 +104,10 @@ export interface DownloadsView {
   history: QueueEntry[]
 }
 
+export interface ApiSettings {
+  downloadConcurrency: number
+}
+
 export interface ApiVolumeIssue {
   id: number
   number?: string
@@ -423,6 +427,13 @@ export const api = {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ url }),
+    }),
+
+  getSettings: () => json<ApiSettings>('/api/settings'),
+
+  updateSettings: (body: { downloadConcurrency: number }) =>
+    json<ApiSettings>('/api/settings', {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     }),
 
   getDownloads: () => json<DownloadsView>('/api/downloads'),
