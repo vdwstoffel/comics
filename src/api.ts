@@ -106,6 +106,7 @@ export interface DownloadsView {
 
 export interface ApiSettings {
   downloadConcurrency: number
+  comicVineApiKey: string
 }
 
 export interface ApiVolumeIssue {
@@ -362,7 +363,18 @@ function indexParams(
 
 async function json<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, opts)
-  if (!res.ok) throw new Error(`${res.status}`)
+  if (!res.ok) {
+    // The server explains its own refusals - "Comic Vine did not accept that key" is the
+    // whole point of the settings save, and a bare status throws that explanation away.
+    // A body that is not json, or carries no `error`, falls back to the status, which is
+    // what every caller received before.
+    let message = `${res.status}`
+    try {
+      const body = (await res.json()) as { error?: unknown }
+      if (typeof body?.error === 'string' && body.error) message = body.error
+    } catch { /* not json; the status stands */ }
+    throw Object.assign(new Error(message), { status: res.status })
+  }
   return res.json() as Promise<T>
 }
 
@@ -431,7 +443,7 @@ export const api = {
 
   getSettings: () => json<ApiSettings>('/api/settings'),
 
-  updateSettings: (body: { downloadConcurrency: number }) =>
+  updateSettings: (body: Partial<ApiSettings>) =>
     json<ApiSettings>('/api/settings', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     }),

@@ -3,6 +3,7 @@ import { openDb } from '../server/db.js'
 import {
   getSetting, setSetting, getDownloadConcurrency, setDownloadConcurrency,
   CONCURRENCY_DEFAULT, CONCURRENCY_MIN, CONCURRENCY_MAX,
+  getComicVineKey, setComicVineKey,
 } from '../server/models/settings.js'
 
 const db = () => openDb(':memory:')
@@ -68,4 +69,30 @@ test('a stored value that is not a number falls back to the default', () => {
   const d = db()
   setSetting(d, 'download_concurrency', 'three')
   expect(getDownloadConcurrency(d)).toBe(CONCURRENCY_DEFAULT)
+})
+
+test('a fresh install has no Comic Vine key, reported as the empty string', () => {
+  const d = openDb(':memory:')
+  expect(getComicVineKey(d)).toBe('')
+})
+
+test('a Comic Vine key round-trips', () => {
+  const d = openDb(':memory:')
+  setComicVineKey(d, 'abc123')
+  expect(getComicVineKey(d)).toBe('abc123')
+})
+
+// A key pasted out of a web page arrives with whitespace, and a trailing newline in a
+// query string is a rejected key with no visible cause.
+test('whitespace around a pasted key is trimmed away', () => {
+  const d = openDb(':memory:')
+  setComicVineKey(d, '  abc123\n')
+  expect(getComicVineKey(d)).toBe('abc123')
+})
+
+test('the empty string clears the key rather than storing a blank one', () => {
+  const d = openDb(':memory:')
+  setComicVineKey(d, 'abc123')
+  setComicVineKey(d, '')
+  expect(getComicVineKey(d)).toBe('')
 })

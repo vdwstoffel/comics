@@ -33,11 +33,18 @@ with `tsc`, NodeNext); frontend is React + Vite (bundler resolution).
 
 ## Run (Docker)
 
-- `COMIC_VINE_API_KEY=xxxx docker compose up -d --build`
+- `docker compose up -d --build`
 - Open `http://<server-ip>:3000`
+- Open **Settings** and paste your Comic Vine API key — a free key comes from
+  https://comicvine.gamespot.com/api/. Without one, search, matching and Latest
+  releases are unavailable; everything else works.
 - Comics + DB persist in `./data`.
+- Upgrading: `COMIC_VINE_API_KEY` is no longer read. Re-enter your key once under
+  Settings; you can delete the line from your `.env`.
 
 ## Config (env)
 
-- `COMIC_VINE_API_KEY` — free key from https://comicvine.gamespot.com/api/
 - `DATA_DIR` (default `/data` in Docker), `PORT` (3000), `MAX_UPLOAD_BYTES`
+
+The Comic Vine API key is not an environment variable — it is a setting, entered
+in the app under Settings and stored in the database.

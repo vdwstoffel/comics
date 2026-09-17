@@ -312,17 +312,38 @@ img {
   color: var(--muted);
 }
 
-/* The heading and its control share a row; the control sits to the right of the
-   section it governs rather than in a settings screen of its own. */
-.downloads__queue-head {
+/* ============================================================
+   Settings
+   ============================================================ */
+.settings__row {
   display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 16px;
+  align-items: flex-end;
+  gap: 12px;
   flex-wrap: wrap;
+  margin: 12px 0 4px;
 }
 
-.downloads__concurrency {
+.settings__field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+/* 44px so it is a real target on the tablet this app was built for. */
+.settings__field input {
+  min-height: 44px;
+  min-width: 22rem;
+  max-width: 100%;
+  padding: 0 10px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.settings__concurrency {
   display: inline-flex;
   align-items: center;
   gap: 8px;
@@ -331,7 +352,7 @@ img {
 }
 
 /* 44px so it is a real target on the tablet this page was built for. */
-.downloads__concurrency select {
+.settings__concurrency select {
   min-height: 44px;
   padding: 0 10px;
   color: var(--text);
@@ -340,7 +361,7 @@ img {
   border-radius: 6px;
 }
 
-.downloads__hint {
+.settings__hint {
   margin: 4px 0 12px;
   font-size: 0.8125rem;
   color: var(--muted);

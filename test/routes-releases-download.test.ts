@@ -5,6 +5,7 @@ import { openDb } from '../server/db.js'
 import { cacheRelease } from '../server/models/releases.js'
 import { upsertEdition, updateEdition } from '../server/models/editions.js'
 import type { ReleaseIssue } from '../server/models/releases.js'
+import { setComicVineKey } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
 
 const ISSUE: ReleaseIssue = {
@@ -29,7 +30,8 @@ async function setup(fetchPage: (url: string) => Promise<string> = async () => {
   const app = Fastify()
   const db = openDb(':memory:')
   app.decorate('db', db)
-  app.decorate('config', { comicVineApiKey: 'test-key' } as Config)
+  app.decorate('config', {} as Config)
+  setComicVineKey(db, 'test-key')
   const enqueue = vi.fn(() => ({
     queued: true,
     entry: { id: 1, position: 0, state: 'queued', url: '', attempts: 0, queuedAt: new Date().toISOString() },

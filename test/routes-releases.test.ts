@@ -5,6 +5,7 @@ import { openDb } from '../server/db.js'
 import { upsertEdition } from '../server/models/editions.js'
 import { insertBook, updateBook } from '../server/models/books.js'
 import { cacheRelease, getCachedRelease } from '../server/models/releases.js'
+import { setComicVineKey } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
 
 // 2026-09-14 is a Monday, so the most recent Wednesday is 2026-09-09. The clock is faked
@@ -107,7 +108,10 @@ async function setup(routes: Array<[string, unknown]> = [], apiKey = 'test-key')
   const app = Fastify()
   const db = openDb(':memory:')
   app.decorate('db', db)
-  app.decorate('config', { comicVineApiKey: apiKey } as Config)
+  app.decorate('config', {} as Config)
+  // The key is a setting now, not configuration. A suite that passes '' is testing the
+  // unconfigured path and seeds nothing.
+  if (apiKey) setComicVineKey(db, apiKey)
   const { urls, impl } = recordingFetch(routes)
   const origFetch = globalThis.fetch
   // A single stub, installed once before the route registers its Comic Vine client and

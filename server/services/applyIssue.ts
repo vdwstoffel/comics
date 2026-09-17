@@ -6,6 +6,7 @@ import type { EditionUpdate } from '../models/editions.js'
 import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags } from '../models/metadata.js'
 import { syncComicInfoFile } from './comicinfoSync.js'
 import type { BookCredit, BookTag } from '../models/metadata.js'
+import { getComicVineKey } from '../models/settings.js'
 import type { Ctx, Book } from '../types.js'
 
 export interface AppliedIssue {
@@ -32,7 +33,7 @@ export async function applyIssueToBook(
   const book = getBook(db, bookId)
   if (!book) throw new Error(`Book ${bookId} not found`)
 
-  const cv = createComicVine({ apiKey: config.comicVineApiKey })
+  const cv = createComicVine({ apiKey: () => getComicVineKey(db) })
   const meta = await cv.getIssue(issueId)
 
   // Fetch the volume BEFORE opening the transaction: better-sqlite3 transactions must be

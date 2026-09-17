@@ -5,6 +5,7 @@ import { openDb } from '../server/db.js'
 import { upsertEdition, updateEdition } from '../server/models/editions.js'
 import { insertBook, updateBook } from '../server/models/books.js'
 import { cacheVolumeIssues } from '../server/models/volumeIssues.js'
+import { setComicVineKey } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
 
 // Venom (2025) as Comic Vine actually lists it: legacy numbering, #250 up.
@@ -39,10 +40,12 @@ function stubCv(issues: unknown[] = VOLUME_ISSUES, ok = true) {
   }) as never
 }
 
-async function app(db: ReturnType<typeof openDb>) {
+async function app(db: ReturnType<typeof openDb>, opts: { apiKey?: string } = {}) {
+  const { apiKey = 'k' } = opts
   const server = Fastify()
   server.decorate('db', db)
-  server.decorate('config', { comicsDir: '/tmp/comics', thumbsDir: '/tmp/thumbs', comicVineApiKey: 'k' } as Config)
+  server.decorate('config', { comicsDir: '/tmp/comics', thumbsDir: '/tmp/thumbs' } as Config)
+  if (apiKey) setComicVineKey(db, apiKey)
   await server.register(editionRoutes)
   return server
 }
@@ -85,6 +88,24 @@ test('a book with no Comic Vine match still appears, as an extra', async () => {
 
   expect(body.extras.map((b: { bookId: number }) => b.bookId)).toEqual([loose.id])
   expect(body.owned).toBe(1)
+  await server.close(); db.close()
+})
+
+// The other half of the guard at editions.ts:122 - a volume is matched, but no key is
+// configured. Every other suite here seeds a key unconditionally, so this half never
+// fired without a test that withholds one on purpose.
+test('an edition with a Comic Vine volume but no key configured degrades quietly', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seedVenom(db)
+  let called = false
+  globalThis.fetch = (async () => { called = true; return { ok: true, json: async () => ({}) } }) as never
+  const server = await app(db, { apiKey: '' })
+
+  const res = await server.inject({ method: 'GET', url: `/api/editions/${edition.id}/issues` })
+
+  expect(res.statusCode).toBe(200)
+  expect(called).toBe(false)
+  expect(res.json()).toMatchObject({ issues: [], owned: 0, total: 0 })
   await server.close(); db.close()
 })
 

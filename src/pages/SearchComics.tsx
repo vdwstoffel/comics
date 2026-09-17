@@ -99,7 +99,7 @@ export default function SearchComics() {
     onSuccess: (d) => navigate(`/upload?url=${encodeURIComponent(d.url)}`),
     onError: (err: Error, id) => setLinkError({
       id,
-      message: err.message === '404'
+      message: (err as Error & { status?: number }).status === 404
         ? 'No download link on that post — open it and try a mirror.'
         : 'Could not read that post. Try again.',
     }),

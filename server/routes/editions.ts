@@ -15,6 +15,7 @@ import { startIssueDownload, issueLabel } from '../services/issueDownload.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import { editionFilterOf, readStateOf } from './filters.js'
 import type { LibraryQuery } from './filters.js'
+import { getComicVineKey } from '../models/settings.js'
 import type { App } from '../types.js'
 
 interface IdParams { id: string }
@@ -84,7 +85,7 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
     const matched = listBooksByEdition(app.db, edition.id).find((b) => b.comicvineId)
     if (!matched) return { matched: false }
 
-    const cv = createComicVine({ apiKey: app.config.comicVineApiKey })
+    const cv = createComicVine({ apiKey: () => getComicVineKey(app.db) })
     const issue = await cv.getIssue(matched.comicvineId as number)
     if (!issue.volumeId) return { matched: false }
     const volume = await cv.getVolume(issue.volumeId)
@@ -118,7 +119,7 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
     const books = listBooksByEdition(app.db, edition.id)
     const extraOf = (b: (typeof books)[number]) => ({ bookId: b.id, number: b.number, title: b.title })
 
-    if (!edition.comicvineId || !app.config.comicVineApiKey) {
+    if (!edition.comicvineId || !getComicVineKey(app.db)) {
       return {
         volumeId: edition.comicvineId ?? null, issues: [], extras: books.map(extraOf),
         owned: 0, total: 0, siteUrl: edition.cvSiteUrl ?? null,
@@ -132,7 +133,7 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
     let siteUrl = edition.cvSiteUrl ?? null
     if (!siteUrl) {
       try {
-        const cv = createComicVine({ apiKey: app.config.comicVineApiKey })
+        const cv = createComicVine({ apiKey: () => getComicVineKey(app.db) })
         siteUrl = (await cv.getVolume(edition.comicvineId)).siteUrl ?? null
         if (siteUrl) updateEdition(app.db, edition.id, { cvSiteUrl: siteUrl })
       } catch {
@@ -155,7 +156,7 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
       volumeIssues = fresh.issues
       fetchedAt = fresh.fetchedAt
     } else {
-      const cv = createComicVine({ apiKey: app.config.comicVineApiKey })
+      const cv = createComicVine({ apiKey: () => getComicVineKey(app.db) })
       try {
         volumeIssues = await cv.listVolumeIssues(edition.comicvineId)
         fetchedAt = new Date().toISOString()

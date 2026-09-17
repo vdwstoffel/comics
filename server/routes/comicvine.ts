@@ -7,6 +7,7 @@ import type { EditionUpdate } from '../models/editions.js'
 import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags, setTagIds } from '../models/metadata.js'
 import { cacheVolumeSearch, getCachedVolumeSearch } from '../models/volumeSearch.js'
 import { syncComicInfoFile } from '../services/comicinfoSync.js'
+import { getComicVineKey } from '../models/settings.js'
 import type { App } from '../types.js'
 
 interface IdParams { id: string }
@@ -15,10 +16,10 @@ interface NameQuery { name?: string }
 interface SeriesQuery { series?: string }
 
 export default async function comicvineRoutes(app: App) {
-  const cv = createComicVine({ apiKey: app.config.comicVineApiKey })
+  const cv = createComicVine({ apiKey: () => getComicVineKey(app.db) })
 
   app.get<{ Querystring: SearchQuery }>('/api/comicvine/search', async (req, reply) => {
-    if (!app.config.comicVineApiKey) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
+    if (!getComicVineKey(app.db)) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
     const { q, type = 'issue' } = req.query
     if (!q) return reply.code(400).send({ error: 'missing q' })
     return { results: await cv.search(q, type) }
@@ -36,7 +37,7 @@ export default async function comicvineRoutes(app: App) {
   // show the edition before the file is sent. The issue's own year is its cover date; the
   // edition needs the volume's START year - Venom #256 is a 2026 issue of the 2025 volume.
   app.get<{ Params: IdParams }>('/api/comicvine/issues/:id/volume', async (req, reply) => {
-    if (!app.config.comicVineApiKey) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
+    if (!getComicVineKey(app.db)) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
     const issue = await cv.getIssue(req.params.id)
     if (!issue.volumeId) return { volume: null }
     const volume = await cv.getVolume(issue.volumeId)
@@ -65,7 +66,7 @@ export default async function comicvineRoutes(app: App) {
    * allows 200 requests an hour, so a heading opened twice must not cost two of them.
    */
   app.get<{ Querystring: SeriesQuery }>('/api/comicvine/volumes', async (req, reply) => {
-    if (!app.config.comicVineApiKey) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
+    if (!getComicVineKey(app.db)) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
     const series = req.query.series?.trim()
     if (!series) return reply.code(400).send({ error: 'missing series' })
 
@@ -109,7 +110,7 @@ export default async function comicvineRoutes(app: App) {
    * to read them from.
    */
   app.get<{ Params: IdParams; Querystring: NameQuery }>('/api/books/:id/character', async (req, reply) => {
-    if (!app.config.comicVineApiKey) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
+    if (!getComicVineKey(app.db)) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
     const { name } = req.query
     if (!name) return reply.code(400).send({ error: 'missing name' })
 

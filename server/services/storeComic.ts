@@ -10,6 +10,7 @@ import { getEditionByName } from '../models/editions.js'
 import { ingestFile } from './indexer.js'
 import { applyIssueToBook } from './applyIssue.js'
 import { renameLock } from '../lib/mutex.js'
+import { getComicVineKey } from '../models/settings.js'
 import type { Ctx, Book } from '../types.js'
 
 export interface StoreComicInput {
@@ -89,7 +90,7 @@ export async function storeComic(
   let finalName = name
   if (issueId) {
     try {
-      const cv = createComicVine({ apiKey: config.comicVineApiKey })
+      const cv = createComicVine({ apiKey: () => getComicVineKey(db) })
       const issue = await cv.getIssue(issueId)
       const volume = issue.volumeId ? await cv.getVolume(issue.volumeId) : undefined
       const slugged = comicFileName(volume?.name, issue.number, extname(name))

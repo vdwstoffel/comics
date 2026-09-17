@@ -3,19 +3,20 @@ import { listStoryArcs, booksInArc, ownedIssueIds } from '../models/arcs.js'
 import { setTagIds } from '../models/metadata.js'
 import { getBook } from '../models/books.js'
 import { deriveReadState } from '../models/progress.js'
+import { getComicVineKey } from '../models/settings.js'
 import type { App } from '../types.js'
 
 interface NameParams { name: string }
 
 export default async function arcRoutes(app: App) {
-  const cv = createComicVine({ apiKey: app.config.comicVineApiKey })
+  const cv = createComicVine({ apiKey: () => getComicVineKey(app.db) })
 
   // Which arcs the library knows about is a question about the library, so it never
   // touches Comic Vine.
   app.get('/api/arcs', async () => ({ arcs: listStoryArcs(app.db) }))
 
   app.get<{ Params: NameParams }>('/api/arcs/:name', async (req, reply) => {
-    if (!app.config.comicVineApiKey) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
+    if (!getComicVineKey(app.db)) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
     const name = decodeURIComponent(req.params.name)
 
     const rows = booksInArc(app.db, name)

@@ -109,11 +109,25 @@ test('the header links to downloads without waiting for one to start', async () 
   expect(link).toHaveAttribute('href', '/downloads')
 })
 
+test('the header links to settings', async () => {
+  renderAt('/')
+  const link = await screen.findByRole('link', { name: 'Settings' })
+  expect(link).toHaveAttribute('href', '/settings')
+})
+
 // It is a utility beside Search, not one of the two things you browse, so it never takes
 // the tab underline even when you are on it.
 test('the downloads link is not one of the tabs', async () => {
   renderAt('/downloads')
   await screen.findByRole('link', { name: 'Downloads' })
+  expect(screen.queryByRole('link', { current: 'page' })).toBeNull()
+})
+
+// Same reasoning as Downloads: a utility link beside Search, not one of the two things
+// you browse, so it never takes the tab underline even when you are on it.
+test('the settings link is not one of the tabs', async () => {
+  renderAt('/settings')
+  await screen.findByRole('link', { name: 'Settings' })
   expect(screen.queryByRole('link', { current: 'page' })).toBeNull()
 })
 

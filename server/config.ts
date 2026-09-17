@@ -5,7 +5,6 @@ export interface Config {
   dataDir: string
   port: number
   maxUploadBytes: number
-  comicVineApiKey: string
   comicsDir: string
   thumbsDir: string
   tmpDir: string
@@ -18,7 +17,6 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): Config {
     dataDir,
     port: Number(env.PORT || 3000),
     maxUploadBytes: Number(env.MAX_UPLOAD_BYTES || 5368709120),
-    comicVineApiKey: env.COMIC_VINE_API_KEY || '',
     comicsDir: join(dataDir, 'comics'),
     thumbsDir: join(dataDir, 'thumbnails'),
     tmpDir: join(dataDir, 'tmp'),

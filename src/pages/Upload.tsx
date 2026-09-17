@@ -93,7 +93,7 @@ export default function Upload() {
     },
     // A 409 no longer means the downloader is busy - you can queue as many as you like.
     // It means this exact issue is already waiting, which is worth saying plainly.
-    onError: (err: Error) => setMsg(err.message === '409'
+    onError: (err: Error) => setMsg((err as Error & { status?: number }).status === 409
       ? 'That is already in the queue.'
       : 'Could not start the download.'),
   })

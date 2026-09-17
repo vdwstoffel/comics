@@ -6,6 +6,7 @@ import { upsertEdition } from '../server/models/editions.js'
 import { insertBook, updateBook } from '../server/models/books.js'
 import { replaceBookTags, getBookTags } from '../server/models/metadata.js'
 import { setProgress } from '../server/models/progress.js'
+import { setComicVineKey } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
 
 const ARC = {
@@ -48,7 +49,10 @@ async function setup(routes: Array<[string, unknown]> = [], apiKey = 'test-key')
   const app = Fastify()
   const db = openDb(':memory:')
   app.decorate('db', db)
-  app.decorate('config', { comicVineApiKey: apiKey } as Config)
+  app.decorate('config', {} as Config)
+  // The key is a setting now, not configuration. A suite that passes '' is testing the
+  // unconfigured path and seeds nothing.
+  if (apiKey) setComicVineKey(db, apiKey)
   const { urls, impl } = recordingFetch([...routes, ['/issues/', ARC_ISSUE_DETAILS]])
   const origFetch = globalThis.fetch
   globalThis.fetch = impl as unknown as typeof fetch

@@ -8,6 +8,7 @@ import { openDb } from '../server/db.js'
 import uploadRoutes from '../server/routes/upload.js'
 import { upsertEdition, getEditionByName, listEditions } from '../server/models/editions.js'
 import { makeCbz } from './helpers/makeCbz.js'
+import { setComicVineKey } from '../server/models/settings.js'
 import type { FastifyInstance } from 'fastify'
 import type { Config } from '../server/config.js'
 
@@ -163,7 +164,7 @@ async function uploadWith(fields: Record<string, string>, fileName = 'Venom 255.
 }
 
 test('a comic uploaded with a chosen issue arrives with its metadata already on it', async () => {
-  app.config.comicVineApiKey = 'k'
+  setComicVineKey(app.db, 'k')
   stubCv()
 
   const res = await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' })
@@ -174,7 +175,7 @@ test('a comic uploaded with a chosen issue arrives with its metadata already on 
 })
 
 test('the edition of a matched upload learns its Comic Vine volume', async () => {
-  app.config.comicVineApiKey = 'k'
+  setComicVineKey(app.db, 'k')
   stubCv()
 
   await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' })
@@ -193,7 +194,7 @@ test('uploading without an issue is unchanged', async () => {
 // The file is already on disk by the time the metadata is applied. Losing the upload
 // because Comic Vine had a bad minute would be the worst possible trade.
 test('a comic still uploads when its metadata cannot be applied', async () => {
-  app.config.comicVineApiKey = 'k'
+  setComicVineKey(app.db, 'k')
   stubCv(false)
 
   const res = await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' })
@@ -254,7 +255,7 @@ test('both comics survive as separate books', async () => {
 // ---- naming a matched upload ----
 
 test('a matched upload is stored under its series and issue number', async () => {
-  app.config.comicVineApiKey = 'k'
+  setComicVineKey(app.db, 'k')
   stubCv()
 
   const res = await uploadWith(
@@ -274,7 +275,7 @@ test('an unmatched upload keeps the name it arrived with', async () => {
 })
 
 test('uploading the same issue twice keeps both files', async () => {
-  app.config.comicVineApiKey = 'k'
+  setComicVineKey(app.db, 'k')
   stubCv()
 
   await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' }, 'first.cbz')
@@ -286,7 +287,7 @@ test('uploading the same issue twice keeps both files', async () => {
 })
 
 test('a .cbr keeps its converted extension in the new name', async () => {
-  app.config.comicVineApiKey = 'k'
+  setComicVineKey(app.db, 'k')
   stubCv()
 
   const res = await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' }, 'whatever.cbz')

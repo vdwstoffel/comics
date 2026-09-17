@@ -1,4 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useDownload } from '../lib/useDownload'
@@ -19,20 +19,6 @@ export default function Downloads() {
   const retry = useMutation({ mutationFn: (id: number) => api.retryDownload(id), ...refresh })
   const clear = useMutation({ mutationFn: () => api.clearDownloadHistory(), ...refresh })
 
-  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings })
-
-  const setConcurrency = useMutation({
-    mutationFn: (downloadConcurrency: number) => api.updateSettings({ downloadConcurrency }),
-    // The response already carries the stored value - that is what the echo is for - so the
-    // select shows it immediately rather than the previous number until the refetch lands.
-    // Invalidating afterwards still matters: it reconciles a value the server clamped
-    // differently from what was sent.
-    onSuccess: (settings) => {
-      qc.setQueryData(['settings'], settings)
-      qc.invalidateQueries({ queryKey: ['settings'] })
-    },
-  })
-
   return (
     <>
       <h1 className="page-title">Downloads</h1>
@@ -48,22 +34,7 @@ export default function Downloads() {
       </section>
 
       <section>
-        <div className="downloads__queue-head">
-          <h2 className="page-title">Queue</h2>
-          <label className="downloads__concurrency">
-            Download at once
-            <select
-              value={String(settings?.downloadConcurrency ?? 1)}
-              onChange={(e) => setConcurrency.mutate(Number(e.target.value))}
-              disabled={setConcurrency.isPending}
-            >
-              {[1, 2, 3, 4, 5].map((n) => <option key={n} value={n}>{n}</option>)}
-            </select>
-          </label>
-        </div>
-        {/* A dial invites the reading that higher is better. It depends on where the
-            bottleneck is: a saturated link gains nothing from more connections. */}
-        <p className="downloads__hint">More at once is not always faster — it depends on your connection.</p>
+        <h2 className="page-title">Queue</h2>
         <QueueList
           entries={queue}
           onMove={(id, index) => move.mutate({ id, index })}

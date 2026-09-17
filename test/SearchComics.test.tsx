@@ -444,7 +444,11 @@ test('a post with no direct link says so and stays on the search page', async ()
   calls = []
   globalThis.fetch = vi.fn(async (url: string) => {
     calls.push(String(url))
-    if (String(url).includes('/download-link')) return { ok: false, status: 404, json: async () => ({}) }
+    if (String(url).includes('/download-link')) {
+      // The real shape: server/routes/comicIndex.ts replies with an `error` string, not a
+      // bare status - the client's 404 branch must key off the status, not this text.
+      return { ok: false, status: 404, json: async () => ({ error: 'that post has no direct download link' }) }
+    }
     if (String(url).includes('/categories')) return { ok: true, json: async () => CATEGORIES }
     if (String(url).includes('/scrape')) return { ok: true, json: async () => IDLE_SCRAPE }
     if (String(url).includes('series=')) {

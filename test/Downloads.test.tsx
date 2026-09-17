@@ -20,9 +20,6 @@ beforeEach(() => {
   posted = []
   globalThis.fetch = vi.fn(async (url: string, init?: { method?: string }) => {
     if (init?.method) posted.push(`${init.method} ${url}`)
-    if (String(url).includes('/api/settings')) {
-      return { ok: true, json: async () => ({ downloadConcurrency: 1 }) }
-    }
     return { ok: true, json: async () => (init?.method ? {} : VIEW) }
   }) as unknown as typeof fetch
 })
@@ -72,60 +69,4 @@ test('cancelling a queued download asks the server to', async () => {
   const row = screen.getAllByRole('listitem').find((li) => li.textContent?.includes('Iron Man'))!
   fireEvent.click(within(row).getByRole('button', { name: /cancel/i }))
   await waitFor(() => expect(posted).toContain('DELETE /api/downloads/queue/2'))
-})
-
-test('the concurrency control shows what is stored', async () => {
-  draw()
-  const select = await screen.findByLabelText(/at once/i)
-  expect(select).toHaveValue('1')
-})
-
-test('the control offers one through five and nothing else', async () => {
-  draw()
-  const select = await screen.findByLabelText(/at once/i) as HTMLSelectElement
-  expect([...select.options].map((o) => o.value)).toEqual(['1', '2', '3', '4', '5'])
-})
-
-test('changing it patches the server', async () => {
-  draw()
-  const select = await screen.findByLabelText(/at once/i)
-  fireEvent.change(select, { target: { value: '3' } })
-  await waitFor(() => expect(posted).toContain('PATCH /api/settings'))
-})
-
-// A dial with no caveat reads as "higher is better", which is not true.
-test('the control says that more is not automatically faster', async () => {
-  draw()
-  expect(await screen.findByText(/not always faster|may not be faster/i)).toBeInTheDocument()
-})
-
-// The PATCH response already carries the stored value - that is what the echo is for.
-// Relying only on `invalidateQueries` left the select showing the old number until that
-// second round trip landed. This proves the select updates without it: the refetch
-// invalidate triggers is deliberately held open and never resolves in this test, so if the
-// new value only ever arrived through that refetch, the assertion below would time out.
-test('the select shows the patched value without waiting for the invalidated refetch', async () => {
-  let settingsGets = 0
-  let releaseSecondGet: () => void = () => {}
-  const secondGetGate = new Promise<void>((resolve) => { releaseSecondGet = resolve })
-
-  globalThis.fetch = vi.fn(async (url: string, init?: { method?: string }) => {
-    const u = String(url)
-    if (u.includes('/api/settings')) {
-      if (init?.method === 'PATCH') return { ok: true, json: async () => ({ downloadConcurrency: 3 }) }
-      settingsGets += 1
-      if (settingsGets > 1) await secondGetGate
-      return { ok: true, json: async () => ({ downloadConcurrency: 1 }) }
-    }
-    return { ok: true, json: async () => VIEW }
-  }) as unknown as typeof fetch
-
-  draw()
-  const select = await screen.findByLabelText(/at once/i) as HTMLSelectElement
-  expect(select).toHaveValue('1')
-
-  fireEvent.change(select, { target: { value: '3' } })
-  await waitFor(() => expect(select).toHaveValue('3'))
-
-  releaseSecondGet()
 })

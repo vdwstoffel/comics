@@ -220,7 +220,12 @@ export interface CvVolume {
 }
 
 export interface ComicVineOptions {
-  apiKey: string
+  /**
+   * A getter rather than a string when the key can change while the process runs. Three
+   * route plugins build their client once, at registration, and would otherwise hold the
+   * key that existed at boot forever. Resolved per request, inside `get`.
+   */
+  apiKey: string | (() => string)
   fetchImpl?: typeof fetch | ((url: string, init?: unknown) => Promise<{ ok: boolean; status?: number; json: () => Promise<unknown> }>)
   now?: () => number
 }
@@ -235,9 +240,16 @@ export interface ComicVineClient {
   getStoryArc(id: number | string): Promise<CvStoryArc>
   listIssuesOnSale(day: string): Promise<CvReleaseIssue[]>
   getVolumePublishers(ids: number[]): Promise<Map<number, string | undefined>>
+  /** Resolves when Comic Vine accepts the key; throws carrying its reason when it does not. */
+  verifyKey(): Promise<void>
 }
 
 export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.now() }: ComicVineOptions): ComicVineClient {
+  // Normalised once so `get` has a single shape to call. A literal is still accepted: every
+  // client test and the settings route's verification pass one, and a thunk there would be
+  // churn for no gain.
+  const readKey = typeof apiKey === 'function' ? apiKey : () => apiKey
+
   let lastCall = 0
   async function throttle() {
     const wait = 1000 - (now() - lastCall)
@@ -246,9 +258,10 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
   }
 
   async function get(path: string, params: Record<string, string>): Promise<CvResponse> {
-    if (!apiKey) throw new Error('Comic Vine API key not configured')
+    const key = readKey()
+    if (!key) throw new Error('Comic Vine API key not configured')
     await throttle()
-    const qs = new URLSearchParams({ api_key: apiKey, format: 'json', ...params })
+    const qs = new URLSearchParams({ api_key: key, format: 'json', ...params })
     const res = await fetchImpl(`${BASE}${path}?${qs}`, { headers: { 'User-Agent': UA } })
     if (!res.ok) throw new Error(`Comic Vine HTTP ${res.status}`)
     const data = (await res.json()) as CvResponse
@@ -566,6 +579,15 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
       // Every id that came back is in the map, publisher or not: "asked and had none"
       // must stay distinguishable from "never asked".
       return new Map([...rows].map(([id, r]) => [id, r.publisher?.name]))
+    },
+
+    /**
+     * The smallest request Comic Vine will answer: one row, one field. Its only purpose is
+     * the answer `get` already extracts - a rejected key comes back as HTTP 200 with
+     * status_code 100, which `get` turns into a throw carrying Comic Vine's own wording.
+     */
+    async verifyKey(): Promise<void> {
+      await get('/issues/', { limit: '1', field_list: 'id' })
     },
   }
 }

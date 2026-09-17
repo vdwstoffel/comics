@@ -3,6 +3,7 @@ import Fastify from 'fastify'
 import comicvineRoutes from '../server/routes/comicvine.js'
 import { openDb } from '../server/db.js'
 import { cacheVolumeSearch } from '../server/models/volumeSearch.js'
+import { setComicVineKey } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
 
 const RESULTS = [
@@ -26,7 +27,10 @@ function app(db: ReturnType<typeof openDb>, opts: { apiKey?: string; fails?: boo
   }) as never
   const server = Fastify()
   server.decorate('db', db)
-  server.decorate('config', { comicVineApiKey: apiKey } as Config)
+  server.decorate('config', {} as Config)
+  // The key is a setting now, not configuration. A suite that passes '' is testing the
+  // unconfigured path and seeds nothing.
+  if (apiKey) setComicVineKey(db, apiKey)
   return { server, calls }
 }
 
@@ -131,6 +135,26 @@ test('with no API key configured the lookup says so rather than failing obscurel
 
   expect(res.statusCode).toBe(400)
   expect(res.json().error).toMatch(/api key/i)
+  await server.close()
+  db.close()
+})
+
+// The whole design exists so the client built at registration time picks up a key
+// entered later, with no restart. Every other test here seeds the key before
+// registering routes, so none of them would notice the client capturing the key by
+// value instead of re-reading it per call - this one seeds it after.
+test('a key entered after boot is used without a restart', async () => {
+  const db = openDb(':memory:')
+  const { server } = app(db, { apiKey: '' })
+  await server.register(comicvineRoutes)
+
+  const before = await server.inject({ method: 'GET', url: '/api/comicvine/volumes?series=The Mighty Thor' })
+  expect(before.statusCode).toBe(400)
+
+  setComicVineKey(db, 'k')
+  const after = await server.inject({ method: 'GET', url: '/api/comicvine/volumes?series=The Mighty Thor' })
+  expect(after.statusCode).toBe(200)
+
   await server.close()
   db.close()
 })

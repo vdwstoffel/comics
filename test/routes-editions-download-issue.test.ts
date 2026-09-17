@@ -4,6 +4,7 @@ import editionRoutes from '../server/routes/editions.js'
 import { openDb } from '../server/db.js'
 import { upsertEdition, updateEdition } from '../server/models/editions.js'
 import { cacheVolumeIssues } from '../server/models/volumeIssues.js'
+import { setComicVineKey } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
 
 const POST_HTML = '<div class="aio-button-center"><a href="https://dl.test/venom-250.cbz">DOWNLOAD NOW</a></div>'
@@ -21,7 +22,8 @@ function server(db: ReturnType<typeof openDb>, html: string | null = POST_HTML, 
   const started: unknown[] = []
   const app = Fastify()
   app.decorate('db', db)
-  app.decorate('config', { comicsDir: '/tmp/comics', thumbsDir: '/tmp/thumbs', comicVineApiKey: 'k' } as Config)
+  app.decorate('config', { comicsDir: '/tmp/comics', thumbsDir: '/tmp/thumbs' } as Config)
+  setComicVineKey(db, 'k')
   app.decorate('downloader', {
     enqueue(req: unknown) {
       started.push(req)

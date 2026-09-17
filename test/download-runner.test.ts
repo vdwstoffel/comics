@@ -15,7 +15,7 @@ beforeEach(async () => {
   dir = mkdtempSync(join(tmpdir(), 'dl-'))
   const config = {
     comicsDir: join(dir, 'comics'), thumbsDir: join(dir, 'thumbs'), tmpDir: join(dir, 'tmp'),
-    maxUploadBytes: 5 * 1024 * 1024, comicVineApiKey: '',
+    maxUploadBytes: 5 * 1024 * 1024,
   } as Config
   for (const d of [config.comicsDir, config.thumbsDir, config.tmpDir]) mkdirSync(d, { recursive: true })
   ctx = { db: openDb(':memory:'), config }

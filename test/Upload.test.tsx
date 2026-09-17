@@ -375,7 +375,10 @@ test('asking for a download of something already queued says so', async () => {
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
     const u = String(url)
     if (u.includes('/api/downloads') && init?.method === 'POST') {
-      return { ok: false, status: 409, json: async () => ({ started: false }) }
+      return {
+        ok: false, status: 409,
+        json: async () => ({ reason: 'duplicate', error: 'that is already queued', entry: { id: 1 } }),
+      }
     }
     if (u.includes('/api/downloads')) return { ok: true, json: async () => IDLE }
     return { ok: true, json: async () => ({ editions: [] }) }

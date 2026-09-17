@@ -45,3 +45,22 @@ export function setDownloadConcurrency(db: Db, n: number): boolean {
   setSetting(db, CONCURRENCY_KEY, String(n))
   return true
 }
+
+const COMIC_VINE_KEY = 'comic_vine_api_key'
+
+/**
+ * The Comic Vine key as it stands right now.
+ *
+ * The empty string when unset rather than `undefined`: every guard in the app asks
+ * `if (!key)`, and the two shapes would read identically at those sites while differing
+ * everywhere else.
+ */
+export function getComicVineKey(db: Db): string {
+  return getSetting(db, COMIC_VINE_KEY) ?? ''
+}
+
+/** Trimmed on the way in - a pasted key carries whitespace, and a trailing newline in a
+ *  query string is a rejected key with no visible cause. The empty string clears it. */
+export function setComicVineKey(db: Db, key: string): void {
+  setSetting(db, COMIC_VINE_KEY, key.trim())
+}

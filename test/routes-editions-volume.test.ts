@@ -4,6 +4,7 @@ import editionRoutes from '../server/routes/editions.js'
 import { openDb } from '../server/db.js'
 import { upsertEdition, getEdition } from '../server/models/editions.js'
 import { insertBook, updateBook } from '../server/models/books.js'
+import { setComicVineKey } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
 
 const VOLUME = { name: 'The Amazing Spider-Man', start_year: '2025', publisher: { name: 'Marvel' } }
@@ -16,7 +17,8 @@ function server(db: ReturnType<typeof openDb>, comicsDir: string) {
       : { ok: true, json: async () => ({ results: ISSUE }) }) as never
   const app = Fastify()
   app.decorate('db', db)
-  app.decorate('config', { comicsDir, comicVineApiKey: 'k' } as Config)
+  app.decorate('config', { comicsDir } as Config)
+  setComicVineKey(db, 'k')
   return app
 }
 

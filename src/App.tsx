@@ -11,6 +11,7 @@ import Arcs from './pages/Arcs'
 import Arc from './pages/Arc'
 import Releases from './pages/Releases'
 import Downloads from './pages/Downloads'
+import Settings from './pages/Settings'
 import DownloadBar from './components/DownloadBar'
 
 /**
@@ -55,6 +56,7 @@ function Header() {
               other way in - appears only once something is already downloading, which
               made the queue's settings unreachable until you had committed to a download. */}
           <Link to="/downloads" className="app-header__link">Downloads</Link>
+          <Link to="/settings" className="app-header__link">Settings</Link>
           <Link to="/search" className="app-header__link">Search</Link>
           <Link to="/upload" className="app-header__upload">+ Upload</Link>
         </nav>
@@ -102,6 +104,7 @@ export default function App() {
       <Route path="/search" element={<Layout><SearchComics /></Layout>} />
       <Route path="/releases" element={<Layout><Releases /></Layout>} />
       <Route path="/downloads" element={<Layout><Downloads /></Layout>} />
+      <Route path="/settings" element={<Layout><Settings /></Layout>} />
     </Routes>
   )
 }

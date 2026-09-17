@@ -4,6 +4,7 @@ import comicvineRoutes from '../server/routes/comicvine.js'
 import { openDb } from '../server/db.js'
 import { upsertEdition, getEdition } from '../server/models/editions.js'
 import { insertBook } from '../server/models/books.js'
+import { setComicVineKey } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
 
 const ISSUE = {
@@ -22,8 +23,9 @@ function app(db: ReturnType<typeof openDb>) {
   }
   const server = Fastify()
   server.decorate('db', db)
-  server.decorate('config', { comicVineApiKey: 'k' } as Config)
-  // The route builds its own client from app.config; inject the stub through global fetch.
+  server.decorate('config', {} as Config)
+  setComicVineKey(db, 'k')
+  // The route builds its own client from app.db via a getter; inject the stub through global fetch.
   globalThis.fetch = fetchImpl as never
   return server
 }

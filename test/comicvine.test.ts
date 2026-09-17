@@ -145,12 +145,13 @@ import { getEdition } from '../server/models/editions.js'
 import { getBookTags } from '../server/models/metadata.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import { readZipEntry } from './helpers/readZipEntry.js'
+import { setComicVineKey } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
 
 test('search route 400s when no API key configured', async () => {
   const app = Fastify()
   app.decorate('db', openDb(':memory:'))
-  app.decorate('config', { comicVineApiKey: '' } as Config)
+  app.decorate('config', {} as Config)
   await app.register(comicvineRoutes)
   const res = await app.inject({ url: '/api/comicvine/search?q=batman' })
   expect(res.statusCode).toBe(400)
@@ -179,9 +180,10 @@ test('apply route stores publisher on book and series when getVolume returns one
 
   const app = Fastify()
   const db = openDb(':memory:')
-  const config = { comicVineApiKey: 'test-key', comicsDir: dir, thumbsDir: dir } as Config
+  const config = { comicsDir: dir, thumbsDir: dir } as Config
   app.decorate('db', db)
   app.decorate('config', config)
+  setComicVineKey(db, 'test-key')
   // Override fetch in the module by injecting via the client — we pass a mock fetch to the route
   // by replacing globalThis.fetch before the module uses it
   const origFetch = globalThis.fetch
@@ -233,7 +235,8 @@ test('applying an issue embeds its metadata, credits and tags into the file', as
   const app = Fastify()
   const db = openDb(':memory:')
   app.decorate('db', db)
-  app.decorate('config', { comicVineApiKey: 'test-key', comicsDir: dir, thumbsDir: dir } as Config)
+  app.decorate('config', { comicsDir: dir, thumbsDir: dir } as Config)
+  setComicVineKey(db, 'test-key')
   const origFetch = globalThis.fetch
   globalThis.fetch = mockFetchImpl as unknown as typeof fetch
 
@@ -429,7 +432,8 @@ test('applying an issue stores the Comic Vine id alongside each character tag', 
   const app = Fastify()
   const db = openDb(':memory:')
   app.decorate('db', db)
-  app.decorate('config', { comicVineApiKey: 'test-key', comicsDir: dir, thumbsDir: dir } as Config)
+  app.decorate('config', { comicsDir: dir, thumbsDir: dir } as Config)
+  setComicVineKey(db, 'test-key')
   const origFetch = globalThis.fetch
   globalThis.fetch = mockFetchImpl as unknown as typeof fetch
 
@@ -659,7 +663,8 @@ test('applying an issue stores the Comic Vine id alongside each story arc tag', 
   const app = Fastify()
   const db = openDb(':memory:')
   app.decorate('db', db)
-  app.decorate('config', { comicVineApiKey: 'test-key', comicsDir: dir, thumbsDir: dir } as Config)
+  app.decorate('config', { comicsDir: dir, thumbsDir: dir } as Config)
+  setComicVineKey(db, 'test-key')
   const origFetch = globalThis.fetch
   globalThis.fetch = mockFetchImpl as unknown as typeof fetch
 
@@ -1007,4 +1012,98 @@ test('an API-level error on a volume chunk leaves that chunk out of the map', as
     fetchImpl: async () => ({ ok: true, json: async () => ({ status_code: 107, error: 'Rate Limit Exceeded' }) }),
   })
   expect((await cv.getVolumePublishers([1, 2, 3])).size).toBe(0)
+})
+
+// The load-bearing test of this change. A client that captures its key at construction -
+// which is what all three route plugins do, once, at boot - passes every other test in
+// this file and fails only this one.
+test('a key getter is re-read on every request, so a key set later is used', async () => {
+  let key = ''
+  const cv = createComicVine({
+    apiKey: () => key,
+    now: () => 0,
+    fetchImpl: mockFetch([['/issue/', { results: { name: 'Year One', issue_number: '1' } }]]),
+  })
+
+  await expect(cv.getIssue(42)).rejects.toThrow(/not configured/)
+
+  key = 'set-later'
+  await expect(cv.getIssue(42)).resolves.toMatchObject({ title: 'Year One' })
+})
+
+test('the key the getter returns is the key that is sent', async () => {
+  let key = 'first'
+  const urls: string[] = []
+  const cv = createComicVine({
+    apiKey: () => key,
+    now: () => 0,
+    fetchImpl: async (url: string) => {
+      urls.push(String(url))
+      return { ok: true, json: async () => ({ results: {} }) }
+    },
+  })
+
+  await cv.getIssue(1)
+  key = 'second'
+  await cv.getIssue(1)
+
+  expect(urls[0]).toContain('api_key=first')
+  expect(urls[1]).toContain('api_key=second')
+})
+
+// Every existing caller and test passes a literal. Widening the option must not cost them.
+test('a plain string key still works', async () => {
+  const cv = createComicVine({
+    apiKey: 'k',
+    now: () => 0,
+    fetchImpl: mockFetch([['/issue/', { results: { name: 'Year One' } }]]),
+  })
+  await expect(cv.getIssue(42)).resolves.toMatchObject({ title: 'Year One' })
+})
+
+test('verifyKey resolves when Comic Vine accepts the key', async () => {
+  const cv = createComicVine({
+    apiKey: 'good-key',
+    now: () => 0,
+    fetchImpl: mockFetch([['/issues/', { status_code: 1, results: [{ id: 1 }] }]]),
+  })
+  await expect(cv.verifyKey()).resolves.toBeUndefined()
+})
+
+// Comic Vine reports a bad key as HTTP 200 with status_code 100 in the body, so the only
+// thing that distinguishes it from a good key is the check `get` already makes.
+test('verifyKey throws with Comic Vine reason when the key is rejected', async () => {
+  const cv = createComicVine({
+    apiKey: 'bad-key',
+    now: () => 0,
+    fetchImpl: mockFetch([['/issues/', { status_code: 100, error: 'Invalid API Key' }]]),
+  })
+  await expect(cv.verifyKey()).rejects.toThrow(/Invalid API Key/)
+})
+
+// One row, one field. Verification must not cost a page of issues.
+test('verifyKey asks for as little as Comic Vine will return', async () => {
+  const urls: string[] = []
+  const cv = createComicVine({
+    apiKey: 'k',
+    now: () => 0,
+    fetchImpl: async (url: string) => {
+      urls.push(String(url))
+      return { ok: true, json: async () => ({ status_code: 1, results: [] }) }
+    },
+  })
+  await cv.verifyKey()
+  expect(urls[0]).toContain('limit=1')
+  expect(urls[0]).toContain('field_list=id')
+})
+
+test('verifyKey refuses an empty key without calling Comic Vine', async () => {
+  let calls = 0
+  const cv = createComicVine({
+    apiKey: '',
+    now: () => 0,
+    fetchImpl: async () => { calls += 1; return { ok: true, json: async () => ({}) } },
+  })
+  await expect(cv.verifyKey()).rejects.toThrow(/not configured/)
+  expect(calls).toBe(0)
 })

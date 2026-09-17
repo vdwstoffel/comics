@@ -308,8 +308,15 @@ concurrency assertions to `Settings.test.tsx`.
   this. Nothing warns about it beyond the README change.
 - **Fifteen test suites change for a reason unrelated to what they test.** A
   large mechanical diff is where a real behavioural change hides. The client
-  test in §8 is the guard: it fails if the key stops being read live, whatever
-  the other suites were edited into asserting.
+  test in §8 is **not** the guard it was thought to be: it only proves a
+  client built with a getter re-reads the key between requests, not that any
+  given route actually builds its client that way. Every one of the 15 suites
+  seeds the key before registering routes, so a route quietly reverted to
+  capturing the key by value at boot — the exact regression this design
+  exists to prevent — passes the client test, typechecks, and leaves all of
+  them green. What actually guards the migration is a route-level test that
+  seeds the key *after* registering routes and asserts the second request
+  succeeds where the first, keyless one failed.
 - **The key being readable is a decision with an expiry date.** It is correct for
   a free key on a single-user LAN app and wrong the moment either of those stops
   being true.

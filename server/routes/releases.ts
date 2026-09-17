@@ -9,6 +9,7 @@ import { getEditionByComicvineId } from '../models/editions.js'
 import { findMatchForIssue } from '../services/issueMatching.js'
 import { startIssueDownload, issueLabel } from '../services/issueDownload.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
+import { getComicVineKey } from '../models/settings.js'
 import type { App } from '../types.js'
 
 /** The two publishers the tab is for. Exact strings: Comic Vine's own names. */
@@ -25,11 +26,12 @@ export default async function releaseRoutes(app: App, opts: ReleaseRouteOpts = {
   const { fetchPage = fetchSourcePage } = opts
   // One client for the plugin's lifetime, not one per resolve() call: the client carries
   // the 1-request-per-second throttle state, and a fresh client per call would reset it,
-  // letting the fallback's first request fire with no wait.
-  const cv = createComicVine({ apiKey: app.config.comicVineApiKey })
+  // letting the fallback's first request fire with no wait. The key is read per request
+  // rather than captured, so a key entered in Settings applies without a restart.
+  const cv = createComicVine({ apiKey: () => getComicVineKey(app.db) })
 
   app.get<{ Querystring: Query }>('/api/releases', async (req, reply) => {
-    if (!app.config.comicVineApiKey) {
+    if (!getComicVineKey(app.db)) {
       return reply.code(400).send({ error: 'Comic Vine API key not configured' })
     }
     const refresh = req.query?.refresh === '1'

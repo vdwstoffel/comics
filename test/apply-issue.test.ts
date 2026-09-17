@@ -7,6 +7,7 @@ import { upsertEdition, getEdition } from '../server/models/editions.js'
 import { insertBook, getBook } from '../server/models/books.js'
 import { getBookTags } from '../server/models/metadata.js'
 import { applyIssueToBook } from '../server/services/applyIssue.js'
+import { setComicVineKey } from '../server/models/settings.js'
 import type { Ctx } from '../server/types.js'
 import type { Config } from '../server/config.js'
 
@@ -25,14 +26,16 @@ const VOLUME = { name: 'Venom', start_year: '2025', publisher: { name: 'Marvel' 
 
 function ctx(): Ctx & { dir: string } {
   const dir = mkdtempSync(join(tmpdir(), 'apply-'))
-  const config = { comicsDir: join(dir, 'comics'), thumbsDir: join(dir, 'thumbs'), comicVineApiKey: 'k' } as Config
+  const config = { comicsDir: join(dir, 'comics'), thumbsDir: join(dir, 'thumbs') } as Config
   mkdirSync(config.comicsDir, { recursive: true })
   mkdirSync(config.thumbsDir, { recursive: true })
   globalThis.fetch = (async (url: string) =>
     url.includes('/volume/')
       ? { ok: true, json: async () => ({ results: VOLUME }) }
       : { ok: true, json: async () => ({ results: ISSUE }) }) as never
-  return { db: openDb(':memory:'), config, dir } as Ctx & { dir: string }
+  const db = openDb(':memory:')
+  setComicVineKey(db, 'k')
+  return { db, config, dir } as Ctx & { dir: string }
 }
 
 function seed(c: Ctx) {
