@@ -60,7 +60,7 @@ export default function Settings() {
               '' - the empty-string path that skips verification and clears the stored key.
               Gating on settings being loaded is what keeps a stray early click, or a query
               that never resolves, from wiping a key that was never touched. */}
-          <button type="submit" disabled={saveKey.isPending || settings === undefined}>
+          <button className="btn" type="submit" disabled={saveKey.isPending || settings === undefined}>
             {saveKey.isPending ? 'Checking…' : 'Save'}
           </button>
         </form>

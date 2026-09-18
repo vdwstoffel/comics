@@ -214,28 +214,27 @@ test('choosing Unread asks the server for the unread comics themselves', async (
     expect(calls.some((c) => c.includes('/api/books') && c.includes('readState=unread'))).toBe(true))
 })
 
-// Unread still answers with comics rather than with the series holding them; it now
-// gathers them by volume first, so the comic is one expander away instead of on the shelf.
+// Unread still answers with comics rather than with the series holding them; it gathers
+// them by volume, and the volume's cover is the comic at the front of it.
 test('the unread view draws the comics, not the series they belong to', async () => {
   statusFetch()
   renderWithProviders(<Library />)
   fireEvent.click(await screen.findByRole('button', { name: /Unread/ }))
 
-  const volume = await screen.findByRole('button', { name: 'Issues of The Amazing Spider-Man (2025)' })
+  const cover = await screen.findByRole('link', { name: 'The Amazing Spider-Man (2025) #29' })
+  expect(cover).toHaveAttribute('href', '/book/7')
   expect(screen.queryByText('Amazing Spider-Man')).not.toBeInTheDocument()
-
-  fireEvent.click(volume)
-  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: /Bad Things/ })).toHaveAttribute('href', '/book/7')
 })
 
-test('a comic with no metadata is still named by its file', async () => {
+// A comic the library has not matched has no number to be called by. It is still the next
+// thing to read in its volume, so the cover still has to go somewhere.
+test('a volume whose next comic has no metadata still opens it', async () => {
   statusFetch()
   renderWithProviders(<Library />)
   fireEvent.click(await screen.findByRole('button', { name: /Unread/ }))
 
-  fireEvent.click(await screen.findByRole('button', { name: 'Issues of Knull (2026)' }))
-  expect(await screen.findByText('knull_untagged')).toBeInTheDocument()
+  expect(await screen.findByRole('link', { name: 'Knull (2026), next unread' }))
+    .toHaveAttribute('href', '/book/9')
 })
 
 test('Reading lists comics the same way Unread does', async () => {
@@ -416,7 +415,7 @@ function groupedFetch(books: unknown[] = GROUPED_BOOKS) {
 async function showUnread(books: unknown[] = GROUPED_BOOKS) {
   groupedFetch(books)
   renderWithProviders(<Library />, '/?status=unread')
-  return screen.findByRole('button', { name: 'Issues of Amazing Spider-Man (2025)' })
+  return screen.findByRole('link', { name: 'Amazing Spider-Man (2025) #29' })
 }
 
 test('unread collapses a volume to one tile counting its issues', async () => {
@@ -429,68 +428,37 @@ test('unread collapses a volume to one tile counting its issues', async () => {
 })
 
 // The point of the grouping: twenty unread issues of one volume take one tile, not twenty.
-test('the issues inside a volume stay out of the shelf until it is opened', async () => {
+test('the issues inside a volume stay off the shelf', async () => {
   await showUnread()
 
   expect(screen.queryByText('Bad Things')).not.toBeInTheDocument()
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
+  expect(screen.queryByText('Worse Things')).not.toBeInTheDocument()
 })
 
-test('opening a volume shows its issues, each linking to the comic', async () => {
-  fireEvent.click(await showUnread())
-
-  const dialog = await screen.findByRole('dialog', { name: 'Amazing Spider-Man (2025)' })
-  expect(within(dialog).getByRole('link', { name: /Bad Things/ })).toHaveAttribute('href', '/book/7')
-  // The two behind it are covered against spoilers, so they are named by their numbers.
-  // Each is still a way through to the comic.
-  expect(within(dialog).getByRole('link', { name: /#30/ })).toHaveAttribute('href', '/book/8')
-  expect(within(dialog).getByRole('link', { name: /#31/ })).toHaveAttribute('href', '/book/10')
+// What the dialog was for. A volume you are working through in order only ever asked you
+// to pick the comic at the front of it, so the cover goes straight there.
+test('a volume cover opens the comic at the front of the run', async () => {
+  const cover = await showUnread()
+  expect(cover).toHaveAttribute('href', '/book/7')
 })
 
-// One volume at a time: opening another replaces what is on screen rather than adding to
-// it, so there is never a question of which issues belong to which volume.
-test('opening a second volume closes the first', async () => {
-  fireEvent.click(await showUnread())
-  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
-
-  fireEvent.click(screen.getByRole('button', { name: 'Issues of Knull (2026)' }))
-
-  expect(await screen.findByText('God of the Abyss')).toBeInTheDocument()
-  expect(screen.queryByText('Bad Things')).not.toBeInTheDocument()
-  expect(screen.getAllByRole('dialog')).toHaveLength(1)
+test('each volume opens its own next comic', async () => {
+  await showUnread()
+  expect(screen.getByRole('link', { name: 'Knull (2026) #1' })).toHaveAttribute('href', '/book/11')
 })
 
-test('closing returns to the shelf', async () => {
-  fireEvent.click(await showUnread())
-  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
-
-  fireEvent.click(screen.getByRole('button', { name: /close/i }))
-
-  expect(screen.queryByRole('dialog')).not.toBeInTheDocument()
-  expect(screen.queryByText('Bad Things')).not.toBeInTheDocument()
-  expect(screen.getByText('Amazing Spider-Man (2025)')).toBeInTheDocument()
-})
-
-// Expanding is the common action, so it owns the cover. The name stays a way through to
-// the volume itself, carrying the filter you are already looking at.
+// Reading the next one is the common action, so it owns the cover. The name stays a way
+// through to the volume itself, carrying the filter you are already looking at — which is
+// how you reach the issues behind the first.
 test('the volume name opens that volume filtered to unread', async () => {
   await showUnread()
   expect(screen.getByRole('link', { name: 'Amazing Spider-Man (2025)' }))
     .toHaveAttribute('href', '/edition/9?status=unread')
 })
 
-// The shelf must not quietly stop grouping the moment a volume is open.
-test('the shelf stays behind the open volume', async () => {
-  fireEvent.click(await showUnread())
-  await screen.findByRole('dialog')
-
-  expect(screen.getByRole('button', { name: 'Issues of Knull (2026)' })).toBeInTheDocument()
-})
-
 test('a volume tile shows that volume as its cover', async () => {
-  await showUnread()
-  expect(screen.getByAltText('Amazing Spider-Man (2025)'))
-    .toHaveAttribute('src', '/api/editions/9/thumbnail')
+  const cover = await showUnread()
+  expect(cover.querySelector('img')).toHaveAttribute('src', '/api/editions/9/thumbnail')
 })
 
 // One code path, one uniform grid. A singleton group is a little silly, but a second
@@ -512,20 +480,6 @@ test('reading is not grouped - its comics are drawn directly', async () => {
 
   expect(await screen.findByText('Bad Things')).toBeInTheDocument()
   expect(screen.getByRole('link', { name: /Bad Things/ })).toHaveAttribute('href', '/book/7')
-  expect(screen.queryByRole('button', { name: /^Issues of/ })).not.toBeInTheDocument()
+  expect(screen.queryByText('3 unread')).not.toBeInTheDocument()
 })
 
-// The blur must not erode over a session: a volume you opened, peeked into and closed is
-// covered again next time, because the dialog carrying that state is gone with it.
-test('reopening a volume hides its covers again', async () => {
-  fireEvent.click(await showUnread())
-  fireEvent.click(await screen.findByRole('button', { name: /reveal the cover of #30/i }))
-  expect(screen.getByText('Worse Things')).toBeInTheDocument()
-
-  fireEvent.click(screen.getByRole('button', { name: /close/i }))
-  fireEvent.click(screen.getByRole('button', { name: 'Issues of Amazing Spider-Man (2025)' }))
-
-  await screen.findByRole('dialog')
-  expect(screen.queryByText('Worse Things')).not.toBeInTheDocument()
-  expect(screen.getByRole('button', { name: /reveal the cover of #30/i })).toBeInTheDocument()
-})

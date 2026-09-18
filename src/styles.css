@@ -13,6 +13,8 @@
   --radius: 10px;
   --shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
   --shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.6);
+  --scroll-thumb: #3a3f4a;
+  --scroll-thumb-hover: #4e5565;
 }
 
 /* ============================================================
@@ -47,6 +49,60 @@ a {
 img {
   display: block;
   max-width: 100%;
+}
+
+/* ============================================================
+   Scrollbars
+   ============================================================
+   The platform's own bar is a wide light-grey channel with an arrow button at each end.
+   Inside a dark panel it reads as a piece of the operating system laid over the app, and
+   it presses right up against whatever it is scrolling. This is the same bar drawn in the
+   app's own colours: no buttons, no track, a rounded thumb that only shows against the
+   surface it sits on. Add .scroll-slim to any further scrolling surface. */
+.scroll-slim,
+.modal-panel {
+  /* Firefox has no pseudo-elements for this; these two properties are the whole of what
+     it offers, and they are ignored by the browsers that read the rules below. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--scroll-thumb) transparent;
+}
+
+.scroll-slim::-webkit-scrollbar,
+.modal-panel::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.scroll-slim::-webkit-scrollbar-track,
+.modal-panel::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+/* The border is transparent and clipped away from the background, which is what keeps the
+   thumb narrower than the track it needs for a comfortable click target. */
+.scroll-slim::-webkit-scrollbar-thumb,
+.modal-panel::-webkit-scrollbar-thumb {
+  background: var(--scroll-thumb);
+  background-clip: padding-box;
+  border: 2px solid transparent;
+  border-radius: 999px;
+}
+
+.scroll-slim::-webkit-scrollbar-thumb:hover,
+.modal-panel::-webkit-scrollbar-thumb:hover {
+  background: var(--scroll-thumb-hover);
+  background-clip: padding-box;
+}
+
+/* The arrows at the ends. Left alone they are drawn as two more light-grey blocks. */
+.scroll-slim::-webkit-scrollbar-button,
+.modal-panel::-webkit-scrollbar-button {
+  display: none;
+}
+
+.scroll-slim::-webkit-scrollbar-corner,
+.modal-panel::-webkit-scrollbar-corner {
+  background: transparent;
 }
 
 /* ============================================================
@@ -321,6 +377,13 @@ img {
   gap: 12px;
   flex-wrap: wrap;
   margin: 12px 0 4px;
+}
+
+/* The row aligns its controls along the bottom, so the button has to stand as tall as the
+   field beside it or it reads as having slipped. 44px for the same reason the input is
+   44px: a real target on the tablet this page was built for. */
+.settings__row .btn {
+  min-height: 44px;
 }
 
 .settings__field {
@@ -2408,6 +2471,16 @@ textarea.input:hover:not(:focus) {
   flex-direction: column;
 }
 
+/* The cards behind the cover are drawn into a gutter down the right-hand side, and the
+   gutter is the same width on every tile whether or not there is anything to draw in it.
+   Sizing it to the deck instead would make a twelve-issue volume's cover narrower than a
+   two-issue volume's, and since the cover's height follows its width, a shelf row would
+   come out ragged. */
+.volume-tile__deck {
+  position: relative;
+  padding-right: 18px;
+}
+
 .volume-tile__cover {
   position: relative;
   display: block;
@@ -2420,11 +2493,50 @@ textarea.input:hover:not(:focus) {
   border: 1px solid var(--border);
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.35);
   cursor: pointer;
-  transition: box-shadow 0.2s ease;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
 }
 
-.volume-tile__cover:hover {
+/* Each card is pushed 6px further right and pulled in at top and bottom, so the stack
+   recedes rather than smearing sideways. --step counts from 1 at the card nearest the
+   cover, so a deeper card is further out and a little shorter without needing to know how
+   many are behind it. */
+.volume-tile__plate {
+  position: absolute;
+  top: calc(var(--step) * 5px);
+  bottom: calc(var(--step) * 5px);
+  left: calc(var(--step) * 6px);
+  right: calc(18px - var(--step) * 6px);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--elevated);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  /* Further back is further into the shadow the cover casts. */
+  filter: brightness(calc(1 - var(--step) * 0.12));
+  transition: transform 0.2s ease;
+}
+
+/* The whole stack answers, not the front card alone — a cover lifting off its own pile
+   would read as a bug rather than as a response. */
+.volume-tile__deck:hover .volume-tile__cover {
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+  transform: translateY(-3px);
+}
+
+.volume-tile__deck:hover .volume-tile__plate {
+  transform: translateY(-3px);
+}
+
+/* Nobody asked for the stack to move. */
+@media (prefers-reduced-motion: reduce) {
+  .volume-tile__cover,
+  .volume-tile__plate {
+    transition: none;
+  }
+
+  .volume-tile__deck:hover .volume-tile__cover,
+  .volume-tile__deck:hover .volume-tile__plate {
+    transform: none;
+  }
 }
 
 .volume-tile__cover img {
@@ -2453,57 +2565,3 @@ textarea.input:hover:not(:focus) {
 }
 
 
-/* The unread issues of one volume. A grid inside the panel rather than the shelf's own,
-   so the number of columns follows the dialog's width and not the page's. */
-.volume-issues__head {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-  gap: 16px;
-}
-
-.volume-issues__head h3 {
-  margin: 0;
-}
-
-.volume-issues__grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-  gap: 16px;
-  margin: 16px 0;
-  /* A run you are thirty issues behind on must scroll inside the panel rather than
-     growing it past the height of the window. */
-  max-height: 60vh;
-  overflow-y: auto;
-}
-
-/* Scaled up under the blur so the softened edges stay outside the frame; without it the
-   box's own background shows through around the rim. */
-.cover-tile__image-box--blurred img {
-  filter: blur(14px);
-  transform: scale(1.15);
-}
-
-.volume-issues__issue {
-  position: relative;
-}
-
-/* Over the cover it hides, not inside the tile's link. */
-.volume-issues__reveal {
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  padding: 6px 14px;
-  min-height: 36px;
-  font-size: 0.8125rem;
-  color: var(--text);
-  background: rgba(0, 0, 0, 0.72);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  cursor: pointer;
-}
-
-.volume-issues__reveal:hover {
-  background: rgba(0, 0, 0, 0.85);
-}
