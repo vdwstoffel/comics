@@ -456,9 +456,12 @@ test('the volume name opens that volume filtered to unread', async () => {
     .toHaveAttribute('href', '/edition/9?status=unread')
 })
 
-test('a volume tile shows that volume as its cover', async () => {
+// Was asserting the volume's own thumbnail, which is its lowest-numbered issue overall -
+// so the shelf pictured comics you had already read while linking to ones you had not.
+test('a volume tile is covered by the comic it opens', async () => {
   const cover = await showUnread()
-  expect(cover.querySelector('img')).toHaveAttribute('src', '/api/editions/9/thumbnail')
+  expect(cover).toHaveAttribute('href', '/book/7')
+  expect(cover.querySelector('img')).toHaveAttribute('src', '/api/books/7/thumbnail')
 })
 
 // One code path, one uniform grid. A singleton group is a little silly, but a second

@@ -20,7 +20,10 @@ afterEach(() => { cleanup() })
 
 function renderTile(unread: number) {
   const { container } = render(<MemoryRouter><VolumeGroupTile group={group(unread)} /></MemoryRouter>)
-  return { plates: () => container.querySelectorAll('.volume-tile__plate') }
+  return {
+    plates: () => container.querySelectorAll('.volume-tile__plate'),
+    cover: () => container.querySelector('.volume-tile__cover img'),
+  }
 }
 
 test('a volume with one unread comic is drawn as a single cover', () => {
@@ -80,4 +83,12 @@ test('a comic with no issue number is still named apart from the volume link', (
 
   expect(screen.getByRole('link', { name: 'Knull (2026), next unread' })).toHaveAttribute('href', '/book/1')
   expect(screen.getByRole('link', { name: 'Knull (2026)' })).toHaveAttribute('href', '/edition/4?status=unread')
+})
+
+// The cover has to picture the comic the tile opens. A volume's own thumbnail is its
+// lowest-numbered issue overall - #1, read years ago on a run you are caught up to the
+// middle of - so an unread shelf drawn from it is a wall of covers you have already seen,
+// none of them the comic underneath.
+test('the cover is the comic you would read next, not the volume\'s first issue', () => {
+  expect(renderTile(12).cover()).toHaveAttribute('src', '/api/books/1/thumbnail')
 })

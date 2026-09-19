@@ -22,8 +22,8 @@ interface VolumeGroupTileProps {
  *
  * The cards behind the cover are how thick a backlog looks before you have read a word of
  * the tile. They are blank plates rather than the covers underneath: an unread cover is a
- * spoiler here — which is the whole reason the dialog blurs them — and a shelf of thirty
- * volumes would otherwise ask for ninety more thumbnails to draw an edge each.
+ * spoiler here, and a shelf of thirty volumes would otherwise ask for ninety more
+ * thumbnails to draw an edge each.
  *
  * The link is named by the issue's number and never by its title. A title gives away as
  * much as a cover does, and this tile sits on a shelf of comics you have not read. An
@@ -56,7 +56,10 @@ export default function VolumeGroupTile({ group }: VolumeGroupTileProps) {
           to={`/book/${next.id}`}
           aria-label={next.number ? `${group.editionName} #${next.number}` : `${group.editionName}, next unread`}
         >
-          <img src={`/api/editions/${group.editionId}/thumbnail`} alt="" />
+          {/* The comic this opens, not the volume it belongs to: a volume's own
+              thumbnail is its lowest-numbered issue overall, which on a run you are
+              partway through is one you read long ago. */}
+          <img src={`/api/books/${next.id}/thumbnail`} alt="" />
         </Link>
       </div>
       <Link className="volume-tile__name" to={`/edition/${group.editionId}?status=unread`}>
