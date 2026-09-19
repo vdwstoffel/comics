@@ -25,6 +25,13 @@ export default function BookDetail() {
 
   const { data, isLoading } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
   const { data: editionsData, isLoading: editionsLoading } = useQuery({ queryKey: ['editions'], queryFn: () => api.getEditions() })
+  // Separate from the book itself so the page never waits on Comic Vine: on a cold arc
+  // cache this costs a real read, and the issue should be readable long before it lands.
+  const { data: arcsData } = useQuery({
+    queryKey: ['book-arcs', id],
+    queryFn: () => api.getBookArcs(id!),
+    retry: false,
+  })
 
   const save = useMutation({
     mutationFn: (form: Record<string, unknown>) => api.patchMetadata(id!, form),
@@ -70,6 +77,7 @@ export default function BookDetail() {
   const characters = tags.filter((t) => t.kind === 'character').map((t) => t.value)
   const teams = tags.filter((t) => t.kind === 'team').map((t) => t.value)
   const storyArcs = tags.filter((t) => t.kind === 'story_arc').map((t) => t.value)
+  const bookArcs = arcsData?.arcs ?? []
 
   const currentEdition = editionsData?.editions?.find((e) => e.id === book.editionId)
   const currentEditionName = currentEdition?.name ?? `Edition #${book.editionId}`
@@ -131,6 +139,25 @@ export default function BookDetail() {
           <button className="btn-ghost" onClick={() => setDialog(true)}>Fetch metadata</button>
           <button className="btn-danger" onClick={() => setConfirmRemove(true)}>Remove issue</button>
         </div>
+
+        {/* Where this issue falls in the story. Renders nothing at all until it arrives,
+            so the column never jumps as the answer lands. */}
+        {bookArcs.length > 0 && (
+          <div className="book-detail__arcs">
+            <h3 className="book-detail__section-heading">
+              {bookArcs.length > 1 ? 'Story arcs' : 'Story arc'}
+            </h3>
+            {bookArcs.map((arc) => (
+              <Link key={arc.name} to={`/arcs/${encodeURIComponent(arc.name)}`} className="arc-position">
+                <span className="arc-position__name">{arc.name}</span>
+                {arc.position != null && arc.total != null && (
+                  <span className="arc-position__part">Part {arc.position} of {arc.total}</span>
+                )}
+              </Link>
+            ))}
+          </div>
+        )}
+
         <Link to={`/edition/${book.editionId}`} className="back-link">← Back to edition</Link>
       </div>
 
@@ -242,7 +269,9 @@ export default function BookDetail() {
           <div className="book-detail__section">
             <h3 className="book-detail__section-heading">Story Arcs</h3>
             <div className="chip-row">
-              {storyArcs.map((a) => <span key={a} className="chip">{a}</span>)}
+              {storyArcs.map((a) => (
+                <Link key={a} to={`/arcs/${encodeURIComponent(a)}`} className="chip chip--action">{a}</Link>
+              ))}
             </div>
           </div>
         )}

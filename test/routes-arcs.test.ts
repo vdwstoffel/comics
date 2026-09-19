@@ -37,12 +37,14 @@ const ISSUE = { name: 'Part One', issue_number: '1', description: null, story_ar
 
 function recordingFetch(routes: Array<[string, unknown]>) {
   const urls: string[] = []
+  let broken = false
   const impl = async (url: string) => {
     urls.push(url)
+    if (broken) throw new Error('Comic Vine is down')
     for (const [needle, body] of routes) if (url.includes(needle)) return { ok: true, json: async () => body }
     throw new Error(`unexpected url ${url}`)
   }
-  return { urls, impl }
+  return { urls, impl, breakFetch: () => { broken = true } }
 }
 
 async function setup(routes: Array<[string, unknown]> = [], apiKey = 'test-key') {
@@ -53,7 +55,7 @@ async function setup(routes: Array<[string, unknown]> = [], apiKey = 'test-key')
   // The key is a setting now, not configuration. A suite that passes '' is testing the
   // unconfigured path and seeds nothing.
   if (apiKey) setComicVineKey(db, apiKey)
-  const { urls, impl } = recordingFetch([...routes, ['/issues/', ARC_ISSUE_DETAILS]])
+  const { urls, impl, breakFetch } = recordingFetch([...routes, ['/issues/', ARC_ISSUE_DETAILS]])
   const origFetch = globalThis.fetch
   globalThis.fetch = impl as unknown as typeof fetch
   await app.register(arcRoutes)
@@ -64,7 +66,7 @@ async function setup(routes: Array<[string, unknown]> = [], apiKey = 'test-key')
     updateBook(db, b.id, { comicvineId: cvId })
     return b
   }
-  return { app, db, urls, edition, mk, cleanup: async () => { globalThis.fetch = origFetch; await app.close() } }
+  return { app, db, urls, edition, mk, breakFetch, cleanup: async () => { globalThis.fetch = origFetch; await app.close() } }
 }
 
 test('the arc list names each arc and counts the issues you own', async () => {
@@ -148,18 +150,62 @@ test('an arc with no id backfills it from an issue that carries the tag', async 
 })
 
 // The backfill writes the arc id onto the tag, so the second visit must not re-read an
-// issue to rediscover it. The arc itself and its issue dates are fetched either way.
-test('a second visit to a backfilled arc does not re-read an issue to find the id', async () => {
+// issue to rediscover it - and the arc itself is now cached, so it costs nothing at all.
+test('a second visit to an arc is served from the cache', async () => {
   const t = await setup([['/issue/', { results: ISSUE }], ['/story_arc/', { results: ARC }]])
   const a = t.mk('Vol 7/1.cbz', 1156915)
   replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral' }])
   try {
+    const first = await t.app.inject({ url: '/api/arcs/Death%20Spiral' })
+    const afterFirst = t.urls.length
+    const second = await t.app.inject({ url: '/api/arcs/Death%20Spiral' })
+
+    expect(t.urls.slice(afterFirst)).toEqual([])
+    expect(second.json().arc.issues).toEqual(first.json().arc.issues)
+  } finally { await t.cleanup() }
+})
+
+// A running arc gains issues, so there has to be a way to ask for the current run now
+// rather than waiting out the cache.
+test('refresh=1 re-reads an arc that is already cached', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
     await t.app.inject({ url: '/api/arcs/Death%20Spiral' })
     const afterFirst = t.urls.length
+    const res = await t.app.inject({ url: '/api/arcs/Death%20Spiral?refresh=1' })
+
+    expect(res.statusCode).toBe(200)
+    expect(t.urls.slice(afterFirst).filter((u) => u.includes('/story_arc/'))).toHaveLength(1)
+  } finally { await t.cleanup() }
+})
+
+// A run we already hold beats no run at all, however old it is.
+test('an arc Comic Vine will not answer for falls back to what we already hold', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
     await t.app.inject({ url: '/api/arcs/Death%20Spiral' })
-    const second = t.urls.slice(afterFirst)
-    expect(second.some((u) => u.includes('/issue/4000-'))).toBe(false)
-    expect(second.filter((u) => u.includes('/story_arc/'))).toHaveLength(1)
+
+    // Comic Vine goes down; the forced refresh has to fail over to the cache.
+    t.breakFetch()
+    const res = await t.app.inject({ url: '/api/arcs/Death%20Spiral?refresh=1' })
+
+    expect(res.statusCode).toBe(200)
+    expect(res.json().arc.issues).toHaveLength(3)
+    expect(res.json().stale).toBe(true)
+  } finally { await t.cleanup() }
+})
+
+test('an arc Comic Vine will not answer for and we hold nothing for fails', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    t.breakFetch()
+    expect((await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).statusCode).toBe(502)
   } finally { await t.cleanup() }
 })
 
@@ -248,5 +294,149 @@ test('a key entered after the routes registered is used without a restart', asyn
 
     setComicVineKey(t.db, 'test-key')
     expect((await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).statusCode).toBe(200)
+  } finally { await t.cleanup() }
+})
+
+// ── Where an issue sits in its arc ────────────────────────────────────────────────────
+// The detail page asks this per book, so it must be cheap and must never block on an
+// arc it can serve from the cache.
+
+test('an issue reports its place in the arc it belongs to', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/2.cbz', 1158149)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    const res = await t.app.inject({ url: `/api/books/${a.id}/arcs` })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().arcs).toEqual([
+      { name: 'Death Spiral', arcId: 56676, position: 2, total: 3, siteUrl: ARC.site_detail_url },
+    ])
+  } finally { await t.cleanup() }
+})
+
+// Position counts the whole arc, not the part of it you happen to own - the point is
+// where you are in the STORY.
+test('the position counts every issue in the arc, not just the ones you own', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/3.cbz', 9999999)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    const arcs = (await t.app.inject({ url: `/api/books/${a.id}/arcs` })).json().arcs
+    expect(arcs[0]).toMatchObject({ position: 3, total: 3 })
+  } finally { await t.cleanup() }
+})
+
+test('an issue in no arc reports no arcs and costs no Comic Vine requests', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'character', value: 'Venom' }])
+  try {
+    const res = await t.app.inject({ url: `/api/books/${a.id}/arcs` })
+    expect(res.json().arcs).toEqual([])
+    expect(t.urls).toHaveLength(0)
+  } finally { await t.cleanup() }
+})
+
+// A tie-in can carry an arc tag without Comic Vine listing it among the arc's issues.
+// Reporting "Part 0 of 9" would be a lie, so the arc is named with no position at all.
+test('an issue the arc does not list is named without a position', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/tie-in.cbz', 7777777)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    const arcs = (await t.app.inject({ url: `/api/books/${a.id}/arcs` })).json().arcs
+    expect(arcs).toHaveLength(1)
+    expect(arcs[0]).toMatchObject({ name: 'Death Spiral', total: 3 })
+    expect(arcs[0].position).toBeUndefined()
+  } finally { await t.cleanup() }
+})
+
+test('an issue in two arcs reports its place in each', async () => {
+  // Listed newest-first on purpose: the run is sorted into reading order by date, so this
+  // book is the arc's SECOND issue however Comic Vine happened to list it.
+  const OTHER = {
+    id: 61350, name: 'Armageddon', publisher: { name: 'Marvel' },
+    site_detail_url: 'https://cv/armageddon',
+    issues: [
+      { id: 1158149, name: 'Part Two' },
+      { id: 1156915, name: 'Part One' },
+    ],
+  }
+  const t = await setup([['/story_arc/4045-56676/', { results: ARC }], ['/story_arc/4045-61350/', { results: OTHER }]])
+  const a = t.mk('Vol 7/2.cbz', 1158149)
+  replaceBookTags(t.db, a.id, [
+    { kind: 'story_arc', value: 'Death Spiral', extId: 56676 },
+    { kind: 'story_arc', value: 'Armageddon', extId: 61350 },
+  ])
+  try {
+    const arcs = (await t.app.inject({ url: `/api/books/${a.id}/arcs` })).json().arcs
+    expect(arcs).toEqual([
+      { name: 'Death Spiral', arcId: 56676, position: 2, total: 3, siteUrl: ARC.site_detail_url },
+      { name: 'Armageddon', arcId: 61350, position: 2, total: 2, siteUrl: 'https://cv/armageddon' },
+    ])
+  } finally { await t.cleanup() }
+})
+
+// The arc page and the detail page must not each pay for the same run.
+test('the arc page warms the cache the issue page then reads', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/2.cbz', 1158149)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    await t.app.inject({ url: '/api/arcs/Death%20Spiral' })
+    const afterArcPage = t.urls.length
+    const res = await t.app.inject({ url: `/api/books/${a.id}/arcs` })
+
+    expect(t.urls.slice(afterArcPage)).toEqual([])
+    expect(res.json().arcs[0]).toMatchObject({ position: 2, total: 3 })
+  } finally { await t.cleanup() }
+})
+
+// A book with no Comic Vine id cannot be placed in a run, but the arc it carries is still
+// worth naming. Nothing here needs Comic Vine to answer that.
+test('an issue with no Comic Vine id still names its arc', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const b = insertBook(t.db, { editionId: t.edition.id, filePath: 'Vol 7/x.cbz', pageCount: 1, fileSize: 100 })!
+  replaceBookTags(t.db, b.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    const res = await t.app.inject({ url: `/api/books/${b.id}/arcs` })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().arcs[0]).toMatchObject({ name: 'Death Spiral' })
+    expect(res.json().arcs[0].position).toBeUndefined()
+    expect(t.urls).toHaveLength(0)
+  } finally { await t.cleanup() }
+})
+
+// The detail page must render whether or not Comic Vine is reachable or configured, so a
+// failure here names the arc rather than failing the request.
+test('an issue whose arc Comic Vine will not answer for still names the arc', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/2.cbz', 1158149)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    t.breakFetch()
+    const res = await t.app.inject({ url: `/api/books/${a.id}/arcs` })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().arcs[0]).toMatchObject({ name: 'Death Spiral' })
+    expect(res.json().arcs[0].position).toBeUndefined()
+  } finally { await t.cleanup() }
+})
+
+test('an issue page with no API key configured still names the arc', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]], '')
+  const a = t.mk('Vol 7/2.cbz', 1158149)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    const res = await t.app.inject({ url: `/api/books/${a.id}/arcs` })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().arcs[0]).toMatchObject({ name: 'Death Spiral' })
+    expect(res.json().arcs[0].position).toBeUndefined()
+  } finally { await t.cleanup() }
+})
+
+test('the arcs of a book that does not exist 404', async () => {
+  const t = await setup()
+  try {
+    expect((await t.app.inject({ url: '/api/books/999/arcs' })).statusCode).toBe(404)
   } finally { await t.cleanup() }
 })

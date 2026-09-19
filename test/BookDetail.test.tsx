@@ -211,3 +211,96 @@ test('the card closes again', async () => {
   fireEvent.click(await screen.findByRole('button', { name: 'Close' }))
   await waitFor(() => expect(screen.queryByText('A worthy heir of the Goblin legacy.')).not.toBeInTheDocument())
 })
+
+// ── Where this issue falls in its story arc ───────────────────────────────────────────
+
+function stubArcs(arcs: unknown[]) {
+  const inner = globalThis.fetch as unknown as typeof fetch
+  globalThis.fetch = vi.fn(async (url: string, opts?: RequestInit) => {
+    if (url === '/api/books/5/arcs') return { ok: true, json: async () => ({ arcs }) }
+    return (inner as unknown as (u: string, o?: RequestInit) => unknown)(url, opts)
+  }) as unknown as typeof fetch
+}
+
+test('an issue in a story arc shows where it falls in the run', async () => {
+  stubArcs([{ name: '"Avengers" Armageddon', arcId: 61350, position: 2, total: 6 }])
+  renderAt()
+
+  expect(await screen.findByText('Part 2 of 6')).toBeInTheDocument()
+  expect(screen.getByText('"Avengers" Armageddon')).toBeInTheDocument()
+})
+
+test('the arc position links through to the arc', async () => {
+  stubArcs([{ name: '"Avengers" Armageddon', arcId: 61350, position: 2, total: 6 }])
+  renderAt()
+
+  const link = await screen.findByRole('link', { name: /Armageddon/ })
+  expect(link).toHaveAttribute('href', '/arcs/%22Avengers%22%20Armageddon')
+})
+
+test('an issue in two arcs shows its place in each', async () => {
+  stubArcs([
+    { name: 'Death Spiral', arcId: 1, position: 2, total: 9 },
+    { name: 'Armageddon', arcId: 2, position: 1, total: 6 },
+  ])
+  renderAt()
+
+  expect(await screen.findByText('Part 2 of 9')).toBeInTheDocument()
+  expect(screen.getByText('Part 1 of 6')).toBeInTheDocument()
+})
+
+// A tie-in Comic Vine does not list back has no position. Naming the arc is still worth
+// doing; inventing a part number is not.
+test('an arc with no known position is named without a part number', async () => {
+  stubArcs([{ name: 'Death Spiral', arcId: 1, total: 9 }])
+  renderAt()
+
+  expect(await screen.findByText('Death Spiral')).toBeInTheDocument()
+  expect(screen.queryByText(/Part \d+ of/)).not.toBeInTheDocument()
+})
+
+test('an issue in no story arc shows no arc section', async () => {
+  stubArcs([])
+  renderAt()
+
+  await screen.findByRole('button', { name: 'Read' })
+  expect(screen.queryByText('Story arc')).not.toBeInTheDocument()
+})
+
+// The arc position costs a Comic Vine read on a cold cache, so the page must not wait on
+// it - the issue is readable the moment its own data lands.
+test('the page is readable before the arc position arrives', async () => {
+  let release: (v: unknown) => void = () => {}
+  const pending = new Promise((r) => { release = r })
+  const inner = globalThis.fetch as unknown as typeof fetch
+  globalThis.fetch = vi.fn(async (url: string, opts?: RequestInit) => {
+    if (url === '/api/books/5/arcs') { await pending; return { ok: true, json: async () => ({ arcs: [] }) } }
+    return (inner as unknown as (u: string, o?: RequestInit) => unknown)(url, opts)
+  }) as unknown as typeof fetch
+
+  renderAt()
+
+  expect(await screen.findByRole('button', { name: 'Read' })).toBeInTheDocument()
+  expect(screen.getByText('Earths Mightiest Heroes expand their sphere of influence.')).toBeInTheDocument()
+  release(null)
+})
+
+// The chips at the foot of the page name the same arcs; they should reach it too.
+test('the story arc chips link to the arc page', async () => {
+  const inner = globalThis.fetch as unknown as typeof fetch
+  globalThis.fetch = vi.fn(async (url: string, opts?: RequestInit) => {
+    if (url === '/api/books/5/arcs') return { ok: true, json: async () => ({ arcs: [] }) }
+    if (url === '/api/books/5' && !opts) {
+      return { ok: true, json: async () => ({
+        book, progress: { lastPage: 0, completed: false },
+        tags: [...tags, { kind: 'story_arc', value: 'Death Spiral' }],
+      }) }
+    }
+    return (inner as unknown as (u: string, o?: RequestInit) => unknown)(url, opts)
+  }) as unknown as typeof fetch
+
+  renderAt()
+
+  const chip = await screen.findByRole('link', { name: 'Death Spiral' })
+  expect(chip).toHaveAttribute('href', '/arcs/Death%20Spiral')
+})

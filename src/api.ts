@@ -184,6 +184,23 @@ export interface ApiStoryArc {
   issues: ApiArcIssue[]
 }
 
+/** Where one issue falls in one arc it carries - the "Part 2 of 6" under the Read button. */
+export interface ApiBookArc {
+  name: string
+  /** Absent when the tag never got an id, which is what makes the arc unlookupable. */
+  arcId?: number
+  /**
+   * 1-based place in the run. Absent when Comic Vine could not be reached, when the book
+   * has no Comic Vine id to be found by, or when the arc does not list this issue back -
+   * a tie-in can carry the tag without appearing in the run.
+   */
+  position?: number
+  /** How many issues the arc holds. A running arc gains them, so this grows. */
+  total?: number
+  siteUrl?: string
+}
+export interface BookArcsResponse { arcs: ApiBookArc[] }
+
 export interface ApiReleaseIssue {
   id: number
   number?: string
@@ -413,6 +430,9 @@ export const api = {
     return json<EditionDetailResponse>(`/api/editions/${id}${query}`)
   },
   getBook: (id: string | number) => json<BookResponse>(`/api/books/${id}`),
+  /** Its own call, not part of getBook: a cold arc cache costs a Comic Vine read, and the
+   *  issue page must never wait on that. */
+  getBookArcs: (id: string | number) => json<BookArcsResponse>(`/api/books/${id}/arcs`),
   putProgress: (id: string | number, body: { lastPage: number; completed: boolean }) =>
     json<ProgressResponse>(`/api/books/${id}/progress`, {
       method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),

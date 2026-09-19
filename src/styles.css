@@ -952,6 +952,48 @@ textarea.input:hover:not(:focus) {
   justify-content: center;
 }
 
+/* Where this issue falls in its arc, under the action buttons. Sits in the left column so
+   it reads as part of "what is this and how do I read it", not as more metadata. */
+.book-detail__arcs {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.arc-position {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 8px 10px;
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--accent);
+  border-radius: var(--radius);
+  background: var(--elevated);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.arc-position:hover {
+  background: var(--surface);
+  border-color: var(--accent);
+}
+
+.arc-position:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.arc-position__name {
+  font-size: 0.8125rem;
+  color: var(--text);
+  line-height: 1.3;
+}
+
+.arc-position__part {
+  font-size: 0.75rem;
+  color: var(--muted);
+  letter-spacing: 0.02em;
+}
+
 /* RIGHT column: everything else */
 .book-detail__main {
   flex: 1;

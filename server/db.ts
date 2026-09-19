@@ -90,6 +90,37 @@ CREATE TABLE IF NOT EXISTS volume_issue (
   PRIMARY KEY (volume_id, cv_issue_id)
 );
 
+-- A story arc's issue list, for the same reason volume_issue exists: the arc page and every
+-- issue's "Part 2 of 6" line would otherwise each cost a Comic Vine read. It is a cache with
+-- an age for the same reason too - a running arc gains issues - and split in two so an arc
+-- Comic Vine lists nothing for still records that we asked.
+--
+-- The position is stored rather than re-derived because the running order is a real
+-- computation: getStoryArc sorts on store or cover dates, which are NOT in this table's
+-- sort reach. Storing the resolved order is what keeps the arc page and the issue page
+-- telling the same story.
+CREATE TABLE IF NOT EXISTS arc_cache (
+  arc_id     INTEGER PRIMARY KEY,
+  name       TEXT,
+  deck       TEXT,
+  publisher  TEXT,
+  image_url  TEXT,
+  site_url   TEXT,
+  fetched_at TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS arc_issue (
+  arc_id      INTEGER NOT NULL,
+  cv_issue_id INTEGER NOT NULL,
+  position    INTEGER NOT NULL,
+  number      TEXT,
+  name        TEXT,
+  volume_name TEXT,
+  cover_date  TEXT,
+  store_date  TEXT,
+  site_url    TEXT,
+  PRIMARY KEY (arc_id, cv_issue_id)
+);
+
 -- The volumes Comic Vine offers for a series name, so opening the same search heading
 -- twice costs one request rather than two. Comic Vine allows 200 requests an hour and a
 -- single search can list two dozen series, which is what makes this a cache rather than a
