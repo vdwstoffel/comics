@@ -12,6 +12,7 @@ import type { CvVolumeIssue } from '../lib/comicvine.js'
 import { cacheVolumeIssues, getCachedVolumeIssues } from '../models/volumeIssues.js'
 import { findMatchForIssue } from '../services/issueMatching.js'
 import { startIssueDownload, issueLabel } from '../services/issueDownload.js'
+import { queueMissingIssues, missingMatchedIssues } from '../services/bulkIssueDownload.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import { editionFilterOf, readStateOf } from './filters.js'
 import type { LibraryQuery } from './filters.js'
@@ -240,6 +241,42 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
       return reply.code(202).send({ queued: true, entry: result.entry })
     },
   )
+
+  /**
+   * Fill every gap in this volume that the index can fill, in one press.
+   *
+   * Which gaps those are is decided here and not by the page: the same rule that drew
+   * each tile's Get button, applied again at press time, so a run rescraped between the
+   * render and the press cannot turn a button into a download of something else.
+   *
+   * The answer comes back before the work does. Walking thirty issues means fetching
+   * thirty posts from someone else's site, which takes about as long as it sounds; the
+   * count is what the button needs to hear, and the rows arriving in the download queue
+   * are what shows the rest.
+   */
+  app.post<{ Params: IdParams }>('/api/editions/:id/issues/download-all', async (req, reply) => {
+    const edition = getEdition(app.db, Number(req.params.id))
+    if (!edition) return reply.code(404).send({ error: 'edition not found' })
+    if (!edition.comicvineId) return reply.code(404).send({ error: 'edition has no volume' })
+
+    // Any age, for the same reason the single-issue route takes any age: a press only
+    // follows a page view that filled this cache.
+    const held = getCachedVolumeIssues(app.db, edition.comicvineId, Infinity)
+    if (!held) return reply.code(404).send({ error: 'no run held for this volume' })
+
+    const owned = new Set(
+      listBooksByEdition(app.db, edition.id)
+        .map((b) => b.comicvineId)
+        .filter((id): id is number => id != null),
+    )
+    const issues = missingMatchedIssues(app, { edition, issues: held.issues, owned })
+
+    const result = queueMissingIssues(app, { edition, issues, fetchPage })
+    if ('already' in result) {
+      return reply.code(409).send({ error: 'this volume is already being queued' })
+    }
+    return reply.code(202).send(result)
+  })
 
   app.delete<{ Params: IdParams }>('/api/editions/:id', async (req, reply) => {
     const edition = getEdition(app.db, Number(req.params.id))

@@ -505,6 +505,11 @@ export const api = {
   downloadMissingIssue: (editionId: string | number, cvIssueId: number) =>
     json<{ started: boolean }>(`/api/editions/${editionId}/issues/${cvIssueId}/download`, { method: 'POST' }),
 
+  /** Every gap in this volume the index can fill, in one press. Answers with how many it
+   *  is about to queue; the rows themselves arrive over the following minutes. */
+  downloadAllMissing: (editionId: string | number) =>
+    json<{ queued: number }>(`/api/editions/${editionId}/issues/download-all`, { method: 'POST' }),
+
   issueVolume: (issueId: number | string) =>
     json<{ volume: { id: number; name: string | null; startYear: number | null; publisher: string | null; editionName: string | null } | null }>(
       `/api/comicvine/issues/${issueId}/volume`,

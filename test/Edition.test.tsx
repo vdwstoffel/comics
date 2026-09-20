@@ -661,3 +661,91 @@ test('a failed press shows the error on that tile', async () => {
   fireEvent.click(await screen.findByRole('button', { name: /Get #1/i }))
   expect(await screen.findByText(/could not get that one/i)).toBeInTheDocument()
 })
+
+// --- get all -----------------------------------------------------------------
+
+const THREE_MATCHED = {
+  ...MATCHED,
+  issues: [
+    { id: 1, number: '1', owned: false, match: { indexId: 77, title: 'Venom #1 (2025)' } },
+    { id: 2, number: '2', owned: false, match: { indexId: 78, title: 'Venom #2 (2025)' } },
+    { id: 3, number: '3', owned: false, match: null, coverDate: '2026-01-15' },
+    { id: 4, number: '4', owned: true, bookId: 77 },
+    { id: 5, number: '5', owned: false, match: { indexId: 79, title: 'Venom #5 (2025)' } },
+  ],
+  owned: 1,
+  total: 5,
+}
+
+// The count is the point of the label: a run with thirty gaps and a run with three are
+// very different presses, and the number is what tells them apart before you commit.
+test('the header offers to get every gap the index can fill, and says how many', async () => {
+  mockFetchWithIssues(THREE_MATCHED)
+  renderPage()
+  expect(await screen.findByRole('button', { name: /Get all 3/i })).toBeInTheDocument()
+})
+
+test('pressing get all asks the server to walk the whole volume', async () => {
+  mockFetchWithIssues(THREE_MATCHED)
+  renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: /Get all 3/i }))
+
+  await waitFor(() => {
+    expect(posted.some((p) => p.url.includes('/api/editions/9/issues/download-all'))).toBe(true)
+  })
+})
+
+// Every gap here is one the rule refused to close, so there is nothing to take in bulk
+// and a button saying "Get all 0" would only be something to press and be ignored.
+test('a volume whose gaps are all ambiguous offers no get all', async () => {
+  mockFetchWithIssues({
+    ...MATCHED,
+    issues: [{ id: 2, number: '2', owned: false, match: null, coverDate: '2026-01-15' }],
+    owned: 0,
+    total: 1,
+  })
+  renderPage()
+
+  await screen.findByRole('link', { name: /Find #2/i })
+  expect(screen.queryByRole('button', { name: /Get all/i })).not.toBeInTheDocument()
+})
+
+test('a volume with no gaps at all offers no get all', async () => {
+  mockFetchWithIssues({
+    ...MATCHED,
+    issues: [{ id: 1, number: '1', owned: true, bookId: 77 }],
+    owned: 1,
+    total: 1,
+  })
+  renderPage()
+
+  await screen.findByText('1 of 1 issues')
+  expect(screen.queryByRole('button', { name: /Get all/i })).not.toBeInTheDocument()
+})
+
+// An issue already in the queue is one the walk would only be told to skip, so it is not
+// counted: press Get on two of three and the button offers the one that is left.
+test('the count leaves out what is already queued', async () => {
+  posted = []
+  globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).includes('/api/downloads')) {
+      return {
+        ok: true,
+        json: async () => ({
+          active: [],
+          queue: [{ id: 1, position: 0, state: 'queued', url: 'u', cvIssueId: 1, attempts: 0, queuedAt: 'now' }],
+          history: [],
+        }),
+      }
+    }
+    if (init?.method === 'POST') {
+      posted.push({ url: String(url), body: String(init.body ?? '') })
+      return { ok: true, json: async () => ({ queued: 2 }) }
+    }
+    if (String(url).includes('/issues')) return { ok: true, json: async () => THREE_MATCHED }
+    return { ok: true, json: async () => ({ edition: EDITION, books: [] }) }
+  }) as unknown as typeof fetch
+
+  renderPage()
+  expect(await screen.findByRole('button', { name: /Get all 2/i })).toBeInTheDocument()
+})

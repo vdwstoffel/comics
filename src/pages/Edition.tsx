@@ -74,6 +74,7 @@ function VolumeIssue({ issue, book, editionId, seriesName }: {
 
 export default function Edition() {
   const { id } = useParams()
+  const { liveByIssue } = useDownload()
   const [searchParams] = useSearchParams()
   const status = statusFrom(searchParams)
   const navigate = useNavigate()
@@ -171,6 +172,11 @@ export default function Edition() {
     },
   })
 
+  const getAll = useMutation({
+    mutationFn: () => api.downloadAllMissing(id!),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['download'] }),
+  })
+
   const lookup = useMutation({
     mutationFn: () => api.checkComicVineVolume(id!),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['edition'] }),
@@ -220,6 +226,11 @@ export default function Edition() {
   const runExtras = volume?.extras ?? []
   const showRun = runIssues.length > 0 || runExtras.length > 0
   const cvUrl = volume?.siteUrl ?? null
+  // What one press would take: the gaps exactly one scraped release can fill, minus the
+  // ones already in the queue - pressing Get on two of three should leave the button
+  // offering the one that is left. The server decides all of this again for itself; this
+  // is what the label has to say honestly before you commit to it.
+  const gettable = runIssues.filter((i) => !i.owned && i.match != null && !liveByIssue.has(i.id))
   // The meta line carries two independent things - when the run was read, and where the
   // volume lives on Comic Vine. Either alone is reason enough to draw it: an edition whose
   // run Comic Vine would not give us is when you most want to go and look it up.
@@ -236,6 +247,18 @@ export default function Edition() {
             ✏
           </button>
           <Link to={searchHref} className="edition-header__find">Find more</Link>
+          {/* Only when there is something to take: a complete volume, and one whose every
+              gap the rule refused to close, both have nothing to offer in bulk. */}
+          {gettable.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-ghost edition-header__get-all"
+              disabled={getAll.isPending}
+              onClick={() => getAll.mutate()}
+            >
+              {getAll.isPending ? 'Queueing…' : `↓ Get all ${gettable.length}`}
+            </button>
+          )}
           <button className="btn-danger" onClick={() => setConfirmRemove(true)}>Remove edition</button>
         </div>
         <p className="edition-header__count">

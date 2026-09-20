@@ -482,6 +482,14 @@ img {
   border-bottom-color: var(--muted);
 }
 
+/* Sits in the title row beside Find more - the same offer, for the whole run at once.
+   Sized like the other small controls in the header so it does not compete with the
+   title it stands next to. */
+.edition-header__get-all {
+  font-size: 0.8125rem;
+  padding: 2px 10px;
+}
+
 .edition-header__count {
   font-size: 0.875rem;
   color: var(--muted);
