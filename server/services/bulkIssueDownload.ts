@@ -11,6 +11,8 @@ import type { App, Edition } from '../types.js'
  */
 const walking = new Map<number, Promise<void>>()
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
+
 /** Resolves when no volume is being walked. Tests await it; nothing else needs it. */
 export async function bulkIssueDownloadsIdle(): Promise<void> {
   while (walking.size > 0) await Promise.all([...walking.values()])
@@ -35,10 +37,11 @@ export function missingMatchedIssues(
 /**
  * Queue every gap in a volume that the index can fill, in the background.
  *
- * One issue at a time, and deliberately so: each step fetches a post from someone else's
- * site, and what comes out of it joins a queue that is already paced by its own
- * concurrency setting. Downloading thirty comics faster is not worth thirty simultaneous
- * requests to the site that hosts them.
+ * One issue at a time, and three seconds apart, deliberately so: each step fetches a post
+ * from someone else's site, and what comes out of it joins a queue that is already paced
+ * by its own concurrency setting. Downloading thirty comics faster is not worth thirty
+ * simultaneous requests to the site that hosts them, nor thirty in a burst - a walk that
+ * looks like a human reading posts is one the site has no reason to shut out.
  *
  * Every issue goes through the same `startIssueDownload` a single Get does, so the match
  * is decided per issue at the moment it is queued rather than in bulk beforehand. An issue
@@ -51,18 +54,20 @@ export function missingMatchedIssues(
  */
 export function queueMissingIssues(
   app: App,
-  { edition, issues, fetchPage = fetchSourcePage }: {
+  { edition, issues, fetchPage = fetchSourcePage, delayMs = 3000 }: {
     edition: Edition
     issues: CvVolumeIssue[]
     /** Injected so tests never touch the network. */
     fetchPage?: (url: string) => Promise<string>
+    /** The pause between issues. Injected as 0 by tests, which have no site to spare. */
+    delayMs?: number
   },
 ): { queued: number } | { already: true } {
   if (walking.has(edition.id)) return { already: true }
   if (issues.length === 0) return { queued: 0 }
 
   const walk = (async () => {
-    for (const issue of issues) {
+    for (const [i, issue] of issues.entries()) {
       try {
         await startIssueDownload(app, {
           volumeName: edition.cvName,
@@ -75,6 +80,9 @@ export function queueMissingIssues(
         // startIssueDownload reports its own refusals; this is for anything it did not
         // anticipate. One issue must never be able to end the walk.
       }
+      // After the attempt rather than before it, because a post that failed to read was
+      // still a request to the site. Nothing waits behind the last issue.
+      if (delayMs && i < issues.length - 1) await sleep(delayMs)
     }
   })().finally(() => { walking.delete(edition.id) })
 

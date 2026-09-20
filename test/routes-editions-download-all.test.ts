@@ -85,7 +85,7 @@ test('one press queues every missing issue the index can supply', async () => {
   const db = openDb(':memory:')
   const { edition } = seed(db)
   const { app, started, fetchPage } = server(db)
-  await app.register(editionRoutes, { fetchPage })
+  await app.register(editionRoutes, { fetchPage, bulkDelayMs: 0 })
 
   const res = await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/download-all` })
   await bulkIssueDownloadsIdle()
@@ -103,7 +103,7 @@ test('the answer counts the issues before the work is done', async () => {
   const { edition } = seed(db)
   const walk = gate()
   const { app, started, fetchPage } = server(db, [], walk.held)
-  await app.register(editionRoutes, { fetchPage })
+  await app.register(editionRoutes, { fetchPage, bulkDelayMs: 0 })
 
   const res = await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/download-all` })
 
@@ -120,7 +120,7 @@ test('a comic you already have is not fetched again', async () => {
   const db = openDb(':memory:')
   const { edition } = seed(db)
   const { app, started, fetchPage } = server(db)
-  await app.register(editionRoutes, { fetchPage })
+  await app.register(editionRoutes, { fetchPage, bulkDelayMs: 0 })
 
   await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/download-all` })
   await bulkIssueDownloadsIdle()
@@ -135,7 +135,7 @@ test('an issue no single release can be is left alone', async () => {
   const db = openDb(':memory:')
   const { edition } = seed(db)
   const { app, started, fetchPage } = server(db)
-  await app.register(editionRoutes, { fetchPage })
+  await app.register(editionRoutes, { fetchPage, bulkDelayMs: 0 })
 
   await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/download-all` })
   await bulkIssueDownloadsIdle()
@@ -150,7 +150,7 @@ test('a post that cannot be read costs that issue and no other', async () => {
   const db = openDb(':memory:')
   const { edition } = seed(db)
   const { app, started, fetchPage } = server(db, ['251'])
-  await app.register(editionRoutes, { fetchPage })
+  await app.register(editionRoutes, { fetchPage, bulkDelayMs: 0 })
 
   await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/download-all` })
   await bulkIssueDownloadsIdle()
@@ -166,7 +166,7 @@ test('a second press while the first is still walking is refused', async () => {
   const { edition } = seed(db)
   const walk = gate()
   const { app, fetched, fetchPage } = server(db, [], walk.held)
-  await app.register(editionRoutes, { fetchPage })
+  await app.register(editionRoutes, { fetchPage, bulkDelayMs: 0 })
 
   const first = await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/download-all` })
   const second = await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/download-all` })
@@ -187,7 +187,7 @@ test('a volume with nothing to get queues nothing', async () => {
   updateEdition(db, edition.id, { comicvineId: 999, cvName: 'Knull' })
   cacheVolumeIssues(db, 999, [{ id: 501, number: '1', coverDate: '2026-01-01' }], '2026-09-13T00:00:00.000Z')
   const { app, started, fetchPage } = server(db)
-  await app.register(editionRoutes, { fetchPage })
+  await app.register(editionRoutes, { fetchPage, bulkDelayMs: 0 })
 
   const res = await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/download-all` })
   await bulkIssueDownloadsIdle()
@@ -201,10 +201,44 @@ test('an edition with no Comic Vine volume has no run to walk', async () => {
   const db = openDb(':memory:')
   const edition = upsertEdition(db, { name: 'Loose ends', folder: 'Loose' })
   const { app, fetchPage } = server(db)
-  await app.register(editionRoutes, { fetchPage })
+  await app.register(editionRoutes, { fetchPage, bulkDelayMs: 0 })
 
   const res = await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/download-all` })
 
   expect(res.statusCode).toBe(404)
   await app.close(); db.close()
+})
+
+// The walk exists to be gentle with the site that hosts the posts, so the pacing is part
+// of what it is for. Fake timers here: three real seconds between issues is exactly what
+// this asserts and exactly what a test must not sit through.
+test('the walk leaves three seconds between posts', async () => {
+  vi.useFakeTimers()
+  const db = openDb(':memory:')
+  try {
+    const { edition } = seed(db)
+    const { app, started, fetchPage } = server(db)
+    await app.register(editionRoutes, { fetchPage })
+
+    const res = await app.inject({ method: 'POST', url: `/api/editions/${edition.id}/issues/download-all` })
+    expect(res.json()).toEqual({ queued: 3 })
+
+    await vi.advanceTimersByTimeAsync(0)
+    expect(started).toHaveLength(1)
+
+    // Not a moment before three seconds, and one issue per three seconds after that.
+    await vi.advanceTimersByTimeAsync(2999)
+    expect(started).toHaveLength(1)
+    await vi.advanceTimersByTimeAsync(1)
+    expect(started).toHaveLength(2)
+    await vi.advanceTimersByTimeAsync(3000)
+    expect(started).toHaveLength(3)
+
+    // And nothing waits behind the last issue: the walk is over, not sleeping.
+    await bulkIssueDownloadsIdle()
+    await app.close()
+  } finally {
+    vi.useRealTimers()
+    db.close()
+  }
 })

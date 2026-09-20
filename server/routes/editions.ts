@@ -25,10 +25,12 @@ interface EditEditionBody { name?: string; seriesName?: string }
 export interface EditionRouteOpts {
   /** Injected so tests never touch the network. */
   fetchPage?: (url: string) => Promise<string>
+  /** The pause between issues of a "Get all" walk. Injected as 0 by tests. */
+  bulkDelayMs?: number
 }
 
 export default async function editionRoutes(app: App, opts: EditionRouteOpts = {}) {
-  const { fetchPage = fetchSourcePage } = opts
+  const { fetchPage = fetchSourcePage, bulkDelayMs } = opts
   app.get<{ Querystring: LibraryQuery }>('/api/editions', async (req) => {
     return { editions: listEditions(app.db, editionFilterOf(req.query)) }
   })
@@ -271,7 +273,7 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
     )
     const issues = missingMatchedIssues(app, { edition, issues: held.issues, owned })
 
-    const result = queueMissingIssues(app, { edition, issues, fetchPage })
+    const result = queueMissingIssues(app, { edition, issues, fetchPage, delayMs: bulkDelayMs })
     if ('already' in result) {
       return reply.code(409).send({ error: 'this volume is already being queued' })
     }
