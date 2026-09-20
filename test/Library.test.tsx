@@ -163,10 +163,12 @@ const READ_STATES = {
 }
 
 const LIBRARY_BOOKS = [
-  { id: 7, editionId: 9, editionName: 'The Amazing Spider-Man (2025)', number: '29', title: 'Bad Things',
+  { id: 7, editionId: 9, editionName: 'The Amazing Spider-Man (2025)', seriesName: 'The Amazing Spider-Man',
+    arcs: [], number: '29', title: 'Bad Things',
     pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0,
     filePath: 'The Amazing Spider-Man/The Amazing Spider-Man (2025)/the_amazing_spider-man_029.cbz' },
-  { id: 9, editionId: 4, editionName: 'Knull (2026)', number: null, title: null,
+  { id: 9, editionId: 4, editionName: 'Knull (2026)', seriesName: 'Knull', arcs: [],
+    number: null, title: null,
     pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0,
     filePath: 'Knull/Knull (2026)/knull_untagged.cbz' },
 ]
@@ -387,13 +389,17 @@ test('the Story Arcs entry stays out of the way when there are no arcs', async (
 // Four unread comics across two volumes: three of one, one of the other. The counts
 // differ so a tile showing the wrong group's size is visible in the assertion.
 const GROUPED_BOOKS = [
-  { id: 7, editionId: 9, editionName: 'Amazing Spider-Man (2025)', number: '29', title: 'Bad Things',
+  { id: 7, editionId: 9, editionName: 'Amazing Spider-Man (2025)', seriesName: 'Amazing Spider-Man', arcs: [],
+    number: '29', title: 'Bad Things',
     pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'a/b/asm_029.cbz' },
-  { id: 8, editionId: 9, editionName: 'Amazing Spider-Man (2025)', number: '30', title: 'Worse Things',
+  { id: 8, editionId: 9, editionName: 'Amazing Spider-Man (2025)', seriesName: 'Amazing Spider-Man', arcs: [],
+    number: '30', title: 'Worse Things',
     pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'a/b/asm_030.cbz' },
-  { id: 10, editionId: 9, editionName: 'Amazing Spider-Man (2025)', number: '31', title: 'Worst Things',
+  { id: 10, editionId: 9, editionName: 'Amazing Spider-Man (2025)', seriesName: 'Amazing Spider-Man', arcs: [],
+    number: '31', title: 'Worst Things',
     pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'a/b/asm_031.cbz' },
-  { id: 11, editionId: 4, editionName: 'Knull (2026)', number: '1', title: 'God of the Abyss',
+  { id: 11, editionId: 4, editionName: 'Knull (2026)', seriesName: 'Knull', arcs: [],
+    number: '1', title: 'God of the Abyss',
     pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'k/knull_001.cbz' },
 ]
 
@@ -486,3 +492,185 @@ test('reading is not grouped - its comics are drawn directly', async () => {
   expect(screen.queryByText('3 unread')).not.toBeInTheDocument()
 })
 
+
+// --- unread grouped by series ------------------------------------------------
+
+// Three runs of Batman, side by side on the unread shelf. Sizes differ so a tile counting
+// the wrong one is visible in the assertion.
+const BATMAN_VOLUMES = [
+  { id: 20, editionId: 6, editionName: 'Batman (2012)', seriesName: 'Batman', arcs: [],
+    number: '1', title: 'The Court of Owls',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'b/bat_2012_001.cbz' },
+  { id: 21, editionId: 6, editionName: 'Batman (2012)', seriesName: 'Batman', arcs: [],
+    number: '2', title: 'Trust',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'b/bat_2012_002.cbz' },
+  { id: 22, editionId: 7, editionName: 'Batman (2016)', seriesName: 'Batman', arcs: [],
+    number: '1', title: 'I Am Gotham',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'b/bat_2016_001.cbz' },
+  { id: 23, editionId: 8, editionName: 'Batman (2025)', seriesName: 'Batman', arcs: [],
+    number: '5', title: 'Lady Death Man Strikes',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'b/bat_2025_005.cbz' },
+]
+
+test('the volumes of one series collapse to a single tile', async () => {
+  groupedFetch(BATMAN_VOLUMES)
+  renderWithProviders(<Library />, '/?status=unread')
+
+  expect(await screen.findByText('Batman')).toBeInTheDocument()
+  expect(screen.getByText('3 volumes · 4 unread')).toBeInTheDocument()
+})
+
+test('the volumes stay off the shelf until the series is opened', async () => {
+  groupedFetch(BATMAN_VOLUMES)
+  renderWithProviders(<Library />, '/?status=unread')
+  await screen.findByText('Batman')
+
+  expect(screen.queryByText('Batman (2012)')).not.toBeInTheDocument()
+  expect(screen.queryByText('Batman (2025)')).not.toBeInTheDocument()
+})
+
+test('opening a series shows its volumes, each opening its own next comic', async () => {
+  groupedFetch(BATMAN_VOLUMES)
+  renderWithProviders(<Library />, '/?status=unread')
+  fireEvent.click(await screen.findByRole('button', { name: /Batman/ }))
+
+  expect(screen.getByRole('link', { name: 'Batman (2012) #1' })).toHaveAttribute('href', '/book/20')
+  expect(screen.getByRole('link', { name: 'Batman (2025) #5' })).toHaveAttribute('href', '/book/23')
+})
+
+// A series with one run has nothing to fold, and the shelf goes on taking you straight to
+// the comic at the front of it.
+test('a series with one volume is still the volume tile you could read from', async () => {
+  groupedFetch(GROUPED_BOOKS)
+  renderWithProviders(<Library />, '/?status=unread')
+
+  expect(await screen.findByRole('link', { name: 'Amazing Spider-Man (2025) #29' }))
+    .toHaveAttribute('href', '/book/7')
+  expect(screen.getByText('3 unread')).toBeInTheDocument()
+})
+
+// --- unread grouped by story arc ---------------------------------------------
+
+// One story told across two series, plus a Batman run that is not part of it.
+const ARC_BOOKS = [
+  { id: 30, editionId: 2, editionName: 'Avengers: Armageddon (2026)', seriesName: 'Avengers: Armageddon',
+    arcs: ['Armageddon'], number: '2', title: 'Assemble',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'a/av_002.cbz' },
+  { id: 31, editionId: 3, editionName: 'Captain America (2025)', seriesName: 'Captain America',
+    arcs: ['Armageddon'], number: '13', title: "Hell's Angel",
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'c/cap_013.cbz' },
+  { id: 32, editionId: 6, editionName: 'Batman (2012)', seriesName: 'Batman', arcs: [],
+    number: '1', title: 'The Court of Owls',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'b/bat_001.cbz' },
+]
+
+test('the unread shelf offers to group story arcs', async () => {
+  groupedFetch(ARC_BOOKS)
+  renderWithProviders(<Library />, '/?status=unread')
+
+  expect(await screen.findByRole('checkbox', { name: /story arcs/i })).not.toBeChecked()
+})
+
+// Nothing to group is nothing to offer: the control would be a switch with no effect.
+test('a shelf with no arcs on it does not offer the toggle', async () => {
+  groupedFetch(GROUPED_BOOKS)
+  renderWithProviders(<Library />, '/?status=unread')
+  await screen.findByText('Amazing Spider-Man (2025)')
+
+  expect(screen.queryByRole('checkbox', { name: /story arcs/i })).toBeNull()
+})
+
+test('grouping arcs gathers two series into one tile', async () => {
+  groupedFetch(ARC_BOOKS)
+  renderWithProviders(<Library />, '/?status=unread')
+  fireEvent.click(await screen.findByRole('checkbox', { name: /story arcs/i }))
+
+  expect(screen.getByRole('link', { name: /Armageddon/ })).toHaveAttribute('href', '/arcs/Armageddon')
+  expect(screen.getByText('2 unread · 2 series')).toBeInTheDocument()
+})
+
+// The shelf still accounts for every unread comic: what no arc claims goes on being
+// grouped by series underneath.
+test('comics in no arc keep their series tiles', async () => {
+  groupedFetch(ARC_BOOKS)
+  renderWithProviders(<Library />, '/?status=unread')
+  fireEvent.click(await screen.findByRole('checkbox', { name: /story arcs/i }))
+
+  expect(screen.getByRole('link', { name: 'Batman (2012) #1' })).toHaveAttribute('href', '/book/32')
+  expect(screen.queryByText('Captain America (2025)')).not.toBeInTheDocument()
+})
+
+test('the two halves of the shelf are named once both are on it', async () => {
+  groupedFetch(ARC_BOOKS)
+  renderWithProviders(<Library />, '/?status=unread')
+  fireEvent.click(await screen.findByRole('checkbox', { name: /story arcs/i }))
+
+  expect(screen.getByRole('heading', { name: 'Story Arcs' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Series' })).toBeInTheDocument()
+})
+
+// Same reason the status lives in the url: a filter you chose should survive a refresh
+// and ride along in a link.
+test('grouping arcs puts it in the url, and arriving on that url groups them', async () => {
+  groupedFetch(ARC_BOOKS)
+  renderWithProviders(<Library />, '/?status=unread&group=arcs')
+
+  expect(await screen.findByRole('checkbox', { name: /story arcs/i })).toBeChecked()
+  expect(screen.getByRole('link', { name: /Armageddon/ })).toHaveAttribute('href', '/arcs/Armageddon')
+})
+
+// Reading holds the one or two comics you are partway through - there is nothing to gather.
+test('the arc toggle stays off the Reading shelf', async () => {
+  groupedFetch(ARC_BOOKS.map((b) => ({ ...b, readState: 'reading', percent: 40 })))
+  renderWithProviders(<Library />, '/?status=reading')
+  await screen.findByText('Assemble')
+
+  expect(screen.queryByRole('checkbox', { name: /story arcs/i })).toBeNull()
+})
+
+// Two multi-volume series side by side, so "only one open" has something to be about.
+const TWO_SERIES = [
+  ...BATMAN_VOLUMES,
+  { id: 40, editionId: 9, editionName: 'Venom (2018)', seriesName: 'Venom', arcs: [],
+    number: '1', title: 'Rex',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'v/ven_2018_001.cbz' },
+  { id: 41, editionId: 10, editionName: 'Venom (2025)', seriesName: 'Venom', arcs: [],
+    number: '1', title: 'Shadow of the Abyss',
+    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'v/ven_2025_001.cbz' },
+]
+
+// The panel floats over the shelf, so two of them open at once would overlap into
+// something unreadable - and the shelf has no use for two answers to one question.
+test('opening a series closes the one that was open', async () => {
+  groupedFetch(TWO_SERIES)
+  renderWithProviders(<Library />, '/?status=unread')
+
+  fireEvent.click(await screen.findByRole('button', { name: /Batman/ }))
+  expect(screen.getByRole('link', { name: 'Batman (2012)' })).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: /Venom/ }))
+
+  expect(screen.getByRole('link', { name: 'Venom (2018)' })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Batman (2012)' })).not.toBeInTheDocument()
+})
+
+test('clicking an open series again closes it', async () => {
+  groupedFetch(TWO_SERIES)
+  renderWithProviders(<Library />, '/?status=unread')
+  const batman = await screen.findByRole('button', { name: /Batman/ })
+
+  fireEvent.click(batman)
+  fireEvent.click(batman)
+
+  expect(screen.queryByRole('link', { name: 'Batman (2012)' })).not.toBeInTheDocument()
+})
+
+test('clicking away from an open series closes it', async () => {
+  groupedFetch(TWO_SERIES)
+  renderWithProviders(<Library />, '/?status=unread')
+
+  fireEvent.click(await screen.findByRole('button', { name: /Batman/ }))
+  fireEvent.mouseDown(screen.getByRole('heading', { name: 'Library' }))
+
+  expect(screen.queryByRole('link', { name: 'Batman (2012)' })).not.toBeInTheDocument()
+})

@@ -122,11 +122,15 @@ export interface ApiVolumeIssue {
   match?: { indexId: number; title: string } | null
 }
 
-/** A comic as the library shelf receives it: the book plus the volume holding it, which
- *  is what lets the shelf group by volume without a request per group. */
+/** A comic as the library shelf receives it: the book plus the volume, series and arcs
+ *  holding it, which is what lets the shelf group three ways without a request per group. */
 export interface ApiLibraryBook extends ApiBook {
   editionId: number
   editionName: string
+  /** Null for a volume nobody has given a series to; the shelf falls back to its name. */
+  seriesName: string | null
+  /** Empty for the many comics tagged with no arc at all. */
+  arcs: string[]
 }
 
 export interface ApiEditionExtra {

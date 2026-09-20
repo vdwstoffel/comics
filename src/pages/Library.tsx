@@ -7,8 +7,9 @@ import { statusFrom } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import LibraryRail from '../components/LibraryRail'
 import { tileLabel } from '../lib/tileLabel'
-import { groupByVolume } from '../lib/volumeGroups'
-import VolumeGroupTile from '../components/VolumeGroupTile'
+import { groupBySeries, groupByArc } from '../lib/volumeGroups'
+import SeriesGroupTile from '../components/SeriesGroupTile'
+import ArcGroupTile from '../components/ArcGroupTile'
 
 /** What an empty result should say, so a blank grid never reads like a failure. */
 const NOTHING: Record<ReadState, string> = {
@@ -19,10 +20,17 @@ const NOTHING: Record<ReadState, string> = {
 
 export default function Library() {
   const [selectedPublisher, setSelectedPublisher] = useState<string | null>(null)
+  // Which series has its volumes on screen. One key rather than a flag per tile: the
+  // panels float over the shelf, so two of them open at once would overlap into something
+  // unreadable, and the shelf has no use for two answers to one question.
+  const [openSeries, setOpenSeries] = useState<string | null>(null)
   // The status lives in the url so it survives a refresh and can be carried into
   // every link, which is what keeps the filter applied as you drill down.
   const [searchParams, setSearchParams] = useSearchParams()
   const selectedStatus = statusFrom(searchParams)
+  // For the same reason: a shelf you gathered into arcs should still be gathered into arcs
+  // after a refresh, and should be what a link to it shows.
+  const byArc = searchParams.get('group') === 'arcs'
 
   // A status filter asks a question about comics — "what do I read next" — so it is
   // answered with comics. Without one the shelf is the series level, as it has always
@@ -42,9 +50,12 @@ export default function Library() {
 
   const { isLoading, error } = showingBooks ? books : series
 
-  const volumes = showingBooks && selectedStatus === 'unread' && books.data
-    ? groupByVolume(books.data.books)
-    : []
+  const unread = selectedStatus === 'unread' && books.data ? books.data.books : []
+  // A shelf with no arcs on it is not offered the toggle: it would be a switch with no
+  // effect on anything in front of you.
+  const hasArcs = unread.some((b) => b.arcs.length > 0)
+  const { arcs, rest } = byArc ? groupByArc(unread) : { arcs: [], rest: unread }
+  const seriesGroups = groupBySeries(rest)
 
   // The two rails are alternatives, not layers: choosing one clears the other.
   const choosePublisher = (key: string | null) => {
@@ -54,6 +65,9 @@ export default function Library() {
   const chooseStatus = (key: string | null) => {
     setSearchParams(key ? { status: key } : {})
     setSelectedPublisher(null)
+  }
+  const chooseGrouping = (grouped: boolean) => {
+    setSearchParams(grouped ? { status: 'unread', group: 'arcs' } : { status: 'unread' })
   }
 
   return (
@@ -72,18 +86,53 @@ export default function Library() {
         {showingBooks && books.data && (
           books.data.books.length === 0
             ? <p>{NOTHING[selectedStatus]}</p>
-            : (
-              <div className="tile-grid">
-                {/* Unread is the shelf that accumulates - a run you are behind on puts
-                    every one of its issues here at once - so it collapses to a tile per
-                    volume, opening on the comic at the front of that run. Reading holds
-                    the one or two comics you are partway through, where a group would only
-                    add a click to reach a comic you are already in the middle of. */}
-                {selectedStatus === 'unread'
-                  ? volumes.map((group) => (
-                    <VolumeGroupTile key={group.editionId} group={group} />
-                  ))
-                  : books.data.books.map((b) => (
+            : selectedStatus === 'unread'
+              ? (
+                <>
+                  {/* Unread is the shelf that accumulates - a run you are behind on puts
+                      every one of its issues here at once - so it collapses, to a tile per
+                      series and, inside that, a tile per volume. Reading holds the one or
+                      two comics you are partway through, where a group would only add a
+                      click to reach a comic you are already in the middle of. */}
+                  {hasArcs && (
+                    <label className="shelf-toggle">
+                      <input
+                        type="checkbox"
+                        checked={byArc}
+                        onChange={(e) => chooseGrouping(e.target.checked)}
+                      />
+                      Group story arcs
+                    </label>
+                  )}
+                  {arcs.length > 0 && (
+                    <>
+                      {/* Named only when both halves are on the shelf: a single unlabelled
+                          grid is what every other view here is. */}
+                      {seriesGroups.length > 0 && <h2 className="shelf-heading">Story Arcs</h2>}
+                      <div className="tile-grid">
+                        {arcs.map((arc) => <ArcGroupTile key={arc.name} group={arc} />)}
+                      </div>
+                      {seriesGroups.length > 0 && <h2 className="shelf-heading">Series</h2>}
+                    </>
+                  )}
+                  {seriesGroups.length > 0 && (
+                    <div className="tile-grid">
+                      {seriesGroups.map((group) => (
+                        <SeriesGroupTile
+                          key={group.key}
+                          group={group}
+                          open={openSeries === group.key}
+                          onToggle={() => setOpenSeries(openSeries === group.key ? null : group.key)}
+                          onClose={() => setOpenSeries(null)}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </>
+              )
+              : (
+                <div className="tile-grid">
+                  {books.data.books.map((b) => (
                     <CoverTile
                       key={b.id}
                       to={`/book/${b.id}`}
@@ -94,8 +143,8 @@ export default function Library() {
                       percent={b.percent}
                     />
                   ))}
-              </div>
-            )
+                </div>
+              )
         )}
         {!showingBooks && series.data && (
           <div className="tile-grid">

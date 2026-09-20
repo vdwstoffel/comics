@@ -3,6 +3,7 @@ import { openDb } from '../server/db.js'
 import { upsertEdition, updateEdition } from '../server/models/editions.js'
 import { insertBook, updateBook, listLibraryBooks } from '../server/models/books.js'
 import { setProgress } from '../server/models/progress.js'
+import { replaceBookTags } from '../server/models/metadata.js'
 
 function seed(db: ReturnType<typeof openDb>) {
   const venom = upsertEdition(db, { name: 'Venom (2025)', folder: 'Venom/Venom (2025)', seriesName: 'Venom' })
@@ -96,5 +97,74 @@ test('each book carries the name of the volume it belongs to', () => {
 
   expect(byNumber['255']).toBe('Venom (2025)')
   expect(byNumber['1']).toBe('Batman (2016)')
+  db.close()
+})
+
+// One entry per series on the shelf means the grid has to know which series a comic is in,
+// and the series lives on the edition - the same join that already supplies the volume's
+// name. Three volumes of Batman are one tile only if all three books say "Batman".
+test('each book carries the series its volume belongs to', () => {
+  const db = openDb(':memory:')
+  seed(db)
+
+  const byNumber = Object.fromEntries(
+    listLibraryBooks(db, { readState: 'unread' }).map((b) => [b.number, b.seriesName]),
+  )
+
+  expect(byNumber['255']).toBe('Venom')
+  expect(byNumber['1']).toBe('Batman')
+  db.close()
+})
+
+// An edition nobody has given a series to still has to land somewhere, and the shelf
+// falls back to the volume's own name. Reporting null rather than guessing here keeps
+// that fallback in one place.
+test('an edition with no series of its own reports none', () => {
+  const db = openDb(':memory:')
+  const loose = upsertEdition(db, { name: 'One-Shot (2026)', folder: 'One-Shot' })
+  updateEdition(db, loose.id, { seriesName: null })
+  insertBook(db, { editionId: loose.id, filePath: 'One-Shot/one_shot.cbz', pageCount: 20, fileSize: 1 })
+
+  const [book] = listLibraryBooks(db, { readState: 'unread' })
+  expect(book.seriesName).toBeNull()
+  db.close()
+})
+
+// Grouping the shelf by story arc is a question about tags the library already holds, so
+// it is answered here rather than by a request per tile - and never by Comic Vine.
+test('a book carries the story arcs it is tagged with', () => {
+  const db = openDb(':memory:')
+  const { unreadVenom } = seed(db)
+  replaceBookTags(db, unreadVenom.id, [
+    { kind: 'character', value: 'Venom' },
+    { kind: 'story_arc', value: 'Armageddon' },
+  ])
+
+  const book = listLibraryBooks(db, { readState: 'unread' }).find((b) => b.id === unreadVenom.id)!
+  expect(book.arcs).toEqual(['Armageddon'])
+  db.close()
+})
+
+test('a book in two arcs carries both', () => {
+  const db = openDb(':memory:')
+  const { unreadVenom } = seed(db)
+  replaceBookTags(db, unreadVenom.id, [
+    { kind: 'story_arc', value: 'Armageddon' },
+    { kind: 'story_arc', value: 'King in Black' },
+  ])
+
+  const book = listLibraryBooks(db, { readState: 'unread' }).find((b) => b.id === unreadVenom.id)!
+  expect(book.arcs).toEqual(['Armageddon', 'King in Black'])
+  db.close()
+})
+
+// Most comics carry no arc at all. An empty list rather than a missing field keeps the
+// shelf from having to ask whether the server knew about arcs or the comic had none.
+test('a book in no arc carries an empty list', () => {
+  const db = openDb(':memory:')
+  const { unreadBatman } = seed(db)
+
+  const book = listLibraryBooks(db, { readState: 'unread' }).find((b) => b.id === unreadBatman.id)!
+  expect(book.arcs).toEqual([])
   db.close()
 })

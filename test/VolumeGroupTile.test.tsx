@@ -6,7 +6,8 @@ import type { VolumeGroup } from '../src/lib/volumeGroups'
 import type { ApiLibraryBook } from '../src/api'
 
 const book = (id: number): ApiLibraryBook => ({
-  id, editionId: 9, editionName: 'Venom (2025)', title: `Secret ${id}`, number: String(254 + id),
+  id, editionId: 9, editionName: 'Venom (2025)', seriesName: 'Venom', arcs: [],
+  title: `Secret ${id}`, number: String(254 + id),
   pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0,
 })
 

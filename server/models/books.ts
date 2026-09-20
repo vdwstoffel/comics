@@ -77,13 +77,41 @@ export function findBookByPath(db: Db, filePath: string): Book | undefined {
 }
 
 /**
- * A book as the library shelf needs it: the book, its progress, and the name of the
- * volume holding it. The name comes from the edition rather than the book because that
- * is where it lives; carrying it here is what lets the shelf group by volume without a
- * second request per group.
+ * A book as the library shelf needs it: the book, its progress, and the volume and series
+ * holding it. Both names come from the edition rather than the book because that is where
+ * they live; carrying them here is what lets the shelf group by volume and by series
+ * without a second request per group.
  */
 export interface LibraryBook extends BookWithProgress {
   editionName: string
+  /** Null for an edition nobody has given a series to - the shelf falls back to the
+   *  volume's own name, which is a decision about tiles rather than about the data. */
+  seriesName: string | null
+  /** The story arcs this comic is tagged with, in the order they were written. Empty for
+   *  the many comics that carry none. */
+  arcs: string[]
+}
+
+/**
+ * Book id -> the story arcs it is tagged with.
+ *
+ * One query for the whole library rather than one per book: the tags are already indexed
+ * by kind, there are a handful of them per comic, and the shelf needs them for every row
+ * it is about to draw. Grouping the shelf by arc is a question about the library, so it
+ * is answered here and never by asking Comic Vine.
+ */
+function arcsByBook(db: Db): Map<number, string[]> {
+  const rows = db
+    .prepare("SELECT book_id, value FROM book_tag WHERE kind = 'story_arc' ORDER BY id")
+    .all() as Array<{ book_id: number; value: string }>
+
+  const arcs = new Map<number, string[]>()
+  for (const { book_id: bookId, value } of rows) {
+    const found = arcs.get(bookId)
+    if (found) found.push(value)
+    else arcs.set(bookId, [value])
+  }
+  return arcs
 }
 
 /**
@@ -117,13 +145,20 @@ export function listLibraryBooks(
               ${where}`)
     .all(...params) as Array<BookRow & { series_name: string | null; edition_name: string }>
 
+  const arcs = arcsByBook(db)
+
   return rows
     .sort((a, b) => {
       const series = String(a.series_name ?? '').localeCompare(String(b.series_name ?? ''), undefined, { sensitivity: 'base' })
       if (series !== 0) return series
       return String(a.number ?? a.file_path).localeCompare(String(b.number ?? b.file_path), undefined, { numeric: true })
     })
-    .map((r) => ({ ...deriveReadState(db, toBook(r) as Book), editionName: r.edition_name }))
+    .map((r) => ({
+      ...deriveReadState(db, toBook(r) as Book),
+      editionName: r.edition_name,
+      seriesName: r.series_name?.trim() || null,
+      arcs: arcs.get(r.id) ?? [],
+    }))
 }
 
 export function listBooksByEdition(db: Db, editionId: number, readState?: ReadState): Book[] {

@@ -2607,3 +2607,140 @@ textarea.input:hover:not(:focus) {
 }
 
 
+
+/* ============================================================
+   SERIES AND ARC TILES — the unread shelf, gathered
+   ============================================================ */
+
+/* Both tiles draw the volume tile's deck out of spans inside one button or one link,
+   rather than out of the tile's own children — so the pieces need the column layout that
+   being flex items of .volume-tile used to give them. */
+.series-tile__head,
+.arc-tile__link {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.series-tile__head .volume-tile__deck,
+.arc-tile__link .volume-tile__deck {
+  display: block;
+}
+
+.series-tile__head:hover .volume-tile__name,
+.arc-tile__link:hover .volume-tile__name {
+  text-decoration: underline;
+}
+
+.series-tile__head:focus-visible,
+.arc-tile__link:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 4px;
+  border-radius: var(--radius);
+}
+
+/* The cover opens the series rather than opening a comic, so it has to look like
+   something that opens. The rule reaches the head through a child combinator: the volume
+   tiles inside the panel carry the same classes, and a caret falling through to them
+   would mark three links that open comics as three things that fold. */
+.series-tile > .series-tile__head .volume-tile__name::after {
+  content: ' \25be';
+  color: var(--muted);
+}
+
+.series-tile--open > .series-tile__head .volume-tile__name::after {
+  content: ' \25b4';
+}
+
+/* The panel floats over the shelf rather than unfolding into it. Laid into the grid, a
+   series pushed every comic below it down the page to make room for a choice you make in
+   a second and are then done with - and the row it took could hold eight tiles where a
+   series has three. Same mechanics as the combobox's list, one layer under the header. */
+.series-tile {
+  position: relative;
+}
+
+.series-tile__panel {
+  position: absolute;
+  z-index: 20;
+  top: calc(100% + 10px);
+  left: 0;
+  /* Without this the panel would shrink to fit the tile it hangs off - an absolutely
+     positioned box sizes against its containing block - and three volumes 250px of room
+     is three volumes stacked in a column. max-content is the row laid out in full; the
+     cap is what makes a twenty-volume series wrap instead of leaving the window. */
+  width: max-content;
+  max-width: min(88vw, 900px);
+  padding: 18px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--elevated);
+  box-shadow: var(--shadow-hover);
+}
+
+/* A panel hanging off a tile in the last column would run off the side of the window, so
+   one that does not fit hangs off the tile's other edge instead. */
+.series-tile__panel--from-right {
+  left: auto;
+  right: 0;
+}
+
+/* Fixed-width volumes rather than a grid, kept near the size of a shelf tile so the
+   panel reads as a piece of the same shelf rather than a different screen. */
+.series-tile__volumes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 20px;
+}
+
+.series-tile__volumes .volume-tile {
+  flex: none;
+  width: 160px;
+}
+
+/* The one control on the shelf itself — every other filter lives in the rail, and this
+   one is about how the shelf is gathered rather than about what is on it. */
+.shelf-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  color: var(--muted);
+  font-size: 0.875rem;
+  cursor: pointer;
+  user-select: none;
+}
+
+.shelf-toggle:hover {
+  color: var(--text);
+}
+
+.shelf-toggle input {
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+.shelf-heading {
+  margin: 28px 0 12px;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.shelf-heading:first-of-type {
+  margin-top: 0;
+}
