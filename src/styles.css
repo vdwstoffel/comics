@@ -1745,6 +1745,14 @@ textarea.input:hover:not(:focus) {
     overflow-y: visible;
     padding: 24px 16px;
   }
+
+  /* Here the page scrolls and the sticky header floats over it, so a panel scrolled to
+     the top of the window lands underneath the header with its first row of volumes
+     hidden. The column layout needs none of this: it scrolls inside its own box, which
+     starts below the header. */
+  .series-tile__panel {
+    scroll-margin-top: 66px;
+  }
 }
 
 /* ============================================================
@@ -2688,19 +2696,18 @@ textarea.input:hover:not(:focus) {
      is three volumes stacked in a column. max-content is the row laid out in full; the
      cap is what makes a twenty-volume series wrap instead of leaving the window. */
   width: max-content;
-  max-width: min(88vw, 900px);
+  /* --panel-max is the column that clips this panel, measured when it opens; the 900px is
+     the cap a wide window still wants. Both, because neither alone covers a phone held
+     sideways (the column is the constraint) or a 27-inch screen (the cap is). */
+  max-width: min(var(--panel-max, 88vw), 900px);
+  /* Moved rather than re-anchored: the panel is laid out left-aligned with its tile and
+     then shifted to wherever all of it is visible. See fitPanel. */
+  transform: translateX(var(--panel-shift, 0px));
   padding: 18px;
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--elevated);
   box-shadow: var(--shadow-hover);
-}
-
-/* A panel hanging off a tile in the last column would run off the side of the window, so
-   one that does not fit hangs off the tile's other edge instead. */
-.series-tile__panel--from-right {
-  left: auto;
-  right: 0;
 }
 
 /* Fixed-width volumes rather than a grid, kept near the size of a shelf tile so the

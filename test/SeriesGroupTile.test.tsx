@@ -150,3 +150,28 @@ test('a series with a single volume is drawn as that volume', () => {
   expect(screen.getByText('2 unread')).toBeInTheDocument()
   expect(screen.queryByRole('button')).toBeNull()
 })
+
+// A phone held sideways leaves a column barely taller than one tile, so the panel opens
+// entirely below the fold - which to the reader is a tile that does nothing when tapped.
+test('an opening panel is brought into view', () => {
+  const scrollIntoView = vi.fn()
+  // jsdom has no scrollIntoView of its own, so the component must be asking for it by name.
+  Element.prototype.scrollIntoView = scrollIntoView
+
+  renderTile(batman, true)
+
+  expect(scrollIntoView).toHaveBeenCalledWith({ block: 'nearest' })
+  const [el] = scrollIntoView.mock.instances as unknown as Element[]
+  expect(el).toHaveClass('series-tile__panel')
+})
+
+// Placing the panel is the job; being shown it is the courtesy. A browser without
+// scrollIntoView must still get its volumes rather than an exception out of a layout
+// effect, which would cost the whole shelf.
+test('a browser with no scrollIntoView still gets the panel', () => {
+  // @ts-expect-error - removing a DOM method is the whole point of the test.
+  delete Element.prototype.scrollIntoView
+
+  expect(() => renderTile(batman, true)).not.toThrow()
+  expect(screen.getByRole('link', { name: 'Batman (2012)' })).toBeInTheDocument()
+})

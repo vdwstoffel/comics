@@ -1,8 +1,28 @@
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef } from 'react'
 import type { CSSProperties } from 'react'
 import { deckDepth } from '../lib/deckDepth'
+import { fitPanel } from '../lib/panelFit'
+import type { Edges } from '../lib/panelFit'
 import type { SeriesGroup } from '../lib/volumeGroups'
 import VolumeGroupTile from './VolumeGroupTile'
+
+/**
+ * The edges of the nearest thing that would cut this element off - the scrolling column
+ * the shelf lives in, or the window when nothing else clips.
+ *
+ * An absolutely positioned box is clipped by any ancestor that scrolls, however far above
+ * it that ancestor is, so the search walks up rather than assuming the shelf's own layout.
+ */
+function clipBounds(el: HTMLElement): Edges {
+  for (let node = el.parentElement; node; node = node.parentElement) {
+    const { overflowX, overflowY } = getComputedStyle(node)
+    if (overflowX !== 'visible' || overflowY !== 'visible') {
+      const { left, right } = node.getBoundingClientRect()
+      return { left, right }
+    }
+  }
+  return { left: 0, right: document.documentElement.clientWidth }
+}
 
 interface SeriesGroupTileProps {
   group: SeriesGroup
@@ -35,9 +55,6 @@ interface SeriesGroupTileProps {
 export default function SeriesGroupTile({ group, open, onToggle, onClose }: SeriesGroupTileProps) {
   const root = useRef<HTMLDivElement>(null)
   const panel = useRef<HTMLDivElement>(null)
-  // A panel hanging off a tile in the last column would otherwise run off the side of the
-  // window, so one that does not fit hangs off the tile's other edge instead.
-  const [fromRight, setFromRight] = useState(false)
 
   // Only the open tile listens. A shelf of thirty series would otherwise keep thirty
   // handlers alive to answer a click none of them care about.
@@ -57,12 +74,44 @@ export default function SeriesGroupTile({ group, open, onToggle, onClose }: Seri
     }
   }, [open, onClose])
 
-  // Measured before the browser paints, so a panel that has to flip is never seen in the
+  // Measured before the browser paints, so a panel that has to move is never seen in the
   // place it could not fit.
+  //
+  // Against the box that CLIPS the panel, not against the window. The shelf scrolls inside
+  // its own column, and an absolutely positioned panel is cut off at that column's edges -
+  // so a panel measured against the window fits the screen and is still half invisible,
+  // with the sidebar showing through where the rest of it should be.
+  //
+  // Re-measured on resize because the one way to change the column's width mid-panel is to
+  // turn the phone, which is exactly the case this gets wrong.
   useLayoutEffect(() => {
-    if (!open || !panel.current) { setFromRight(false); return }
-    const { right } = panel.current.getBoundingClientRect()
-    setFromRight(right > document.documentElement.clientWidth - 16)
+    if (!open) return
+    const place = () => {
+      const el = panel.current, tile = root.current
+      if (!el || !tile) return
+      const bounds = clipBounds(el)
+      // Capped first, then measured: the cap is what makes a wide panel wrap, and it is
+      // the wrapped width that decides where the panel has to sit.
+      el.style.setProperty('--panel-max', `${fitPanel(tile.getBoundingClientRect(), 0, bounds).maxWidth}px`)
+      const { shift } = fitPanel(
+        tile.getBoundingClientRect(),
+        el.getBoundingClientRect().width,
+        bounds,
+      )
+      el.style.setProperty('--panel-shift', `${shift}px`)
+      // A panel hangs below its tile, and a phone held sideways leaves a column barely
+      // taller than one - so the panel opens correctly placed and entirely below the fold,
+      // which to the reader is a tile that does nothing when tapped. `nearest` scrolls the
+      // least it can and does nothing at all when the panel is already in view, so a
+      // desktop shelf never moves under the pointer.
+      // Optional: placing the panel is the job, and being shown it is the courtesy. An
+      // environment without scrollIntoView still gets a correctly placed panel rather than
+      // an exception out of a layout effect, which would cost the whole shelf.
+      el.scrollIntoView?.({ block: 'nearest' })
+    }
+    place()
+    window.addEventListener('resize', place)
+    return () => window.removeEventListener('resize', place)
   }, [open])
 
   if (group.volumes.length === 1) return <VolumeGroupTile group={group.volumes[0]} />
@@ -102,10 +151,7 @@ export default function SeriesGroupTile({ group, open, onToggle, onClose }: Seri
         </span>
       </button>
       {open && (
-        <div
-          className={`series-tile__panel${fromRight ? ' series-tile__panel--from-right' : ''}`}
-          ref={panel}
-        >
+        <div className="series-tile__panel" ref={panel}>
           <div className="series-tile__volumes">
             {group.volumes.map((volume) => (
               <VolumeGroupTile key={volume.editionId} group={volume} />
