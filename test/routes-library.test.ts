@@ -315,7 +315,7 @@ test.each([
   expect(body.planned).toEqual([{
     bookId: expect.any(Number),
     from: 'Venom/Venom (2025)/Venom 255 (2026) (Digital).cbz',
-    to: 'Venom/Venom (2025)/venom_255.cbz',
+    to: 'Venom/Venom (2025)/venom_0255.cbz',
   }])
   expect(body.renamed).toBeUndefined()
   expect(existsSync(join(folder, 'Venom 255 (2026) (Digital).cbz'))).toBe(true)
@@ -329,9 +329,9 @@ test('POST /api/library/rename-files with dryRun false renames the file', async 
   })
 
   expect(res.json()).toMatchObject({ dryRun: false, renamed: 1, skipped: 0 })
-  expect(existsSync(join(folder, 'venom_255.cbz'))).toBe(true)
+  expect(existsSync(join(folder, 'venom_0255.cbz'))).toBe(true)
   expect(existsSync(join(folder, 'Venom 255 (2026) (Digital).cbz'))).toBe(false)
-  expect(getBook(app.db, book.id)!.filePath).toBe('Venom/Venom (2025)/venom_255.cbz')
+  expect(getBook(app.db, book.id)!.filePath).toBe('Venom/Venom (2025)/venom_0255.cbz')
 })
 
 /** Two editions, two publishers, one book each in a different read state. */

@@ -1,6 +1,6 @@
 import { rename } from 'node:fs/promises'
 import { dirname, extname, join } from 'node:path'
-import { comicFileName } from '../lib/comicFileName.js'
+import { comicFileName, slug } from '../lib/comicFileName.js'
 import { dedupeDestPath } from '../lib/paths.js'
 import { renameLock } from '../lib/mutex.js'
 import { listEditions } from '../models/editions.js'
@@ -13,12 +13,21 @@ export interface RenamePlan {
   to: string
 }
 
-/** The issue title, as a filename fragment, or nothing when Comic Vine gave none. */
-function titlePart(book: Book): string | null {
+/**
+ * What tells this comic apart from another carrying the same number, as a filename
+ * fragment, or nothing when we hold nothing that does.
+ *
+ * The issue title says it best, but Comic Vine leaves plenty of issues unnamed - the
+ * "Death Spiral - Body Count" one-shot has no name at all, because what identifies it
+ * is its volume rather than anything about the issue. The cover month is the fallback:
+ * it is already on the row, it is what a reader would use to say which of two
+ * same-numbered one-shots they mean, and two of them rarely ship in one month.
+ */
+function distinguisher(book: Book): string | null {
   const title = book.title?.trim()
-  if (!title) return null
-  const slug = title.toLowerCase().replace(/[^a-z0-9.-]+/g, '_').replace(/_+/g, '_').replace(/^[_.-]+|[_.-]+$/g, '')
-  return slug || null
+  if (title) return slug(title) || null
+  const date = book.date?.trim()
+  return date ? slug(date) || null : null
 }
 
 /**
@@ -56,8 +65,9 @@ export function planRenames(db: Db): RenamePlan[] {
       for (const { book } of group) {
         let target = base
         if (group.length > 1) {
-          const part = titlePart(book)
-          // No title, no way to tell it apart: its current name has to stand.
+          const part = distinguisher(book)
+          // Nothing to tell it apart by: its current name has to stand, because that
+          // name is then the only thing that does.
           if (!part) continue
           target = base.replace(/(\.[^.]+)$/, `_${part}$1`)
         }

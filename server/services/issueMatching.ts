@@ -1,6 +1,5 @@
-import { seriesKey } from '../lib/comicGrouping.js'
 import { parseNumber } from '../lib/comicTitle.js'
-import { matchIssue, YEAR_SLACK } from '../lib/issueMatch.js'
+import { matchIssue, matchKey, YEAR_SLACK } from '../lib/issueMatch.js'
 import type { IndexCandidate } from '../lib/issueMatch.js'
 import type { CvVolumeIssue } from '../lib/comicvine.js'
 import type { Db } from '../types.js'
@@ -13,7 +12,7 @@ export interface IssueMatch {
 }
 
 // Narrowed by number and year so only a handful of rows are read and judged in JS;
-// seriesKey is a function and cannot be expressed in SQL. Rows with no number or year
+// matchKey is a function and cannot be expressed in SQL. Rows with no number or year
 // can never satisfy the rule, and the comparisons exclude them here rather than later.
 const CANDIDATES = `SELECT id, title, number, year FROM comic_index
                     WHERE number = ? AND year BETWEEN ? AND ?`
@@ -59,6 +58,6 @@ export function findMatchForIssue(
 
   const candidates = candidatesStatement(db).all(number, coverYear - YEAR_SLACK, coverYear + YEAR_SLACK)
 
-  const hit = matchIssue(candidates, { seriesKey: seriesKey(volumeName), number, coverYear })
+  const hit = matchIssue(candidates, { matchKey: matchKey(volumeName), number, coverYear })
   return hit ? { indexId: hit.id, title: hit.title } : null
 }

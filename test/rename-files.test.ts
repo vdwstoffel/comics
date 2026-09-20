@@ -22,17 +22,17 @@ beforeEach(() => {
 afterEach(() => { ctx.db.close(); rmSync(dir, { recursive: true, force: true }) })
 
 /** An edition holding real files, with the Comic Vine volume name the slug is built from. */
-function seed(name: string, cvName: string | null, books: Array<{ file: string; number: string | null; title?: string | null }>) {
+function seed(name: string, cvName: string | null, books: Array<{ file: string; number: string | null; title?: string | null; date?: string }>) {
   const folder = `${cvName ?? name}/${name}`
   const edition = upsertEdition(ctx.db, { name, folder, seriesName: cvName ?? name })
   if (cvName) updateEdition(ctx.db, edition.id, { cvName, cvStartYear: 2025 })
   mkdirSync(join(ctx.config.comicsDir, folder), { recursive: true })
-  return books.map(({ file, number, title }) => {
+  return books.map(({ file, number, title, date }) => {
     writeFileSync(join(ctx.config.comicsDir, folder, file), file)
     const book = insertBook(ctx.db, {
       editionId: edition.id, filePath: `${folder}/${file}`, pageCount: 1, fileSize: 1,
     })!
-    updateBook(ctx.db, book.id, { number, title: title ?? null, comicvineId: book.id })
+    updateBook(ctx.db, book.id, { number, title: title ?? null, date: date ?? null, comicvineId: book.id })
     return book
   })
 }
@@ -41,12 +41,12 @@ test('a matched comic is planned under its series and issue number', () => {
   seed('Venom (2025)', 'Venom', [{ file: 'Venom 255 (2026) (Digital).cbz', number: '255' }])
 
   expect(planRenames(ctx.db)).toEqual([
-    { bookId: 1, from: 'Venom/Venom (2025)/Venom 255 (2026) (Digital).cbz', to: 'Venom/Venom (2025)/venom_255.cbz' },
+    { bookId: 1, from: 'Venom/Venom (2025)/Venom 255 (2026) (Digital).cbz', to: 'Venom/Venom (2025)/venom_0255.cbz' },
   ])
 })
 
 test('a comic already correctly named is not in the plan', () => {
-  seed('Venom (2025)', 'Venom', [{ file: 'venom_255.cbz', number: '255' }])
+  seed('Venom (2025)', 'Venom', [{ file: 'venom_0255.cbz', number: '255' }])
   expect(planRenames(ctx.db)).toEqual([])
 })
 
@@ -74,8 +74,24 @@ test('comics colliding on a name are separated by their issue titles', () => {
     {
       bookId: 2,
       from: 'Death Spiral/Death Spiral (2026)/Death Spiral 001.cbz',
-      to: 'Death Spiral/Death Spiral (2026)/death_spiral_001_part_1_of_9.cbz',
+      to: 'Death Spiral/Death Spiral (2026)/death_spiral_0001_part_1_of_9.cbz',
     },
+  ])
+})
+
+// Comic Vine gives some issues no name at all - the Death Spiral "Body Count" one-shot
+// is one - so a collision there had nothing to separate the two by, and the untitled one
+// kept whatever the scraper had called it. Its cover month is the next best thing: it is
+// what a reader would use to say which of two same-numbered one-shots this is.
+test('a colliding comic with no title is separated by its cover date', () => {
+  seed('Death Spiral (2026)', 'Death Spiral', [
+    { file: 'Death Spiral - Body Count 001 (Digital) (Shan-Empire).cbz', number: '1', title: null, date: '2026-07' },
+    { file: 'Death Spiral 001.cbz', number: '1', title: 'Part 1 of 9' },
+  ])
+
+  expect(planRenames(ctx.db).map((p) => p.to.split('/').pop())).toEqual([
+    'death_spiral_0001_2026-07.cbz',
+    'death_spiral_0001_part_1_of_9.cbz',
   ])
 })
 
@@ -86,8 +102,8 @@ test('two colliding comics that both have titles both keep their own name', () =
   ])
 
   expect(planRenames(ctx.db).map((p) => p.to.split('/').pop())).toEqual([
-    'death_spiral_001_body_count.cbz',
-    'death_spiral_001_part_1_of_9.cbz',
+    'death_spiral_0001_body_count.cbz',
+    'death_spiral_0001_part_1_of_9.cbz',
   ])
 })
 
@@ -102,15 +118,15 @@ test('running it renames the file and repoints the row', async () => {
 
   expect(await renameLibraryFiles(ctx)).toMatchObject({ renamed: 1, skipped: 0 })
 
-  expect(getBook(ctx.db, book.id)!.filePath).toBe('Venom/Venom (2025)/venom_255.cbz')
-  expect(existsSync(join(ctx.config.comicsDir, 'Venom/Venom (2025)/venom_255.cbz'))).toBe(true)
+  expect(getBook(ctx.db, book.id)!.filePath).toBe('Venom/Venom (2025)/venom_0255.cbz')
+  expect(existsSync(join(ctx.config.comicsDir, 'Venom/Venom (2025)/venom_0255.cbz'))).toBe(true)
   expect(existsSync(join(ctx.config.comicsDir, 'Venom/Venom (2025)/Venom 255 (2026).cbz'))).toBe(false)
 })
 
 test('the renamed file is the same comic, not an empty one', async () => {
   seed('Venom (2025)', 'Venom', [{ file: 'Venom 255 (2026).cbz', number: '255' }])
   await renameLibraryFiles(ctx)
-  expect(readFileSync(join(ctx.config.comicsDir, 'Venom/Venom (2025)/venom_255.cbz'), 'utf8'))
+  expect(readFileSync(join(ctx.config.comicsDir, 'Venom/Venom (2025)/venom_0255.cbz'), 'utf8'))
     .toBe('Venom 255 (2026).cbz')
 })
 
@@ -132,5 +148,5 @@ test('a comic whose file has gone is skipped, and the others still rename', asyn
   const result = await renameLibraryFiles(ctx)
 
   expect(result).toMatchObject({ renamed: 1, skipped: 1 })
-  expect(getBook(ctx.db, books[1].id)!.filePath).toBe('Venom/Venom (2025)/venom_256.cbz')
+  expect(getBook(ctx.db, books[1].id)!.filePath).toBe('Venom/Venom (2025)/venom_0256.cbz')
 })

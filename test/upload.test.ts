@@ -263,8 +263,8 @@ test('a matched upload is stored under its series and issue number', async () =>
     'Venom 255 (2026) (Digital) (Shan-Empire).cbz',
   )
 
-  expect(res.json().book.filePath).toBe('Venom/Venom (2025)/venom_255.cbz')
-  expect(existsSync(join(dir, 'comics', 'Venom', 'Venom (2025)', 'venom_255.cbz'))).toBe(true)
+  expect(res.json().book.filePath).toBe('Venom/Venom (2025)/venom_0255.cbz')
+  expect(existsSync(join(dir, 'comics', 'Venom', 'Venom (2025)', 'venom_0255.cbz'))).toBe(true)
 })
 
 // Renaming on a guess is how you lose track of what a file is.
@@ -282,8 +282,8 @@ test('uploading the same issue twice keeps both files', async () => {
   const second = await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' }, 'second.cbz')
 
   expect(second.statusCode).toBe(200)
-  expect(second.json().book.filePath).toBe('Venom/Venom (2025)/venom_255 (2).cbz')
-  expect(existsSync(join(dir, 'comics', 'Venom', 'Venom (2025)', 'venom_255.cbz'))).toBe(true)
+  expect(second.json().book.filePath).toBe('Venom/Venom (2025)/venom_0255 (2).cbz')
+  expect(existsSync(join(dir, 'comics', 'Venom', 'Venom (2025)', 'venom_0255.cbz'))).toBe(true)
 })
 
 test('a .cbr keeps its converted extension in the new name', async () => {
