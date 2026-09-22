@@ -2759,3 +2759,134 @@ textarea.input:hover:not(:focus) {
 .shelf-heading:first-of-type {
   margin-top: 0;
 }
+
+/* --- Releases page tabs ------------------------------------------------ */
+
+.tabs {
+  display: flex;
+  gap: 4px;
+  margin: 0 0 20px;
+  border-bottom: 1px solid var(--border);
+}
+
+/* 44px so it is a real target on the tablet this page was built for. */
+.tab {
+  min-height: 44px;
+  padding: 0 16px;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: none;
+  color: var(--muted);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.tab:hover {
+  color: var(--text);
+  background: var(--surface);
+}
+
+.tab--on {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
+
+/* The publisher strip sits inside a tab, so it is quieter than the strip above it:
+   no bottom rule of its own, and the selected one is filled rather than underlined.
+   Two identical strips stacked would read as one confused row of six buttons. */
+.tabs--nested {
+  margin: -4px 0 16px;
+  border-bottom: none;
+  gap: 8px;
+}
+
+.tabs--nested .tab {
+  min-height: 40px;
+  border-bottom: none;
+  border-radius: var(--radius);
+  font-size: 0.9375rem;
+}
+
+.tabs--nested .tab--on {
+  background: var(--elevated);
+  color: var(--text);
+}
+
+/* --- Currently running table ------------------------------------------- */
+
+.run-table {
+  width: 100%;
+  margin-bottom: 28px;
+  border-collapse: collapse;
+  font-size: 0.9375rem;
+}
+
+.run-table:last-of-type {
+  margin-bottom: 8px;
+}
+
+/* The caption names the table it belongs to, rather than being a heading that merely
+   sits above one — which is what lets a screen reader announce the group on entry. */
+.run-table__caption {
+  padding: 0 0 10px;
+  color: var(--muted);
+  text-align: left;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+/* The header stays put while a hundred rows scroll under it — without it the
+   columns are unreadable by the time you reach the end of DC's list. */
+.run-table thead th {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  padding: 10px 12px;
+  background: var(--elevated);
+  color: var(--muted);
+  text-align: left;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.run-table td {
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  color: var(--text);
+  vertical-align: top;
+}
+
+.run-table tbody tr:hover {
+  background: var(--surface);
+}
+
+.run-table a {
+  color: var(--text);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.run-table a:hover {
+  color: var(--accent-hover);
+  text-decoration: underline;
+}
+
+/* Kind, Issues, Year and Ends are supporting detail — the title is the row. */
+.run-table td:not(:first-child) {
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+@media (max-width: 640px) {
+  /* Ends is the first thing to go: it is filled on a handful of rows. */
+  .run-table th:nth-child(4),
+  .run-table td:nth-child(4) {
+    display: none;
+  }
+}

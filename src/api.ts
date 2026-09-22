@@ -234,6 +234,25 @@ export interface ApiReleases {
   publishers: Array<{ name: string; issues: ApiReleaseIssue[] }>
 }
 
+export type RunKind = 'ongoing' | 'limited'
+
+/** One currently-published series, as Wikipedia lists it. */
+export interface ApiRunningSeries {
+  title: string
+  kind: RunKind
+  /** The issue range as printed: "#1–", "#1–5", "#957–1102". */
+  issues: string | null
+  pubYear: number | null
+  /** An announced final issue. Filled on few rows, and worth knowing before you start. */
+  endsOn: string | null
+}
+
+export interface ApiRunning {
+  /** Publishers whose page could not be read; their `series` is empty. */
+  failed?: string[]
+  publishers: Array<{ name: string; sourceUrl: string; series: ApiRunningSeries[] }>
+}
+
 export interface ApiProgress {
   bookId: number
   lastPage: number
@@ -449,6 +468,8 @@ export const api = {
   getArc: (name: string) => json<ArcResponse>(`/api/arcs/${encodeURIComponent(name)}`),
 
   getReleases: () => json<ApiReleases>('/api/releases'),
+
+  getRunning: () => json<ApiRunning>('/api/releases/running'),
 
   downloadRelease: (cvIssueId: number) =>
     json<{ started: boolean }>(`/api/releases/issues/${cvIssueId}/download`, { method: 'POST' }),

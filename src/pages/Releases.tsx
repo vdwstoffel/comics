@@ -1,8 +1,12 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import type { ApiReleaseIssue } from '../api'
 import CoverTile from '../components/CoverTile'
 import MissingIssueTile from '../components/MissingIssueTile'
+import RunningTable from '../components/RunningTable'
+import PublisherTabs from '../components/PublisherTabs'
+import { usePublisher } from '../lib/usePublisher'
 import { useDownload } from '../lib/useDownload'
 
 /** `2026-09-09` -> `Wednesday 9 September 2026`. Parsed as UTC: the day has no timezone. */
@@ -73,16 +77,20 @@ function ReleaseIssue({ issue }: { issue: ApiReleaseIssue }) {
   )
 }
 
-export default function Releases() {
+/** This Wednesday's Marvel and DC issues — the tab this page started as. */
+function ThisWeek() {
   const { data, isLoading, isError } = useQuery({
     queryKey: ['releases'],
     queryFn: api.getReleases,
     retry: false,
   })
 
+  const names = data?.publishers.map((p) => p.name) ?? []
+  const { current, select } = usePublisher(names)
+  const shown = data?.publishers.find((p) => p.name === current)
+
   return (
     <>
-      <h1 className="page-title">Latest releases</h1>
       {isLoading && <p>Loading…</p>}
       {isError && <p>{"Couldn't load the latest releases."}</p>}
       {data && (
@@ -102,16 +110,116 @@ export default function Releases() {
               This may be incomplete — Comic Vine did not answer in full.
             </p>
           )}
-          {data.publishers.map((publisher) => (
-            <section key={publisher.name}>
-              <h2 className="page-title">{publisher.name}</h2>
+          {/*
+            The strip sits below the day and its warnings: those describe the whole
+            Wednesday, not whichever publisher you happen to be reading. A day with no
+            publishers at all - a Comic Vine failure - shows them and no strip.
+          */}
+          {current && <PublisherTabs names={names} current={current} onSelect={select} />}
+          {shown && (shown.issues.length === 0
+            ? (
+              <p className="arc-detail__meta">
+                {`Nothing from ${shown.name} this Wednesday.`}
+              </p>
+            )
+            : (
               <div className="tile-grid arc-issue-grid">
-                {publisher.issues.map((issue) => <ReleaseIssue key={issue.id} issue={issue} />)}
+                {shown.issues.map((issue) => <ReleaseIssue key={issue.id} issue={issue} />)}
               </div>
-            </section>
-          ))}
+            ))}
         </>
       )}
+    </>
+  )
+}
+
+/**
+ * Everything Marvel and DC are publishing right now, from Wikipedia.
+ *
+ * Nothing here touches Comic Vine, so this tab works on a fresh install with no key
+ * entered — unlike the weekly tab, which cannot answer at all without one.
+ */
+function CurrentlyRunning() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['releases-running'],
+    queryFn: api.getRunning,
+    retry: false,
+    // The server caches nothing: every request re-reads both Wikipedia pages. React
+    // Query's defaults would refetch on each mount *and* each window refocus, so reading
+    // Wikipedia twice every time you alt-tab back. Five minutes keeps the tab fresh per
+    // visit without that. Set on this query rather than on the QueryClient — a default
+    // there would quietly change how every other query in the app refetches.
+    staleTime: 5 * 60_000,
+  })
+
+  const failed = data?.failed ?? []
+  const publishers = data?.publishers ?? []
+  const names = publishers.map((p) => p.name)
+  const { current, select } = usePublisher(names)
+  const shown = publishers.find((p) => p.name === current)
+
+  return (
+    <>
+      {isLoading && <p>Loading…</p>}
+      {isError && <p>{"Couldn't reach Wikipedia, so there is nothing to show here yet."}</p>}
+      {current && shown && (
+        <>
+          <PublisherTabs names={names} current={current} onSelect={select} />
+          {/*
+            A publisher we could not read keeps its tab and explains itself inside it.
+            Dropping the tab would leave you hunting for where DC went, and an empty table
+            under its name would read as "DC has stopped publishing", which it never means.
+          */}
+          {failed.includes(shown.name)
+            ? (
+              <p className="arc-detail__meta">
+                {`Couldn't read the Wikipedia list for ${shown.name}.`}
+              </p>
+            )
+            : <RunningTable publisher={shown} />}
+        </>
+      )}
+    </>
+  )
+}
+
+const TABS = [
+  { id: 'week', label: 'This week' },
+  { id: 'running', label: 'Currently running' },
+] as const
+
+export default function Releases() {
+  const [params, setParams] = useSearchParams()
+  // The tab lives in the url so a reload, or a back press, does not drop you onto the
+  // covers when you were reading the table.
+  const tab = params.get('tab') === 'running' ? 'running' : 'week'
+
+  return (
+    <>
+      <h1 className="page-title">Latest releases</h1>
+      <div className="tabs" role="tablist" aria-label="Releases view">
+        {TABS.map((t) => (
+          <button
+            key={t.id}
+            type="button"
+            role="tab"
+            aria-selected={tab === t.id}
+            className={tab === t.id ? 'tab tab--on' : 'tab'}
+            // Written through the previous params, not over them: replacing the whole
+            // query string here dropped `pub`, so switching view silently sent you back
+            // to Marvel even though you were reading DC.
+            onClick={() => setParams((prev) => {
+              const next = new URLSearchParams(prev)
+              if (t.id === 'week') next.delete('tab')
+              else next.set('tab', t.id)
+              return next
+            }, { replace: true })}
+          >
+            {t.label}
+          </button>
+        ))}
+      </div>
+      {tab === 'week' ? <ThisWeek /> : <CurrentlyRunning />}
     </>
   )
 }
