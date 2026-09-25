@@ -17,6 +17,7 @@ import downloadRoutes from './routes/downloads.js'
 import libraryRoutes from './routes/library.js'
 import releaseRoutes from './routes/releases.js'
 import runningRoutes from './routes/running.js'
+import upcomingRoutes from './routes/upcoming.js'
 import settingsRoutes from './routes/settings.js'
 import { clearTmpDir } from './lib/tmpFiles.js'
 import { createDownloadRunner } from './services/downloader.js'
@@ -73,6 +74,7 @@ export async function buildServer(): Promise<App> {
   await app.register(downloadRoutes)
   await app.register(releaseRoutes)
   await app.register(runningRoutes)
+  await app.register(upcomingRoutes)
   await app.register(settingsRoutes)
 
   const distDir = join(process.cwd(), 'dist')

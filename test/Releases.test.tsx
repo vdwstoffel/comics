@@ -41,7 +41,27 @@ const RUNNING = {
   ],
 }
 
-function stub(body: unknown, running: unknown = RUNNING) {
+const UPCOMING = {
+  publishers: [
+    { name: 'Marvel', weeks: [
+      { week: '2026-09-30', issues: [
+        { sourceId: '134736', headline: 'Invented Ongoing (2026) #12',
+          seriesName: 'Invented Ongoing', number: '12', releaseDate: '2026-09-30',
+          coverUrl: 'https://cdn.marvel.com/x/a.jpg',
+          siteUrl: 'https://www.marvel.com/comics/issue/134736/x', creators: 'Invented, Writer' },
+      ] },
+      { week: '2026-10-07', issues: [
+        { sourceId: '134737', headline: 'Invented Special (2026)',
+          seriesName: 'Invented Special', number: null, releaseDate: '2026-10-07',
+          coverUrl: null, siteUrl: 'https://www.marvel.com/comics/issue/134737/x',
+          creators: null },
+      ] },
+    ] },
+    { name: 'DC Comics', weeks: [], unsupported: true },
+  ],
+}
+
+function stub(body: unknown, running: unknown = RUNNING, upcoming: unknown = UPCOMING) {
   globalThis.fetch = vi.fn(async (url: string) => {
     // Releases now reads useDownload() too, to know which missing issues are queued.
     if (String(url).includes('/api/downloads')) {
@@ -50,6 +70,9 @@ function stub(body: unknown, running: unknown = RUNNING) {
     // Before the generic branch: this path starts with /api/releases too.
     if (String(url).includes('/api/releases/running')) {
       return { ok: true, json: async () => running }
+    }
+    if (String(url).includes('/api/releases/upcoming')) {
+      return { ok: true, json: async () => upcoming }
     }
     return { ok: true, json: async () => body }
   }) as unknown as typeof fetch
@@ -339,4 +362,52 @@ test('the running tab does not ask Comic Vine for anything', async () => {
   const urls = (globalThis.fetch as unknown as { mock: { calls: string[][] } }).mock.calls.map((c) => String(c[0]))
   expect(urls.some((u) => u.includes('/api/releases/running'))).toBe(true)
   expect(urls.some((u) => /\/api\/releases(\?|$)/.test(u))).toBe(false)
+})
+
+test('the upcoming tab lists each announced week, nearest first', async () => {
+  stub(RELEASES)
+  draw('/releases?tab=upcoming')
+
+  // By role, not by text: writeOutDay renders "Wednesday, 7 October 2026" (en-GB puts a
+  // comma after the weekday) and that same date also appears in the closing line, so a
+  // text query matches twice. The heading list also pins the order the tab promises.
+  const weeks = await screen.findAllByRole('heading', { level: 2 })
+  expect(weeks).toHaveLength(2)
+  expect(weeks[0]).toHaveTextContent(/30 September 2026/)
+  expect(weeks[1]).toHaveTextContent(/7 October 2026/)
+  expect(screen.getByText('Invented Ongoing (2026) #12')).toBeInTheDocument()
+})
+
+// The headline is Marvel's own text and is shown verbatim. The derived number is padded
+// for sorting ("2" becomes "002") and must never reach the screen.
+test('shows the headline verbatim, including a one-shot with no issue number', async () => {
+  stub(RELEASES)
+  draw('/releases?tab=upcoming')
+  expect(await screen.findByText('Invented Special (2026)')).toBeInTheDocument()
+})
+
+test('an upcoming comic links out to Marvel and offers no way to get it', async () => {
+  stub(RELEASES)
+  draw('/releases?tab=upcoming')
+
+  const link = await screen.findByRole('link', { name: /Invented Ongoing/ })
+  expect(link).toHaveAttribute('href', 'https://www.marvel.com/comics/issue/134736/x')
+  expect(screen.queryByRole('button', { name: /Get/ })).not.toBeInTheDocument()
+})
+
+// An empty week list under DC's name would read as "DC has announced nothing for two
+// months". It means we have no source for DC, which is a different statement.
+test('DC says it has no source rather than showing an empty list', async () => {
+  stub(RELEASES)
+  draw('/releases?tab=upcoming')
+
+  fireEvent.click(await screen.findByRole('tab', { name: 'DC Comics' }))
+  expect(await screen.findByText(/don't have a source for upcoming DC Comics releases/i))
+    .toBeInTheDocument()
+})
+
+test('names where the announcements stop', async () => {
+  stub(RELEASES)
+  draw('/releases?tab=upcoming')
+  expect(await screen.findByText(/hasn't announced anything beyond/i)).toBeInTheDocument()
 })

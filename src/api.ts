@@ -253,6 +253,39 @@ export interface ApiRunning {
   publishers: Array<{ name: string; sourceUrl: string; series: ApiRunningSeries[] }>
 }
 
+/** One solicited issue. `headline` is Marvel's own text, and is what the tile shows. */
+export interface ApiUpcomingIssue {
+  sourceId: string
+  headline: string
+  /** Derived for ordering only — never displayed. */
+  seriesName: string
+  /** Derived for ordering only, and null for a one-shot. Never displayed. */
+  number: string | null
+  releaseDate: string
+  coverUrl: string | null
+  siteUrl: string
+  creators: string | null
+}
+
+export interface ApiUpcomingWeek {
+  /** The Wednesday, `YYYY-MM-DD`. */
+  week: string
+  issues: ApiUpcomingIssue[]
+}
+
+export interface ApiUpcoming {
+  publishers: Array<{
+    name: string
+    weeks: ApiUpcomingWeek[]
+    /** No forward-looking source exists for this publisher. Not the same as empty. */
+    unsupported?: boolean
+    /** We have a source and could not read it. */
+    unavailable?: boolean
+  }>
+  /** Weeks served from an older copy because the fetch failed. */
+  staleWeeks?: string[]
+}
+
 export interface ApiProgress {
   bookId: number
   lastPage: number
@@ -470,6 +503,8 @@ export const api = {
   getReleases: () => json<ApiReleases>('/api/releases'),
 
   getRunning: () => json<ApiRunning>('/api/releases/running'),
+
+  getUpcoming: () => json<ApiUpcoming>('/api/releases/upcoming'),
 
   downloadRelease: (cvIssueId: number) =>
     json<{ started: boolean }>(`/api/releases/issues/${cvIssueId}/download`, { method: 'POST' }),

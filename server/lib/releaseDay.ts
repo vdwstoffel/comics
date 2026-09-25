@@ -29,3 +29,20 @@ export function mostRecentWednesday(now: Date): string {
 export function previousWednesday(day: string): string {
   return iso(new Date(new Date(`${day}T00:00:00Z`).getTime() - 7 * DAY_MS))
 }
+
+/** A plain date moved by whole days, in UTC. */
+export function shiftDays(day: string, delta: number): string {
+  return iso(new Date(new Date(`${day}T00:00:00Z`).getTime() + delta * DAY_MS))
+}
+
+/**
+ * The next `count` Wednesdays, starting with the one AFTER the day the Latest tab shows.
+ *
+ * Anchored on mostRecentWednesday rather than on `now` so the two tabs can never both
+ * claim the same Wednesday: on a Wednesday the Latest tab is showing today, and today is
+ * not something to look forward to.
+ */
+export function upcomingWednesdays(now: Date, count: number): string[] {
+  const current = mostRecentWednesday(now)
+  return Array.from({ length: count }, (_, i) => shiftDays(current, (i + 1) * 7))
+}

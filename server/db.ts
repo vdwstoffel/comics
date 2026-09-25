@@ -187,6 +187,39 @@ CREATE TABLE IF NOT EXISTS release_issue (
   PRIMARY KEY (day, cv_issue_id)
 );
 
+-- The upcoming weeks we have asked Marvel about. Separate from the issues for the same
+-- reason release_day is separate from release_issue: a week Marvel has announced nothing
+-- for still has to record that we asked, or "no rows" and "never asked" are the same
+-- thing and it refetches forever.
+--
+-- Keyed by publisher as well as week, not by week alone: each publisher is fetched on its
+-- own, so one stamp per week would let a Marvel fetch mark DC fresh.
+CREATE TABLE IF NOT EXISTS upcoming_week (
+  week       TEXT NOT NULL,
+  publisher  TEXT NOT NULL,
+  fetched_at TEXT NOT NULL,
+  PRIMARY KEY (week, publisher)
+);
+
+-- Solicited issues, which is to say promises rather than facts: dates slip and issues are
+-- cancelled, so nothing here is ever read as permanent the way a past release_day is.
+-- \`release_date\` is kept beside \`week\` rather than assumed equal to it - every issue
+-- measured fell on its Wednesday, but grouping by what Marvel actually said costs one
+-- column and cannot be wrong.
+CREATE TABLE IF NOT EXISTS upcoming_issue (
+  week         TEXT NOT NULL,
+  publisher    TEXT NOT NULL,
+  source_id    TEXT NOT NULL,
+  headline     TEXT NOT NULL,
+  series_name  TEXT NOT NULL,
+  number       TEXT,
+  release_date TEXT NOT NULL,
+  cover_url    TEXT,
+  site_url     TEXT NOT NULL,
+  creators     TEXT,
+  PRIMARY KEY (week, publisher, source_id)
+);
+
 -- Every download, alive or finished. \`position\` orders the live ones; the finished ones
 -- are history until cleared. Live byte counts are deliberately NOT here - \`received\`
 -- changes on every chunk and would be thousands of writes per download.

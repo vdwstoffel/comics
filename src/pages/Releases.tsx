@@ -183,8 +183,88 @@ function CurrentlyRunning() {
   )
 }
 
+/**
+ * What Marvel has announced for the coming weeks, from Marvel's own calendar.
+ *
+ * Solicitations, not facts: a date can slip and an issue can be cancelled, so the server
+ * never holds a week for long. Nothing here offers a Get - the comic does not exist yet -
+ * which is why these tiles are CoverTile directly rather than MissingIssueTile.
+ */
+function Upcoming() {
+  const { data, isLoading, isError } = useQuery({
+    queryKey: ['releases-upcoming'],
+    queryFn: api.getUpcoming,
+    retry: false,
+    // The server caches each week for twelve hours, so a refetch on every window focus
+    // would mostly be a round trip to be told the same thing. Set here rather than on the
+    // QueryClient, which would quietly change how every other query refetches.
+    staleTime: 5 * 60_000,
+  })
+
+  const publishers = data?.publishers ?? []
+  const names = publishers.map((p) => p.name)
+  const { current, select } = usePublisher(names)
+  const shown = publishers.find((p) => p.name === current)
+  const last = shown?.weeks[shown.weeks.length - 1]
+
+  return (
+    <>
+      {isLoading && <p>Loading…</p>}
+      {isError && <p>{"Couldn't reach Marvel, so there is nothing to show here yet."}</p>}
+      {current && shown && (
+        <>
+          <PublisherTabs names={names} current={current} onSelect={select} />
+          {shown.unsupported ? (
+            <p className="arc-detail__meta">
+              {`We don't have a source for upcoming ${shown.name} releases yet, so this tab only covers Marvel for now.`}
+            </p>
+          ) : shown.unavailable ? (
+            <p className="arc-detail__meta">
+              {`Couldn't read ${shown.name}'s release calendar.`}
+            </p>
+          ) : (
+            <>
+              {data?.staleWeeks?.length ? (
+                <p className="arc-detail__meta">
+                  Some weeks may be out of date — Marvel did not answer in full.
+                </p>
+              ) : null}
+              {shown.weeks.map((w) => (
+                <section key={w.week}>
+                  <h2 className="arc-detail__meta">{writeOutDay(w.week)}</h2>
+                  {w.issues.length === 0 ? (
+                    <p className="arc-detail__meta">Nothing announced for this week.</p>
+                  ) : (
+                    <div className="tile-grid arc-issue-grid">
+                      {w.issues.map((issue) => (
+                        <CoverTile
+                          key={issue.sourceId}
+                          href={issue.siteUrl}
+                          img={issue.coverUrl ?? undefined}
+                          title={issue.headline}
+                          subtitle={issue.creators ?? undefined}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </section>
+              ))}
+              {last && (
+                <p className="arc-detail__meta">
+                  {`Marvel hasn't announced anything beyond ${writeOutDay(last.week)} yet.`}
+                </p>
+              )}
+            </>
+          )}
+        </>
+      )}
+    </>
+  )
+}
+
 const TABS = [
   { id: 'week', label: 'This week' },
+  { id: 'upcoming', label: 'Upcoming' },
   { id: 'running', label: 'Currently running' },
 ] as const
 
@@ -192,7 +272,8 @@ export default function Releases() {
   const [params, setParams] = useSearchParams()
   // The tab lives in the url so a reload, or a back press, does not drop you onto the
   // covers when you were reading the table.
-  const tab = params.get('tab') === 'running' ? 'running' : 'week'
+  const raw = params.get('tab')
+  const tab = raw === 'running' || raw === 'upcoming' ? raw : 'week'
 
   return (
     <>
@@ -219,7 +300,9 @@ export default function Releases() {
           </button>
         ))}
       </div>
-      {tab === 'week' ? <ThisWeek /> : <CurrentlyRunning />}
+      {tab === 'week' && <ThisWeek />}
+      {tab === 'upcoming' && <Upcoming />}
+      {tab === 'running' && <CurrentlyRunning />}
     </>
   )
 }
