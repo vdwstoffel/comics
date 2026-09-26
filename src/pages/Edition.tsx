@@ -8,6 +8,9 @@ import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import MissingIssueTile from '../components/MissingIssueTile'
 import { tileLabel } from '../lib/tileLabel'
+import { writeOutDay } from '../lib/releaseWeek'
+import { useUpcoming } from '../lib/useUpcoming'
+import { upcomingForEdition } from '../lib/upcomingForEdition'
 import EditionEditDialog from '../components/EditionEditDialog'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 
@@ -150,6 +153,11 @@ export default function Edition() {
     void refetchVolume()
   }
 
+  // Marvel's calendar, shared with the Upcoming tab under one query key. Nothing is done
+  // with a failure: a volume page is not the place to report that Marvel is unreachable,
+  // and the section simply does not appear.
+  const { data: upcoming } = useUpcoming()
+
   const editionsKnown = editionsData !== undefined
 
   // Comic Vine's name for the volume, plus the year its run started, is what this
@@ -202,6 +210,18 @@ export default function Edition() {
 
   if (isLoading) return <p>Loading…</p>
   if (!data) return null
+
+  // Every publisher's weeks together: DC's list is empty until it has a source at all,
+  // and which publisher a solicitation came from is not something this section says.
+  const soon = upcomingForEdition(
+    (upcoming?.publishers ?? []).flatMap((p) => p.weeks),
+    {
+      name: data.edition.name,
+      seriesName: data.edition.seriesName,
+      cvName: data.edition.cvName,
+      cvStartYear: data.edition.cvStartYear,
+    },
+  )
 
   const bookCount = data.books.length
   const bookLabel = `${bookCount} book${bookCount === 1 ? '' : 's'}`
@@ -395,6 +415,26 @@ export default function Edition() {
             />
           ))}
       </div>
+
+      {/*
+        Drawn only when there is something to draw. A volume that ended years ago, one
+        Marvel has not solicited past, and every DC volume would otherwise carry a
+        permanent empty heading - and "Coming soon: nothing" reads as a promise broken
+        rather than as a run that is simply not running.
+      */}
+      {soon.length > 0 && (
+        <section className="edition-soon">
+          <h2 className="edition-soon__title">Coming soon</h2>
+          <ul className="edition-soon__list">
+            {soon.map((issue) => (
+              <li key={issue.sourceId} className="edition-soon__row">
+                <span className="edition-soon__name">{issue.headline}</span>
+                <span className="edition-soon__week">{writeOutDay(issue.week)}</span>
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   )
 }

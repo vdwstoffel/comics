@@ -7,14 +7,9 @@ import MissingIssueTile from '../components/MissingIssueTile'
 import RunningTable from '../components/RunningTable'
 import PublisherTabs from '../components/PublisherTabs'
 import { usePublisher } from '../lib/usePublisher'
+import { writeOutDay } from '../lib/releaseWeek'
+import { useUpcoming } from '../lib/useUpcoming'
 import { useDownload } from '../lib/useDownload'
-
-/** `2026-09-09` -> `Wednesday 9 September 2026`. Parsed as UTC: the day has no timezone. */
-function writeOutDay(day: string): string {
-  return new Date(`${day}T12:00:00Z`).toLocaleDateString('en-GB', {
-    weekday: 'long', day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC',
-  })
-}
 
 function label(issue: ApiReleaseIssue): string {
   const series = issue.volumeName ?? 'Unknown series'
@@ -191,15 +186,7 @@ function CurrentlyRunning() {
  * which is why these tiles are CoverTile directly rather than MissingIssueTile.
  */
 function Upcoming() {
-  const { data, isLoading, isError } = useQuery({
-    queryKey: ['releases-upcoming'],
-    queryFn: api.getUpcoming,
-    retry: false,
-    // The server caches each week for twelve hours, so a refetch on every window focus
-    // would mostly be a round trip to be told the same thing. Set here rather than on the
-    // QueryClient, which would quietly change how every other query refetches.
-    staleTime: 5 * 60_000,
-  })
+  const { data, isLoading, isError } = useUpcoming()
 
   const publishers = data?.publishers ?? []
   const names = publishers.map((p) => p.name)

@@ -749,3 +749,87 @@ test('the count leaves out what is already queued', async () => {
   renderPage()
   expect(await screen.findByRole('button', { name: /Get all 2/i })).toBeInTheDocument()
 })
+
+const UPCOMING = {
+  publishers: [
+    {
+      name: 'Marvel',
+      weeks: [
+        {
+          week: '2026-10-28',
+          issues: [
+            {
+              sourceId: '1',
+              headline: 'The Amazing Spider-Man (2025) #16',
+              seriesName: 'The Amazing Spider-Man',
+              number: '16',
+              releaseDate: '2026-10-28',
+              coverUrl: null,
+              siteUrl: 'https://marvel.com/16',
+              creators: null,
+            },
+            {
+              sourceId: '2',
+              headline: 'Daredevil (2025) #12',
+              seriesName: 'Daredevil',
+              number: '12',
+              releaseDate: '2026-10-28',
+              coverUrl: null,
+              siteUrl: 'https://marvel.com/dd12',
+              creators: null,
+            },
+          ],
+        },
+      ],
+    },
+    { name: 'DC Comics', weeks: [], unsupported: true },
+  ],
+}
+
+/** The edition, its run, and Marvel's calendar - everything the page reads at once. */
+function mockFetchWithUpcoming(upcoming: unknown, edition: Record<string, unknown> = CV_EDITION) {
+  globalThis.fetch = vi.fn(async (url: string) => {
+    if (String(url).includes('/api/downloads')) {
+      return { ok: true, json: async () => ({ active: [], queue: [], history: [] }) }
+    }
+    if (String(url).includes('/api/releases/upcoming')) {
+      return { ok: true, json: async () => upcoming }
+    }
+    if (String(url).includes('/issues')) {
+      return { ok: true, json: async () => ({ issues: [], extras: [] }) }
+    }
+    // Only the editions LIST - "/api/editions/9" is this edition's own detail and must
+    // fall through, or the page renders with no edition at all.
+    if (String(url).includes('/api/editions?') || String(url).endsWith('/api/editions')) {
+      return { ok: true, json: async () => ({ editions: [] }) }
+    }
+    return { ok: true, json: async () => ({ edition, books: [] }) }
+  }) as unknown as typeof fetch
+}
+
+test('coming soon names each solicited issue of this volume and the week it lands', async () => {
+  mockFetchWithUpcoming(UPCOMING)
+  renderPage()
+
+  expect(await screen.findByText(/coming soon/i)).toBeInTheDocument()
+  expect(screen.getByText('The Amazing Spider-Man (2025) #16')).toBeInTheDocument()
+  expect(screen.getByText('Wednesday, 28 October 2026')).toBeInTheDocument()
+})
+
+test('coming soon leaves out an issue of another series', async () => {
+  mockFetchWithUpcoming(UPCOMING)
+  renderPage()
+
+  await screen.findByText(/coming soon/i)
+  expect(screen.queryByText('Daredevil (2025) #12')).not.toBeInTheDocument()
+})
+
+test('there is no coming soon heading when nothing is solicited for this volume', async () => {
+  mockFetchWithUpcoming({ publishers: [{ name: 'Marvel', weeks: [] }] })
+  renderPage()
+
+  // The run renders from the same load, so by the time it is on screen the calendar
+  // has been answered too - an absence checked before that would pass for the wrong reason.
+  expect(await screen.findByText('Vol 7')).toBeInTheDocument()
+  await waitFor(() => expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument())
+})

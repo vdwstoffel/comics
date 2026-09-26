@@ -545,6 +545,52 @@ img {
   margin-top: 8px;
 }
 
+/* ------------------------------------------------------------
+   Coming soon: what Marvel has solicited for this volume.
+
+   A list rather than covers, deliberately. These comics do not exist yet, so there is
+   nothing to open and nothing to get - a grid of tiles would offer both. It sits below
+   the run for the same reason: it is the only part of the page you cannot act on.
+   ------------------------------------------------------------ */
+
+.edition-soon {
+  margin-top: 32px;
+  max-width: 640px;
+}
+
+.edition-soon__title {
+  font-size: 1rem;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.edition-soon__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.edition-soon__row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.edition-soon__row:last-child {
+  border-bottom: none;
+}
+
+/* The date holds its ground and the title gives way: a week reads as one thing and
+   wraps badly, while a headline long enough to wrap is readable on two lines. */
+.edition-soon__week {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
 /* Inline editor in edition header */
 /* Pencil / edit icon button */
 .btn-icon {
