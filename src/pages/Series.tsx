@@ -5,6 +5,7 @@ import { api } from '../api'
 import { statusFrom, withStatus } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
+import { splitAnnuals } from '../lib/annuals'
 
 export default function Series() {
   const { name } = useParams()
@@ -44,6 +45,17 @@ export default function Series() {
   const { series } = data
   const editions = series.editions.length
 
+  // Comic Vine gives each year's annual its own volume, so a run followed for a while
+  // brings one single-issue edition per year. Collapsed, they are one tile.
+  //
+  // Only from two upwards: a tile that opens onto a single tile is a click that buys
+  // nothing, which is the rule the shelf already applies to a series holding one volume.
+  const { runs, annuals } = splitAnnuals(series.editions)
+  const grouped = annuals.length > 1
+  const shown = grouped ? runs : series.editions
+  // An edition the server did not count contributes nothing rather than an NaN subtitle.
+  const annualIssues = annuals.reduce((n, e) => n + (e.bookCount ?? 0), 0)
+
   // Under a ?status= filter the listed editions are only a slice, so the confirm waits
   // for the unfiltered series rather than understating what it is about to delete.
   const scope = status ? unfiltered?.series : series
@@ -78,7 +90,7 @@ export default function Series() {
       )}
 
       <div className="tile-grid">
-        {series.editions.map((edition) => (
+        {shown.map((edition) => (
           <CoverTile
             key={edition.id}
             to={withStatus(`/edition/${edition.id}`, status)}
@@ -87,6 +99,16 @@ export default function Series() {
             subtitle={`${edition.bookCount} issue${edition.bookCount === 1 ? '' : 's'}`}
           />
         ))}
+        {grouped && (
+          <CoverTile
+            to={withStatus(`/series/${encodeURIComponent(seriesName)}/annuals`, status)}
+            /* The first annual's cover, because the group has no art of its own and a
+               blank box beside the run would read as a thumbnail that failed to load. */
+            img={`/api/editions/${annuals[0].id}/thumbnail`}
+            title="Annuals"
+            subtitle={`${annualIssues} issue${annualIssues === 1 ? '' : 's'}`}
+          />
+        )}
       </div>
     </div>
   )

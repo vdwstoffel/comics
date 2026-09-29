@@ -2,6 +2,7 @@ import { Routes, Route, Link, useLocation } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import Library from './pages/Library'
 import Series from './pages/Series'
+import SeriesAnnuals from './pages/SeriesAnnuals'
 import Edition from './pages/Edition'
 import BookDetail from './pages/BookDetail'
 import Reader from './pages/Reader'
@@ -97,6 +98,7 @@ export default function App() {
       <Route path="/arcs" element={<LibraryLayout><Arcs /></LibraryLayout>} />
       <Route path="/arcs/:name" element={<LibraryLayout><Arc /></LibraryLayout>} />
       <Route path="/series/:name" element={<Layout><Series /></Layout>} />
+      <Route path="/series/:name/annuals" element={<Layout><SeriesAnnuals /></Layout>} />
       <Route path="/edition/:id" element={<Layout><Edition /></Layout>} />
       <Route path="/book/:id" element={<Layout><BookDetail /></Layout>} />
       <Route path="/read/:id" element={<ReaderLayout><Reader /></ReaderLayout>} />

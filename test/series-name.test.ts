@@ -47,3 +47,17 @@ test('is stable when applied twice', () => {
     expect(deriveSeriesName(once)).toBe(once)
   }
 })
+
+// An annual is an edition of its run, not a run of its own: "Amazing Spider-Man Annual"
+// belongs on the same shelf as the comic it is an annual of.
+test.each([
+  ['Amazing Spider-Man Annual (2026)', 'Amazing Spider-Man'],
+  ['Amazing Spider-Man Annual', 'Amazing Spider-Man'],
+  ['X-Men Annuals', 'X-Men'],
+])('%s -> %s', (name, group) => {
+  expect(deriveSeriesName(name)).toBe(group)
+})
+
+test('a volume called nothing but Annual keeps its name', () => {
+  expect(deriveSeriesName('Annual')).toBe('Annual')
+})

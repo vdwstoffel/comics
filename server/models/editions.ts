@@ -1,4 +1,4 @@
-import { deriveSeriesName } from '../lib/seriesName.js'
+import { deriveSeriesName, seriesMatchKey } from '../lib/seriesName.js'
 import type { ReadState } from './progress.js'
 import type { Db, Edition } from '../types.js'
 
@@ -29,6 +29,32 @@ function toEdition(row: EditionRow | undefined): Edition | undefined {
   }
 }
 
+/**
+ * The series a new edition belongs to: derived from its name, then spelled the way the
+ * library already spells it.
+ *
+ * Comic Vine names a run "The Amazing Spider-Man" and its annual "Amazing Spider-Man
+ * Annual", so deriving alone leaves the two one article apart - two shelves, two folders,
+ * for one series. Adopting the existing spelling verbatim puts the annual under the run
+ * and keeps a single name in the column that names it.
+ *
+ * Only ever adopts a series that is already here, so nothing is invented. A series is
+ * ordered by name so two candidates differing only by their article resolve the same way
+ * on every call rather than however SQLite happened to return them.
+ */
+export function resolveSeriesName(db: Db, name: string): string {
+  const derived = deriveSeriesName(name)
+  const key = seriesMatchKey(derived)
+  const known = db
+    .prepare(
+      `SELECT DISTINCT series_name FROM edition
+        WHERE series_name IS NOT NULL AND TRIM(series_name) <> ''
+        ORDER BY series_name`,
+    )
+    .all() as Array<{ series_name: string }>
+  return known.find((row) => seriesMatchKey(row.series_name) === key)?.series_name ?? derived
+}
+
 export function upsertEdition(
   db: Db,
   { name, folder, seriesName }: { name: string; folder: string; seriesName?: string | null },
@@ -37,7 +63,7 @@ export function upsertEdition(
   if (existing) return toEdition(existing) as Edition
   const info = db
     .prepare('INSERT INTO edition (name, folder, series_name, created_at) VALUES (?,?,?,?)')
-    .run(name, folder, seriesName?.trim() || deriveSeriesName(name), new Date().toISOString())
+    .run(name, folder, seriesName?.trim() || resolveSeriesName(db, name), new Date().toISOString())
   return toEdition(db.prepare('SELECT * FROM edition WHERE id = ?').get(info.lastInsertRowid) as EditionRow) as Edition
 }
 

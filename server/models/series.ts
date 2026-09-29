@@ -1,4 +1,4 @@
-import { deriveSeriesName } from '../lib/seriesName.js'
+import { deriveSeriesName, LEADING_ARTICLE } from '../lib/seriesName.js'
 import { listEditions } from './editions.js'
 import type { EditionFilter } from './editions.js'
 import type { Db, Edition } from '../types.js'
@@ -33,9 +33,8 @@ function keyOf(edition: Edition): string {
 }
 
 // "The Amazing Spider-Man" belongs under A, where a reader looks for it - so the sort
-// key drops a leading article. The stored name keeps it: Comic Vine's name is the name.
-const LEADING_ARTICLE = /^(the|an|a)\s+/i
-
+// key drops a leading article, by the same rule that decides whether two spellings are
+// one series. The stored name keeps it: Comic Vine's name is the name.
 export function seriesSortKey(name: string): string {
   return name.replace(LEADING_ARTICLE, '')
 }

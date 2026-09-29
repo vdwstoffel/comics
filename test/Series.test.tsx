@@ -117,3 +117,66 @@ test('there is a link back to the library', async () => {
   const back = await screen.findByRole('link', { name: /library/i })
   expect(back).toHaveAttribute('href', '/')
 })
+
+const WITH_ANNUALS = {
+  name: 'The Amazing Spider-Man',
+  bookCount: 7,
+  editions: [
+    { id: 9, name: 'The Amazing Spider-Man (2025)', bookCount: 5 },
+    { id: 10, name: 'Amazing Spider-Man Annual (2026)', bookCount: 1 },
+    { id: 11, name: 'Amazing Spider-Man Annual (2027)', bookCount: 1 },
+  ],
+}
+
+test('the annuals of a run are collapsed into one tile', async () => {
+  mockFetch({ series: WITH_ANNUALS })
+  renderAt('/series/The%20Amazing%20Spider-Man')
+
+  expect(await screen.findByText('Annuals')).toBeInTheDocument()
+  expect(screen.queryByText('Amazing Spider-Man Annual (2026)')).not.toBeInTheDocument()
+  expect(screen.getByText('The Amazing Spider-Man (2025)')).toBeInTheDocument()
+})
+
+test('the annuals tile counts the issues behind it', async () => {
+  mockFetch({ series: WITH_ANNUALS })
+  renderAt('/series/The%20Amazing%20Spider-Man')
+
+  expect(await screen.findByText('2 issues')).toBeInTheDocument()
+})
+
+// Every other tile on this grid opens a page; a tile that unfolded in place instead was
+// the one odd thing on the shelf.
+test('the annuals tile opens the annuals page', async () => {
+  mockFetch({ series: WITH_ANNUALS })
+  renderAt('/series/The%20Amazing%20Spider-Man')
+
+  const tile = (await screen.findByText('Annuals')).closest('a')
+  expect(tile).toHaveAttribute('href', '/series/The%20Amazing%20Spider-Man/annuals')
+})
+
+test('the annuals tile carries the status onwards', async () => {
+  mockFetch({ series: WITH_ANNUALS })
+  renderAt('/series/The%20Amazing%20Spider-Man?status=unread')
+
+  const tile = (await screen.findByText('Annuals')).closest('a')
+  expect(tile).toHaveAttribute('href', '/series/The%20Amazing%20Spider-Man/annuals?status=unread')
+})
+
+// The same rule the shelf applies to a series holding one volume: a tile that opens onto
+// a single tile is a click that buys nothing.
+test('a lone annual is drawn as itself, with no annuals tile', async () => {
+  mockFetch({
+    series: {
+      name: 'The Amazing Spider-Man',
+      bookCount: 6,
+      editions: [
+        { id: 9, name: 'The Amazing Spider-Man (2025)', bookCount: 5 },
+        { id: 10, name: 'Amazing Spider-Man Annual (2026)', bookCount: 1 },
+      ],
+    },
+  })
+  renderAt('/series/The%20Amazing%20Spider-Man')
+
+  expect(await screen.findByText('Amazing Spider-Man Annual (2026)')).toBeInTheDocument()
+  expect(screen.queryByText('Annuals')).not.toBeInTheDocument()
+})
