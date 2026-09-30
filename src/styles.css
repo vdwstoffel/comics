@@ -512,6 +512,19 @@ img {
   padding: 2px 8px;
 }
 
+/* The day, and the way to read it again. Laid out as one line so the button reads as
+   belonging to the date beside it rather than to the grid of comics below. */
+.releases-day {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.releases-day__refresh {
+  font-size: 0.8125rem;
+  padding: 2px 8px;
+}
+
 /* Sits at the end of the run meta, pushed clear of the refresh button so the two do not
    read as one control. Muted like the line it joins - it is a way out, not the point of
    the page. */

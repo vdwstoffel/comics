@@ -1,3 +1,4 @@
+import { useRef } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
@@ -74,11 +75,24 @@ function ReleaseIssue({ issue }: { issue: ApiReleaseIssue }) {
 
 /** This Wednesday's Marvel and DC issues — the tab this page started as. */
 function ThisWeek() {
-  const { data, isLoading, isError } = useQuery({
+  // Set just before a refetch and consumed by it, so pressing Refresh bypasses the
+  // server's day cache while an ordinary render does not. It stays out of the query key
+  // deliberately: a forced read and a normal one are the same data, not two caches. The
+  // edition page's run carries the same mechanism for the same reason.
+  const forceRefresh = useRef(false)
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['releases'],
-    queryFn: api.getReleases,
+    queryFn: () => {
+      const force = forceRefresh.current
+      forceRefresh.current = false
+      return api.getReleases(force)
+    },
     retry: false,
   })
+  const refreshDay = () => {
+    forceRefresh.current = true
+    void refetch()
+  }
 
   const names = data?.publishers.map((p) => p.name) ?? []
   const { current, select } = usePublisher(names)
@@ -90,7 +104,22 @@ function ThisWeek() {
       {isError && <p>{"Couldn't load the latest releases."}</p>}
       {data && (
         <>
-          <p className="arc-detail__meta">{writeOutDay(data.day)}</p>
+          <p className="arc-detail__meta releases-day">
+            {writeOutDay(data.day)}
+            {/*
+              Comic Vine fills a Wednesday in over the hours after it, and a day fetched
+              before it finished can be held for six hours - or, once fetched after the
+              day ended, for good. This is the way to ask again without waiting either out.
+            */}
+            <button
+              type="button"
+              className="btn btn-ghost releases-day__refresh"
+              disabled={isFetching}
+              onClick={refreshDay}
+            >
+              {isFetching ? 'Refreshing…' : 'Refresh'}
+            </button>
+          </p>
           {data.unavailable && <p>We could not reach Comic Vine, so there is nothing to show yet.</p>}
           {/*
             `stale` has two producers and the line has to be true for both: a cached day

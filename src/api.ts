@@ -500,7 +500,9 @@ export const api = {
   getArcs: () => json<ArcsListResponse>('/api/arcs'),
   getArc: (name: string) => json<ArcResponse>(`/api/arcs/${encodeURIComponent(name)}`),
 
-  getReleases: () => json<ApiReleases>('/api/releases'),
+  /** `refresh` bypasses the server's day cache — see the Refresh button on This week. */
+  getReleases: (refresh = false) =>
+    json<ApiReleases>(`/api/releases${refresh ? '?refresh=1' : ''}`),
 
   getRunning: () => json<ApiRunning>('/api/releases/running'),
 

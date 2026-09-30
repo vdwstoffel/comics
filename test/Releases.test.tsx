@@ -1,5 +1,5 @@
 import { test, expect, vi, beforeEach } from 'vitest'
-import { render, screen, within, fireEvent } from '@testing-library/react'
+import { render, screen, within, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import Releases from '../src/pages/Releases'
@@ -410,4 +410,55 @@ test('names where the announcements stop', async () => {
   stub(RELEASES)
   draw('/releases?tab=upcoming')
   expect(await screen.findByText(/hasn't announced anything beyond/i)).toBeInTheDocument()
+})
+
+/** Every url the page has asked for, in order. */
+function requested(): string[] {
+  return (globalThis.fetch as unknown as { mock: { calls: unknown[][] } })
+    .mock.calls.map((c) => String(c[0]))
+}
+
+// Comic Vine fills a Wednesday in over the hours after it, so the day you are shown can
+// be a snapshot taken too early. Refresh pulls it again rather than waiting the cache out.
+test('an ordinary visit does not force a refresh', async () => {
+  draw()
+  await screen.findByText(/9 September 2026/)
+
+  expect(requested().some((u) => u.includes('/api/releases') && u.includes('refresh=1'))).toBe(false)
+})
+
+test('Refresh asks Comic Vine for the day again', async () => {
+  draw()
+  await screen.findByText(/9 September 2026/)
+
+  fireEvent.click(screen.getByRole('button', { name: /^refresh$/i }))
+
+  await waitFor(() => expect(
+    requested().some((u) => u.includes('/api/releases?refresh=1')),
+  ).toBe(true))
+})
+
+test('the button says so while the day is being read again', async () => {
+  // The refresh is held open deliberately: with an instantly-resolving stub the request
+  // is over before anything can look at it, and the test would pass or fail on timing
+  // rather than on whether the button reports itself.
+  let finish!: () => void
+  const held = new Promise<void>((resolve) => { finish = resolve })
+  stub(RELEASES)
+  const immediate = globalThis.fetch
+  globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).includes('refresh=1')) await held
+    return (immediate as unknown as (u: string, i?: RequestInit) => Promise<unknown>)(url, init)
+  }) as unknown as typeof fetch
+
+  draw()
+  await screen.findByText(/9 September 2026/)
+
+  fireEvent.click(screen.getByRole('button', { name: /^refresh$/i }))
+  expect(await screen.findByRole('button', { name: /refreshing/i })).toBeInTheDocument()
+
+  finish()
+  await waitFor(() => expect(
+    screen.getByRole('button', { name: /^refresh$/i }),
+  ).toBeInTheDocument())
 })
