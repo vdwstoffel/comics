@@ -10,5 +10,7 @@ services:
     volumes:
       - ./data:/data
     ports:
-      - "8090:3000"          # browse at http://<host>:8090 (host 3000 is taken by Guitar Assistant)
+      # The app always listens on 3000 inside the container; the left-hand number is the
+      # only part that is a choice. Change it if 8090 is already in use on your host.
+      - "8090:3000"          # browse at http://<host>:8090
     restart: unless-stopped
