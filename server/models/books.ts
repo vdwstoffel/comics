@@ -1,6 +1,6 @@
 import { BOOK_STATE_SQL } from './editions.js'
 import { deriveReadState } from './progress.js'
-import type { ReadState, BookWithProgress } from './progress.js'
+import type { FilterState, BookWithProgress } from './progress.js'
 import type { Db, Book } from '../types.js'
 
 interface BookRow {
@@ -127,7 +127,7 @@ function arcsByBook(db: Db): Map<number, string[]> {
  */
 export function listLibraryBooks(
   db: Db,
-  { readState, publisher }: { readState?: ReadState; publisher?: string },
+  { readState, publisher }: { readState?: FilterState; publisher?: string },
 ): LibraryBook[] {
   const clauses: string[] = []
   const params: unknown[] = []
@@ -161,7 +161,7 @@ export function listLibraryBooks(
     }))
 }
 
-export function listBooksByEdition(db: Db, editionId: number, readState?: ReadState): Book[] {
+export function listBooksByEdition(db: Db, editionId: number, readState?: FilterState): Book[] {
   const filter = readState ? `AND ${BOOK_STATE_SQL[readState]}` : ''
   return (db
     .prepare(`SELECT b.* FROM book b

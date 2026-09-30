@@ -157,7 +157,6 @@ let calls: string[] = []
 const READ_STATES = {
   readStates: [
     { name: 'unread', count: 4 },
-    { name: 'reading', count: 2 },
     { name: 'read', count: 0 },
   ],
 }
@@ -196,11 +195,11 @@ test('the sidebar offers a Status section with a count per state', async () => {
 
   await screen.findByRole('button', { name: /Unread/ })
   const status = screen.getByRole('complementary', { name: 'Status' })
-  // Read was removed from the rail: browsing what you have finished is what the
-  // unfiltered shelf is for, and the two remaining filters both answer "what next".
-  for (const label of ['Unread', 'Reading']) {
-    expect(within(status).getByText(label)).toBeInTheDocument()
-  }
+  // Unread is the whole rail. Read was removed because browsing what you have finished is
+  // what the unfiltered shelf is for; Reading went because a comic you are partway through
+  // is one you still have to read, so it never leaves Unread in the first place.
+  expect(within(status).getByText('Unread')).toBeInTheDocument()
+  expect(within(status).queryByText('Reading')).not.toBeInTheDocument()
   expect(within(status).queryByText('Read')).not.toBeInTheDocument()
   expect(within(status).getByRole('button', { name: /Unread/ })).toHaveTextContent('4')
 })
@@ -239,14 +238,14 @@ test('a volume whose next comic has no metadata still opens it', async () => {
     .toHaveAttribute('href', '/book/9')
 })
 
-test('Reading lists comics the same way Unread does', async () => {
+// The Reading shelf is gone, so a url still pointing at it names no filter at all and
+// lands on the plain shelf rather than on an empty grid.
+test('an old Reading url falls back to the unfiltered shelf', async () => {
   statusFetch()
-  renderWithProviders(<Library />)
-  fireEvent.click(await screen.findByRole('button', { name: /Reading/ }))
+  renderWithProviders(<Library />, '/?status=reading')
 
-  await waitFor(() =>
-    expect(calls.some((c) => c.includes('/api/books') && c.includes('readState=reading'))).toBe(true))
-  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
+  expect(await screen.findByText('Amazing Spider-Man')).toBeInTheDocument()
+  expect(calls.some((c) => c.includes('/api/books'))).toBe(false)
 })
 
 test('with no filter the shelf is still series', async () => {
@@ -326,10 +325,10 @@ test('arriving on a status URL shows comics rather than series tiles', async () 
 
 test('the status in the url drives the request and the active rail item', async () => {
   statusFetch()
-  renderWithProviders(<Library />, '/?status=reading')
+  renderWithProviders(<Library />, '/?status=unread')
 
   await waitFor(() =>
-    expect(calls.some((c) => c.includes('/api/books?') && c.includes('readState=reading'))).toBe(true))
+    expect(calls.some((c) => c.includes('/api/books?') && c.includes('readState=unread'))).toBe(true))
 })
 
 // Previously read off a series tile's href; a status shows no series tiles now, so the
@@ -481,15 +480,17 @@ test('a volume with a single unread issue is still a volume tile', async () => {
   expect(screen.queryByText('God of the Abyss')).not.toBeInTheDocument()
 })
 
-// Reading is one or two comics you are partway through, so there is nothing to collapse
-// and a group would only add a click between you and a comic you are already reading.
-test('reading is not grouped - its comics are drawn directly', async () => {
-  groupedFetch(GROUPED_BOOKS.map((b) => ({ ...b, readState: 'reading', percent: 40 })))
-  renderWithProviders(<Library />, '/?status=reading')
+// A comic you are partway through belongs to its volume like any other unread issue, so
+// it collapses into the same tile - and the tile opens it, because it is the one you are
+// in the middle of rather than one you have not started.
+test('a comic you are partway through groups with the rest of its volume', async () => {
+  groupedFetch([{ ...GROUPED_BOOKS[0], readState: 'reading', percent: 40 }, ...GROUPED_BOOKS.slice(1)])
+  renderWithProviders(<Library />, '/?status=unread')
 
-  expect(await screen.findByText('Bad Things')).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: /Bad Things/ })).toHaveAttribute('href', '/book/7')
-  expect(screen.queryByText('3 unread')).not.toBeInTheDocument()
+  expect(await screen.findByText('Amazing Spider-Man (2025)')).toBeInTheDocument()
+  expect(screen.getByText('3 unread')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Amazing Spider-Man (2025) #29' }))
+    .toHaveAttribute('href', '/book/7')
 })
 
 
@@ -620,12 +621,13 @@ test('grouping arcs puts it in the url, and arriving on that url groups them', a
 })
 
 // Reading holds the one or two comics you are partway through - there is nothing to gather.
-test('the arc toggle stays off the Reading shelf', async () => {
-  groupedFetch(ARC_BOOKS.map((b) => ({ ...b, readState: 'reading', percent: 40 })))
-  renderWithProviders(<Library />, '/?status=reading')
-  await screen.findByText('Assemble')
+// The toggle belongs to the unread shelf, which is the only shelf there is. A url naming
+// no shelf shows series tiles, and there is nothing there to gather into arcs.
+test('the arc toggle stays off the unfiltered shelf', async () => {
+  groupedFetch(ARC_BOOKS)
+  renderWithProviders(<Library />, '/')
 
-  expect(screen.queryByRole('checkbox', { name: /story arcs/i })).toBeNull()
+  await waitFor(() => expect(screen.queryByRole('checkbox', { name: /story arcs/i })).toBeNull())
 })
 
 // Two multi-volume series side by side, so "only one open" has something to be about.

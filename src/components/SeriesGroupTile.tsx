@@ -4,6 +4,7 @@ import { deckDepth } from '../lib/deckDepth'
 import { fitPanel } from '../lib/panelFit'
 import type { Edges } from '../lib/panelFit'
 import type { SeriesGroup } from '../lib/volumeGroups'
+import TileProgress from './TileProgress'
 import VolumeGroupTile from './VolumeGroupTile'
 
 /**
@@ -143,6 +144,10 @@ export default function SeriesGroupTile({ group, open, onToggle, onClose }: Seri
           ))}
           <span className="volume-tile__cover">
             <img src={`/api/books/${next.id}/thumbnail`} alt="" />
+            {/* The cover pictures the front of the first run, so the bar is that comic's.
+                Opening the panel is a step away from it, but a series you are in the
+                middle of should not look like one you have never touched. */}
+            <TileProgress readState={next.readState} percent={next.percent} />
           </span>
         </span>
         <span className="volume-tile__name">{group.name}</span>

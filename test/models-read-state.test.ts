@@ -32,17 +32,21 @@ function library(db: Db) {
 
 const names = (rows: { name: string }[]) => rows.map((r) => r.name).sort()
 
-test('unread lists every series with an issue still to read', () => {
+// The shelf answers "what is left to read", and a comic you are halfway through is still
+// left to read. Opening one therefore must not move it off the shelf; only finishing does.
+test('an issue you are partway through still counts as unread', () => {
   const db = openDb(':memory:')
-  library(db)
-  expect(names(listEditions(db, { readState: 'unread' }))).toEqual(['All Unread', 'Part Read'])
+  const edition = seed(db, 'Mixed', ['reading'])
+  expect(names(listEditions(db, { readState: 'unread' }))).toEqual(['Mixed'])
+  expect(listBooksByEdition(db, edition.id, 'unread')).toHaveLength(1)
   db.close()
 })
 
-test('reading lists series with an issue in progress', () => {
+test('unread lists every series with an issue still to read', () => {
   const db = openDb(':memory:')
   library(db)
-  expect(names(listEditions(db, { readState: 'reading' }))).toEqual(['In Progress'])
+  expect(names(listEditions(db, { readState: 'unread' })))
+    .toEqual(['All Unread', 'In Progress', 'Part Read'])
   db.close()
 })
 
@@ -66,7 +70,7 @@ test('a part-read series appears under unread and under read', () => {
 test('the issue count of a filtered series counts only matching issues', () => {
   const db = openDb(':memory:')
   library(db)
-  const under = (state: 'unread' | 'reading' | 'read') =>
+  const under = (state: 'unread' | 'read') =>
     listEditions(db, { readState: state }).find((x) => x.name === 'Part Read')?.bookCount
   expect(under('unread')).toBe(1)
   expect(under('read')).toBe(2)
@@ -84,7 +88,7 @@ test('a book with no progress row counts as unread', () => {
 test('a series with no books matches no read state', () => {
   const db = openDb(':memory:')
   library(db)
-  for (const state of ['unread', 'reading', 'read'] as const) {
+  for (const state of ['unread', 'read'] as const) {
     expect(names(listEditions(db, { readState: state }))).not.toContain('Empty')
   }
   expect(names(listEditions(db))).toContain('Empty')
@@ -101,18 +105,20 @@ test('no read state given leaves the list unfiltered', () => {
 test('read state composes with the publisher filter', () => {
   const db = openDb(':memory:')
   library(db)
-  expect(names(listEditions(db, { readState: 'unread', publisher: 'Marvel' }))).toEqual(['Part Read'])
+  expect(names(listEditions(db, { readState: 'unread', publisher: 'Marvel' })))
+    .toEqual(['In Progress', 'Part Read'])
   expect(names(listEditions(db, { readState: 'unread', publisher: 'DC Comics' }))).toEqual(['All Unread'])
   db.close()
 })
 
+// Unread and Read now partition the library between them: every issue is finished or it
+// is not. The facets are the rail's two answers, and nothing falls between them.
 test('listReadStates counts issues, not series', () => {
   const db = openDb(':memory:')
   library(db)
-  // 3 unread issues, 1 in progress, 5 completed across the fixture
+  // 4 unfinished issues (3 never opened, 1 partway) and 5 completed across the fixture
   expect(listReadStates(db)).toEqual([
-    { name: 'unread', count: 3 },
-    { name: 'reading', count: 1 },
+    { name: 'unread', count: 4 },
     { name: 'read', count: 5 },
   ])
   db.close()
@@ -122,8 +128,7 @@ test('listBooksByEdition can return only the issues in one state', () => {
   const db = openDb(':memory:')
   const edition = seed(db, 'Mixed', ['unread', 'reading', 'read', 'read'])
   expect(listBooksByEdition(db, edition.id)).toHaveLength(4)
-  expect(listBooksByEdition(db, edition.id, 'unread')).toHaveLength(1)
-  expect(listBooksByEdition(db, edition.id, 'reading')).toHaveLength(1)
+  expect(listBooksByEdition(db, edition.id, 'unread')).toHaveLength(2)
   expect(listBooksByEdition(db, edition.id, 'read')).toHaveLength(2)
   db.close()
 })

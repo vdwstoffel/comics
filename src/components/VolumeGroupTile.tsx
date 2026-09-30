@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { deckDepth } from '../lib/deckDepth'
+import TileProgress from './TileProgress'
 import type { VolumeGroup } from '../lib/volumeGroups'
 
 interface VolumeGroupTileProps {
@@ -60,6 +61,9 @@ export default function VolumeGroupTile({ group }: VolumeGroupTileProps) {
               thumbnail is its lowest-numbered issue overall, which on a run you are
               partway through is one you read long ago. */}
           <img src={`/api/books/${next.id}/thumbnail`} alt="" />
+          {/* Describes the comic this cover opens, which is the one you are in the
+              middle of when there is one. */}
+          <TileProgress readState={next.readState} percent={next.percent} />
         </Link>
       </div>
       <Link className="volume-tile__name" to={`/edition/${group.editionId}?status=unread`}>

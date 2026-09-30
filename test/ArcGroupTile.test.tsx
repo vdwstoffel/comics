@@ -68,3 +68,20 @@ test('the whole tile is a single way into the arc', () => {
   renderTile(armageddon)
   expect(screen.getAllByRole('link')).toHaveLength(1)
 })
+
+// Same reason as the volume and series decks: the cover is the comic you would open next,
+// and how far into it you are is the one thing the tile cannot otherwise say.
+test('an arc you are partway through draws its progress bar', () => {
+  const [next, ...rest] = armageddon.books
+  const started = group([{ ...next, readState: 'reading', percent: 60 }, ...rest])
+  const { container } = renderTile(started)
+
+  const bar = container.querySelector('.volume-tile__cover .tile-progress')
+  expect(bar).toBeInTheDocument()
+  expect(bar).toHaveStyle({ width: '60%' })
+})
+
+test('an arc nobody has started draws no bar', () => {
+  const { container } = renderTile(armageddon)
+  expect(container.querySelector('.tile-progress')).toBeNull()
+})

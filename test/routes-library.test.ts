@@ -348,30 +348,31 @@ function seedForBookList() {
 }
 
 test('GET /api/books lists what is unread across the library', async () => {
-  const { unreadMarvel, unreadDc } = seedForBookList()
+  const { unreadMarvel, unreadDc, readingMarvel } = seedForBookList()
 
   const res = await app.inject({ url: '/api/books?readState=unread' })
 
   expect(res.statusCode).toBe(200)
+  // The part-read issue is on this list too: unread means unfinished, not untouched.
   expect(res.json().books.map((b: { id: number }) => b.id).sort())
-    .toEqual([unreadMarvel.id, unreadDc.id].sort())
+    .toEqual([unreadMarvel.id, unreadDc.id, readingMarvel.id].sort())
 })
 
 test('GET /api/books narrows by publisher and state together', async () => {
-  const { unreadMarvel } = seedForBookList()
+  const { unreadMarvel, readingMarvel } = seedForBookList()
 
   const res = await app.inject({ url: '/api/books?readState=unread&publisher=Marvel' })
 
-  expect(res.json().books.map((b: { id: number }) => b.id)).toEqual([unreadMarvel.id])
+  expect(res.json().books.map((b: { id: number }) => b.id).sort())
+    .toEqual([unreadMarvel.id, readingMarvel.id].sort())
 })
 
 test('GET /api/books returns the progress its tiles draw', async () => {
   const { readingMarvel } = seedForBookList()
 
-  const res = await app.inject({ url: '/api/books?readState=reading' })
+  const res = await app.inject({ url: '/api/books?readState=unread' })
 
-  const [book] = res.json().books
-  expect(book.id).toBe(readingMarvel.id)
+  const book = res.json().books.find((b: { id: number }) => b.id === readingMarvel.id)
   expect(book.readState).toBe('reading')
   expect(book.percent).toBeGreaterThan(0)
 })

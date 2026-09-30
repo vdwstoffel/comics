@@ -132,8 +132,9 @@ test('GET /api/series filters by read state', async () => {
   expect(read.series.map((s: { name: string }) => s.name)).toEqual(['Finished Run'])
   expect(read.series[0].bookCount).toBe(2)
 
-  const reading = (await get('/api/series?readState=reading')).json()
-  expect(reading.series.map((s: { name: string }) => s.name)).toEqual(['Halfway'])
+  // Both of Halfway's issues are unfinished, the started one included.
+  const halfway = unread.series.find((s: { name: string }) => s.name === 'Halfway')
+  expect(halfway.bookCount).toBe(2)
 })
 
 test('GET /api/series ignores an unknown read state instead of erroring', async () => {
@@ -152,10 +153,12 @@ test('GET /api/read-states counts issues in each state', async () => {
   const byName = Object.fromEntries(
     res.json().readStates.map((r: { name: string; count: number }) => [r.name, r.count]),
   )
-  // 15 issues from the beforeEach fixture have no progress, plus 1 unread here
-  expect(byName.unread).toBe(16)
-  expect(byName.reading).toBe(1)
+  // 15 issues from the beforeEach fixture have no progress, plus the 1 unread and the 1
+  // part-read issue of Halfway — both unfinished, so both counted the same way.
+  expect(byName.unread).toBe(17)
   expect(byName.read).toBe(2)
+  // Reading is not a shelf any more, so the rail is never offered it as a choice.
+  expect(byName.reading).toBeUndefined()
 })
 
 test('GET /api/series read filter includes part-read series', async () => {
@@ -180,16 +183,15 @@ test('GET /api/editions/:id lists only the issues in the requested state', async
   const all = (await get(`/api/editions/${edition.id}`)).json()
   expect(all.books).toHaveLength(4)
 
+  // The untouched issue and the started one, which are the two still to read.
   const unread = (await get(`/api/editions/${edition.id}?readState=unread`)).json()
-  expect(unread.books).toHaveLength(1)
-  expect(unread.books[0].readState).toBe('unread')
+  expect(unread.books).toHaveLength(2)
+  expect(unread.books.map((b: { readState: string }) => b.readState).sort())
+    .toEqual(['reading', 'unread'])
 
   const read = (await get(`/api/editions/${edition.id}?readState=read`)).json()
   expect(read.books).toHaveLength(2)
   expect(read.books.every((b: { readState: string }) => b.readState === 'read')).toBe(true)
-
-  const reading = (await get(`/api/editions/${edition.id}?readState=reading`)).json()
-  expect(reading.books).toHaveLength(1)
 })
 
 test('GET /api/editions/:id ignores a junk read state', async () => {

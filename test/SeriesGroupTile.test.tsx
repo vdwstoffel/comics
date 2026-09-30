@@ -175,3 +175,24 @@ test('a browser with no scrollIntoView still gets the panel', () => {
   expect(() => renderTile(batman, true)).not.toThrow()
   expect(screen.getByRole('link', { name: 'Batman (2012)' })).toBeInTheDocument()
 })
+
+// The series tile pictures the front of its first run. A series you are in the middle of
+// should not be indistinguishable from one you have never touched.
+test('a series whose first run is partway through draws its progress bar', () => {
+  const [first, ...others] = batman.volumes
+  const [next, ...rest] = first.books
+  const started: SeriesGroup = {
+    ...batman,
+    volumes: [{ ...first, books: [{ ...next, readState: 'reading', percent: 25 }, ...rest] }, ...others],
+  }
+  const { container } = render(<MemoryRouter><SeriesGroupTile group={started} open={false} onToggle={vi.fn()} onClose={vi.fn()} /></MemoryRouter>)
+
+  const bar = container.querySelector('.volume-tile__cover .tile-progress')
+  expect(bar).toBeInTheDocument()
+  expect(bar).toHaveStyle({ width: '25%' })
+})
+
+test('a series nobody has started draws no bar', () => {
+  const { container } = render(<MemoryRouter><SeriesGroupTile group={batman} open={false} onToggle={vi.fn()} onClose={vi.fn()} /></MemoryRouter>)
+  expect(container.querySelector('.tile-progress')).toBeNull()
+})

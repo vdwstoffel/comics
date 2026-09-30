@@ -29,20 +29,23 @@ function seed(db: ReturnType<typeof openDb>) {
   return books
 }
 
-test('unread is every book nobody has opened', () => {
+// Unread is every book you have not finished, which includes the one you are partway
+// through: opening a comic does not take it off the list of comics you have to read.
+test('unread is every book nobody has finished', () => {
   const db = openDb(':memory:')
-  const { unreadVenom, unreadBatman } = seed(db)
+  const { unreadVenom, readingVenom, unreadBatman } = seed(db)
 
   expect(listLibraryBooks(db, { readState: 'unread' }).map((b) => b.id).sort())
-    .toEqual([unreadVenom.id, unreadBatman.id].sort())
+    .toEqual([unreadVenom.id, readingVenom.id, unreadBatman.id].sort())
   db.close()
 })
 
-test('reading is every book somebody is partway through', () => {
+test('a finished book is the one thing unread leaves out', () => {
   const db = openDb(':memory:')
-  const { readingVenom } = seed(db)
+  const { readVenom } = seed(db)
 
-  expect(listLibraryBooks(db, { readState: 'reading' }).map((b) => b.id)).toEqual([readingVenom.id])
+  expect(listLibraryBooks(db, { readState: 'unread' }).map((b) => b.id)).not.toContain(readVenom.id)
+  expect(listLibraryBooks(db, { readState: 'read' }).map((b) => b.id)).toEqual([readVenom.id])
   db.close()
 })
 
@@ -50,10 +53,10 @@ test('reading is every book somebody is partway through', () => {
 // would be telling the user something untrue about what they are looking at.
 test('a publisher and a state narrow the list together', () => {
   const db = openDb(':memory:')
-  const { unreadVenom } = seed(db)
+  const { unreadVenom, readingVenom } = seed(db)
 
   expect(listLibraryBooks(db, { readState: 'unread', publisher: 'Marvel' }).map((b) => b.id))
-    .toEqual([unreadVenom.id])
+    .toEqual([unreadVenom.id, readingVenom.id])
   db.close()
 })
 
@@ -67,11 +70,13 @@ test('books come back in series then issue order', () => {
   db.close()
 })
 
+// The shelf no longer separates them out, so the progress bar is the only thing that says
+// which of the unread comics you have already started. It has to survive the merge.
 test('a book carries the read progress its tile draws', () => {
   const db = openDb(':memory:')
-  seed(db)
+  const { readingVenom } = seed(db)
 
-  const [book] = listLibraryBooks(db, { readState: 'reading' })
+  const book = listLibraryBooks(db, { readState: 'unread' }).find((b) => b.id === readingVenom.id)!
   expect(book.readState).toBe('reading')
   expect(book.percent).toBeGreaterThan(0)
   db.close()

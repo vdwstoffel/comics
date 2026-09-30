@@ -27,6 +27,12 @@ function renderTile(unread: number) {
   }
 }
 
+/** A volume whose next comic is 40% read, with untouched issues stacked behind it. */
+function partway(): VolumeGroup {
+  const [next, ...rest] = group(3).books
+  return { ...group(3), books: [{ ...next, readState: 'reading', percent: 40 }, ...rest] }
+}
+
 test('a volume with one unread comic is drawn as a single cover', () => {
   expect(renderTile(1).plates()).toHaveLength(0)
 })
@@ -92,4 +98,20 @@ test('a comic with no issue number is still named apart from the volume link', (
 // none of them the comic underneath.
 test('the cover is the comic you would read next, not the volume\'s first issue', () => {
   expect(renderTile(12).cover()).toHaveAttribute('src', '/api/books/1/thumbnail')
+})
+
+// The unread shelf is where a comic you are partway through now lives, and the deck's
+// cover IS that comic - so without the bar a run you are in the middle of looks exactly
+// like one you have never opened.
+test('a volume you are partway through draws its progress bar', () => {
+  const { container } = render(<MemoryRouter><VolumeGroupTile group={partway()} /></MemoryRouter>)
+
+  const bar = container.querySelector('.volume-tile__cover .tile-progress')
+  expect(bar).toBeInTheDocument()
+  expect(bar).toHaveStyle({ width: '40%' })
+})
+
+test('a volume you have not started draws no bar', () => {
+  const { container } = render(<MemoryRouter><VolumeGroupTile group={group(3)} /></MemoryRouter>)
+  expect(container.querySelector('.tile-progress')).toBeNull()
 })

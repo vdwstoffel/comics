@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { deckDepth } from '../lib/deckDepth'
+import TileProgress from './TileProgress'
 import type { ArcGroup } from '../lib/volumeGroups'
 
 interface ArcGroupTileProps {
@@ -43,6 +44,9 @@ export default function ArcGroupTile({ group }: ArcGroupTileProps) {
           ))}
           <span className="volume-tile__cover">
             <img src={`/api/books/${next.id}/thumbnail`} alt="" />
+            {/* The comic at the front of the arc, so the bar is how far into that one you
+                are - the same thing the volume and series decks say. */}
+            <TileProgress readState={next.readState} percent={next.percent} />
           </span>
         </span>
         <span className="volume-tile__name">{group.name}</span>

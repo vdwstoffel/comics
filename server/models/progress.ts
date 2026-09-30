@@ -2,6 +2,14 @@ import type { Db, Book, Progress } from '../types.js'
 
 export type ReadState = 'unread' | 'reading' | 'read'
 
+/**
+ * What the shelf can be filtered by, which is not the same list. 'reading' describes a
+ * single book - it is what paints a tile's progress bar - but it is not a shelf of its
+ * own: a comic you are partway through is still a comic you have to read, so it stays
+ * under Unread until it is finished.
+ */
+export type FilterState = 'unread' | 'read'
+
 export interface BookWithProgress extends Book {
   readState: ReadState
   percent: number

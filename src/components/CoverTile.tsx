@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom'
+import TileProgress from './TileProgress'
 
 interface CoverTileProps {
   /** Internal route. Give `href` instead for a destination outside the app. */
@@ -13,7 +14,6 @@ interface CoverTileProps {
 
 export default function CoverTile({ to, href, img, title, subtitle, readState, percent }: CoverTileProps) {
   const isRead = readState === 'read'
-  const isReading = readState === 'reading'
 
   const inner = (
     <>
@@ -26,9 +26,7 @@ export default function CoverTile({ to, href, img, title, subtitle, readState, p
             </svg>
           </div>
         )}
-        {isReading && (
-          <div className="tile-progress" style={{ width: `${percent ?? 0}%` }} aria-label={`In progress: ${percent ?? 0}%`} />
-        )}
+        <TileProgress readState={readState} percent={percent} />
       </div>
       <div className="cover-tile__title">{title}</div>
       {subtitle && <div className="cover-tile__subtitle">{subtitle}</div>}

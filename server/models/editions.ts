@@ -1,5 +1,5 @@
 import { deriveSeriesName, seriesMatchKey } from '../lib/seriesName.js'
-import type { ReadState } from './progress.js'
+import type { FilterState } from './progress.js'
 import type { Db, Edition } from '../types.js'
 
 interface EditionRow {
@@ -71,40 +71,35 @@ export function getEdition(db: Db, id: number): Edition | undefined {
   return toEdition(db.prepare('SELECT * FROM edition WHERE id = ?').get(id) as EditionRow | undefined)
 }
 
-// A book with no read_progress row has never been opened, so it counts as unread -
-// the same rule deriveReadState applies to a single book.
+// Unread means unfinished, not untouched: a book with no read_progress row has never been
+// opened, and one you are partway through still has pages left. Both are things you have
+// yet to read, so both belong on the same shelf until they are completed.
 const HAS_UNREAD = `EXISTS (
   SELECT 1 FROM book b2 LEFT JOIN read_progress p ON p.book_id = b2.id
-  WHERE b2.edition_id = e.id AND (p.book_id IS NULL OR (p.last_page = 0 AND p.completed = 0)))`
-
-const HAS_READING = `EXISTS (
-  SELECT 1 FROM book b2 JOIN read_progress p ON p.book_id = b2.id
-  WHERE b2.edition_id = e.id AND p.completed = 0 AND p.last_page > 0)`
+  WHERE b2.edition_id = e.id AND (p.book_id IS NULL OR p.completed = 0))`
 
 const HAS_READ = `EXISTS (
   SELECT 1 FROM book b2 JOIN read_progress p ON p.book_id = b2.id
   WHERE b2.edition_id = e.id AND p.completed = 1)`
 
-// One rule for all three: an edition matches a state when it holds at least one issue in
-// it. A part-read edition is therefore both unread (issues left) and read (issues
-// finished), which is what the tiles and their counts should say.
-const READ_STATE_SQL: Record<ReadState, string> = {
+// One rule for both: an edition matches a state when it holds at least one issue in it. A
+// part-read edition is therefore both unread (issues left) and read (issues finished),
+// which is what the tiles and their counts should say.
+const READ_STATE_SQL: Record<FilterState, string> = {
   unread: HAS_UNREAD,
-  reading: HAS_READING,
   read: HAS_READ,
 }
 
-// The same three states expressed against a book LEFT JOINed to its progress row,
+// The same two states expressed against a book LEFT JOINed to its progress row,
 // for counting and for listing the issues inside an edition.
-export const BOOK_STATE_SQL: Record<ReadState, string> = {
-  unread: '(p.book_id IS NULL OR (p.last_page = 0 AND p.completed = 0))',
-  reading: '(p.completed = 0 AND p.last_page > 0)',
+export const BOOK_STATE_SQL: Record<FilterState, string> = {
+  unread: '(p.book_id IS NULL OR p.completed = 0)',
   read: '(p.completed = 1)',
 }
 
 export interface EditionFilter {
   publisher?: string
-  readState?: ReadState
+  readState?: FilterState
 }
 
 function buildEditionFilter({ publisher, readState }: EditionFilter): {
@@ -139,13 +134,13 @@ export function listEditions(db: Db, opts?: EditionFilter): Edition[] {
 }
 
 export interface ReadStateFacet {
-  name: ReadState
+  name: FilterState
   count: number
 }
 
 /** Counts issues, not editions, so the numbers match what clicking through lists. */
 export function listReadStates(db: Db): ReadStateFacet[] {
-  const states: ReadState[] = ['unread', 'reading', 'read']
+  const states: FilterState[] = ['unread', 'read']
   return states.map((name) => ({
     name,
     count: (db

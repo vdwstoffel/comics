@@ -1,13 +1,13 @@
 import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
-import type { ReadState } from '../api'
+import type { FilterState } from '../api'
 import { STATUS_LABELS } from '../lib/readStatus'
 import FilterSidebar from './FilterSidebar'
 
 interface LibraryRailProps {
   activePublisher?: string | null
-  activeStatus?: ReadState | null
+  activeStatus?: FilterState | null
   /** Omitted on pages that are not the library — the rail navigates home instead. */
   onPublisher?: (key: string | null) => void
   onStatus?: (key: string | null) => void
@@ -52,10 +52,10 @@ export default function LibraryRail({
       />
       <FilterSidebar
         title="Status"
-        // Read is deliberately absent: browsing what you have finished is what the
-        // unfiltered shelf is for, while Unread and Reading both answer "what next".
-        // The state itself still exists — progress, counts and the per-edition filter
-        // all use it; this is one entry in a rail, not a change to what is tracked.
+        // Which leaves one entry, Unread, and that is the whole question the rail asks:
+        // what is left to read. Read is dropped because browsing what you have finished is
+        // what the unfiltered shelf is for. The state itself still exists — progress and
+        // counts both use it; this is one entry in a rail, not a change to what is tracked.
         items={(readStateData?.readStates ?? [])
           .filter((s) => s.name !== 'read')
           .map((s) => ({ key: s.name, label: STATUS_LABELS[s.name], count: s.count }))}

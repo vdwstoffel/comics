@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
-import type { ReadState } from '../api'
+import type { FilterState } from '../api'
 import { statusFrom } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import LibraryRail from '../components/LibraryRail'
@@ -12,9 +12,8 @@ import SeriesGroupTile from '../components/SeriesGroupTile'
 import ArcGroupTile from '../components/ArcGroupTile'
 
 /** What an empty result should say, so a blank grid never reads like a failure. */
-const NOTHING: Record<ReadState, string> = {
+const NOTHING: Record<FilterState, string> = {
   unread: 'Nothing unread.',
-  reading: 'Nothing in progress.',
   read: 'Nothing read yet.',
 }
 
@@ -90,10 +89,9 @@ export default function Library() {
               ? (
                 <>
                   {/* Unread is the shelf that accumulates - a run you are behind on puts
-                      every one of its issues here at once - so it collapses, to a tile per
-                      series and, inside that, a tile per volume. Reading holds the one or
-                      two comics you are partway through, where a group would only add a
-                      click to reach a comic you are already in the middle of. */}
+                      every one of its issues here at once, and the one you are partway
+                      through sits among them until you finish it - so it collapses, to a
+                      tile per series and, inside that, a tile per volume. */}
                   {hasArcs && (
                     <label className="shelf-toggle">
                       <input

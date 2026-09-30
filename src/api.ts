@@ -305,8 +305,16 @@ export interface CvSearchResult {
 
 export type ReadState = 'unread' | 'reading' | 'read'
 
+/**
+ * What a shelf can be filtered by, which is a shorter list than the states a book can be
+ * in. 'reading' is a property of one comic — the progress bar on its tile — not a shelf of
+ * its own: an issue you are partway through is still an issue you have to read, so it
+ * stays under Unread until it is finished.
+ */
+export type FilterState = 'unread' | 'read'
+
 export interface ReadStateFacet {
-  name: ReadState
+  name: FilterState
   count: number
 }
 
@@ -465,14 +473,14 @@ export const api = {
   },
   getPublishers: () => json<PublishersResponse>('/api/publishers'),
   getReadStates: () => json<ReadStatesResponse>('/api/read-states'),
-  getSeries: ({ publisher, readState }: { publisher?: string; readState?: ReadState } = {}) => {
+  getSeries: ({ publisher, readState }: { publisher?: string; readState?: FilterState } = {}) => {
     const params = new URLSearchParams()
     if (publisher) params.set('publisher', publisher)
     if (readState) params.set('readState', readState)
     const query = params.toString()
     return json<SeriesListResponse>(`/api/series${query ? `?${query}` : ''}`)
   },
-  getSeriesByName: (name: string, readState?: ReadState) => {
+  getSeriesByName: (name: string, readState?: FilterState) => {
     const query = readState ? `?readState=${readState}` : ''
     return json<SeriesResponse>(`/api/series/${encodeURIComponent(name)}${query}`)
   },
@@ -481,7 +489,7 @@ export const api = {
       method: 'PATCH', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ seriesName }),
     }),
-  getEditionDetail: (id: string | number, readState?: ReadState) => {
+  getEditionDetail: (id: string | number, readState?: FilterState) => {
     const query = readState ? `?readState=${readState}` : ''
     return json<EditionDetailResponse>(`/api/editions/${id}${query}`)
   },
@@ -550,7 +558,7 @@ export const api = {
     }),
   clearDownloadHistory: () => json<{ cleared: boolean }>('/api/downloads/history', { method: 'DELETE' }),
 
-  getLibraryBooks: ({ readState, publisher }: { readState: ReadState; publisher?: string | null }) => {
+  getLibraryBooks: ({ readState, publisher }: { readState: FilterState; publisher?: string | null }) => {
     const params = new URLSearchParams({ readState })
     if (publisher) params.set('publisher', publisher)
     return json<{ books: ApiLibraryBook[] }>(`/api/books?${params}`)
