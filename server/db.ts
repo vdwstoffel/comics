@@ -115,6 +115,7 @@ CREATE TABLE IF NOT EXISTS arc_issue (
   number      TEXT,
   name        TEXT,
   volume_name TEXT,
+  volume_id   INTEGER,
   cover_date  TEXT,
   store_date  TEXT,
   site_url    TEXT,
@@ -326,6 +327,13 @@ export function openDb(dbPath: string): Db {
   if (!editionCols.includes('cv_name')) db.exec('ALTER TABLE edition ADD COLUMN cv_name TEXT')
   if (!editionCols.includes('cv_start_year')) db.exec('ALTER TABLE edition ADD COLUMN cv_start_year INTEGER')
   if (!editionCols.includes('cv_site_url')) db.exec('ALTER TABLE edition ADD COLUMN cv_site_url TEXT')
+
+  // An arc issue gained the id of the volume it belongs to, which is what decides where
+  // a download of it lands. Arcs cached before this read back without one until their
+  // next refresh; the download falls back to the volume's name meanwhile.
+  if (!columnsOf(db, 'arc_issue').includes('volume_id')) {
+    db.exec('ALTER TABLE arc_issue ADD COLUMN volume_id INTEGER')
+  }
 
   // Additive migration: comic_index gained year/number after first release
   const indexCols = columnsOf(db, 'comic_index')

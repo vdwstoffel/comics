@@ -9,6 +9,7 @@ interface IssueRow {
   number: string | null
   name: string | null
   volume_name: string | null
+  volume_id: number | null
   cover_date: string | null
   store_date: string | null
   site_url: string | null
@@ -40,8 +41,8 @@ export function cacheArc(
   const clear = db.prepare('DELETE FROM arc_issue WHERE arc_id = ?')
   const insert = db.prepare(
     `INSERT INTO arc_issue
-       (arc_id, cv_issue_id, position, number, name, volume_name, cover_date, store_date, site_url)
-     VALUES (?,?,?,?,?,?,?,?,?)`
+       (arc_id, cv_issue_id, position, number, name, volume_name, volume_id, cover_date, store_date, site_url)
+     VALUES (?,?,?,?,?,?,?,?,?,?)`
   )
   const stamp = db.prepare(
     `INSERT INTO arc_cache (arc_id, name, deck, publisher, image_url, site_url, fetched_at)
@@ -63,8 +64,8 @@ export function cacheArc(
       seen.add(issue.id)
       insert.run(
         arcId, issue.id, position++, issue.number ?? null, issue.name ?? null,
-        issue.volumeName ?? null, issue.coverDate ?? null, issue.storeDate ?? null,
-        issue.siteUrl ?? null,
+        issue.volumeName ?? null, issue.volumeId ?? null,
+        issue.coverDate ?? null, issue.storeDate ?? null, issue.siteUrl ?? null,
       )
     }
     stamp.run(
@@ -72,6 +73,43 @@ export function cacheArc(
       arc.imageUrl ?? null, arc.siteUrl ?? null, now,
     )
   })()
+}
+
+const ISSUE_SELECT = `SELECT cv_issue_id, number, name, volume_name, volume_id,
+                             cover_date, store_date, site_url
+                      FROM arc_issue`
+
+/**
+ * A stored row as the client half knows it. Absent columns are left off the object rather
+ * than set to undefined, so a round trip through the cache compares equal to what went in.
+ */
+function toIssue(r: IssueRow): CvArcIssue {
+  return {
+    id: r.cv_issue_id,
+    ...(r.name == null ? {} : { name: r.name }),
+    ...(r.site_url == null ? {} : { siteUrl: r.site_url }),
+    ...(r.number == null ? {} : { number: r.number }),
+    ...(r.volume_name == null ? {} : { volumeName: r.volume_name }),
+    ...(r.volume_id == null ? {} : { volumeId: r.volume_id }),
+    ...(r.cover_date == null ? {} : { coverDate: r.cover_date }),
+    ...(r.store_date == null ? {} : { storeDate: r.store_date }),
+  }
+}
+
+/**
+ * One cached arc issue, by Comic Vine's id for it and nothing else - which is all the
+ * download route is handed, because the press came from a tile that knows the issue but
+ * not which arc page drew it.
+ *
+ * Read at any age: a press only follows a page view, and that view is what filled this
+ * cache. Refusing on age would refuse the very button it drew. An issue in two arcs is
+ * the same issue either way, so the first row found answers.
+ */
+export function findArcIssue(db: Db, cvIssueId: number): CvArcIssue | undefined {
+  const row = db
+    .prepare(`${ISSUE_SELECT} WHERE cv_issue_id = ? LIMIT 1`)
+    .get(cvIssueId) as IssueRow | undefined
+  return row ? toIssue(row) : undefined
 }
 
 export interface CachedArc {
@@ -102,19 +140,10 @@ export function getCachedArc(
   }
 
   const rows = db
-    .prepare(`SELECT cv_issue_id, number, name, volume_name, cover_date, store_date, site_url
-              FROM arc_issue WHERE arc_id = ? ORDER BY position`)
+    .prepare(`${ISSUE_SELECT} WHERE arc_id = ? ORDER BY position`)
     .all(arcId) as IssueRow[]
 
-  const issues: CvArcIssue[] = rows.map((r) => ({
-    id: r.cv_issue_id,
-    ...(r.name == null ? {} : { name: r.name }),
-    ...(r.site_url == null ? {} : { siteUrl: r.site_url }),
-    ...(r.number == null ? {} : { number: r.number }),
-    ...(r.volume_name == null ? {} : { volumeName: r.volume_name }),
-    ...(r.cover_date == null ? {} : { coverDate: r.cover_date }),
-    ...(r.store_date == null ? {} : { storeDate: r.store_date }),
-  }))
+  const issues: CvArcIssue[] = rows.map(toIssue)
 
   return {
     fetchedAt: row.fetched_at,

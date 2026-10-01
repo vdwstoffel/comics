@@ -1,7 +1,11 @@
 import { createComicVine } from '../lib/comicvine.js'
 import type { ComicVineClient, CvStoryArc } from '../lib/comicvine.js'
 import { listStoryArcs, booksInArc, ownedIssueIds } from '../models/arcs.js'
-import { cacheArc, getCachedArc } from '../models/arcCache.js'
+import { cacheArc, getCachedArc, findArcIssue } from '../models/arcCache.js'
+import { findMatchForIssue } from '../services/issueMatching.js'
+import { startIssueDownload, issueLabel } from '../services/issueDownload.js'
+import { fetchSourcePage } from '../lib/comicIndexSource.js'
+import { getEditionByComicvineId } from '../models/editions.js'
 import { setTagIds, getBookTags } from '../models/metadata.js'
 import { getBook } from '../models/books.js'
 import { deriveReadState } from '../models/progress.js'
@@ -51,7 +55,13 @@ async function loadArc(
   }
 }
 
-export default async function arcRoutes(app: App) {
+export interface ArcRouteOpts {
+  /** Injected so tests never touch the network. */
+  fetchPage?: (url: string) => Promise<string>
+}
+
+export default async function arcRoutes(app: App, opts: ArcRouteOpts = {}) {
+  const { fetchPage = fetchSourcePage } = opts
   const cv = createComicVine({ apiKey: () => getComicVineKey(app.db) })
 
   // Which arcs the library knows about is a question about the library, so it never
@@ -93,7 +103,13 @@ export default async function arcRoutes(app: App) {
         // edition grid does. One you do not own has no read state to report.
         issues: loaded.arc.issues.map((issue) => {
           const bookId = owned.get(issue.id)
-          if (bookId == null) return { ...issue, owned: false }
+          // Only what you are missing is worth matching; a match for a comic you already
+          // have would be computed and thrown away. The match keys on the issue's OWN
+          // volume name rather than the arc's: most of what an arc is missing is tie-ins,
+          // which belong to other volumes entirely.
+          if (bookId == null) {
+            return { ...issue, owned: false, match: findMatchForIssue(app.db, issue.volumeName ?? null, issue) }
+          }
           const book = getBook(app.db, bookId)
           if (!book) return { ...issue, owned: true, bookId }
           const { readState, percent } = deriveReadState(app.db, book)
@@ -145,4 +161,47 @@ export default async function arcRoutes(app: App) {
 
     return { arcs }
   })
+
+  /**
+   * Download the one scraped release that is this missing arc issue.
+   *
+   * An arc is not a shelf: its issues come from the series it is named for and from every
+   * volume that tied in, so where the file lands is decided per issue, by the same rule
+   * the Latest tab applies. An edition that already claims the Comic Vine volume takes it
+   * - filing by the bare volume name would miss the run you have and split it across two
+   * folders - and otherwise the volume's own name creates the edition, which is what makes
+   * filling a tie-in you own nothing of predictable.
+   *
+   * The match is re-derived here rather than taken from the page, for the reason the
+   * edition route gives: a rescrape between the render and the press must not be able to
+   * turn a button into a download of something else.
+   *
+   * Arcs cached before the volume id was stored carry only the name; those fall back to
+   * it rather than leaving the button dead until the arc happens to be refreshed.
+   */
+  app.post<{ Params: { cvIssueId: string } }>(
+    '/api/arcs/issues/:cvIssueId/download',
+    async (req, reply) => {
+      // Any age: a press only follows a page view that filled this cache, and a published
+      // issue's number and cover date do not change.
+      const issue = findArcIssue(app.db, Number(req.params.cvIssueId))
+      if (!issue) return reply.code(404).send({ error: 'issue not in any cached arc' })
+
+      const volumeName = issue.volumeName ?? null
+      const existing = issue.volumeId != null ? getEditionByComicvineId(app.db, issue.volumeId) : undefined
+      const result = await startIssueDownload(app, {
+        volumeName,
+        editionName: existing?.name ?? volumeName ?? 'Unsorted',
+        issue: { id: issue.id, number: issue.number, coverDate: issue.coverDate },
+        label: issueLabel(volumeName, issue.number),
+        fetchPage,
+      })
+      // `reason` is the machine-readable half of the refusal: a client cannot tell a
+      // no-match 409 from a duplicate one by string-matching the message.
+      if (!result.ok) {
+        return reply.code(result.code).send({ reason: result.reason, error: result.error, entry: result.entry })
+      }
+      return reply.code(202).send({ queued: true, entry: result.entry })
+    },
+  )
 }

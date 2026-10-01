@@ -1,6 +1,6 @@
 import { test, expect } from 'vitest'
 import { openDb } from '../server/db.js'
-import { cacheArc, getCachedArc } from '../server/models/arcCache.js'
+import { cacheArc, getCachedArc, findArcIssue } from '../server/models/arcCache.js'
 import type { CvStoryArc } from '../server/lib/comicvine.js'
 
 const DAY = 24 * 60 * 60 * 1000
@@ -108,5 +108,75 @@ test('an arc with no issues still records that we asked', () => {
   const cached = getCachedArc(db, 555, DAY, new Date('2026-09-04T11:00:00.000Z'))
 
   expect(cached?.arc.issues).toEqual([])
+  db.close()
+})
+
+// The volume an arc issue belongs to is what decides where a download of it lands, and an
+// arc spans many volumes - the one it is named for plus every tie-in. Comic Vine's id for
+// that volume is the only thing that identifies it; a name cannot tell two relaunches of
+// "Captain America" apart.
+test('a cached arc issue keeps the id of the volume it belongs to', () => {
+  const db = openDb(':memory:')
+  cacheArc(db, 61350, {
+    ...ARC,
+    issues: [{ ...ARC.issues[0], volumeId: 141487 }],
+  }, '2026-09-04T10:00:00.000Z')
+
+  const cached = getCachedArc(db, 61350, DAY, new Date('2026-09-04T11:00:00.000Z'))
+
+  expect(cached?.arc.issues[0].volumeId).toBe(141487)
+  db.close()
+})
+
+// Arcs cached before the column existed carry no volume id, and must still read back.
+test('an arc issue with no volume id reads back without one', () => {
+  const db = openDb(':memory:')
+  cacheArc(db, 61350, ARC, '2026-09-04T10:00:00.000Z')
+
+  const cached = getCachedArc(db, 61350, DAY, new Date('2026-09-04T11:00:00.000Z'))
+
+  expect(cached?.arc.issues[0]).not.toHaveProperty('volumeId')
+  db.close()
+})
+
+// The download route is handed a Comic Vine issue id and nothing else: the press came from
+// a tile, which knows the issue but not which arc page it was drawn on.
+test('a cached arc issue can be found by its Comic Vine id alone', () => {
+  const db = openDb(':memory:')
+  cacheArc(db, 61350, {
+    ...ARC,
+    issues: [{ ...ARC.issues[1], volumeId: 141487 }],
+  }, '2026-09-04T10:00:00.000Z')
+
+  const found = findArcIssue(db, 1150002)
+
+  expect(found).toEqual({
+    id: 1150002,
+    number: '12',
+    name: "Hell's Angel, Part 1",
+    volumeName: 'Captain America',
+    volumeId: 141487,
+    coverDate: '2026-08-01',
+    storeDate: '2026-06-10',
+    siteUrl: 'https://cv/12',
+  })
+  db.close()
+})
+
+test('an issue in no cached arc is not found', () => {
+  const db = openDb(':memory:')
+  cacheArc(db, 61350, ARC, '2026-09-04T10:00:00.000Z')
+
+  expect(findArcIssue(db, 999999)).toBeUndefined()
+  db.close()
+})
+
+// An issue is found however old the arc holding it is: the press follows a page view, and
+// that view is what filled the cache - refusing on age would refuse the button it drew.
+test('an issue in an aged-out arc is still found', () => {
+  const db = openDb(':memory:')
+  cacheArc(db, 61350, ARC, '2025-01-01T10:00:00.000Z')
+
+  expect(findArcIssue(db, 1150001)?.number).toBe('11')
   db.close()
 })

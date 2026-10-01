@@ -160,6 +160,8 @@ export interface CvArcIssue {
   siteUrl?: string
   number?: string
   volumeName?: string
+  /** Comic Vine's id for that volume, which is what an edition is matched on. */
+  volumeId?: number
   coverDate?: string
   /** The day it reached shops. Runs about two months behind the cover date. */
   storeDate?: string
@@ -437,6 +439,7 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         if (!d) continue
         issue.number = d.issue_number
         issue.volumeName = d.volume?.name
+        issue.volumeId = d.volume?.id
         issue.coverDate = d.cover_date
         issue.storeDate = d.store_date
       }

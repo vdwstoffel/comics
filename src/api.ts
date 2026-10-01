@@ -167,10 +167,14 @@ export interface ApiArcIssue {
   siteUrl?: string
   /** Series and number — what the tile is labelled with. Absent if the lookup failed. */
   volumeName?: string
+  /** Comic Vine's id for that volume, which is what decides where a download of it lands. */
+  volumeId?: number
   number?: string
   coverDate?: string
   storeDate?: string
   owned: boolean
+  /** Only for an issue you do not own; null when no single scraped row can be it. */
+  match?: { indexId: number; title: string } | null
   /** Present only when owned — the issue in your library. */
   bookId?: number
   /** Only for an issue you own — one you do not have has no read state. */
@@ -518,6 +522,11 @@ export const api = {
 
   downloadRelease: (cvIssueId: number) =>
     json<{ started: boolean }>(`/api/releases/issues/${cvIssueId}/download`, { method: 'POST' }),
+
+  /** A gap in a story arc. Where it lands is the server's decision: an arc spans volumes,
+   *  so there is no one edition the press can name. */
+  downloadArcIssue: (cvIssueId: number) =>
+    json<{ queued: boolean }>(`/api/arcs/issues/${cvIssueId}/download`, { method: 'POST' }),
   getCharacter: (bookId: string | number, name: string) =>
     json<CharacterResponse>(`/api/books/${bookId}/character?name=${encodeURIComponent(name)}`),
   cvSearch: (q: string, type: string) =>

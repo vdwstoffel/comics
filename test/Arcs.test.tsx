@@ -124,23 +124,26 @@ test('an issue you own shows its cover and links into your library', async () =>
   expect(within(link).getByRole('img')).toHaveAttribute('src', '/api/books/43/thumbnail')
 })
 
+// A missing tile carries two links now - the cover out to Comic Vine, and Find - so the
+// name is anchored to reach the cover rather than matching both.
+
 // A cover you have not bought is a spoiler. The tile stays, the art does not.
 test('an issue you do not own shows no cover art', async () => {
   renderAt('/arcs/Death%20Spiral')
-  const link = await screen.findByRole('link', { name: /Part Three/ })
+  const link = await screen.findByRole('link', { name: /^Part Three/ })
   expect(within(link).queryByRole('img')).toBeNull()
 })
 
 test('an issue you do not own is still clickable, out to Comic Vine', async () => {
   renderAt('/arcs/Death%20Spiral')
-  const link = await screen.findByRole('link', { name: /Part Three/ })
+  const link = await screen.findByRole('link', { name: /^Part Three/ })
   expect(link).toHaveAttribute('href', 'https://cv/three')
   expect(link).toHaveAttribute('target', '_blank')
 })
 
 test('a missing issue says it is missing', async () => {
   renderAt('/arcs/Death%20Spiral')
-  const link = await screen.findByRole('link', { name: /Part Three/ })
+  const link = await screen.findByRole('link', { name: /^Part Three/ })
   expect(within(link).getByText(/missing/i)).toBeInTheDocument()
 })
 
@@ -177,7 +180,7 @@ test('an issue is labelled with its series and number', async () => {
 test('an issue Comic Vine never titled still says what it is', async () => {
   stubQib()
   renderAt('/arcs/Queen%20in%20Black')
-  expect(await screen.findByRole('link', { name: /Venom #260/ })).toBeInTheDocument()
+  expect(await screen.findByRole('link', { name: /^Venom #260/ })).toBeInTheDocument()
   expect(screen.queryByText(/Issue 1186160/)).toBeNull()
 })
 
@@ -192,7 +195,7 @@ test('an issue that has a story title keeps it under the series', async () => {
 test('an issue with no series falls back to its id', async () => {
   stubQib()
   renderAt('/arcs/Queen%20in%20Black')
-  expect(await screen.findByRole('link', { name: /Issue 1192026/ })).toBeInTheDocument()
+  expect(await screen.findByRole('link', { name: /^Issue 1192026/ })).toBeInTheDocument()
 })
 
 test('the arc page counts what you have against the whole arc', async () => {
@@ -228,7 +231,7 @@ test('an issue you are partway through shows how far', async () => {
 
 test('an issue you do not own wears no read badge', async () => {
   renderAt('/arcs/Death%20Spiral')
-  const link = await screen.findByRole('link', { name: /Part Three/ })
+  const link = await screen.findByRole('link', { name: /^Part Three/ })
   expect(within(link).queryByLabelText('Read')).toBeNull()
   expect(within(link).queryByLabelText(/In progress/)).toBeNull()
 })

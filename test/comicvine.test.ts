@@ -532,6 +532,15 @@ test('getStoryArc carries the series and number the arc response leaves out', as
   expect(tieIn).toMatchObject({ volumeName: 'Sidekicks', number: '7', storeDate: '2015-03-04' })
 })
 
+// Which volume a tie-in belongs to is what decides where a download of it lands, and the
+// name cannot answer that: Marvel and DC relaunch under identical names constantly.
+test('getStoryArc carries the id of the volume each issue belongs to', async () => {
+  const cv = createComicVine({ apiKey: 'k', now: () => 0, fetchImpl: mockFetch(arcRoutes) })
+  const arc = await cv.getStoryArc(56676)
+  const tieIn = arc.issues.find((i) => i.id === 312721)
+  expect(tieIn?.volumeId).toBe(2)
+})
+
 // Cover dates run about two months ahead of on-sale dates, so an arc where only some books
 // carry a store date must sort on cover dates throughout rather than interleave the two.
 test('getStoryArc sorts on cover dates when an issue has no on-sale date', async () => {

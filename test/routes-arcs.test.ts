@@ -440,3 +440,52 @@ test('the arcs of a book that does not exist 404', async () => {
     expect((await t.app.inject({ url: '/api/books/999/arcs' })).statusCode).toBe(404)
   } finally { await t.cleanup() }
 })
+
+// A gap in an arc is worth filling, and the only way to offer that is to say which scraped
+// row is this issue. Matched on the issue's OWN volume name, never the arc's: most of what
+// an arc is missing is tie-ins, which belong to other volumes entirely.
+test('a missing arc issue carries the one scraped row that is it', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  t.db.prepare("INSERT INTO comic_index (title, url, category, number, year, imported_at) VALUES (?,?,?,?,?,?)")
+    .run('Death Spiral #3 (2015)', 'https://x.test/post/3', 'Marvel Comics', '003', 2015, '2026-09-13T00:00:00.000Z')
+  try {
+    const res = await t.app.inject({ url: '/api/arcs/Death%20Spiral' })
+    const issues = res.json().arc.issues as Array<{ id: number; match?: { title: string } }>
+
+    expect(issues.find((i) => i.id === 9999999)?.match?.title).toBe('Death Spiral #3 (2015)')
+  } finally { await t.cleanup() }
+})
+
+// Computing a match for a comic you already have would be work thrown away, and a "Get"
+// offered on a tile that opens the reader is a button with nothing to do.
+test('an arc issue you own carries no match', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  t.db.prepare("INSERT INTO comic_index (title, url, category, number, year, imported_at) VALUES (?,?,?,?,?,?)")
+    .run('Death Spiral #1 (2015)', 'https://x.test/post/1', 'Marvel Comics', '001', 2015, '2026-09-13T00:00:00.000Z')
+  try {
+    const res = await t.app.inject({ url: '/api/arcs/Death%20Spiral' })
+    const issues = res.json().arc.issues as Array<{ id: number; owned: boolean; match?: unknown }>
+
+    const owned = issues.find((i) => i.id === 1156915)
+    expect(owned?.owned).toBe(true)
+    expect(owned?.match).toBeUndefined()
+  } finally { await t.cleanup() }
+})
+
+// Nothing scraped can be this issue - two candidates, or none. The page has to be able to
+// tell "I can fetch this" from "go and look yourself", so the field is present and null.
+test('a missing arc issue nothing matches says so rather than going quiet', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    const res = await t.app.inject({ url: '/api/arcs/Death%20Spiral' })
+    const issues = res.json().arc.issues as Array<{ id: number; match: unknown }>
+
+    expect(issues.find((i) => i.id === 9999999)?.match).toBeNull()
+  } finally { await t.cleanup() }
+})
