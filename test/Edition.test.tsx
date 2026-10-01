@@ -56,9 +56,7 @@ function issue(number: string, year: number | null) {
   return { id: Number(number), number, title: null, pageCount: 20, comicinfoSynced: false, year }
 }
 
-// The chosen view lives in localStorage and so outlives a test. Without this, the first
-// test to press Grid would silently decide what every test after it renders.
-beforeEach(() => { localStorage.clear(); mockFetch() })
+beforeEach(() => { mockFetch() })
 afterEach(() => { cleanup() })
 
 function renderPage(path = '/edition/9', client?: QueryClient) {
@@ -79,8 +77,10 @@ function renderPage(path = '/edition/9', client?: QueryClient) {
  * run at once - which is a different question from what the carousel centres on.
  */
 function renderGrid(path = '/edition/9', client?: QueryClient) {
-  localStorage.setItem('comics.editionView', 'grid')
-  return renderPage(path, client)
+  const [base, query] = path.split('?')
+  const params = new URLSearchParams(query)
+  params.set('view', 'grid')
+  return renderPage(`${base}?${params}`, client)
 }
 
 async function startEditing() {
@@ -825,8 +825,16 @@ function mockFetchWithUpcoming(upcoming: unknown, edition: Record<string, unknow
     if (String(url).includes('/api/releases/upcoming')) {
       return { ok: true, json: async () => upcoming }
     }
+    // Coming soon lives in the carousel's sidebar now, and the carousel needs a run to
+    // walk before there is a sidebar beside it.
     if (String(url).includes('/issues')) {
-      return { ok: true, json: async () => ({ issues: [], extras: [] }) }
+      return {
+        ok: true,
+        json: async () => ({
+          issues: [{ id: 1, number: '1', owned: false }],
+          extras: [], owned: 0, total: 1, fetchedAt: '2026-09-04T10:00:00.000Z',
+        }),
+      }
     }
     // Only the editions LIST - "/api/editions/9" is this edition's own detail and must
     // fall through, or the page renders with no edition at all.
@@ -841,17 +849,19 @@ test('coming soon names each solicited issue of this volume and the week it land
   mockFetchWithUpcoming(UPCOMING)
   renderPage()
 
-  expect(await screen.findByText(/coming soon/i)).toBeInTheDocument()
-  expect(screen.getByText('The Amazing Spider-Man (2025) #16')).toBeInTheDocument()
-  expect(screen.getByText('Wednesday, 28 October 2026')).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: /coming soon \(1\)/i })).toBeInTheDocument()
+  expect(screen.getByText('#16')).toBeInTheDocument()
+  expect(screen.getByText('28 Oct 2026')).toBeInTheDocument()
 })
 
+// Counted as well as absent: the heading says how many there are, so one row rather than
+// two is the whole assertion, and a filter that let Daredevil through would show it.
 test('coming soon leaves out an issue of another series', async () => {
   mockFetchWithUpcoming(UPCOMING)
   renderPage()
 
-  await screen.findByText(/coming soon/i)
-  expect(screen.queryByText('Daredevil (2025) #12')).not.toBeInTheDocument()
+  await screen.findByRole('button', { name: /coming soon \(1\)/i })
+  expect(screen.queryByText('#12')).not.toBeInTheDocument()
 })
 
 test('there is no coming soon heading when nothing is solicited for this volume', async () => {
@@ -860,7 +870,7 @@ test('there is no coming soon heading when nothing is solicited for this volume'
 
   // The run renders from the same load, so by the time it is on screen the calendar
   // has been answered too - an absence checked before that would pass for the wrong reason.
-  expect(await screen.findByText('Vol 7')).toBeInTheDocument()
+  expect(await screen.findByTestId('carousel-current')).toBeInTheDocument()
   await waitFor(() => expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument())
 })
 
@@ -932,13 +942,15 @@ test('the issue below the cover is the one centred', async () => {
   expect(await screen.findByRole('heading', { name: /#3.*Three/ })).toBeInTheDocument()
 })
 
-/* ── Grid is still there ───────────────────────────────────────────────────── */
+/* ── The wall of covers ────────────────────────────────────────────────────── */
 
-test('the grid is one press away, and shows the whole run at once', async () => {
+// One control, not a pair. The run is how a volume is read; the covers are a way of
+// finding one comic in it, which you ask for and then leave.
+test('the covers are one press away, and show the whole run at once', async () => {
   mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
   renderPage()
 
-  fireEvent.click(await screen.findByRole('button', { name: /^grid$/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /show covers/i }))
 
   expect(screen.getByText('One')).toBeInTheDocument()
   expect(screen.getByText('Two')).toBeInTheDocument()
@@ -946,27 +958,36 @@ test('the grid is one press away, and shows the whole run at once', async () => 
   expect(screen.queryByTestId('carousel-current')).toBeNull()
 })
 
-// Choosing the grid once should not mean choosing it on every volume you open.
-test('the chosen view is remembered', async () => {
+test('and one press back, without having to pick one', async () => {
   mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
-  const first = renderPage()
-  fireEvent.click(await screen.findByRole('button', { name: /^grid$/i }))
+  renderGrid()
+
+  fireEvent.click(await screen.findByRole('button', { name: /hide covers/i }))
+
+  expect(await screen.findByTestId('carousel-current')).toBeInTheDocument()
+})
+
+// A volume always opens as the run. Asking for the covers on one volume is not a statement
+// about how you want to read the next.
+test('a volume opens as the run however the last one was left', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  const first = renderGrid()
+  await screen.findByText('One')
   first.unmount()
 
   renderPage()
-  await screen.findByText('One')
-  expect(screen.queryByTestId('carousel-current')).toBeNull()
+  expect(await screen.findByTestId('carousel-current')).toBeInTheDocument()
 })
 
 // A placeholder has no read state, so a filtered page has no run - and with no run there
 // is nothing for a carousel to walk.
-test('a read filter leaves only the grid, with no view to switch to', async () => {
+test('a read filter leaves only the covers, with nothing to switch to', async () => {
   mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
   renderPage('/edition/9?status=unread')
 
   expect(await screen.findByText('One')).toBeInTheDocument()
   expect(screen.queryByTestId('carousel-current')).toBeNull()
-  expect(screen.queryByRole('button', { name: /^grid$/i })).toBeNull()
+  expect(screen.queryByRole('button', { name: /covers/i })).toBeNull()
 })
 
 /* ── The sidebar ───────────────────────────────────────────────────────────── */
@@ -1099,4 +1120,43 @@ test('a gap offers no removal', async () => {
 
   await screen.findByTestId('carousel-current')
   expect(within(screen.getByTestId('issue-identity')).queryByRole('button', { name: /remove issue/i })).toBeNull()
+})
+
+// The shelf knows a comic by its id, not by Comic Vine's id for the issue it fills, so
+// closing a comic opened from the shelf asks for the run by `book-<id>`.
+test('a url naming a book opens on the issue that book fills', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage('/edition/9?issue=book-11')
+
+  expect(await screen.findByTestId('carousel-current')).toHaveTextContent('#1')
+})
+
+test('a url naming a book the run does not hold falls back to the opening rule', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage('/edition/9?issue=book-999')
+
+  expect(await screen.findByTestId('carousel-current')).toHaveTextContent('#3')
+})
+
+/* ── The grid as a way into the carousel ──────────────────────────────────── */
+
+// The grid is for finding a comic among thirty-five, not a place to stay: picking one
+// shows it in the carousel, which is where everything about it is now.
+test('picking a cover in the grid opens it in the carousel', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderGrid()
+
+  fireEvent.click(await screen.findByRole('link', { name: /Two/ }))
+
+  expect(await screen.findByTestId('carousel-current')).toHaveTextContent('#2')
+})
+
+// Nothing beside the run in the grid: every gap is already a tile in it with its own Get,
+// and what is not published yet is not part of finding a comic you have.
+test('the grid carries no sidebar', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderGrid()
+
+  await screen.findByText('One')
+  expect(screen.queryByRole('complementary')).toBeNull()
 })

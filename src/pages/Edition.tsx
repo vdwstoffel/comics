@@ -9,12 +9,9 @@ import CoverTile from '../components/CoverTile'
 import MissingIssueTile from '../components/MissingIssueTile'
 import { tileLabel } from '../lib/tileLabel'
 import { findIssueHref } from '../lib/findIssueHref'
-import { writeOutDay } from '../lib/releaseWeek'
 import { useUpcoming } from '../lib/useUpcoming'
 import { upcomingForEdition } from '../lib/upcomingForEdition'
 import { volumeEntries } from '../lib/volumeEntries'
-import { readEditionView, writeEditionView } from '../lib/editionView'
-import type { EditionView } from '../lib/editionView'
 import EditionEditDialog from '../components/EditionEditDialog'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import EditionRun from '../components/EditionRun'
@@ -46,7 +43,7 @@ function VolumeIssue({ issue, book, editionId, seriesName }: {
   if (issue.owned && issue.bookId != null) {
     return (
       <CoverTile
-        to={`/book/${issue.bookId}`}
+        to={`/edition/${editionId}?view=carousel&issue=book-${issue.bookId}`}
         img={`/api/books/${issue.bookId}/thumbnail`}
         title={book?.title || issue.name || label}
         subtitle={label}
@@ -74,18 +71,26 @@ function VolumeIssue({ issue, book, editionId, seriesName }: {
 export default function Edition() {
   const { id } = useParams()
   const { liveByIssue } = useDownload()
-  const [searchParams] = useSearchParams()
+  const [searchParams, setSearchParams] = useSearchParams()
   const status = statusFrom(searchParams)
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(false)
-  // How you last chose to read a run, which holds across volumes. Read once: the only
-  // thing that changes it is the toggle below, which writes both at the same time.
-  const [view, setView] = useState<EditionView>(readEditionView)
-  const chooseView = (next: EditionView) => {
-    setView(next)
-    writeEditionView(next)
+  // A volume is the run. The wall of covers is a way of finding one comic in it, asked
+  // for and then left, so it lives in the url of this volume and nowhere else - choosing
+  // it here says nothing about how you want to open the next volume.
+  //
+  // In the url rather than in state because a cover in that wall has to say two things at
+  // once - show the run, and show it on this comic - and only a url carries both in one
+  // navigation. Held as state, the switch re-rendered the page before the navigation
+  // landed, and the run wrote its own opening choice over the comic on its way in.
+  const showingCovers = searchParams.get('view') === 'grid'
+  const showCovers = (on: boolean) => {
+    const params = new URLSearchParams(searchParams)
+    if (on) params.set('view', 'grid')
+    else params.delete('view')
+    setSearchParams(params, { replace: true })
   }
 
   const { data, isLoading } = useQuery({
@@ -266,7 +271,7 @@ export default function Edition() {
   // because a placeholder has no read state to filter by - so there is nothing to walk
   // and the grid of what survived the filter is the only honest view.
   const canCarousel = status === null && entries.length > 0
-  const showCarousel = canCarousel && view === 'carousel'
+  const showCarousel = canCarousel && !showingCovers
 
   return (
     <div>
@@ -292,27 +297,18 @@ export default function Edition() {
               {getAll.isPending ? 'Queueing…' : `↓ Get all ${gettable.length}`}
             </button>
           )}
-          {/* A run is the only thing there are two ways to read. Without one - a filtered
-              page, an edition with no volume - there is nothing to switch between. */}
+          {/* One control, not a pair: there is no choice to make between two equals, only
+              a wall of covers to ask for and then leave. Without a run - a filtered page,
+              an edition with no volume - the covers are all there is and nothing switches. */}
           {canCarousel && (
-            <div className="edition-header__views" role="group" aria-label="How to show the run">
-              <button
-                type="button"
-                className={`btn btn-ghost${view === 'carousel' ? ' is-on' : ''}`}
-                aria-pressed={view === 'carousel'}
-                onClick={() => chooseView('carousel')}
-              >
-                Carousel
-              </button>
-              <button
-                type="button"
-                className={`btn btn-ghost${view === 'grid' ? ' is-on' : ''}`}
-                aria-pressed={view === 'grid'}
-                onClick={() => chooseView('grid')}
-              >
-                Grid
-              </button>
-            </div>
+            <button
+              type="button"
+              className="btn btn-ghost edition-header__covers"
+              aria-pressed={showingCovers}
+              onClick={() => showCovers(!showingCovers)}
+            >
+              {showingCovers ? 'Hide covers' : 'Show covers'}
+            </button>
           )}
           <button className="btn-danger" onClick={() => setConfirmRemove(true)}>Remove edition</button>
         </div>
@@ -446,7 +442,7 @@ export default function Edition() {
                 return (
                   <CoverTile
                     key={extra.bookId}
-                    to={`/book/${extra.bookId}`}
+                    to={`/edition/${id}?view=carousel&issue=book-${extra.bookId}`}
                     img={`/api/books/${extra.bookId}/thumbnail`}
                     title={tileLabel(b, extra.number, extra.title)}
                     subtitle={extra.number ? `#${extra.number}` : ''}
@@ -460,7 +456,7 @@ export default function Edition() {
           : data.books.map((b) => (
             <CoverTile
               key={b.id}
-              to={`/book/${b.id}`}
+              to={`/edition/${id}?view=carousel&issue=book-${b.id}`}
               img={`/api/books/${b.id}/thumbnail`}
               title={tileLabel(b)}
               subtitle={b.number ? `#${b.number}` : ''}
@@ -471,27 +467,6 @@ export default function Edition() {
       </div>
       )}
 
-      {/*
-        The grid's own Coming soon. In the carousel the sidebar carries it, beside the
-        gaps, which is where both answers to "what does this run still owe me" belong.
-        Drawn only when there is something to draw either way: a volume that ended years
-        ago, one Marvel has not solicited past, and every DC volume would otherwise carry
-        a permanent empty heading - and "Coming soon: nothing" reads as a promise broken
-        rather than as a run that is simply not running.
-      */}
-      {!showCarousel && soon.length > 0 && (
-        <section className="edition-soon">
-          <h2 className="edition-soon__title">Coming soon</h2>
-          <ul className="edition-soon__list">
-            {soon.map((issue) => (
-              <li key={issue.sourceId} className="edition-soon__row">
-                <span className="edition-soon__name">{issue.headline}</span>
-                <span className="edition-soon__week">{writeOutDay(issue.week)}</span>
-              </li>
-            ))}
-          </ul>
-        </section>
-      )}
     </div>
   )
 }

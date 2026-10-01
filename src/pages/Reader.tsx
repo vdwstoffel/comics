@@ -14,6 +14,11 @@ export default function Reader() {
   // carousel opens a comic directly, and sending you to the issue's own page on the way
   // out dropped you somewhere you had never been and two presses from the run.
   const cameFromSomewhere = location.key !== 'default'
+  // The shelf asks for something else: it opens a comic with no run and no issue page on
+  // the way in, and stepping back onto it would put you among the comics you have not read
+  // yet - including the one you just did, until the shelf catches up. Closing the comic
+  // leaves you in its run instead, standing on it.
+  const toRun = (location.state as { back?: string } | null)?.back === 'run'
   const { data } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
   const [page, setPage] = useState<number | null>(null)
   const [scrubbing, setScrubbing] = useState<number | null>(null)
@@ -60,18 +65,30 @@ export default function Reader() {
 
   if (!data || page === null) return <p>Loading…</p>
   const total = data.book.pageCount
+  // The run this comic belongs to, open on this comic. `book-<id>` is a selector the
+  // carousel understands for an issue it holds, whether or not Comic Vine lists it.
+  //
+  // Where back goes when there is no history to step through, as well as where the shelf
+  // asks it to go: the comic's own page is gone, so the run is the only place a comic is.
+  const run = `/edition/${data.book.editionId}?issue=book-${id}`
+  const runBack = toRun ? run : null
   const displayPage = scrubbing ?? page
   return (
     <div className="reader-root">
       {/* A real link, so middle-click and "open in new tab" still work and a comic opened
           cold from a bookmark has somewhere to go. The click goes back instead whenever
-          there is a back to go to. */}
+          there is a back to go to and nowhere particular it was asked to end up.
+
+          Replacing rather than pushing on the way to the run: the reader is behind you,
+          and leaving it in the history would make the browser's own back button re-open
+          the comic you just closed. */}
       <Link
-        to={`/book/${id}`}
+        to={run}
+        replace={runBack !== null}
         className="reader-back"
         aria-label="Back"
         onClick={(e) => {
-          if (!cameFromSomewhere) return
+          if (runBack || !cameFromSomewhere) return
           e.preventDefault()
           navigate(-1)
         }}

@@ -11,6 +11,7 @@ import IssueDetail from './IssueDetail'
 import EditionSidebar from './EditionSidebar'
 import MissingIssueAction from './MissingIssueAction'
 import ConfirmDeleteDialog from './ConfirmDeleteDialog'
+import IssueEditPanel from './IssueEditPanel'
 
 interface EditionRunProps {
   editionId: string
@@ -47,6 +48,7 @@ export default function EditionRun({
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const [editing, setEditing] = useState(false)
   // Which issue is centred lives in the url rather than in state, so that the browser
   // remembers it for us: stepping back into the run from the reader restores the entry
   // this page left behind, issue and all, with nothing to store or look up. It also makes
@@ -58,7 +60,13 @@ export default function EditionRun({
   const chosenFor = useRef<string | null>(null)
 
   const named = params.get('issue')
-  const namedAt = entries.findIndex((e) => e.key === named)
+  // Either the entry's own key, or `book-<id>` for a comic named by the library's id for
+  // it. The shelf knows a comic that way and not by Comic Vine's id for the issue it
+  // fills, so closing a comic opened from the shelf asks for its run that way too.
+  const namedBook = /^book-(\d+)$/.exec(named ?? '')
+  const namedAt = entries.findIndex((e) => (
+    e.key === named || (namedBook !== null && e.bookId === Number(namedBook[1]))
+  ))
   // A bookmarked link to an issue a later run no longer has, or one typed by hand. The
   // opening rule is a better answer than a blank page.
   const at = namedAt !== -1 ? namedAt : carouselStart(entries)
@@ -175,11 +183,17 @@ export default function EditionRun({
             pageCount={current.pageCount}
             readState={current.readState}
             percent={current.percent}
-            detailsTo={current.bookId != null ? `/book/${current.bookId}` : undefined}
+            onEdit={current.bookId != null ? () => setEditing(true) : undefined}
             action={!current.owned && current.issueId != null ? fill(current) : undefined}
             onRemove={current.bookId != null ? () => setConfirmRemove(true) : undefined}
           />
         </div>
+
+        {/* The comic's own page is gone, so what it could do to a comic is done here.
+            Only once the comic itself has arrived: the editor is filled from it. */}
+        {editing && detail?.book && (
+          <IssueEditPanel book={detail.book} onClose={() => setEditing(false)} />
+        )}
 
         <div className="edition-run__detail">
           <IssueDetail

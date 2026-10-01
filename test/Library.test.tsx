@@ -223,7 +223,7 @@ test('the unread view draws the comics, not the series they belong to', async ()
   fireEvent.click(await screen.findByRole('button', { name: /Unread/ }))
 
   const cover = await screen.findByRole('link', { name: 'The Amazing Spider-Man (2025) #29' })
-  expect(cover).toHaveAttribute('href', '/book/7')
+  expect(cover).toHaveAttribute('href', '/read/7')
   expect(screen.queryByText('Amazing Spider-Man')).not.toBeInTheDocument()
 })
 
@@ -235,7 +235,7 @@ test('a volume whose next comic has no metadata still opens it', async () => {
   fireEvent.click(await screen.findByRole('button', { name: /Unread/ }))
 
   expect(await screen.findByRole('link', { name: 'Knull (2026), next unread' }))
-    .toHaveAttribute('href', '/book/9')
+    .toHaveAttribute('href', '/read/9')
 })
 
 // The Reading shelf is gone, so a url still pointing at it names no filter at all and
@@ -444,12 +444,12 @@ test('the issues inside a volume stay off the shelf', async () => {
 // to pick the comic at the front of it, so the cover goes straight there.
 test('a volume cover opens the comic at the front of the run', async () => {
   const cover = await showUnread()
-  expect(cover).toHaveAttribute('href', '/book/7')
+  expect(cover).toHaveAttribute('href', '/read/7')
 })
 
 test('each volume opens its own next comic', async () => {
   await showUnread()
-  expect(screen.getByRole('link', { name: 'Knull (2026) #1' })).toHaveAttribute('href', '/book/11')
+  expect(screen.getByRole('link', { name: 'Knull (2026) #1' })).toHaveAttribute('href', '/read/11')
 })
 
 // Reading the next one is the common action, so it owns the cover. The name stays a way
@@ -465,7 +465,7 @@ test('the volume name opens that volume filtered to unread', async () => {
 // so the shelf pictured comics you had already read while linking to ones you had not.
 test('a volume tile is covered by the comic it opens', async () => {
   const cover = await showUnread()
-  expect(cover).toHaveAttribute('href', '/book/7')
+  expect(cover).toHaveAttribute('href', '/read/7')
   expect(cover.querySelector('img')).toHaveAttribute('src', '/api/books/7/thumbnail')
 })
 
@@ -490,7 +490,7 @@ test('a comic you are partway through groups with the rest of its volume', async
   expect(await screen.findByText('Amazing Spider-Man (2025)')).toBeInTheDocument()
   expect(screen.getByText('3 unread')).toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Amazing Spider-Man (2025) #29' }))
-    .toHaveAttribute('href', '/book/7')
+    .toHaveAttribute('href', '/read/7')
 })
 
 
@@ -535,8 +535,8 @@ test('opening a series shows its volumes, each opening its own next comic', asyn
   renderWithProviders(<Library />, '/?status=unread')
   fireEvent.click(await screen.findByRole('button', { name: /Batman/ }))
 
-  expect(screen.getByRole('link', { name: 'Batman (2012) #1' })).toHaveAttribute('href', '/book/20')
-  expect(screen.getByRole('link', { name: 'Batman (2025) #5' })).toHaveAttribute('href', '/book/23')
+  expect(screen.getByRole('link', { name: 'Batman (2012) #1' })).toHaveAttribute('href', '/read/20')
+  expect(screen.getByRole('link', { name: 'Batman (2025) #5' })).toHaveAttribute('href', '/read/23')
 })
 
 // A series with one run has nothing to fold, and the shelf goes on taking you straight to
@@ -546,7 +546,7 @@ test('a series with one volume is still the volume tile you could read from', as
   renderWithProviders(<Library />, '/?status=unread')
 
   expect(await screen.findByRole('link', { name: 'Amazing Spider-Man (2025) #29' }))
-    .toHaveAttribute('href', '/book/7')
+    .toHaveAttribute('href', '/read/7')
   expect(screen.getByText('3 unread')).toBeInTheDocument()
 })
 
@@ -597,7 +597,7 @@ test('comics in no arc keep their series tiles', async () => {
   renderWithProviders(<Library />, '/?status=unread')
   fireEvent.click(await screen.findByRole('checkbox', { name: /story arcs/i }))
 
-  expect(screen.getByRole('link', { name: 'Batman (2012) #1' })).toHaveAttribute('href', '/book/32')
+  expect(screen.getByRole('link', { name: 'Batman (2012) #1' })).toHaveAttribute('href', '/read/32')
   expect(screen.queryByText('Captain America (2025)')).not.toBeInTheDocument()
 })
 

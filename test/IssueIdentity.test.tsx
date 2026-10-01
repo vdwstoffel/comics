@@ -62,22 +62,22 @@ test('a finished comic says so rather than showing a bar at 100', () => {
   expect(screen.getByText(/^Read$/)).toBeInTheDocument()
 })
 
-test('the rest of the comic is one link away', () => {
-  draw({ detailsTo: '/book/12' })
-  expect(screen.getByRole('link', { name: /details/i })).toHaveAttribute('href', '/book/12')
-})
-
-// A gap has no page to show details on, so the link must not be offered at all.
-test('an issue you do not have offers no details link', () => {
-  draw({ detailsTo: undefined })
-  expect(screen.queryByRole('link', { name: /details/i })).toBeNull()
-})
-
 // The way to fill a gap belongs beside the issue's name, but this block knows nothing
 // about downloads - the page passes the control in.
 test('draws whatever action the page gives it', () => {
   draw({ action: <button type="button">↓ Get</button> })
   expect(screen.getByRole('button', { name: '↓ Get' })).toBeInTheDocument()
+})
+
+// The comic's own page is gone, so what it could do to a comic is reached from here.
+test('offers to edit what is known about the comic', () => {
+  draw({ onEdit: () => {} })
+  expect(screen.getByRole('button', { name: /edit metadata/i })).toBeInTheDocument()
+})
+
+test('a gap has no metadata to edit', () => {
+  draw()
+  expect(screen.queryByRole('button', { name: /edit metadata/i })).toBeNull()
 })
 
 // Removing a comic deletes a file from disk, so the control is offered only where there

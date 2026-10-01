@@ -4,7 +4,7 @@ import Library from './pages/Library'
 import Series from './pages/Series'
 import SeriesAnnuals from './pages/SeriesAnnuals'
 import Edition from './pages/Edition'
-import BookDetail from './pages/BookDetail'
+import BookRedirect from './pages/BookRedirect'
 import Reader from './pages/Reader'
 import Upload from './pages/Upload'
 import SearchComics from './pages/SearchComics'
@@ -100,7 +100,8 @@ export default function App() {
       <Route path="/series/:name" element={<Layout><Series /></Layout>} />
       <Route path="/series/:name/annuals" element={<Layout><SeriesAnnuals /></Layout>} />
       <Route path="/edition/:id" element={<Layout><Edition /></Layout>} />
-      <Route path="/book/:id" element={<Layout><BookDetail /></Layout>} />
+      {/* The comic's own page is gone; everything it said and did lives in the run. */}
+      <Route path="/book/:id" element={<Layout><BookRedirect /></Layout>} />
       <Route path="/read/:id" element={<ReaderLayout><Reader /></ReaderLayout>} />
       <Route path="/upload" element={<Layout><Upload /></Layout>} />
       <Route path="/search" element={<Layout><SearchComics /></Layout>} />

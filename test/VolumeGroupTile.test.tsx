@@ -63,7 +63,7 @@ test('the cards behind the cover are not announced, and are not a second way in'
 // grouping keeps that order, so the first book is the lowest-numbered unread one.
 test('the cover opens the comic you would read next', () => {
   renderTile(12)
-  expect(screen.getByRole('link', { name: 'Venom (2025) #255' })).toHaveAttribute('href', '/book/1')
+  expect(screen.getByRole('link', { name: 'Venom (2025) #255' })).toHaveAttribute('href', '/read/1')
 })
 
 // A title spoils as readily as a cover does — it is why the dialog blurred and renamed
@@ -88,7 +88,7 @@ test('a comic with no issue number is still named apart from the volume link', (
   }
   render(<MemoryRouter><VolumeGroupTile group={untagged} /></MemoryRouter>)
 
-  expect(screen.getByRole('link', { name: 'Knull (2026), next unread' })).toHaveAttribute('href', '/book/1')
+  expect(screen.getByRole('link', { name: 'Knull (2026), next unread' })).toHaveAttribute('href', '/read/1')
   expect(screen.getByRole('link', { name: 'Knull (2026)' })).toHaveAttribute('href', '/edition/4?status=unread')
 })
 
@@ -114,4 +114,12 @@ test('a volume you are partway through draws its progress bar', () => {
 test('a volume you have not started draws no bar', () => {
   const { container } = render(<MemoryRouter><VolumeGroupTile group={group(3)} /></MemoryRouter>)
   expect(container.querySelector('.tile-progress')).toBeNull()
+})
+
+// The shelf is where you choose what to read next, so choosing one should start reading
+// it rather than stopping at a page about it.
+test('the deck opens the comic itself', () => {
+  renderTile(3)
+  const cover = screen.getByRole('link', { name: 'Venom (2025) #255' })
+  expect(cover).toHaveAttribute('href', '/read/1')
 })

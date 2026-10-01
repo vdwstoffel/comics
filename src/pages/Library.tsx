@@ -133,7 +133,9 @@ export default function Library() {
                   {books.data.books.map((b) => (
                     <CoverTile
                       key={b.id}
-                      to={`/book/${b.id}`}
+                      // Straight into the comic, closing into its run - see VolumeGroupTile.
+                      to={`/read/${b.id}`}
+                      state={{ back: 'run' }}
                       img={`/api/books/${b.id}/thumbnail`}
                       title={tileLabel(b)}
                       subtitle={b.number ? `#${b.number}` : ''}

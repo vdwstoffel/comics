@@ -74,8 +74,8 @@ test('an open tile shows a tile per volume', () => {
 test('a volume in the panel still opens its own next comic', () => {
   renderTile(batman, true)
 
-  expect(screen.getByRole('link', { name: 'Batman (2012) #1' })).toHaveAttribute('href', '/book/1')
-  expect(screen.getByRole('link', { name: 'Batman (2025) #12' })).toHaveAttribute('href', '/book/12')
+  expect(screen.getByRole('link', { name: 'Batman (2012) #1' })).toHaveAttribute('href', '/read/1')
+  expect(screen.getByRole('link', { name: 'Batman (2025) #12' })).toHaveAttribute('href', '/read/12')
 })
 
 // The point of floating the panel: the shelf behind it does not move. The tile keeps its

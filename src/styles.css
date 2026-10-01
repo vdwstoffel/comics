@@ -3399,18 +3399,14 @@ textarea.input:hover:not(:focus) {
   display: none;
 }
 
-/* The two ways to read a run */
-.edition-header__views {
-  display: flex;
-  gap: 4px;
-}
-
-.edition-header__views .btn-ghost {
+/* The way to the wall of covers, and back from it. Sized like the header's other small
+   controls so it does not compete with the volume's name beside it. */
+.edition-header__covers {
   font-size: 0.8125rem;
   padding: 5px 12px;
 }
 
-.edition-header__views .is-on {
+.edition-header__covers[aria-pressed='true'] {
   background: var(--elevated);
   color: var(--text);
 }

@@ -1,6 +1,6 @@
 import { test, expect, afterEach } from 'vitest'
-import { render, screen, cleanup } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { render, screen, cleanup, fireEvent } from '@testing-library/react'
+import { MemoryRouter, Routes, Route, useLocation } from 'react-router-dom'
 import CoverTile from '../src/components/CoverTile'
 
 afterEach(() => cleanup())
@@ -59,4 +59,24 @@ test('a tile still routes internally when given `to`', () => {
   renderTile({ to: '/book/7', title: 'Part One', img: '/api/books/7/thumbnail' })
   expect(screen.getByRole('link', { name: /Part One/ })).toHaveAttribute('href', '/book/7')
   expect(screen.getByRole('img')).toHaveAttribute('src', '/api/books/7/thumbnail')
+})
+
+// The shelf opens a comic in the reader and tells it where to go when you close it. That
+// instruction travels as router state, so an href cannot show it arrived - only following
+// the link can.
+test('carries router state through to where it leads', () => {
+  function Landed() {
+    const { state } = useLocation()
+    return <span data-testid="landed">{JSON.stringify(state)}</span>
+  }
+  render(
+    <MemoryRouter initialEntries={['/']}>
+      <Routes>
+        <Route path="/" element={<CoverTile to="/read/7" title="Venom #1" state={{ back: 'run' }} />} />
+        <Route path="/read/:id" element={<Landed />} />
+      </Routes>
+    </MemoryRouter>,
+  )
+  fireEvent.click(screen.getByRole('link'))
+  expect(screen.getByTestId('landed')).toHaveTextContent('{"back":"run"}')
 })

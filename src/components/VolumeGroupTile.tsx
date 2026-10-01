@@ -52,9 +52,14 @@ export default function VolumeGroupTile({ group }: VolumeGroupTileProps) {
             aria-hidden="true"
           />
         ))}
+        {/* Straight into the comic. The shelf is where you choose what to read next, so
+            choosing one should start reading it rather than stopping at a page about it.
+            `back: 'run'` is what the reader closes into - this volume's run, standing on
+            this comic - because the shelf you came from will no longer be showing it. */}
         <Link
           className="volume-tile__cover"
-          to={`/book/${next.id}`}
+          to={`/read/${next.id}`}
+          state={{ back: 'run' }}
           aria-label={next.number ? `${group.editionName} #${next.number}` : `${group.editionName}, next unread`}
         >
           {/* The comic this opens, not the volume it belongs to: a volume's own

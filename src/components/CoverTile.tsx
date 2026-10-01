@@ -10,9 +10,13 @@ interface CoverTileProps {
   subtitle?: string
   readState?: 'unread' | 'reading' | 'read'
   percent?: number
+  /** Carried to the destination. The shelf uses it to say where closing the comic leads. */
+  state?: unknown
+  /** Runs as well as following the link, not instead of it. */
+  onClick?: () => void
 }
 
-export default function CoverTile({ to, href, img, title, subtitle, readState, percent }: CoverTileProps) {
+export default function CoverTile({ to, href, img, title, subtitle, readState, percent, state, onClick }: CoverTileProps) {
   const isRead = readState === 'read'
 
   const inner = (
@@ -37,5 +41,5 @@ export default function CoverTile({ to, href, img, title, subtitle, readState, p
   if (href) {
     return <a href={href} target="_blank" rel="noreferrer" className="cover-tile">{inner}</a>
   }
-  return <Link to={to ?? '#'} className="cover-tile">{inner}</Link>
+  return <Link to={to ?? '#'} state={state} onClick={onClick} className="cover-tile">{inner}</Link>
 }

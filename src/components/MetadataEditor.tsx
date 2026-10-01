@@ -21,10 +21,13 @@ export default function MetadataEditor({ book, onSave, onCancel, children }: Met
       {children}
       {FIELDS.map((f) => (
         <div key={f} className="field">
-          <label>{f}</label>
+          {/* Tied to its field. A label that only sits near an input is a label a screen
+              reader cannot give to anyone, and a field nothing can name is a field nothing
+              can fill in but a mouse. */}
+          <label htmlFor={`metadata-${f}`}>{f}</label>
           {f === 'summary'
-            ? <textarea value={form[f]} onChange={(e) => setForm({ ...form, [f]: e.target.value })} rows={4} />
-            : <input value={form[f]} onChange={(e) => setForm({ ...form, [f]: e.target.value })} />}
+            ? <textarea id={`metadata-${f}`} value={form[f]} onChange={(e) => setForm({ ...form, [f]: e.target.value })} rows={4} />
+            : <input id={`metadata-${f}`} value={form[f]} onChange={(e) => setForm({ ...form, [f]: e.target.value })} />}
         </div>
       ))}
       <div className="btn-row metadata-section__actions">
