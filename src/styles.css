@@ -2949,3 +2949,693 @@ textarea.input:hover:not(:focus) {
     display: none;
   }
 }
+
+/* ============================================================
+   The run as a carousel
+   ============================================================
+   Two columns in a landscape window: the comic you are on, and what the run still owes
+   you. One column on a phone held upright, reordered so that what you can act on sits
+   above the fold and the reference material below it.
+
+   Nothing here branches on orientation except where it has to. The cover is sized from
+   both axes at once, so a tall narrow window and a short wide one are the same rule with
+   a different term winning. */
+.edition-run {
+  display: flex;
+  align-items: flex-start;
+  gap: 32px;
+  margin-top: 16px;
+}
+
+.edition-run__main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* ---- the strip of covers ---- */
+.issue-carousel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 16px;
+  /* The strip owns the arrow keys, and a focus ring around the whole row says nothing
+     useful - the chevrons inside it carry their own. */
+  outline: none;
+  /* A swipe is a horizontal drag; without this the browser claims it for a scroll
+     gesture and the pointerup never arrives. */
+  touch-action: pan-y;
+  user-select: none;
+}
+
+/* Comic covers are 2:3 throughout the app. Sizing from whichever axis runs out first is
+   what makes one rule serve both orientations: in portrait the width term wins and the
+   cover fills its column; in a short landscape window - a phone on its side - the height
+   term wins and the cover shrinks rather than pushing the issue's name off the screen.
+   dvh rather than vh because mobile browser chrome collapses on scroll, and vh measures
+   the window as if it never does. */
+.issue-carousel__cover {
+  position: relative;
+  aspect-ratio: 2 / 3;
+  height: min(66dvh, calc((100vw - 220px) * 1.5));
+  max-height: 66dvh;
+  border-radius: var(--radius);
+  overflow: hidden;
+  background: var(--surface);
+  box-shadow: var(--shadow);
+}
+
+.issue-carousel__cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* A gap shows no art - a cover is a spoiler for a comic you have not read - so the plate
+   carries the number alone, at a size that reads as a deliberate blank rather than as a
+   cover that failed to load. */
+.issue-carousel__plate {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+/* Above the neighbours, always. They are positioned and this is not, which paints them
+   over it - and since a peek is drawn at 40% opacity, the cover showing through one reads
+   as the cover itself being half transparent. */
+.issue-carousel__current {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+}
+
+.issue-carousel__open {
+  display: block;
+  transition: transform 0.15s ease;
+}
+
+.issue-carousel__open:hover {
+  transform: translateY(-2px);
+}
+
+.issue-carousel__label {
+  font-weight: 600;
+}
+
+/* The slot holds the row's shape at both ends of the run: an empty one either side keeps
+   the centred cover centred when there is no neighbour to draw. */
+.issue-carousel__slot {
+  flex: 0 0 22%;
+  display: flex;
+  min-width: 0;
+}
+
+.issue-carousel__slot--prev { justify-content: flex-end; }
+.issue-carousel__slot--next { justify-content: flex-start; }
+
+/* The neighbours are scenery: smaller, dimmed, and not something to aim at. They say
+   there is more run that way, which is the whole reason they are drawn. */
+.issue-carousel__peek {
+  flex-shrink: 0;
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+.issue-carousel__peek .issue-carousel__cover {
+  height: min(38dvh, calc((100vw - 220px) * 0.9));
+  box-shadow: none;
+}
+
+.issue-carousel__peek-label {
+  display: block;
+  margin-top: 8px;
+  text-align: center;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+/* Above the cover, which is itself lifted above the neighbours. A control that the thing
+   it acts on paints over is a control nobody can press. */
+.issue-carousel__arrow {
+  position: relative;
+  z-index: 2;
+  flex-shrink: 0;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 1rem;
+  width: 44px;
+  height: 44px;
+}
+
+.issue-carousel__arrow:hover:not(:disabled) {
+  background: var(--elevated);
+}
+
+.issue-carousel__arrow:disabled {
+  opacity: 0.25;
+  cursor: default;
+}
+
+/* ---- which issue this is ---- */
+.issue-identity__name {
+  display: flex;
+  align-items: baseline;
+  flex-wrap: wrap;
+  gap: 10px;
+  font-size: 1.25rem;
+}
+
+.issue-identity__number {
+  color: var(--muted);
+}
+
+.issue-identity__meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-top: 4px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.issue-identity__progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.issue-identity__progress-bar {
+  display: block;
+  width: 80px;
+  height: 4px;
+  border-radius: 999px;
+  background: var(--border);
+  overflow: hidden;
+}
+
+.issue-identity__progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.issue-identity__read {
+  color: var(--text);
+}
+
+.issue-identity__actions {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-top: 12px;
+}
+
+.issue-identity__details {
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.issue-identity__details:hover {
+  color: var(--text);
+}
+
+/* Quiet until you reach for it. It deletes a file from disk, so it must not compete with
+   Details for the eye - but it must not hide from a hand looking for it either. */
+.issue-identity__remove {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  font-size: 0.875rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.issue-identity__remove:hover {
+  color: var(--accent);
+}
+
+/* ---- credits, cast and summary ---- */
+.issue-detail {
+  max-width: 640px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* The same heading the issue's own page uses, because this block is the same block. */
+.issue-detail__heading {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+.issue-detail__section + .issue-detail__section {
+  margin-top: 16px;
+}
+
+.issue-detail__summary {
+  color: var(--text);
+}
+
+.issue-detail__show-toggle {
+  margin-top: 8px;
+  font-size: 0.8125rem;
+  padding: 2px 10px;
+}
+
+/* The fold exists only where there is no room; everywhere else the clamp is off and the
+   control that works it is not drawn at all. See the short-landscape rule below. */
+.issue-detail__more {
+  display: none;
+}
+
+/* ---- what the run still owes you ---- */
+/* A margin note beside the comic, not a second column competing with it. Narrow, muted,
+   undivided, and capped in height: a run with forty gaps in it was drawing a denser and
+   taller thing than the cover it sits next to, which made the list the page's subject. */
+.edition-side {
+  flex: 0 0 220px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  font-size: 0.8125rem;
+}
+
+/* Where the run came from: the way to read it again, and the way to go and look at it.
+   Housekeeping rather than anything about the comic, so it is drawn at the weight of the
+   quiet sections below it. */
+.edition-side__source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.edition-side__cv {
+  color: var(--muted);
+  font-size: 0.75rem;
+  border-bottom: 1px solid transparent;
+}
+
+.edition-side__cv:hover {
+  color: var(--text);
+  border-bottom-color: var(--muted);
+}
+
+/* News, not bookkeeping: the run on screen is not the run Comic Vine has. */
+.edition-side__stale {
+  flex: 1 0 100%;
+  color: var(--accent);
+  font-size: 0.75rem;
+}
+
+.edition-side__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 6px;
+}
+
+.edition-side__toggle {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: none;
+  border: none;
+  color: var(--text);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  font-family: inherit;
+  padding: 0;
+  /* In a column there is nothing to fold, so the heading is not something to press. The
+     narrow layout below turns it back into a control. */
+  cursor: default;
+}
+
+.edition-side__get-all {
+  flex-shrink: 0;
+}
+
+/* However long the run's list of gaps, it stops before it is taller than the comic. The
+   count in the heading is what says how many there are; the list is for reaching one. */
+.edition-side__list {
+  list-style: none;
+  margin: 6px 0 0;
+  padding: 0;
+  max-height: 40dvh;
+  overflow-y: auto;
+}
+
+.edition-side__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 3px 0;
+}
+
+.edition-side__label {
+  min-width: 0;
+  color: var(--muted);
+}
+
+/* The controls are real controls and stay pressable, but at the weight of a margin note
+   rather than of the page's main offer. */
+.edition-side .btn,
+.edition-side .btn-ghost,
+.edition-side .volume-issue__find {
+  font-size: 0.75rem;
+  padding: 2px 8px;
+}
+
+/* Nothing here has happened yet and nothing here can be acted on, so it is the lightest
+   thing in the column: a number, a date, no dividers and no weight of its own. The row
+   stays on one line because both halves are short - it was the repeated volume name that
+   used to force it to wrap. */
+.edition-side__section--quiet .edition-side__toggle {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.edition-side__section--quiet /* Where the run came from: the way to read it again, and the way to go and look at it.
+   Housekeeping rather than anything about the comic, so it is drawn at the weight of the
+   quiet sections below it. */
+.edition-side__source {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+}
+
+.edition-side__cv {
+  color: var(--muted);
+  font-size: 0.75rem;
+  border-bottom: 1px solid transparent;
+}
+
+.edition-side__cv:hover {
+  color: var(--text);
+  border-bottom-color: var(--muted);
+}
+
+/* News, not bookkeeping: the run on screen is not the run Comic Vine has. */
+.edition-side__stale {
+  flex: 1 0 100%;
+  color: var(--accent);
+  font-size: 0.75rem;
+}
+
+.edition-side__head {
+  padding-bottom: 2px;
+}
+
+.edition-side__row--soon {
+  padding: 2px 0;
+  font-size: 0.75rem;
+  border-bottom: none;
+}
+
+.edition-side__row--soon .edition-side__label {
+  color: var(--muted);
+}
+
+.edition-side__row--soon .edition-side__week {
+  font-size: 0.75rem;
+}
+
+.edition-side__week {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  white-space: nowrap;
+}
+
+/* In a column there is nothing to fold away: both sections are open, and the chevron that
+   would turn the fold is not part of this layout. */
+.edition-side__chevron {
+  display: none;
+}
+
+/* The two ways to read a run */
+.edition-header__views {
+  display: flex;
+  gap: 4px;
+}
+
+.edition-header__views .btn-ghost {
+  font-size: 0.8125rem;
+  padding: 5px 12px;
+}
+
+.edition-header__views .is-on {
+  background: var(--elevated);
+  color: var(--text);
+}
+
+/* ============================================================
+   The run on a narrow screen
+   ============================================================
+   A phone held upright, or any window too narrow for two columns. The sidebar comes out
+   from beside the comic and sits between the issue's name and its credits, folded, so
+   that "Missing (7)" and "Coming soon (2)" are both readable without scrolling and the
+   long reference block stays below them. */
+@media (max-width: 900px) {
+  .edition-run {
+    flex-direction: column;
+    /* Stacked, every section wants the full width. Left alignment is what the two-column
+       layout needs and it leaks into the column as a carousel huddled against one edge. */
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .edition-run__main {
+    display: contents;
+  }
+
+  .issue-carousel { order: 1; }
+  .edition-run__identity { order: 2; }
+  .edition-side { order: 3; }
+  .edition-run__detail { order: 4; }
+
+  .edition-side {
+    flex: 1 1 auto;
+    align-self: stretch;
+    gap: 8px;
+  }
+
+  /* Here the fold is real, so the chevron and its control come back. */
+  .edition-side__chevron {
+    display: inline-block;
+    transition: transform 0.15s ease;
+  }
+
+  .edition-side__toggle {
+    cursor: pointer;
+  }
+
+  .edition-side__section--open .edition-side__chevron {
+    transform: rotate(90deg);
+  }
+
+  .edition-side__body {
+    display: none;
+  }
+
+  .edition-side__section--open .edition-side__body {
+    display: block;
+  }
+
+  /* A row with a button in it wants room for the thumb that presses it. Only those: the
+     same padding on a Coming soon row re-inflated the section this rule came after. */
+  .edition-side__row:not(.edition-side__row--soon) {
+    padding: 8px 0;
+  }
+}
+
+/* A window with no room for a cover beside its neighbours: the peeks narrow to slivers,
+   which still say there is more run that way, and the chevrons move onto the cover so
+   that every pixel of width goes to the art. */
+@media (orientation: portrait), (max-width: 620px) {
+  .issue-carousel {
+    position: relative;
+    gap: 0;
+  }
+
+  .issue-carousel__cover {
+    height: min(58dvh, calc((100vw - 32px) * 1.5));
+  }
+
+  /* No neighbours here. The cover takes the full width of the screen, so there is nowhere
+     for a peek to go except on top of it - which is what it used to do, and a cover with
+     another cover showing through its edges looks like a rendering fault rather than like
+     a run you can walk. The chevrons say there is more either way, and they say it without
+     spending any of the width the comic is using. */
+  .issue-carousel__slot {
+    display: none;
+  }
+
+  /* Smaller here than in a landscape window, so that it sits within the sliver it is
+     laid over rather than covering it. */
+  .issue-carousel__arrow {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    z-index: 2;
+    width: 36px;
+    height: 36px;
+    font-size: 0.75rem;
+    background: rgba(14, 15, 19, 0.75);
+    backdrop-filter: blur(2px);
+  }
+
+  .issue-carousel__arrow--prev { left: 2px; }
+  .issue-carousel__arrow--next { right: 2px; }
+}
+
+/* A phone on its side: wide, but only a few hundred pixels tall. The cover is already
+   capped by the dvh term; what is left is the summary, which would otherwise be the only
+   thing on the screen. It folds to three lines with a control to open it. */
+@media (max-height: 560px) {
+  /* A few hundred pixels of height, of which the page's own header takes half whatever
+     it does. 58dvh of that leaves the cover's foot below the fold, so it gives up a
+     little more here - a cover you can see all of beats a taller one you cannot. */
+  .issue-carousel__cover {
+    max-height: 42dvh;
+  }
+
+  .issue-detail__summary--clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .issue-detail__more {
+    display: inline-flex;
+    margin-top: 4px;
+    font-size: 0.8125rem;
+    padding: 2px 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .issue-carousel__open,
+  .edition-side__chevron {
+    transition: none;
+  }
+}
+
+/* ============================================================
+   The volume header, out of the comic's way
+   ============================================================
+   The header was written for a page whose content was a grid you scroll anyway. The
+   carousel's content is one cover that should be on screen when the page opens, and at
+   these sizes the header was taking the whole screen before it: a four-line title, its
+   controls, the count, and the line saying when Comic Vine was last read.
+
+   So it gives way by degrees. Narrow: the title drops to a readable size and its controls
+   wrap onto their own line. Short: the Comic Vine line goes entirely - it is the least
+   urgent thing on the page, and Refresh is not what you came for. */
+@media (max-width: 900px) {
+  .edition-header {
+    margin-bottom: 12px;
+  }
+
+  .edition-header .page-title {
+    font-size: 1.25rem;
+    margin-bottom: 0;
+  }
+
+  /* The title takes the width it needs; everything that acts on the volume wraps beneath
+     it rather than squeezing the name into a column four words wide. */
+  .edition-header__title-row {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .edition-header__title-row .page-title {
+    flex: 1 0 100%;
+  }
+
+  .edition-header__count,
+  .edition-header__run-meta {
+    margin-bottom: 4px;
+  }
+
+  .edition-header__as-of {
+    display: none;
+  }
+
+  /* Wrapped onto its own line, the full-sized danger button became the loudest thing
+     above the comic. It is the same control at the same size as the rest of the header's
+     controls, which is the weight it should have had all along. */
+  .edition-header__title-row .btn-danger {
+    font-size: 0.8125rem;
+    padding: 4px 12px;
+  }
+}
+
+@media (max-height: 560px) {
+  .edition-header__run-meta {
+    display: none;
+  }
+
+  .edition-header {
+    margin-bottom: 8px;
+  }
+
+  .edition-header__count {
+    margin-bottom: 4px;
+  }
+}
+
+/* A screen with the width for two columns but not the height for a full header: a tablet
+   held sideways, a laptop with a short window. The narrow-screen rules above do not apply
+   here and should not - the title and its controls still fit on one line, and forcing them
+   apart would cost more height than it saved. What is too big is the type and the spacing
+   around it, which together were taking 250px of an 820px screen before the comic. */
+@media (min-width: 901px) and (max-height: 900px) {
+  .edition-header {
+    margin-bottom: 12px;
+  }
+
+  .edition-header .page-title {
+    font-size: 1.5rem;
+    margin-bottom: 0;
+  }
+
+  .edition-header__count,
+  .edition-header__run-meta {
+    margin-bottom: 4px;
+  }
+
+  /* Refresh and the link to Comic Vine stay; the timestamp beside them is the line's
+     least urgent half and the only part that is pure bookkeeping. */
+  .edition-header__as-of {
+    display: none;
+  }
+}

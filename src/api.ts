@@ -30,6 +30,8 @@ export interface ApiBook {
   readState?: 'unread' | 'reading' | 'read'
   percent?: number
   year?: number | null
+  /** Comic Vine's publisher for the volume. Served on every book; part of its subline. */
+  publisher?: string | null
   coverUrl?: string | null
   cvSiteUrl?: string | null
 }

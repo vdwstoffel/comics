@@ -66,3 +66,4 @@ test('upcomingWednesdays crosses a year boundary', () => {
   const weeks = upcomingWednesdays(new Date('2026-12-28T10:00:00Z'), 3)
   expect(weeks).toEqual(['2026-12-30', '2027-01-06', '2027-01-13'])
 })
+

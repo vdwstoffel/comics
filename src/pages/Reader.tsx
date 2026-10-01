@@ -1,5 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
-import { useParams, Link } from 'react-router-dom'
+import { useParams, useLocation, useNavigate, Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
 import { useFullscreen } from '../lib/useFullscreen'
@@ -7,6 +7,13 @@ import { useZoom } from '../lib/useZoom'
 
 export default function Reader() {
   const { id } = useParams()
+  const location = useLocation()
+  const navigate = useNavigate()
+  // React Router names the first entry of a history stack 'default', so anything else
+  // means there is a page behind this one to go back to. Which page is the point: the
+  // carousel opens a comic directly, and sending you to the issue's own page on the way
+  // out dropped you somewhere you had never been and two presses from the run.
+  const cameFromSomewhere = location.key !== 'default'
   const { data } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
   const [page, setPage] = useState<number | null>(null)
   const [scrubbing, setScrubbing] = useState<number | null>(null)
@@ -56,7 +63,21 @@ export default function Reader() {
   const displayPage = scrubbing ?? page
   return (
     <div className="reader-root">
-      <Link to={`/book/${id}`} className="reader-back" aria-label="Back">←</Link>
+      {/* A real link, so middle-click and "open in new tab" still work and a comic opened
+          cold from a bookmark has somewhere to go. The click goes back instead whenever
+          there is a back to go to. */}
+      <Link
+        to={`/book/${id}`}
+        className="reader-back"
+        aria-label="Back"
+        onClick={(e) => {
+          if (!cameFromSomewhere) return
+          e.preventDefault()
+          navigate(-1)
+        }}
+      >
+        ←
+      </Link>
       <div className="reader-viewport" ref={zoom.ref} {...zoom.handlers}>
         <img
           src={`/api/books/${id}/pages/${page}`}

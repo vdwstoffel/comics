@@ -8,11 +8,16 @@ import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import MissingIssueTile from '../components/MissingIssueTile'
 import { tileLabel } from '../lib/tileLabel'
+import { findIssueHref } from '../lib/findIssueHref'
 import { writeOutDay } from '../lib/releaseWeek'
 import { useUpcoming } from '../lib/useUpcoming'
 import { upcomingForEdition } from '../lib/upcomingForEdition'
+import { volumeEntries } from '../lib/volumeEntries'
+import { readEditionView, writeEditionView } from '../lib/editionView'
+import type { EditionView } from '../lib/editionView'
 import EditionEditDialog from '../components/EditionEditDialog'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
+import EditionRun from '../components/EditionRun'
 
 /**
  * One issue of the run: the comic if you have it, otherwise its place in the run and a
@@ -51,22 +56,13 @@ function VolumeIssue({ issue, book, editionId, seriesName }: {
     )
   }
 
-  const findParams = new URLSearchParams({ q: seriesName })
-  // Comic Vine's cover date runs ahead of the scraped release year (Venom #251 has a
-  // 2026-01 cover date but is posted as "Venom #251 (2025)" - see issueMatch's
-  // YEAR_SLACK), so a floor set to the cover year exactly would filter out the very
-  // row Find is meant to surface. Back it off by the same one year the matching rule
-  // tolerates. (Not importing YEAR_SLACK here: src/ never reaches into server/.)
-  const coverYear = issue.coverDate ? Number(String(issue.coverDate).slice(0, 4)) : NaN
-  if (Number.isInteger(coverYear)) findParams.set('yearFrom', String(coverYear - 1))
-
   return (
     <MissingIssueTile
       label={label}
       siteUrl={issue.siteUrl}
       hasMatch={issue.match != null}
       matchTitle={issue.match?.title}
-      findTo={`/search?${findParams}`}
+      findTo={findIssueHref(seriesName, issue.coverDate)}
       onGet={() => get.mutate()}
       pending={get.isPending}
       failed={get.isError}
@@ -84,6 +80,13 @@ export default function Edition() {
   const qc = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(false)
+  // How you last chose to read a run, which holds across volumes. Read once: the only
+  // thing that changes it is the toggle below, which writes both at the same time.
+  const [view, setView] = useState<EditionView>(readEditionView)
+  const chooseView = (next: EditionView) => {
+    setView(next)
+    writeEditionView(next)
+  }
 
   const { data, isLoading } = useQuery({
     queryKey: ['edition', id, status],
@@ -241,7 +244,8 @@ export default function Edition() {
   const bookById = new Map(data.books.map((b) => [b.id, b]))
   // Defensive against a response that is not the shape we expect: a run we cannot read is
   // no reason to take the page down with it.
-  const runAsOf = volume?.fetchedAt ? new Date(volume.fetchedAt).toLocaleString() : ''
+  // A run that has been read at all is one there is a point in reading again.
+  const canRefresh = !!volume?.fetchedAt
   const runIssues = volume?.issues ?? []
   const runExtras = volume?.extras ?? []
   const showRun = runIssues.length > 0 || runExtras.length > 0
@@ -254,7 +258,15 @@ export default function Edition() {
   // The meta line carries two independent things - when the run was read, and where the
   // volume lives on Comic Vine. Either alone is reason enough to draw it: an edition whose
   // run Comic Vine would not give us is when you most want to go and look it up.
-  const showRunMeta = (showRun && !!volume?.fetchedAt) || !!cvUrl
+  const showRunMeta = (showRun && canRefresh) || !!cvUrl
+
+  // One flat list of the run, however much of it Comic Vine knew about.
+  const entries = volumeEntries({ issues: runIssues, extras: runExtras, books: data.books })
+  // A filtered page has no run at all - the run query is not even enabled under one,
+  // because a placeholder has no read state to filter by - so there is nothing to walk
+  // and the grid of what survived the filter is the only honest view.
+  const canCarousel = status === null && entries.length > 0
+  const showCarousel = canCarousel && view === 'carousel'
 
   return (
     <div>
@@ -268,8 +280,9 @@ export default function Edition() {
           </button>
           <Link to={searchHref} className="edition-header__find">Find more</Link>
           {/* Only when there is something to take: a complete volume, and one whose every
-              gap the rule refused to close, both have nothing to offer in bulk. */}
-          {gettable.length > 0 && (
+              gap the rule refused to close, both have nothing to offer in bulk. In the
+              carousel the sidebar carries this, beside the gaps it would fill. */}
+          {gettable.length > 0 && !showCarousel && (
             <button
               type="button"
               className="btn btn-ghost edition-header__get-all"
@@ -279,18 +292,43 @@ export default function Edition() {
               {getAll.isPending ? 'Queueing…' : `↓ Get all ${gettable.length}`}
             </button>
           )}
+          {/* A run is the only thing there are two ways to read. Without one - a filtered
+              page, an edition with no volume - there is nothing to switch between. */}
+          {canCarousel && (
+            <div className="edition-header__views" role="group" aria-label="How to show the run">
+              <button
+                type="button"
+                className={`btn btn-ghost${view === 'carousel' ? ' is-on' : ''}`}
+                aria-pressed={view === 'carousel'}
+                onClick={() => chooseView('carousel')}
+              >
+                Carousel
+              </button>
+              <button
+                type="button"
+                className={`btn btn-ghost${view === 'grid' ? ' is-on' : ''}`}
+                aria-pressed={view === 'grid'}
+                onClick={() => chooseView('grid')}
+              >
+                Grid
+              </button>
+            </div>
+          )}
           <button className="btn-danger" onClick={() => setConfirmRemove(true)}>Remove edition</button>
         </div>
         <p className="edition-header__count">
           {volume?.total ? `${volume.owned} of ${volume.total} issues` : bookLabel}
         </p>
-        {showRunMeta && (
+        {/* The grid's own copy of where the run came from. In the carousel the sidebar
+            carries this, beside the run rather than over it. Neither says when Comic Vine
+            was last read: that is bookkeeping nobody acts on, and it was spending a line
+            of the header - and three, wrapped, on a phone. A run we could not re-read
+            still says so, because that is news. */}
+        {!showCarousel && showRunMeta && (
           <p className="edition-header__run-meta">
-            {showRun && volume?.fetchedAt && (
+            {showRun && canRefresh && (
               <>
-                {volume.stale
-                  ? `Could not reach Comic Vine — showing the run as of ${runAsOf}`
-                  : `Run as of ${runAsOf}`}
+                {volume?.stale && <span>Could not reach Comic Vine</span>}
                 <button
                   type="button"
                   className="btn btn-ghost edition-header__refresh"
@@ -301,7 +339,7 @@ export default function Edition() {
                 </button>
               </>
             )}
-            {showRun && volume?.fetchedAt && cvUrl && (
+            {showRun && canRefresh && cvUrl && (
               <span className="edition-header__run-sep" aria-hidden="true">·</span>
             )}
             {cvUrl && (
@@ -374,6 +412,22 @@ export default function Edition() {
         </button>
       )}
 
+      {showCarousel ? (
+        <EditionRun
+          editionId={id!}
+          editionName={data.edition.name}
+          entries={entries}
+          seriesName={data.edition.seriesName?.trim() || data.edition.cvName || data.edition.name}
+          soon={soon}
+          gettable={gettable.length}
+          onGetAll={() => getAll.mutate()}
+          getAllPending={getAll.isPending}
+          onRefresh={showRun && canRefresh ? refreshRun : undefined}
+          refreshing={volumeFetching}
+          stale={volume?.stale}
+          cvUrl={cvUrl}
+        />
+      ) : (
       <div className="tile-grid">
         {showRun
           ? (
@@ -415,14 +469,17 @@ export default function Edition() {
             />
           ))}
       </div>
+      )}
 
       {/*
-        Drawn only when there is something to draw. A volume that ended years ago, one
-        Marvel has not solicited past, and every DC volume would otherwise carry a
-        permanent empty heading - and "Coming soon: nothing" reads as a promise broken
+        The grid's own Coming soon. In the carousel the sidebar carries it, beside the
+        gaps, which is where both answers to "what does this run still owe me" belong.
+        Drawn only when there is something to draw either way: a volume that ended years
+        ago, one Marvel has not solicited past, and every DC volume would otherwise carry
+        a permanent empty heading - and "Coming soon: nothing" reads as a promise broken
         rather than as a run that is simply not running.
       */}
-      {soon.length > 0 && (
+      {!showCarousel && soon.length > 0 && (
         <section className="edition-soon">
           <h2 className="edition-soon__title">Coming soon</h2>
           <ul className="edition-soon__list">

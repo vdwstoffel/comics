@@ -1,9 +1,16 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { ReactNode } from 'react'
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
+import { useLocation } from 'react-router-dom'
 import Edition from '../src/pages/Edition'
+
+/** The current url, so a test can see what the page has written into it. */
+function Where() {
+  const loc = useLocation()
+  return <span data-testid="where">{loc.pathname}{loc.search}</span>
+}
 
 const EDITION = {
   id: 9,
@@ -49,7 +56,9 @@ function issue(number: string, year: number | null) {
   return { id: Number(number), number, title: null, pageCount: 20, comicinfoSynced: false, year }
 }
 
-beforeEach(() => { mockFetch() })
+// The chosen view lives in localStorage and so outlives a test. Without this, the first
+// test to press Grid would silently decide what every test after it renders.
+beforeEach(() => { localStorage.clear(); mockFetch() })
 afterEach(() => { cleanup() })
 
 function renderPage(path = '/edition/9', client?: QueryClient) {
@@ -57,11 +66,21 @@ function renderPage(path = '/edition/9', client?: QueryClient) {
   const ui: ReactNode = (
     <QueryClientProvider client={qc}>
       <MemoryRouter initialEntries={[path]}>
+        <Where />
         <Routes><Route path="/edition/:id" element={<Edition />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>
   )
   return render(ui)
+}
+
+/**
+ * The page with the grid chosen. These tests are about what the grid draws - the whole
+ * run at once - which is a different question from what the carousel centres on.
+ */
+function renderGrid(path = '/edition/9', client?: QueryClient) {
+  localStorage.setItem('comics.editionView', 'grid')
+  return renderPage(path, client)
 }
 
 async function startEditing() {
@@ -408,9 +427,15 @@ function mockFetchWithIssues(
   downloadOk = true,
 ) {
   posted = []
+  deleted = []
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
     if (String(url).includes('/api/downloads')) {
       return { ok: true, json: async () => ({ active: [], queue: [], history: [] }) }
+    }
+    // A comic can be removed from the run itself now, so this has to answer a DELETE.
+    if (init?.method === 'DELETE') {
+      deleted.push(String(url))
+      return { ok: true, json: async () => ({ deleted: true, editionId: 9, editionRemoved: false }) }
     }
     // Must return here: the download URL itself contains "/issues"
     // (/api/editions/9/issues/1/download), so falling through would answer a download
@@ -433,7 +458,7 @@ function mockFetchWithIssues(
 
 test('an issue the volume has but the library does not shows as missing', async () => {
   mockFetchWithIssues(VOLUME_ISSUES)
-  renderPage()
+  renderGrid()
 
   expect(await screen.findByText('#250')).toBeInTheDocument()
   expect(screen.getAllByText(/missing/i).length).toBe(2)
@@ -441,7 +466,7 @@ test('an issue the volume has but the library does not shows as missing', async 
 
 test('missing issues keep their place in the run', async () => {
   mockFetchWithIssues(VOLUME_ISSUES)
-  renderPage()
+  renderGrid()
 
   await screen.findByText('#250')
   const numbers = screen.getAllByText(/^#(250|255|259)$/).map((n) => n.textContent)
@@ -458,14 +483,14 @@ test('the header counts the whole run, not just what you have', async () => {
 // A comic you own must never disappear because Comic Vine has not heard of it.
 test('a book Comic Vine does not list still appears', async () => {
   mockFetchWithIssues({ ...VOLUME_ISSUES, extras: [{ bookId: 99, number: 'Annual 1', title: 'Annual' }] })
-  renderPage()
+  renderGrid()
 
   expect(await screen.findByText('Annual')).toBeInTheDocument()
 })
 
 test('an edition with no volume shows only the books, no placeholders', async () => {
   mockFetchWithIssues({ volumeId: null, issues: [], extras: [{ bookId: 5, number: '1', title: 'Issue one' }], owned: 0, total: 0 })
-  renderPage()
+  renderGrid()
 
   expect(await screen.findByText('Issue one')).toBeInTheDocument()
   expect(screen.queryByText(/missing/i)).not.toBeInTheDocument()
@@ -487,11 +512,14 @@ test('placeholders drop out when a read filter is on', async () => {
 
 // ---- cache surface ----
 
-test('the run says when it was last read from Comic Vine', async () => {
+// When the run was last read is bookkeeping nobody acts on, and it was spending a line of
+// the header to say it - three lines, wrapped, in a phone's width.
+test('the run does not say when it was last read', async () => {
   mockFetchWithIssues({ ...VOLUME_ISSUES, fetchedAt: '2026-09-04T10:00:00.000Z' })
   renderPage()
 
-  expect(await screen.findByText(/as of/i)).toBeInTheDocument()
+  await screen.findByRole('button', { name: /refresh/i })
+  expect(screen.queryByText(/as of/i)).toBeNull()
 })
 
 test('refreshing the run asks Comic Vine again', async () => {
@@ -516,11 +544,13 @@ test('refreshing the run asks Comic Vine again', async () => {
   await waitFor(() => expect(urls.some((u) => u.includes('refresh=1'))).toBe(true))
 })
 
+// That the run could not be re-read is news, and is still said - just without dating it.
 test('a run served from a stale cache says so', async () => {
   mockFetchWithIssues({ ...VOLUME_ISSUES, fetchedAt: '2020-01-01T00:00:00.000Z', stale: true })
   renderPage()
 
   expect(await screen.findByText(/could not reach comic vine/i)).toBeInTheDocument()
+  expect(screen.queryByText(/as of/i)).toBeNull()
 })
 
 // Regression: uploading into an edition put the comic in the database, on disk, with a
@@ -531,7 +561,7 @@ test('a run served from a stale cache says so', async () => {
 test('a comic uploaded into the edition shows up on coming back to the page', async () => {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   mockFetchWithIssues({ ...VOLUME_ISSUES, extras: [], fetchedAt: '2026-09-04T10:00:00.000Z' })
-  const first = renderPage('/edition/9', qc)
+  const first = renderGrid('/edition/9', qc)
   await screen.findByText('#250')
   first.unmount()
 
@@ -541,7 +571,7 @@ test('a comic uploaded into the edition shows up on coming back to the page', as
     extras: [{ bookId: 46, number: null, title: 'Just uploaded' }],
     fetchedAt: '2026-09-04T10:00:00.000Z',
   })
-  renderPage('/edition/9', qc)
+  renderGrid('/edition/9', qc)
 
   expect(await screen.findByText('Just uploaded')).toBeInTheDocument()
 })
@@ -555,7 +585,7 @@ test('a comic with no metadata is labelled with its filename', async () => {
     [{ id: 46, number: null, title: null, pageCount: 3, comicinfoSynced: false, year: null,
        filePath: 'Venom/Venom (2025)/Venom 999 (2026).cbz' }],
   )
-  renderPage()
+  renderGrid()
 
   expect(await screen.findByText('Venom 999 (2026)')).toBeInTheDocument()
   expect(screen.queryByText('#?')).not.toBeInTheDocument()
@@ -569,7 +599,7 @@ test('a metadata-less comic in a volumeless edition is labelled with its filenam
     [{ id: 47, number: null, title: null, pageCount: 3, comicinfoSynced: false, year: null,
        filePath: 'Unsorted/Some Comic 001.cbz' }],
   )
-  renderPage()
+  renderGrid()
 
   expect(await screen.findByText('Some Comic 001')).toBeInTheDocument()
 })
@@ -620,7 +650,7 @@ const MATCHED = {
 
 test('a missing issue the index can supply offers to get it', async () => {
   mockFetchWithIssues(MATCHED)
-  renderPage()
+  renderGrid()
   expect(await screen.findByRole('button', { name: /Get #1/i })).toBeInTheDocument()
 })
 
@@ -638,14 +668,14 @@ test('a missing issue with no certain match offers to find it instead, floor bac
 
 test('a missing issue with no certain match offers no get button', async () => {
   mockFetchWithIssues(MATCHED)
-  renderPage()
+  renderGrid()
   await screen.findByRole('button', { name: /Get #1/i })
   expect(screen.queryByRole('button', { name: /Get #2/i })).not.toBeInTheDocument()
 })
 
 test('pressing get asks the server to download that issue into this edition', async () => {
   mockFetchWithIssues(MATCHED)
-  renderPage()
+  renderGrid()
   fireEvent.click(await screen.findByRole('button', { name: /Get #1/i }))
   await waitFor(() => {
     expect(posted.some((p) => p.url.includes('/api/editions/9/issues/1/download'))).toBe(true)
@@ -657,7 +687,7 @@ test('pressing get asks the server to download that issue into this edition', as
 // say so.
 test('a failed press shows the error on that tile', async () => {
   mockFetchWithIssues(MATCHED, EDITION, [], false)
-  renderPage()
+  renderGrid()
   fireEvent.click(await screen.findByRole('button', { name: /Get #1/i }))
   expect(await screen.findByText(/could not get that one/i)).toBeInTheDocument()
 })
@@ -704,7 +734,7 @@ test('a volume whose gaps are all ambiguous offers no get all', async () => {
     owned: 0,
     total: 1,
   })
-  renderPage()
+  renderGrid()
 
   await screen.findByRole('link', { name: /Find #2/i })
   expect(screen.queryByRole('button', { name: /Get all/i })).not.toBeInTheDocument()
@@ -832,4 +862,241 @@ test('there is no coming soon heading when nothing is solicited for this volume'
   // has been answered too - an absence checked before that would pass for the wrong reason.
   expect(await screen.findByText('Vol 7')).toBeInTheDocument()
   await waitFor(() => expect(screen.queryByText(/coming soon/i)).not.toBeInTheDocument())
+})
+
+/* ── The run as a carousel ─────────────────────────────────────────────────── */
+
+/** A run of three you own, read up to but not including the last. */
+const PART_READ = {
+  ...VOLUME_ISSUES,
+  issues: [
+    { id: 1, number: '1', owned: true, bookId: 11 },
+    { id: 2, number: '2', owned: true, bookId: 12 },
+    { id: 3, number: '3', owned: true, bookId: 13 },
+  ],
+  extras: [],
+  owned: 3,
+  total: 3,
+}
+
+const PART_READ_BOOKS = [
+  { id: 11, number: '1', title: 'One', pageCount: 22, comicinfoSynced: false, readState: 'read' },
+  { id: 12, number: '2', title: 'Two', pageCount: 22, comicinfoSynced: false, readState: 'read' },
+  { id: 13, number: '3', title: 'Three', pageCount: 22, comicinfoSynced: false, readState: 'unread' },
+]
+
+// The whole point of the redesign: 35 issues and the one you want is the one you have not
+// read, which was previously at the bottom of a long scroll.
+test('the page opens on the first issue you have not read', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage()
+
+  expect(await screen.findByTestId('carousel-current')).toHaveTextContent('#3')
+})
+
+test('a run you have read all of opens on its newest issue', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS.map((b) => ({ ...b, readState: 'read' })))
+  renderPage()
+
+  expect(await screen.findByTestId('carousel-current')).toHaveTextContent('#3')
+})
+
+test('a gap counts as unread, so the run opens on the issue you are missing', async () => {
+  mockFetchWithIssues(
+    { ...PART_READ, issues: [
+      { id: 1, number: '1', owned: true, bookId: 11 },
+      { id: 2, number: '2', owned: false },
+      { id: 3, number: '3', owned: true, bookId: 13 },
+    ] },
+    EDITION,
+    PART_READ_BOOKS,
+  )
+  renderPage()
+
+  expect(await screen.findByTestId('carousel-current')).toHaveTextContent('#2')
+})
+
+test('the arrows walk the run', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage()
+
+  await screen.findByTestId('carousel-current')
+  fireEvent.click(screen.getByRole('button', { name: /previous issue/i }))
+  expect(screen.getByTestId('carousel-current')).toHaveTextContent('#2')
+})
+
+test('the issue below the cover is the one centred', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage()
+
+  expect(await screen.findByRole('heading', { name: /#3.*Three/ })).toBeInTheDocument()
+})
+
+/* ── Grid is still there ───────────────────────────────────────────────────── */
+
+test('the grid is one press away, and shows the whole run at once', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage()
+
+  fireEvent.click(await screen.findByRole('button', { name: /^grid$/i }))
+
+  expect(screen.getByText('One')).toBeInTheDocument()
+  expect(screen.getByText('Two')).toBeInTheDocument()
+  expect(screen.getByText('Three')).toBeInTheDocument()
+  expect(screen.queryByTestId('carousel-current')).toBeNull()
+})
+
+// Choosing the grid once should not mean choosing it on every volume you open.
+test('the chosen view is remembered', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  const first = renderPage()
+  fireEvent.click(await screen.findByRole('button', { name: /^grid$/i }))
+  first.unmount()
+
+  renderPage()
+  await screen.findByText('One')
+  expect(screen.queryByTestId('carousel-current')).toBeNull()
+})
+
+// A placeholder has no read state, so a filtered page has no run - and with no run there
+// is nothing for a carousel to walk.
+test('a read filter leaves only the grid, with no view to switch to', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage('/edition/9?status=unread')
+
+  expect(await screen.findByText('One')).toBeInTheDocument()
+  expect(screen.queryByTestId('carousel-current')).toBeNull()
+  expect(screen.queryByRole('button', { name: /^grid$/i })).toBeNull()
+})
+
+/* ── The sidebar ───────────────────────────────────────────────────────────── */
+
+test('the gaps are listed beside the comic, with the way to fill each one', async () => {
+  mockFetchWithIssues(THREE_MATCHED)
+  renderPage()
+
+  const missing = await screen.findByRole('button', { name: /missing \(4\)/i })
+  expect(missing).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Get all 3/i })).toBeInTheDocument()
+})
+
+// Scoped to the sidebar on purpose: the page opens centred on #1, which is itself a gap,
+// so the same offer is on screen twice - once where you are and once in the list of every
+// gap. This test is about the list.
+test('pressing get in the list downloads that issue into this edition', async () => {
+  mockFetchWithIssues(THREE_MATCHED)
+  renderPage()
+
+  const sidebar = await screen.findByRole('complementary')
+  fireEvent.click(within(sidebar).getByRole('button', { name: /^Get #1$/i }))
+
+  await waitFor(() => {
+    expect(posted.some((p) => p.url.includes('/api/editions/9/issues/1/download'))).toBe(true)
+  })
+})
+
+// Landing on a gap has to put its Get button in front of you - that is the reason a gap
+// counts as unread when the page chooses where to open.
+test('a centred gap offers to fill itself', async () => {
+  mockFetchWithIssues(MATCHED)
+  renderPage()
+
+  await screen.findByTestId('carousel-current')
+  expect(screen.getByTestId('issue-identity')).toHaveTextContent(/Get/)
+})
+
+/* ── Coming back to the issue you were on ─────────────────────────────────── */
+
+// Which issue is centred lives in the url, so that stepping back into the run - from the
+// reader, from the issue's page - puts you where you were rather than wherever the
+// opening rule would start you today.
+test('the centred issue is named in the url', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage()
+
+  await screen.findByTestId('carousel-current')
+  fireEvent.click(screen.getByRole('button', { name: /previous issue/i }))
+
+  await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('issue=issue-2'))
+})
+
+test('a url naming an issue opens on it, whatever the opening rule would say', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage('/edition/9?issue=issue-1')
+
+  expect(await screen.findByTestId('carousel-current')).toHaveTextContent('#1')
+})
+
+// A run that has changed under a bookmarked link, or a hand-typed one: there is no such
+// issue to open, and the opening rule is a better answer than an empty page.
+test('a url naming an issue the run does not have falls back to the opening rule', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage('/edition/9?issue=issue-999')
+
+  expect(await screen.findByTestId('carousel-current')).toHaveTextContent('#3')
+})
+
+// Walking a run of thirty-five issues must not put thirty-five entries in the history,
+// or pressing back once would walk you all the way home one cover at a time.
+test('walking the run does not pile up history', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage()
+
+  await screen.findByTestId('carousel-current')
+  const before = history.length
+  fireEvent.click(screen.getByRole('button', { name: /previous issue/i }))
+  await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('issue=issue-2'))
+
+  expect(history.length).toBe(before)
+})
+
+/* ── Removing an issue without leaving the run ────────────────────────────── */
+
+test('an issue can be removed from the run itself, and asks first', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage()
+
+  await screen.findByTestId('carousel-current')
+  fireEvent.click(within(screen.getByTestId('issue-identity')).getByRole('button', { name: /remove issue/i }))
+
+  // Named by its story title, as the issue's own page names it, falling back to its
+  // number for the many issues that have none.
+  expect(await screen.findByRole('heading', { name: /remove "Three"/i })).toBeInTheDocument()
+  expect(deleted).toEqual([])
+})
+
+test('confirming deletes that comic', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage()
+
+  await screen.findByTestId('carousel-current')
+  fireEvent.click(within(screen.getByTestId('issue-identity')).getByRole('button', { name: /remove issue/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /^remove$/i }))
+
+  await waitFor(() => expect(deleted).toEqual(['/api/books/13']))
+})
+
+// The comic goes but its place in the run does not: it becomes a gap, with the way to
+// fill it, and you are still standing on it. Leaving the page for the library - which is
+// what the issue's own page does - would be losing your place to undo a mistake.
+test('removing an issue leaves you on it, and re-reads the run', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage()
+
+  await screen.findByTestId('carousel-current')
+  fireEvent.click(within(screen.getByTestId('issue-identity')).getByRole('button', { name: /remove issue/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /^remove$/i }))
+
+  await waitFor(() => expect(deleted).toHaveLength(1))
+  await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/edition/9'))
+  expect(screen.getByTestId('carousel-current')).toHaveTextContent('#3')
+})
+
+// A gap is an absence already. There is no file to delete and nothing to ask about.
+test('a gap offers no removal', async () => {
+  mockFetchWithIssues(MATCHED)
+  renderPage()
+
+  await screen.findByTestId('carousel-current')
+  expect(within(screen.getByTestId('issue-identity')).queryByRole('button', { name: /remove issue/i })).toBeNull()
 })

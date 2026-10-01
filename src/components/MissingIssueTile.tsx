@@ -1,5 +1,5 @@
-import { Link } from 'react-router-dom'
 import CoverTile from './CoverTile'
+import IssueAction from './IssueAction'
 
 interface MissingIssueTileProps {
   label: string
@@ -24,16 +24,11 @@ interface MissingIssueTileProps {
 }
 
 /**
- * An issue you do not have, and the way to fill it. Shared by the edition page and the
- * Latest tab so the two offer the same thing in the same words.
+ * An issue you do not have, as a tile in a grid. Shared by the edition page's grid view
+ * and the Latest tab so the two offer the same thing in the same words.
  *
- * The control is labelled with the verb alone. The comic is named on the line directly
- * above it, and a name like "Spider-Man: Long Way Home #3" wrapped the label over three
- * lines in a grid whose columns are all one cover wide. The name is kept as the control's
- * accessible name, because a page of missing issues is a page of buttons that would
- * otherwise all read "Get". That name has to follow the button into its working state:
- * an accessible name overrides the text inside the control, so a fixed one would announce
- * an offer while the screen shows a fetch already running.
+ * The offer itself lives in IssueAction, which the carousel and the volume page's sidebar
+ * draw too; this is the tile around it.
  */
 export default function MissingIssueTile({
   label, siteUrl, hasMatch, matchTitle, findTo, coverUrl, onGet, pending, failed, queued,
@@ -41,25 +36,16 @@ export default function MissingIssueTile({
   return (
     <div className="volume-issue">
       <CoverTile href={siteUrl} img={coverUrl} title={label} subtitle="Missing" />
-      {queued ? (
-        <button type="button" className="btn btn-ghost volume-issue__get" disabled>
-          Queued
-        </button>
-      ) : hasMatch ? (
-        <button
-          type="button"
-          className="btn btn-ghost volume-issue__get"
-          disabled={pending}
-          onClick={onGet}
-          title={matchTitle}
-          aria-label={pending ? `Getting ${label}` : `Get ${label}`}
-        >
-          {pending ? 'Getting…' : '↓ Get'}
-        </button>
-      ) : (
-        <Link className="volume-issue__find" to={findTo} aria-label={`Find ${label}`}>Find ↗</Link>
-      )}
-      {failed && <span className="volume-issue__error">Could not get that one.</span>}
+      <IssueAction
+        label={label}
+        hasMatch={hasMatch}
+        matchTitle={matchTitle}
+        findTo={findTo}
+        onGet={onGet}
+        pending={pending}
+        failed={failed}
+        queued={queued}
+      />
     </div>
   )
 }

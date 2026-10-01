@@ -29,6 +29,15 @@ export interface EditionNames {
 export interface UpcomingIssueForEdition {
   sourceId: string
   headline: string
+  /**
+   * The headline with the series taken off it: `#16`, usually.
+   *
+   * For a list on the page of one volume, where every row is that volume by construction
+   * and the name is the longest thing in each one. Falls back to the whole headline when
+   * the issue states no number - an annual or a one-shot - because an empty label names
+   * nothing at all.
+   */
+  label: string
   /** The Wednesday it is solicited for, `YYYY-MM-DD`. */
   week: string
 }
@@ -50,9 +59,18 @@ function normalizeSeries(name: string): string {
     .trim()
 }
 
+/** The trailing issue number, which is the one part of a headline that is not the series. */
+const NUMBER = /#\s*[^\s#]+\s*$/
+
 /** "Captain America (2025) #16" -> "Captain America". */
 function seriesOf(headline: string): string {
   return headline.replace(/\s*#\s*[^\s#]+\s*$/, '')
+}
+
+/** "Captain America (2025) #16" -> "#16". The exact inverse of seriesOf, and the same
+ *  rule, so a headline matched on its series is labelled by what the match left over. */
+function labelOf(headline: string): string {
+  return NUMBER.exec(headline)?.[0].trim() ?? headline
 }
 
 /**
@@ -95,5 +113,5 @@ export function upcomingForEdition(
     .flatMap(({ week, issues }) => issues
       .filter((issue) => wanted.has(normalizeSeries(seriesOf(issue.headline))))
       .filter((issue) => sameRun(issue.headline))
-      .map(({ sourceId, headline }) => ({ sourceId, headline, week })))
+      .map(({ sourceId, headline }) => ({ sourceId, headline, label: labelOf(headline), week })))
 }

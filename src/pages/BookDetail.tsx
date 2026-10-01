@@ -91,7 +91,7 @@ export default function BookDetail() {
   const subtitleParts: string[] = []
   if (book.number) subtitleParts.push(`#${book.number}`)
   if (book.date) subtitleParts.push(book.date.slice(0, 4))
-  if ((book as unknown as Record<string, string>).publisher) subtitleParts.push((book as unknown as Record<string, string>).publisher)
+  if (book.publisher) subtitleParts.push(book.publisher)
 
   // Read-mode detail rows: the editable metadata, minus what the header already shows
   const details: { label: string; value: ReactNode }[] = [
