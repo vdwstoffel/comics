@@ -489,3 +489,91 @@ test('a missing arc issue nothing matches says so rather than going quiet', asyn
     expect(issues.find((i) => i.id === 9999999)?.match).toBeNull()
   } finally { await t.cleanup() }
 })
+
+// Comic Vine records no reading order, so the run is reconstructed from dates. When a
+// publisher printed a different order, yours is the one that counts.
+test('an arc you arranged by hand comes back in your order', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    const put = await t.app.inject({
+      method: 'PUT',
+      url: '/api/arcs/Death%20Spiral/order',
+      payload: { issueIds: [9999999, 1156915, 1158149] },
+    })
+    expect(put.statusCode).toBe(200)
+
+    const issues = (await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).json().arc.issues
+    expect(issues.map((i: { id: number }) => i.id)).toEqual([9999999, 1156915, 1158149])
+  } finally { await t.cleanup() }
+})
+
+test('an arc you have never arranged says the order is not yours', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    expect((await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).json().ordered).toBe(false)
+  } finally { await t.cleanup() }
+})
+
+test('resetting an arc drops it back to the order dates compute', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    await t.app.inject({ method: 'PUT', url: '/api/arcs/Death%20Spiral/order', payload: { issueIds: [9999999, 1156915, 1158149] } })
+    const del = await t.app.inject({ method: 'DELETE', url: '/api/arcs/Death%20Spiral/order' })
+    expect(del.statusCode).toBe(200)
+
+    const issues = (await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).json().arc.issues
+    expect(issues.map((i: { id: number }) => i.id)).toEqual([1156915, 1158149, 9999999])
+  } finally { await t.cleanup() }
+})
+
+// An empty list is a legitimate save meaning "no arrangement", so a malformed body must
+// not be allowed to look like one and quietly discard the real order.
+test('a malformed order is refused rather than wiping the arrangement', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    await t.app.inject({ method: 'PUT', url: '/api/arcs/Death%20Spiral/order', payload: { issueIds: [9999999, 1156915, 1158149] } })
+    const bad = await t.app.inject({ method: 'PUT', url: '/api/arcs/Death%20Spiral/order', payload: { issueIds: 'nonsense' } })
+    expect(bad.statusCode).toBe(400)
+
+    const issues = (await t.app.inject({ url: '/api/arcs/Death%20Spiral' })).json().arc.issues
+    expect(issues.map((i: { id: number }) => i.id)).toEqual([9999999, 1156915, 1158149])
+  } finally { await t.cleanup() }
+})
+
+// The arc page and the "Part 2 of 6" under an issue's Read button read the same run. If
+// only the page honoured the arrangement the two would contradict each other.
+test('the part number under an issue counts your order, not Comic Vine\'s', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    // 1156915 is Part One by date; arranged last, it is part 3 of 3.
+    await t.app.inject({ method: 'PUT', url: '/api/arcs/Death%20Spiral/order', payload: { issueIds: [9999999, 1158149, 1156915] } })
+
+    const arcs = (await t.app.inject({ url: `/api/books/${a.id}/arcs` })).json().arcs
+    expect(arcs[0]).toMatchObject({ name: 'Death Spiral', position: 3, total: 3 })
+  } finally { await t.cleanup() }
+})
+
+// The weekly case for a running arc: Comic Vine is re-read, arc_issue is wiped and
+// rewritten, and the arrangement has to come through it intact.
+test('refreshing a running arc keeps the order you arranged', async () => {
+  const t = await setup([['/story_arc/', { results: ARC }]])
+  const a = t.mk('Vol 7/1.cbz', 1156915)
+  replaceBookTags(t.db, a.id, [{ kind: 'story_arc', value: 'Death Spiral', extId: 56676 }])
+  try {
+    await t.app.inject({ method: 'PUT', url: '/api/arcs/Death%20Spiral/order', payload: { issueIds: [9999999, 1156915, 1158149] } })
+
+    const res = await t.app.inject({ url: '/api/arcs/Death%20Spiral?refresh=1' })
+    expect(res.json().arc.issues.map((i: { id: number }) => i.id)).toEqual([9999999, 1156915, 1158149])
+    expect(res.json().ordered).toBe(true)
+  } finally { await t.cleanup() }
+})

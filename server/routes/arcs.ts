@@ -2,6 +2,8 @@ import { createComicVine } from '../lib/comicvine.js'
 import type { ComicVineClient, CvStoryArc } from '../lib/comicvine.js'
 import { listStoryArcs, booksInArc, ownedIssueIds } from '../models/arcs.js'
 import { cacheArc, getCachedArc, findArcIssue } from '../models/arcCache.js'
+import { getArcOrder, saveArcOrder, clearArcOrder } from '../models/arcOrder.js'
+import { applySavedOrder } from '../lib/arcOrder.js'
 import { findMatchForIssue } from '../services/issueMatching.js'
 import { startIssueDownload, issueLabel } from '../services/issueDownload.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
@@ -21,6 +23,8 @@ interface LoadedArc {
   fetchedAt: string
   /** The run we hold is older than the policy allows, because Comic Vine would not answer. */
   stale: boolean
+  /** The order is one you arranged, not the one dates computed. */
+  ordered: boolean
 }
 
 /**
@@ -40,6 +44,27 @@ async function loadArc(
   arcId: number,
   refresh = false,
 ): Promise<LoadedArc | undefined> {
+  const found = await readArc(db, cv, arcId, refresh)
+  if (!found) return undefined
+
+  // Your arrangement is applied HERE rather than in either handler, so the arc page and
+  // the "Part 2 of 6" line under an issue's Read button can never disagree about the run.
+  // An empty arrangement leaves the computed order exactly as it was.
+  const saved = getArcOrder(db, arcId)
+  return {
+    ...found,
+    ordered: saved.length > 0,
+    arc: { ...found.arc, issues: applySavedOrder(found.arc.issues, saved) },
+  }
+}
+
+/** The run as Comic Vine has it, cache first. Knows nothing about how you arranged it. */
+async function readArc(
+  db: Db,
+  cv: ComicVineClient,
+  arcId: number,
+  refresh: boolean,
+): Promise<Omit<LoadedArc, 'ordered'> | undefined> {
   if (!refresh) {
     const fresh = getCachedArc(db, arcId)
     if (fresh) return { ...fresh, stale: false }
@@ -68,26 +93,38 @@ export default async function arcRoutes(app: App, opts: ArcRouteOpts = {}) {
   // touches Comic Vine.
   app.get('/api/arcs', async () => ({ arcs: listStoryArcs(app.db) }))
 
+  /**
+   * The Comic Vine id for an arc the library knows by name, or the refusal to send back.
+   *
+   * Shared by every route here that is addressed by arc name: reordering an arc has to
+   * find the same id the page did, or it would file the arrangement under nothing.
+   */
+  async function resolveArcId(name: string): Promise<{ id: number } | { code: number; error: string }> {
+    const rows = booksInArc(app.db, name)
+    if (rows.length === 0) return { code: 404, error: 'arc not in this library' }
+
+    const stored = rows.find((r) => r.extId != null)?.extId ?? null
+    if (stored != null) return { id: stored }
+
+    // No id stored: re-read an issue that carries the tag, the same way a character is
+    // backfilled. Two requests the first time this arc is opened, none after that.
+    const source = rows.find((r) => r.comicvineId != null)
+    if (source) {
+      const issue = await cv.getIssue(source.comicvineId!)
+      setTagIds(app.db, source.bookId, 'story_arc', issue.storyArcs)
+      const found = issue.storyArcs.find((a) => a.name === name)?.id ?? null
+      if (found != null) return { id: found }
+    }
+    return { code: 404, error: 'arc not found on Comic Vine' }
+  }
+
   app.get<{ Params: NameParams; Querystring: RefreshQuery }>('/api/arcs/:name', async (req, reply) => {
     if (!getComicVineKey(app.db)) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
     const name = decodeURIComponent(req.params.name)
 
-    const rows = booksInArc(app.db, name)
-    if (rows.length === 0) return reply.code(404).send({ error: 'arc not in this library' })
-
-    let extId = rows.find((r) => r.extId != null)?.extId ?? null
-
-    // No id stored: re-read an issue that carries the tag, the same way a character is
-    // backfilled. Two requests the first time this arc is opened, none after that.
-    if (extId == null) {
-      const source = rows.find((r) => r.comicvineId != null)
-      if (source) {
-        const issue = await cv.getIssue(source.comicvineId!)
-        setTagIds(app.db, source.bookId, 'story_arc', issue.storyArcs)
-        extId = issue.storyArcs.find((a) => a.name === name)?.id ?? null
-      }
-    }
-    if (extId == null) return reply.code(404).send({ error: 'arc not found on Comic Vine' })
+    const resolved = await resolveArcId(name)
+    if ('code' in resolved) return reply.code(resolved.code).send({ error: resolved.error })
+    const extId = resolved.id
 
     const loaded = await loadArc(app.db, cv, extId, req.query?.refresh === '1')
     if (!loaded) return reply.code(502).send({ error: 'Comic Vine would not answer for this arc' })
@@ -97,6 +134,7 @@ export default async function arcRoutes(app: App, opts: ArcRouteOpts = {}) {
     return {
       stale: loaded.stale,
       fetchedAt: loaded.fetchedAt,
+      ordered: loaded.ordered,
       arc: {
         ...loaded.arc,
         // An issue you own carries its read state, so the arc draws the same badges the
@@ -117,6 +155,43 @@ export default async function arcRoutes(app: App, opts: ArcRouteOpts = {}) {
         }),
       },
     }
+  })
+
+  /**
+   * Put this arc in the order you say it reads in.
+   *
+   * The body is the WHOLE run, not a move: the page sends back every issue it drew, in the
+   * order it now shows them. That is what makes the result independent of what Comic Vine
+   * does next - an issue added to the arc afterwards is placed against these by date rather
+   * than needing the arrangement to be expressed as offsets from a list that has shifted.
+   */
+  app.put<{ Params: NameParams; Body: { issueIds?: unknown } }>(
+    '/api/arcs/:name/order',
+    async (req, reply) => {
+      const name = decodeURIComponent(req.params.name)
+      const ids = req.body?.issueIds
+      // A malformed body would otherwise save an empty order, which reads as "never
+      // arranged" and silently throws away the arrangement the page meant to send.
+      if (!Array.isArray(ids) || !ids.every((id) => Number.isInteger(id))) {
+        return reply.code(400).send({ error: 'issueIds must be a list of Comic Vine issue ids' })
+      }
+
+      const resolved = await resolveArcId(name)
+      if ('code' in resolved) return reply.code(resolved.code).send({ error: resolved.error })
+
+      saveArcOrder(app.db, resolved.id, ids as number[])
+      return { ordered: true }
+    },
+  )
+
+  /** Forget your arrangement and go back to the order dates compute. */
+  app.delete<{ Params: NameParams }>('/api/arcs/:name/order', async (req, reply) => {
+    const name = decodeURIComponent(req.params.name)
+    const resolved = await resolveArcId(name)
+    if ('code' in resolved) return reply.code(resolved.code).send({ error: resolved.error })
+
+    clearArcOrder(app.db, resolved.id)
+    return { ordered: false }
   })
 
   /**

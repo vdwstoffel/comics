@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
@@ -6,16 +7,8 @@ import CoverTile from '../components/CoverTile'
 import MissingIssueTile from '../components/MissingIssueTile'
 import LibraryRail from '../components/LibraryRail'
 import { useDownload } from '../lib/useDownload'
-
-/**
- * What to call an issue. Comic Vine gives most of them no story title at all, so the series
- * and number carry the tile; the bare id is the last resort, for when the issue lookup that
- * supplies those failed.
- */
-function label(issue: ApiArcIssue): string {
-  if (issue.volumeName) return issue.number ? `${issue.volumeName} #${issue.number}` : issue.volumeName
-  return issue.name || `Issue ${issue.id}`
-}
+import { arcIssueLabel } from '../lib/arcIssueLabel'
+import ArcReorderList from '../components/ArcReorderList'
 
 /**
  * An issue in the arc. Yours shows its own cover and opens in the library; one you do not
@@ -30,7 +23,7 @@ function label(issue: ApiArcIssue): string {
 function ArcIssue({ issue }: { issue: ApiArcIssue }) {
   const qc = useQueryClient()
   const { liveByIssue } = useDownload()
-  const title = label(issue)
+  const title = arcIssueLabel(issue)
 
   const get = useMutation({
     mutationFn: () => api.downloadArcIssue(issue.id),
@@ -82,6 +75,25 @@ export default function Arc() {
     retry: false,
   })
 
+  const [reordering, setReordering] = useState(false)
+  const qc = useQueryClient()
+
+  // The run comes back from the server rather than being patched in locally: the order is
+  // applied where the "Part 2 of 6" line also reads it, so a refetch is what keeps the two
+  // telling the same story.
+  const save = useMutation({
+    mutationFn: (issueIds: number[]) => api.saveArcOrder(arcName, issueIds),
+    onSuccess: async () => {
+      await qc.invalidateQueries({ queryKey: ['arc', arcName] })
+      setReordering(false)
+    },
+  })
+
+  const reset = useMutation({
+    mutationFn: () => api.resetArcOrder(arcName),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['arc', arcName] }),
+  })
+
   const arc = data?.arc
   const owned = arc?.issues.filter((i) => i.owned).length ?? 0
 
@@ -100,9 +112,36 @@ export default function Arc() {
                 .filter(Boolean).join(' · ')}
             </p>
             {arc.deck && <p className="arc-detail__deck">{arc.deck}</p>}
-            <div className="tile-grid arc-issue-grid">
-              {arc.issues.map((issue) => <ArcIssue key={issue.id} issue={issue} />)}
-            </div>
+            {!reordering && (
+              <div className="arc-detail__actions">
+                {/* The state leads, so the buttons below it read as what to do about it. */}
+                {data?.ordered && <span className="arc-detail__ordered">In your order</span>}
+                <button type="button" className="btn btn-ghost" onClick={() => setReordering(true)}>Reorder</button>
+                {/* Only worth offering once there is an arrangement to undo. */}
+                {data?.ordered && (
+                  <button
+                    type="button"
+                    className="btn btn-ghost"
+                    disabled={reset.isPending}
+                    onClick={() => reset.mutate()}
+                  >
+                    Reset to Comic Vine order
+                  </button>
+                )}
+              </div>
+            )}
+            {reordering ? (
+              <ArcReorderList
+                issues={arc.issues}
+                saving={save.isPending}
+                onSave={(issueIds) => save.mutate(issueIds)}
+                onCancel={() => setReordering(false)}
+              />
+            ) : (
+              <div className="tile-grid arc-issue-grid">
+                {arc.issues.map((issue) => <ArcIssue key={issue.id} issue={issue} />)}
+              </div>
+            )}
             {arc.siteUrl && (
               <a className="character-card__link" href={arc.siteUrl} target="_blank" rel="noreferrer">
                 See this arc on Comic Vine ↗

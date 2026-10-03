@@ -127,6 +127,18 @@ CREATE TABLE IF NOT EXISTS arc_issue (
 -- single search can list two dozen series, which is what makes this a cache rather than a
 -- convenience. Split in two for the same reason as volume_cache above: a series Comic Vine
 -- knows nothing about still has to record that we asked, or it would be asked forever.
+-- The order YOU put an arc's issues in, which outranks the one computed from dates.
+-- Deliberately its own table rather than a column on arc_issue: a refresh wipes and
+-- rewrites that table, and it would take your arrangement with it. Holds a whole-order
+-- snapshot - every issue the arc had when you arranged it - so there is no sparse-pin
+-- arithmetic to get wrong; lib/arcOrder decides where anything added since belongs.
+CREATE TABLE IF NOT EXISTS arc_order (
+  arc_id      INTEGER NOT NULL,
+  cv_issue_id INTEGER NOT NULL,
+  position    INTEGER NOT NULL,
+  PRIMARY KEY (arc_id, cv_issue_id)
+);
+
 CREATE TABLE IF NOT EXISTS cv_volume_search (
   query      TEXT PRIMARY KEY,
   fetched_at TEXT NOT NULL

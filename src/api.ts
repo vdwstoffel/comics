@@ -339,7 +339,8 @@ export interface CvSearchResponse { results: CvSearchResult[] }
 /** `verified` is false when the character was resolved by name search rather than by id. */
 export interface CharacterResponse { character: ApiCharacter; verified: boolean }
 export interface ArcsListResponse { arcs: ApiStoryArcSummary[] }
-export interface ArcResponse { arc: ApiStoryArc }
+/** `ordered` is true when the run is the one you arranged, not the one dates computed. */
+export interface ArcResponse { arc: ApiStoryArc; ordered?: boolean }
 export interface EditionResponse { edition: ApiEdition }
 export interface MoveBookEditionResponse { book: ApiBook; edition: ApiEdition }
 export interface DeleteBookResponse { deleted: true; editionId: number; editionRemoved: boolean }
@@ -513,6 +514,16 @@ export const api = {
     }),
   getArcs: () => json<ArcsListResponse>('/api/arcs'),
   getArc: (name: string) => json<ArcResponse>(`/api/arcs/${encodeURIComponent(name)}`),
+
+  /** The WHOLE run in the order it now reads - see the route for why it is not a move. */
+  saveArcOrder: (name: string, issueIds: number[]) =>
+    json<{ ordered: boolean }>(`/api/arcs/${encodeURIComponent(name)}/order`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ issueIds }),
+    }),
+
+  /** Forget the arrangement and go back to the order dates compute. */
+  resetArcOrder: (name: string) =>
+    json<{ ordered: boolean }>(`/api/arcs/${encodeURIComponent(name)}/order`, { method: 'DELETE' }),
 
   /** `refresh` bypasses the server's day cache — see the Refresh button on This week. */
   getReleases: (refresh = false) =>

@@ -1,5 +1,6 @@
 import { stripHtml, toBlocks } from './html.js'
 import type { Block } from './html.js'
+import { sortArcIssues } from './arcOrder.js'
 
 const BASE = 'https://comicvine.gamespot.com/api'
 const UA = 'comic-app/0.1 (self-hosted personal comic library)'
@@ -444,28 +445,6 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         issue.storeDate = d.store_date
       }
 
-      // Cover dates run about two months ahead of on-sale dates, so an arc where only some
-      // issues carry a store date sorts on cover dates throughout — mixing the two scales
-      // would shuffle the halves into each other.
-      const byStore = issues.length > 0 && issues.every((i) => i.storeDate)
-      const day = (i: CvArcIssue) => (byStore ? i.storeDate : i.coverDate) || ''
-
-      issues.sort((a, b) => {
-        const ad = day(a)
-        const bd = day(b)
-        // An undated issue can't be placed at all; it goes last rather than first.
-        if (!ad !== !bd) return ad ? -1 : 1
-        if (ad !== bd) return ad < bd ? -1 : 1
-        // Same Wednesday: the series the arc is named for reads before its tie-ins.
-        const vol = (a.volumeName || '').localeCompare(b.volumeName || '')
-        if (vol !== 0) return vol
-        const an = Number(a.number)
-        const bn = Number(b.number)
-        if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) return an - bn
-        // With no detail at all every comparison lands here, which is the old id order.
-        return a.id - b.id
-      })
-
       return {
         id: r.id,
         name: r.name,
@@ -473,7 +452,9 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         publisher: r.publisher?.name,
         imageUrl: r.image?.medium_url || r.image?.original_url,
         siteUrl: r.site_detail_url,
-        issues,
+        // Dates place the issues, and the arc's own name breaks the ties a shared
+        // Wednesday leaves - see lib/arcOrder.
+        issues: sortArcIssues(issues, r.name),
       }
     },
     async getVolume(id) {
