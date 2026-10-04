@@ -2,16 +2,35 @@ import { releaseKind } from './comicGrouping.js'
 import type { ReleaseKind } from './comicGrouping.js'
 
 /**
- * How far a scraped year may sit from a Comic Vine cover year and still be the same
- * issue. Comic Vine's cover date runs ahead of the release the scraper sees - Venom
- * #251 has a 2026-01 cover date and is posted as "Venom #251 (2025)".
+ * The cover months that may be posted under the year before. Comic Vine's cover date runs
+ * ahead of the release the scraper sees - Venom #251 has a 2026-01 cover date and is
+ * posted as "Venom #251 (2025)" - but only by a couple of months, so only an early-year
+ * cover can cross into the previous year.
  *
- * Measured, not guessed: across the library's 32 missing issues, ±0 loses five real
- * matches and ±2 admits twelve ambiguities. ±1 is the only value that resolves every
- * issue without admitting one. Exported because the SQL window that gathers candidates
- * has to agree with the filter that judges them.
+ * Measured, not guessed: of the library's 701 unambiguous matches, 106 sit a year behind
+ * the cover, every one with a January to March cover. The three that sat a year *ahead*
+ * were all a different series, so the window never reaches forward.
+ *
+ * A flat ±1 year is what this replaced, and it could not tell a relaunch from the run
+ * before it: Iron Man #4 with a 2026-06 cover matched both "Iron Man #4 (2025)" and
+ * "Iron Man #4 (2026)", and two matches is no match.
  */
-export const YEAR_SLACK = 1
+const LAST_EARLY_MONTH = 3
+
+/**
+ * The years a post of this issue may be listed under, or nothing for a cover date with
+ * no year. A cover date with no month cannot rule out the early months, so it allows the
+ * year before. Exported because the SQL that gathers candidates has to agree with the
+ * filter that judges them.
+ */
+export function releaseYears(coverDate: string | null | undefined): { from: number; to: number } | null {
+  const match = /^(\d{4})(?:-(\d{2}))?/.exec(String(coverDate ?? ''))
+  if (!match) return null
+  const year = Number(match[1])
+  const month = match[2] ? Number(match[2]) : null
+  const early = month === null || month <= LAST_EARLY_MONTH
+  return { from: early ? year - 1 : year, to: year }
+}
 
 /**
  * The series two names agree on, or do not.
@@ -51,7 +70,8 @@ export interface MissingIssue {
   matchKey: string
   /** Already through parseNumber, so both sides of the comparison are normalised. */
   number: string
-  coverYear: number | null
+  /** Comic Vine's cover date, which is what decides the years a post may carry. */
+  coverDate: string | null
 }
 
 /** A scraped index row, reduced to what the rule reads. */
@@ -75,13 +95,13 @@ const SINGLE_ISSUE = new Set<ReleaseKind>(['issue', 'miniseries'])
  * between them honest.
  */
 export function matchIssue(candidates: IndexCandidate[], issue: MissingIssue): IndexCandidate | null {
-  const { coverYear } = issue
-  if (coverYear === null) return null
+  const years = releaseYears(issue.coverDate)
+  if (!years) return null
 
   const hits = candidates.filter((c) =>
     c.number === issue.number
     && c.year !== null
-    && Math.abs(c.year - coverYear) <= YEAR_SLACK
+    && c.year >= years.from && c.year <= years.to
     // A bundle or a collected edition is not a single issue, however its number parses.
     // A miniseries is: that kind separates an offshoot from its parent's numbering when
     // grouping a shelf, and "Avengers – Armageddon #2" is still one issue to download.

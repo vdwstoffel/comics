@@ -383,8 +383,9 @@ test('a missing issue with two possible rows carries no match', async () => {
   const db = openDb(':memory:')
   const { edition } = seedVenom(db)
   updateEdition(db, edition.id, { cvName: 'Venom' })
+  // The same issue posted twice - nothing says which post to take.
   indexRow(db, 'Venom #250 (2025)', '250', 2025)
-  indexRow(db, 'Venom #250 (2026)', '250', 2026)
+  indexRow(db, 'Venom #250 (2025) (Digital)', '250', 2025)
   stubCv()
   const server = await app(db)
 

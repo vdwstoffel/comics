@@ -1,5 +1,5 @@
 import { parseNumber } from '../lib/comicTitle.js'
-import { matchIssue, matchKey, YEAR_SLACK } from '../lib/issueMatch.js'
+import { matchIssue, matchKey, releaseYears } from '../lib/issueMatch.js'
 import type { IndexCandidate } from '../lib/issueMatch.js'
 import type { CvVolumeIssue } from '../lib/comicvine.js'
 import type { Db } from '../types.js'
@@ -48,16 +48,16 @@ export function findMatchForIssue(
 ): IssueMatch | null {
   if (!volumeName?.trim() || !issue.number) return null
 
-  const coverYear = issue.coverDate ? Number(String(issue.coverDate).slice(0, 4)) : NaN
-  if (!Number.isInteger(coverYear)) return null
+  const years = releaseYears(issue.coverDate)
+  if (!years) return null
 
   // Both sides of the number comparison go through the same normaliser, so "5", "05"
   // and "005" are one value.
   const number = parseNumber(`#${issue.number}`)
   if (!number) return null
 
-  const candidates = candidatesStatement(db).all(number, coverYear - YEAR_SLACK, coverYear + YEAR_SLACK)
+  const candidates = candidatesStatement(db).all(number, years.from, years.to)
 
-  const hit = matchIssue(candidates, { matchKey: matchKey(volumeName), number, coverYear })
+  const hit = matchIssue(candidates, { matchKey: matchKey(volumeName), number, coverDate: issue.coverDate ?? null })
   return hit ? { indexId: hit.id, title: hit.title } : null
 }

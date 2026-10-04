@@ -84,7 +84,7 @@ test('a match that has become ambiguous refuses rather than guessing', async () 
   const db = openDb(':memory:')
   const { edition } = seed(db)
   db.prepare("INSERT INTO comic_index (title, url, category, number, year, imported_at) VALUES (?,?,?,?,?,?)")
-    .run('Venom #250 (2026)', 'https://x.test/post/250b', 'Marvel Comics', '250', 2026, '2026-09-13T00:00:00.000Z')
+    .run('Venom #250 (2025) (Digital)', 'https://x.test/post/250b', 'Marvel Comics', '250', 2025, '2026-09-13T00:00:00.000Z')
   const { app, started, fetchPage } = server(db)
   await app.register(editionRoutes, { fetchPage })
 
