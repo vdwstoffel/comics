@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
@@ -69,11 +69,24 @@ function ArcIssue({ issue }: { issue: ApiArcIssue }) {
 export default function Arc() {
   const { name } = useParams()
   const arcName = decodeURIComponent(name ?? '')
-  const { data, isLoading, isError } = useQuery({
+  // Set just before a refetch and consumed by it, so pressing Refresh bypasses the
+  // server's day-long cache while an ordinary render does not. It stays out of the query
+  // key deliberately: a forced read and a normal one are the same data, not two caches.
+  // The volume page and This week carry the same mechanism for the same reason.
+  const forceRefresh = useRef(false)
+  const { data, isLoading, isError, isFetching, refetch } = useQuery({
     queryKey: ['arc', arcName],
-    queryFn: () => api.getArc(arcName),
+    queryFn: () => {
+      const force = forceRefresh.current
+      forceRefresh.current = false
+      return api.getArc(arcName, force)
+    },
     retry: false,
   })
+  const refreshArc = () => {
+    forceRefresh.current = true
+    void refetch()
+  }
 
   const [reordering, setReordering] = useState(false)
   const qc = useQueryClient()
@@ -116,6 +129,12 @@ export default function Arc() {
               <div className="arc-detail__actions">
                 {/* The state leads, so the buttons below it read as what to do about it. */}
                 {data?.ordered && <span className="arc-detail__ordered">In your order</span>}
+                {/*
+                  A forced read Comic Vine would not answer falls back to the run we
+                  already held, which redraws identically. Without this the button would
+                  look like it had done nothing at all.
+                */}
+                {data?.stale && <span>Could not reach Comic Vine</span>}
                 <button type="button" className="btn btn-ghost" onClick={() => setReordering(true)}>Reorder</button>
                 {/* Only worth offering once there is an arrangement to undo. */}
                 {data?.ordered && (
@@ -128,6 +147,20 @@ export default function Arc() {
                     Reset to Comic Vine order
                   </button>
                 )}
+                {/*
+                  The run is cached for a day, and an arc still being published gains
+                  issues inside that day. This asks Comic Vine again without waiting the
+                  day out. Inside `!reordering` with the rest: refreshing mid-drag would
+                  pull the list out from under you.
+                */}
+                <button
+                  type="button"
+                  className="btn btn-ghost"
+                  disabled={isFetching}
+                  onClick={refreshArc}
+                >
+                  {isFetching ? 'Refreshing…' : 'Refresh'}
+                </button>
               </div>
             )}
             {reordering ? (

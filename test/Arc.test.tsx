@@ -29,10 +29,13 @@ const ARC = {
 let posted: string[] = []
 /** Every write the page makes, so a reorder can be checked by what it sent. */
 let sent: Array<{ method: string; url: string; body: unknown }> = []
+/** Every read of THIS arc, so a forced one can be told from the render that preceded it. */
+let arcGets: string[] = []
 
 function stub(arc: unknown = ARC, queue: unknown[] = []) {
   posted = []
   sent = []
+  arcGets = []
   globalThis.fetch = vi.fn(async (url: string, init?: { method?: string; body?: string }) => {
     const u = String(url)
     if (init?.method && init.method !== 'GET') {
@@ -53,6 +56,7 @@ function stub(arc: unknown = ARC, queue: unknown[] = []) {
     if (u.includes('/api/editions')) return { ok: true, json: async () => ({ editions: [] }) }
     if (u.includes('/api/read-states')) return { ok: true, json: async () => ({ readStates: [] }) }
     if (u.endsWith('/api/arcs')) return { ok: true, json: async () => ({ arcs: [] }) }
+    arcGets.push(u)
     return { ok: true, json: async () => arc }
   }) as unknown as typeof fetch
 }
@@ -167,4 +171,59 @@ test('resetting asks the server to forget your order', async () => {
   await waitFor(() => expect(sent).toContainEqual({
     method: 'DELETE', url: '/api/arcs/Death%20Spiral/order', body: undefined,
   }))
+})
+
+// The run is cached for a day, so an arc that gained an issue this morning would other-
+// wise show yesterday's run until tomorrow. This is the way to ask again without waiting
+// it out - and an ordinary render must NOT ask, which is the whole point of the cache.
+test('pressing refresh reads the run from Comic Vine again', async () => {
+  draw()
+  fireEvent.click(await screen.findByRole('button', { name: 'Refresh' }))
+
+  await waitFor(() => expect(arcGets).toEqual([
+    '/api/arcs/Death%20Spiral',
+    '/api/arcs/Death%20Spiral?refresh=1',
+  ]))
+})
+
+// A forced read Comic Vine will not answer falls back to the run we already held, which
+// redraws identically. Without this line the button would look like it did nothing.
+test('a run Comic Vine would not answer for says so', async () => {
+  stub({ ...ARC, stale: true })
+  draw()
+  expect(await screen.findByText('Could not reach Comic Vine')).toBeInTheDocument()
+})
+
+test('a run Comic Vine answered says nothing about reaching it', async () => {
+  draw()
+  await screen.findByRole('button', { name: 'Refresh' })
+  expect(screen.queryByText('Could not reach Comic Vine')).not.toBeInTheDocument()
+})
+
+/**
+ * Hold the forced read open, so the page can be looked at mid-refresh. Wraps whatever
+ * stub() installed rather than replacing it, so every other request still answers.
+ */
+function holdRefresh() {
+  const underlying = globalThis.fetch
+  let release!: () => void
+  const gate = new Promise<void>((resolve) => { release = resolve })
+  globalThis.fetch = (async (url: string, init?: unknown) => {
+    if (String(url).includes('refresh=1')) await gate
+    return (underlying as (u: string, i?: unknown) => unknown)(url, init)
+  }) as unknown as typeof fetch
+  return release
+}
+
+// A second press while the first read is still out would spend another Comic Vine
+// request on the same answer, against a budget of 200 an hour.
+test('a refresh in flight says so and cannot be pressed again', async () => {
+  draw()
+  const release = holdRefresh()
+  fireEvent.click(await screen.findByRole('button', { name: 'Refresh' }))
+
+  expect(await screen.findByRole('button', { name: 'Refreshing…' })).toBeDisabled()
+
+  release()
+  await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled())
 })

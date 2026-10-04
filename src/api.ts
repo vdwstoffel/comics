@@ -339,8 +339,11 @@ export interface CvSearchResponse { results: CvSearchResult[] }
 /** `verified` is false when the character was resolved by name search rather than by id. */
 export interface CharacterResponse { character: ApiCharacter; verified: boolean }
 export interface ArcsListResponse { arcs: ApiStoryArcSummary[] }
-/** `ordered` is true when the run is the one you arranged, not the one dates computed. */
-export interface ArcResponse { arc: ApiStoryArc; ordered?: boolean }
+/**
+ * `ordered` is true when the run is the one you arranged, not the one dates computed.
+ * `stale` is a forced read Comic Vine would not answer, served from what we already held.
+ */
+export interface ArcResponse { arc: ApiStoryArc; ordered?: boolean; stale?: boolean }
 export interface EditionResponse { edition: ApiEdition }
 export interface MoveBookEditionResponse { book: ApiBook; edition: ApiEdition }
 export interface DeleteBookResponse { deleted: true; editionId: number; editionRemoved: boolean }
@@ -513,7 +516,9 @@ export const api = {
       method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
     }),
   getArcs: () => json<ArcsListResponse>('/api/arcs'),
-  getArc: (name: string) => json<ArcResponse>(`/api/arcs/${encodeURIComponent(name)}`),
+  /** `refresh` bypasses the server's day cache — see the Refresh button on an arc page. */
+  getArc: (name: string, refresh = false) =>
+    json<ArcResponse>(`/api/arcs/${encodeURIComponent(name)}${refresh ? '?refresh=1' : ''}`),
 
   /** The WHOLE run in the order it now reads - see the route for why it is not a move. */
   saveArcOrder: (name: string, issueIds: number[]) =>
