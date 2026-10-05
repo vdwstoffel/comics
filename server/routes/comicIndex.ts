@@ -5,6 +5,7 @@ import type { ReleaseKind } from '../lib/comicGrouping.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import { parseDownloadLink } from '../lib/comicPostPage.js'
 import type { ScrapeMode } from '../services/comicIndexScraper.js'
+import { sweepFollows } from '../services/following.js'
 import type { App } from '../types.js'
 
 const MODES: ScrapeMode[] = ['quick', 'full']
@@ -114,8 +115,12 @@ export default async function comicIndexRoutes(app: App, opts: ComicIndexRouteOp
     if (!MODES.includes(mode)) {
       return reply.code(400).send({ error: `mode must be one of ${MODES.join(', ')}` })
     }
-    const { started, status } = app.scraper.start(mode)
+    const { started, status, done } = app.scraper.start(mode)
     if (!started) return reply.code(409).send({ started, status })
+    // A scrape finishing is when a follow's match can newly succeed, so every follow is
+    // retried then. Attached to the run rather than awaited: the press that started the
+    // scrape is answered immediately, as it always was.
+    void done.then(() => { sweepFollows(app, { fetchPage }) }).catch(() => { /* the scraper reports its own */ })
     return reply.code(202).send({ started, status })
   })
 }

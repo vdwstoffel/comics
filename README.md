@@ -42,6 +42,18 @@ with `tsc`, NodeNext); frontend is React + Vite (bundler resolution).
 - Upgrading: `COMIC_VINE_API_KEY` is no longer read. Re-enter your key once under
   Settings; you can delete the line from your `.env`.
 
+## Following
+
+Open a run or a story arc and press **Follow**. When you finish an issue, the next
+one is queued automatically — one issue per finish, so the shelf never becomes a
+backlog. What you follow lives under **Following** in the library sidebar.
+
+When the next issue cannot be found yet, the follow waits and says so, and is
+retried every time a scrape finishes (**Search → Scrape**). Nothing runs on a
+timer: if you never scrape, nothing arrives.
+
+A run you follow but have not started pulls nothing until you finish an issue of it.
+
 ## Config (env)
 
 - `DATA_DIR` (default `/data` in Docker), `PORT` (3000), `MAX_UPLOAD_BYTES`

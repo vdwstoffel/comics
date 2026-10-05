@@ -14,6 +14,7 @@ import { upcomingForEdition } from '../lib/upcomingForEdition'
 import { volumeEntries } from '../lib/volumeEntries'
 import EditionEditDialog from '../components/EditionEditDialog'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
+import FollowButton from '../components/FollowButton'
 import EditionRun from '../components/EditionRun'
 
 /**
@@ -284,6 +285,14 @@ export default function Edition() {
             ✏
           </button>
           <Link to={searchHref} className="edition-header__find">Find more</Link>
+          {/* Beside Find more: both are about what comes next for this run. A volume Comic
+              Vine has not matched has nothing to watch, so it says so rather than accepting
+              a follow that could never do anything. */}
+          <FollowButton
+            target={{ kind: 'volume', editionId: data.edition.id }}
+            refId={data.edition.id}
+            unavailable={data.edition.comicvineId == null ? 'Match this volume to Comic Vine to follow it' : undefined}
+          />
           {/* Only when there is something to take: a complete volume, and one whose every
               gap the rule refused to close, both have nothing to offer in bulk. In the
               carousel the sidebar carries this, beside the gaps it would fill. */}

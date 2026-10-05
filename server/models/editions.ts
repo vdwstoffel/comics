@@ -1,4 +1,5 @@
 import { deriveSeriesName, seriesMatchKey } from '../lib/seriesName.js'
+import { removeFollowsForEdition } from './follows.js'
 import type { FilterState } from './progress.js'
 import type { Db, Edition } from '../types.js'
 
@@ -227,5 +228,10 @@ export function getEditionByName(db: Db, name: string): Edition | undefined {
 }
 
 export function deleteEdition(db: Db, id: number): void {
+  // A follow names its edition by a polymorphic (kind, ref_id) key, which cannot carry a
+  // foreign key, so this is what stands in for one. Every edition delete funnels through
+  // here. It also matters beyond tidiness: rowids are reused, so a stale follow would
+  // end up pointing at an unrelated edition created later.
+  removeFollowsForEdition(db, id)
   db.prepare('DELETE FROM edition WHERE id = ?').run(id)
 }

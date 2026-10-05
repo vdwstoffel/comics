@@ -319,6 +319,30 @@ export type ReadState = 'unread' | 'reading' | 'read'
  */
 export type FilterState = 'unread' | 'read'
 
+export type FollowState = 'wanted' | 'supplied' | 'dormant' | 'caught-up'
+
+export interface ApiFollow {
+  kind: 'volume' | 'arc'
+  /** The edition id for a volume; Comic Vine's arc id for an arc. */
+  refId: number
+  name: string
+  state: FollowState
+  /** Only on a `wanted` follow: the issue it is after. */
+  want?: { id: number; number: string | null; name: string | null }
+  /** Only on a `wanted` follow: whether that issue is already in the download queue. */
+  queued?: boolean
+}
+
+/** What POST /api/follows returns: the stored row, not the computed state. Callers refetch with
+ *  getFollows() rather than reading state from this response, so the shelf always reflects the
+ *  server's live computation. */
+export interface ApiFollowRef {
+  kind: 'volume' | 'arc'
+  refId: number
+  name: string
+  createdAt: string
+}
+
 export interface ReadStateFacet {
   name: FilterState
   count: number
@@ -343,7 +367,13 @@ export interface ArcsListResponse { arcs: ApiStoryArcSummary[] }
  * `ordered` is true when the run is the one you arranged, not the one dates computed.
  * `stale` is a forced read Comic Vine would not answer, served from what we already held.
  */
-export interface ArcResponse { arc: ApiStoryArc; ordered?: boolean; stale?: boolean }
+export interface ArcResponse {
+  arc: ApiStoryArc
+  /** Comic Vine's id for this arc, which is what a follow is stored under. */
+  arcId?: number | null
+  ordered?: boolean
+  stale?: boolean
+}
 export interface EditionResponse { edition: ApiEdition }
 export interface MoveBookEditionResponse { book: ApiBook; edition: ApiEdition }
 export interface DeleteBookResponse { deleted: true; editionId: number; editionRemoved: boolean }
@@ -640,4 +670,23 @@ export const api = {
     json<StartScrapeResponse>('/api/comic-index/scrape', {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ mode }),
     }),
+
+  getFollows: () => json<{ follows: ApiFollow[] }>('/api/follows'),
+
+  /** A volume is followed by its edition, which is where its downloads land. */
+  followVolume: (editionId: number) =>
+    json<{ follow: ApiFollowRef }>('/api/follows', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ kind: 'volume', editionId }),
+    }),
+
+  /** An arc is followed by the name its page is reached under; the server resolves the id. */
+  followArc: (name: string) =>
+    json<{ follow: ApiFollowRef }>('/api/follows', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ kind: 'arc', name }),
+    }),
+
+  unfollow: (kind: 'volume' | 'arc', refId: number) =>
+    json<{ unfollowed: boolean }>(`/api/follows/${kind}/${refId}`, { method: 'DELETE' }),
 }

@@ -5,6 +5,7 @@ import { getProgress, setProgress, deriveReadState } from '../models/progress.js
 import { getBookCredits, getBookTags } from '../models/metadata.js'
 import { readPage } from '../lib/cbz.js'
 import { moveBookToEdition, removeBook } from '../services/library.js'
+import { attemptFollowsForBook } from '../services/following.js'
 import { syncComicInfoFile } from '../services/comicinfoSync.js'
 import { readStateOf } from './filters.js'
 import type { App, Book } from '../types.js'
@@ -68,7 +69,20 @@ export default async function booksRoutes(app: App) {
     const book = getBook(app.db, Number(req.params.id))
     if (!book) return reply.code(404).send({ error: 'book not found' })
     const { lastPage = 0, completed = false } = req.body || {}
-    return { progress: setProgress(app.db, book.id, { lastPage, completed }) }
+    // Read BEFORE the write, so "you just finished this" can be told apart from "you are
+    // still on the last page". The reader re-sends completed on every page turn at the
+    // end of a comic, and each one would otherwise be a fresh attempt.
+    const wasCompleted = getProgress(app.db, book.id).completed
+    const progress = setProgress(app.db, book.id, { lastPage, completed })
+
+    // Fire and forget: saving your place must never wait on, or fail because of,
+    // someone else's web server.
+    if (completed && !wasCompleted) {
+      void attemptFollowsForBook(app, book).catch((err) => {
+        app.log.warn({ err, bookId: book.id }, 'follow attempt after finishing a book failed')
+      })
+    }
+    return { progress }
   })
 
   const EDITABLE = ['title', 'number', 'writer', 'penciller', 'summary', 'date'] as const

@@ -22,6 +22,20 @@ interface ProgressRow {
   updated_at: string
 }
 
+/**
+ * The comicvine ids of every finished book, in one query rather than one per owned book:
+ * the arc path runs inside the progress write and on every rail render, and a per-book
+ * lookup recompiled its SQL for each of them. Built from every completed row, so two
+ * copies of one issue agree with the volume path: a Map keyed by comicvine_id kept only
+ * the last copy, and when just the other one was finished the arc read it as unfinished.
+ */
+export function finishedIssueIds(db: Db): Set<number> {
+  const rows = db.prepare(
+    `SELECT b.comicvine_id AS id FROM book b JOIN read_progress p ON p.book_id = b.id
+     WHERE p.completed = 1 AND b.comicvine_id IS NOT NULL`).all() as Array<{ id: number }>
+  return new Set(rows.map((r) => r.id))
+}
+
 export function getProgress(db: Db, bookId: number): Progress {
   const row = db.prepare('SELECT * FROM read_progress WHERE book_id = ?').get(bookId) as ProgressRow | undefined
   if (!row) return { bookId, lastPage: 0, completed: false, updatedAt: null }

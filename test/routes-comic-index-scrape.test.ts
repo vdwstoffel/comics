@@ -3,6 +3,9 @@ import Fastify from 'fastify'
 import { openDb } from '../server/db.js'
 import comicIndexRoutes from '../server/routes/comicIndex.js'
 import { createScrapeRunner } from '../server/services/comicIndexScraper.js'
+import { upsertEdition } from '../server/models/editions.js'
+import { addFollow } from '../server/models/follows.js'
+import * as following from '../server/services/following.js'
 import type { FastifyInstance } from 'fastify'
 import type { Config } from '../server/config.js'
 
@@ -25,7 +28,7 @@ beforeEach(async () => {
       delayMs: 0, retries: 1, retryBackoffMs: 0, quickPages: 2, fullPages: 4,
     },
   ))
-  await app.register(comicIndexRoutes)
+  await app.register(comicIndexRoutes, { fetchPage: async () => { throw new Error('no network') } })
 })
 afterEach(async () => { release?.(); await app.close() })
 
@@ -72,4 +75,20 @@ test('GET reflects progress and then completion', async () => {
   const done = (await get()).json()
   expect(done.inserted).toBeGreaterThan(0)
   expect(done.finishedAt).not.toBeNull()
+})
+
+// The headline promise of Following: a follow that could not be filled is retried when a
+// scrape finishes. Every sweep test calls sweepFollows directly, so without this nothing
+// notices if the route stops starting one.
+test('a finished scrape retries the follows', async () => {
+  const spy = vi.spyOn(following, 'attemptFollow').mockResolvedValue('skipped')
+  try {
+    const edition = upsertEdition(app.db, { name: 'Iron Man', folder: 'Iron Man' })
+    addFollow(app.db, 'volume', edition.id, 'Iron Man')
+    release?.()
+    expect((await post({ mode: 'quick' })).statusCode).toBe(202)
+    await vi.waitFor(() => expect(spy).toHaveBeenCalled())
+    await following.followSweepIdle()
+    expect(spy).toHaveBeenCalledTimes(1)
+  } finally { spy.mockRestore() }
 })

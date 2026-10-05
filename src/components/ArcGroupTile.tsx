@@ -49,7 +49,9 @@ export default function ArcGroupTile({ group }: ArcGroupTileProps) {
             <TileProgress readState={next.readState} percent={next.percent} />
           </span>
         </span>
-        <span className="volume-tile__name">{group.name}</span>
+        {/* Clamped to two lines for the shelf's sake; the full name lives in the title,
+            because an arc's is long and the part that is cut is the part that names it. */}
+        <span className="volume-tile__name" title={group.name}>{group.name}</span>
         <span className="volume-tile__count">
           {/* An arc that never leaves its own series is still an arc, but "1 series" is a
               line of text that tells the reader nothing. */}

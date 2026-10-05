@@ -6,6 +6,7 @@ import { openDb } from '../server/db.js'
 import { upsertEdition, getEdition } from '../server/models/editions.js'
 import { insertBook, getBook } from '../server/models/books.js'
 import { setProgress } from '../server/models/progress.js'
+import { addFollow, listFollows } from '../server/models/follows.js'
 import { replaceBookCredits, replaceBookTags } from '../server/models/metadata.js'
 import { removeBook, removeEdition, removeSeries } from '../server/services/library.js'
 import { makeCbz } from './helpers/makeCbz.js'
@@ -192,4 +193,26 @@ test('removeBook takes the read progress, credits and tags with it', async () =>
   expect(count('read_progress')).toBe(0)
   expect(count('book_credit')).toBe(0)
   expect(count('book_tag')).toBe(0)
+})
+
+// A follow's key is polymorphic and carries no foreign key, so every path that deletes an
+// edition must drop it, or rowid reuse would aim it at an unrelated edition later.
+test('removeBook on the last issue drops the follow on that edition', async () => {
+  const { edition, books } = await seedEdition('One Shot', ['only.cbz'])
+  addFollow(ctx.db, 'volume', edition.id, 'One Shot')
+
+  await removeBook(ctx, books[0].id)
+
+  expect(listFollows(ctx.db)).toEqual([])
+})
+
+test('removeSeries drops the follows on its editions, and only those', async () => {
+  const gone = await seedNested('Venom', 'Venom (2025)', '001.cbz')
+  const kept = await seedEdition('Saga', ['01.cbz'])
+  addFollow(ctx.db, 'volume', gone.edition.id, 'Venom')
+  addFollow(ctx.db, 'volume', kept.edition.id, 'Saga')
+
+  await removeSeries(ctx, 'Venom')
+
+  expect(listFollows(ctx.db).map(f => f.refId)).toEqual([kept.edition.id])
 })

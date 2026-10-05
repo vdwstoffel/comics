@@ -8,6 +8,7 @@ import MissingIssueTile from '../components/MissingIssueTile'
 import LibraryRail from '../components/LibraryRail'
 import { useDownload } from '../lib/useDownload'
 import { arcIssueLabel } from '../lib/arcIssueLabel'
+import FollowButton from '../components/FollowButton'
 import ArcReorderList from '../components/ArcReorderList'
 
 /**
@@ -135,6 +136,7 @@ export default function Arc() {
                   look like it had done nothing at all.
                 */}
                 {data?.stale && <span>Could not reach Comic Vine</span>}
+                <FollowButton target={{ kind: 'arc', name: arcName }} refId={data?.arcId ?? null} />
                 <button type="button" className="btn btn-ghost" onClick={() => setReordering(true)}>Reorder</button>
                 {/* Only worth offering once there is an arrangement to undo. */}
                 {data?.ordered && (

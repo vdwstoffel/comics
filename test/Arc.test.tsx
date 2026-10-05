@@ -50,12 +50,13 @@ function stub(arc: unknown = ARC, queue: unknown[] = []) {
     if (u.includes('/api/downloads')) {
       return { ok: true, json: async () => ({ active: [], queue, history: [] }) }
     }
-    // The rail down the side of every library page asks for all four of these. It is not
+    // The rail down the side of every library page asks for all five of these. It is not
     // what these tests are about; an empty library draws an empty rail.
     if (u.includes('/api/publishers')) return { ok: true, json: async () => ({ publishers: [] }) }
     if (u.includes('/api/editions')) return { ok: true, json: async () => ({ editions: [] }) }
     if (u.includes('/api/read-states')) return { ok: true, json: async () => ({ readStates: [] }) }
     if (u.endsWith('/api/arcs')) return { ok: true, json: async () => ({ arcs: [] }) }
+    if (u.endsWith('/api/follows')) return { ok: true, json: async () => ({ follows: [] }) }
     arcGets.push(u)
     return { ok: true, json: async () => arc }
   }) as unknown as typeof fetch

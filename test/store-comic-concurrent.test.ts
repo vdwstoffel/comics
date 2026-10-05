@@ -6,7 +6,12 @@ import { openDb } from '../server/db.js'
 import { storeComic } from '../server/services/storeComic.js'
 import { moveBookToEdition } from '../server/services/library.js'
 import { upsertEdition, getEditionByName } from '../server/models/editions.js'
-import { insertBook } from '../server/models/books.js'
+import { updateEdition } from '../server/models/editions.js'
+import { cacheVolumeIssues } from '../server/models/volumeIssues.js'
+import { setProgress } from '../server/models/progress.js'
+import { addFollow } from '../server/models/follows.js'
+import { nextWantedIssue } from '../server/services/following.js'
+import { insertBook, getBook, updateBook } from '../server/models/books.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import type { Ctx } from '../server/types.js'
 import type { Config } from '../server/config.js'
@@ -126,4 +131,29 @@ test('a download and a library move claiming the same name both survive', async 
   expect(books).toHaveLength(total)
   expect(new Set(books.map((r) => r.file_path)).size).toBe(total)
   for (const b of books) expect(existsSync(join(ctx.config.comicsDir, b.file_path))).toBe(true)
+})
+
+// The issue id came from the download queue, not Comic Vine. A metadata read that fails
+// (no key here) must still leave the book owned: otherwise a follow sees nothing, queues
+// the same issue every sweep, and the library fills with "name (2).cbz".
+test('a failed metadata read still records which issue the comic is', async () => {
+  const edition = 'Iron Man'
+  const res = await storeComic(ctx, { tmpPath: staged(900), originalName: 'iron_man_002.cbz', editionName: edition, issueId: 4242 })
+  expect(res).toMatchObject({ ok: true, metadataApplied: false })
+  if (!res.ok || !res.book) throw new Error('expected a book')
+  expect(res.book.comicvineId).toBe(4242)
+  expect(getBook(ctx.db, res.book.id)?.comicvineId).toBe(4242)
+
+  // And the follow now sees it as owned rather than wanting it again.
+  const ed = getEditionByName(ctx.db, edition)!
+  updateEdition(ctx.db, ed.id, { comicvineId: 500, cvName: 'Iron Man' })
+  cacheVolumeIssues(ctx.db, 500, [
+    { id: 4241, number: '1', coverDate: '2020-01-01' },
+    { id: 4242, number: '2', coverDate: '2020-02-01' },
+  ])
+  const first = insertBook(ctx.db, { editionId: ed.id, filePath: 'Iron Man/1.cbz', pageCount: 2, fileSize: 1 })!
+  updateBook(ctx.db, first.id, { comicvineId: 4241 })
+  setProgress(ctx.db, first.id, { lastPage: 1, completed: true })
+  const follow = addFollow(ctx.db, 'volume', ed.id, 'Iron Man')
+  expect(nextWantedIssue(ctx.db, follow).state).toBe('supplied')
 })

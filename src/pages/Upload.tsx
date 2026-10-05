@@ -23,6 +23,10 @@ export default function Upload() {
   const [match, setMatch] = useState<CvSearchResult | null>(null)
   const [matching, setMatching] = useState(false)
   const [uploaded, setUploaded] = useState<ApiBook | null>(null)
+  // Whether metadata was successfully applied to the uploaded book. An id is recorded
+  // even when the metadata read fails, so the id no longer tells you whether there is
+  // anything to retry.
+  const [metadataApplied, setMetadataApplied] = useState<boolean | null>(null)
   // A link to fetch server-side instead of sending a file. The two are alternatives.
   const [url, setUrl] = useState(seededUrl)
   // The name the link resolves to. A download link is often an opaque token, so the file
@@ -60,7 +64,7 @@ export default function Upload() {
   // issue is applied to it directly rather than travelling with the upload.
   const applyAfter = useMutation({
     mutationFn: (issueId: number) => api.applyIssue(uploaded!.id, issueId),
-    onSuccess: () => { setMatching(false); setMsg('Metadata added'); invalidateLibrary() },
+    onSuccess: () => { setMatching(false); setMetadataApplied(true); setMsg('Metadata added'); invalidateLibrary() },
     onError: () => { setMatching(false); setMsg('Uploaded, but the metadata could not be applied.') },
   })
 
@@ -110,6 +114,7 @@ export default function Upload() {
     if (!file && url.trim()) { startDownload.mutate(); return }
     if (!file) return
     setUploaded(null)
+    setMetadataApplied(null)
     setMsg(null)
     const form = new FormData()
     if (edition) form.set('edition', edition)
@@ -128,6 +133,7 @@ export default function Upload() {
         ? 'Uploaded, but the metadata could not be applied.'
         : 'Uploaded!')
       setUploaded(body.book ?? null)
+      setMetadataApplied(body.metadataApplied ?? true)
       setMatch(null)
       invalidateLibrary()
     }
@@ -165,6 +171,8 @@ export default function Upload() {
                   setFile(e.target.files?.[0] ?? null)
                   // A new file makes any held match the wrong one.
                   setMatch(null)
+                  setUploaded(null)
+                  setMetadataApplied(null)
                 }}
               />
             </label>
@@ -178,7 +186,7 @@ export default function Upload() {
                 className="upload-url"
                 placeholder="Paste a link (https://…)"
                 value={url}
-                onChange={(e) => { setUrl(e.target.value); setResolvedName(null); setMatch(null) }}
+                onChange={(e) => { setUrl(e.target.value); setResolvedName(null); setMatch(null); setUploaded(null); setMetadataApplied(null) }}
               />
             </label>
           </div>
@@ -228,7 +236,7 @@ export default function Upload() {
 
         {uploaded && (
           <div className="upload-done">
-            {!uploaded.comicvineId && (
+            {metadataApplied === false && (
               <button
                 type="button"
                 className="btn btn-ghost"

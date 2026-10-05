@@ -163,6 +163,15 @@ test('picking a match applies it to the comic that was just uploaded', async () 
   expect(posts[0].body).toEqual({ issueId: 1159231 })
 })
 
+test('the retry button is shown when the metadata could not be applied', async () => {
+  stubXhr(); stubApi([], [])
+  renderUpload()
+  await uploadOne()
+  finishUpload(200, JSON.stringify({ book: { id: 46, filePath: 'Venom/Venom (2025)/Venom 256 (2026) (Digital).cbz', number: null, title: null }, metadataApplied: false }))
+
+  expect(await screen.findByRole('button', { name: /fetch metadata/i })).toBeInTheDocument()
+})
+
 // ---- matching before the upload ----
 
 /** Pick a file without uploading it. */

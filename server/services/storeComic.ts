@@ -7,6 +7,7 @@ import { comicFileName } from '../lib/comicFileName.js'
 import { editionFolderPath, dedupeDestPath } from '../lib/paths.js'
 import { deriveSeriesName } from '../lib/seriesName.js'
 import { getEditionByName } from '../models/editions.js'
+import { getBook, updateBook } from '../models/books.js'
 import { ingestFile } from './indexer.js'
 import { applyIssueToBook } from './applyIssue.js'
 import { renameLock } from '../lib/mutex.js'
@@ -120,6 +121,10 @@ export async function storeComic(
     const applied = await applyIssueToBook(ctx, book.id, issueId)
     return { ok: true, book: applied.book, metadataApplied: true }
   } catch {
-    return { ok: true, book, metadataApplied: false }
+    // The identity came from the queue, not from Comic Vine. Record it even when the
+    // metadata read fails: a follow that cannot see this issue as owned fetches it again
+    // on every sweep, and the finished queue row no longer blocks the duplicate.
+    updateBook(db, book.id, { comicvineId: Number(issueId) })
+    return { ok: true, book: getBook(db, book.id) ?? book, metadataApplied: false }
   }
 }

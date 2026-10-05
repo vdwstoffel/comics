@@ -1,14 +1,15 @@
 import { createComicVine } from '../lib/comicvine.js'
 import type { ComicVineClient, CvStoryArc } from '../lib/comicvine.js'
-import { listStoryArcs, booksInArc, ownedIssueIds } from '../models/arcs.js'
+import { listStoryArcs, ownedIssueIds } from '../models/arcs.js'
 import { cacheArc, getCachedArc, findArcIssue } from '../models/arcCache.js'
 import { getArcOrder, saveArcOrder, clearArcOrder } from '../models/arcOrder.js'
 import { applySavedOrder } from '../lib/arcOrder.js'
+import { resolveArcId } from '../services/arcIdentity.js'
 import { findMatchForIssue } from '../services/issueMatching.js'
 import { startIssueDownload, issueLabel } from '../services/issueDownload.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import { getEditionByComicvineId } from '../models/editions.js'
-import { setTagIds, getBookTags } from '../models/metadata.js'
+import { getBookTags } from '../models/metadata.js'
 import { getBook } from '../models/books.js'
 import { deriveReadState } from '../models/progress.js'
 import { getComicVineKey } from '../models/settings.js'
@@ -93,36 +94,11 @@ export default async function arcRoutes(app: App, opts: ArcRouteOpts = {}) {
   // touches Comic Vine.
   app.get('/api/arcs', async () => ({ arcs: listStoryArcs(app.db) }))
 
-  /**
-   * The Comic Vine id for an arc the library knows by name, or the refusal to send back.
-   *
-   * Shared by every route here that is addressed by arc name: reordering an arc has to
-   * find the same id the page did, or it would file the arrangement under nothing.
-   */
-  async function resolveArcId(name: string): Promise<{ id: number } | { code: number; error: string }> {
-    const rows = booksInArc(app.db, name)
-    if (rows.length === 0) return { code: 404, error: 'arc not in this library' }
-
-    const stored = rows.find((r) => r.extId != null)?.extId ?? null
-    if (stored != null) return { id: stored }
-
-    // No id stored: re-read an issue that carries the tag, the same way a character is
-    // backfilled. Two requests the first time this arc is opened, none after that.
-    const source = rows.find((r) => r.comicvineId != null)
-    if (source) {
-      const issue = await cv.getIssue(source.comicvineId!)
-      setTagIds(app.db, source.bookId, 'story_arc', issue.storyArcs)
-      const found = issue.storyArcs.find((a) => a.name === name)?.id ?? null
-      if (found != null) return { id: found }
-    }
-    return { code: 404, error: 'arc not found on Comic Vine' }
-  }
-
   app.get<{ Params: NameParams; Querystring: RefreshQuery }>('/api/arcs/:name', async (req, reply) => {
     if (!getComicVineKey(app.db)) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
     const name = decodeURIComponent(req.params.name)
 
-    const resolved = await resolveArcId(name)
+    const resolved = await resolveArcId(app.db, cv, name)
     if ('code' in resolved) return reply.code(resolved.code).send({ error: resolved.error })
     const extId = resolved.id
 
@@ -132,6 +108,9 @@ export default async function arcRoutes(app: App, opts: ArcRouteOpts = {}) {
     const owned = ownedIssueIds(app.db)
 
     return {
+      // The arc's own Comic Vine id, which the page needs to unfollow it. Computed here
+      // already; it was simply never sent.
+      arcId: extId,
       stale: loaded.stale,
       fetchedAt: loaded.fetchedAt,
       ordered: loaded.ordered,
@@ -176,7 +155,7 @@ export default async function arcRoutes(app: App, opts: ArcRouteOpts = {}) {
         return reply.code(400).send({ error: 'issueIds must be a list of Comic Vine issue ids' })
       }
 
-      const resolved = await resolveArcId(name)
+      const resolved = await resolveArcId(app.db, cv, name)
       if ('code' in resolved) return reply.code(resolved.code).send({ error: resolved.error })
 
       saveArcOrder(app.db, resolved.id, ids as number[])
@@ -187,7 +166,7 @@ export default async function arcRoutes(app: App, opts: ArcRouteOpts = {}) {
   /** Forget your arrangement and go back to the order dates compute. */
   app.delete<{ Params: NameParams }>('/api/arcs/:name/order', async (req, reply) => {
     const name = decodeURIComponent(req.params.name)
-    const resolved = await resolveArcId(name)
+    const resolved = await resolveArcId(app.db, cv, name)
     if ('code' in resolved) return reply.code(resolved.code).send({ error: resolved.error })
 
     clearArcOrder(app.db, resolved.id)

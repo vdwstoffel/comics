@@ -274,6 +274,20 @@ CREATE TABLE IF NOT EXISTS setting (
   key   TEXT PRIMARY KEY,
   value TEXT NOT NULL
 );
+
+-- The runs and arcs you are keeping up with. \`ref_id\` is edition.id for a volume and
+-- Comic Vine's own arc id for an arc: a download has to land in an edition's folder, so
+-- the edition is the thing a volume follow must name, and an arc has no local row at all
+-- to name instead. Polymorphic, so it carries no foreign key - the edition delete route
+-- drops a volume follow with its edition, and the follow list prunes anything else that
+-- stops resolving.
+CREATE TABLE IF NOT EXISTS follow (
+  kind       TEXT NOT NULL,
+  ref_id     INTEGER NOT NULL,
+  name       TEXT NOT NULL,
+  created_at TEXT NOT NULL,
+  PRIMARY KEY (kind, ref_id)
+);
 `
 
 function columnsOf(db: Db, table: string): string[] {

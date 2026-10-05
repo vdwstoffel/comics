@@ -71,7 +71,14 @@ export default function VolumeGroupTile({ group }: VolumeGroupTileProps) {
           <TileProgress readState={next.readState} percent={next.percent} />
         </Link>
       </div>
-      <Link className="volume-tile__name" to={`/edition/${group.editionId}?status=unread`}>
+      {/* The name is clamped to two lines so the shelf's rows come out even, and the year
+          that tells two runs of one series apart sits at the end of it - so the whole name
+          is carried here, where a cut-off one can still be read. */}
+      <Link
+        className="volume-tile__name"
+        title={group.editionName}
+        to={`/edition/${group.editionId}?status=unread`}
+      >
         {group.editionName}
       </Link>
       <div className="volume-tile__count">{group.books.length} unread</div>

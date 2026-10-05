@@ -10,6 +10,7 @@ import Upload from './pages/Upload'
 import SearchComics from './pages/SearchComics'
 import Arcs from './pages/Arcs'
 import Arc from './pages/Arc'
+import Following from './pages/Following'
 import Releases from './pages/Releases'
 import Downloads from './pages/Downloads'
 import Settings from './pages/Settings'
@@ -97,6 +98,7 @@ export default function App() {
       <Route path="/" element={<LibraryLayout><Library /></LibraryLayout>} />
       <Route path="/arcs" element={<LibraryLayout><Arcs /></LibraryLayout>} />
       <Route path="/arcs/:name" element={<LibraryLayout><Arc /></LibraryLayout>} />
+      <Route path="/following" element={<LibraryLayout><Following /></LibraryLayout>} />
       <Route path="/series/:name" element={<Layout><Series /></Layout>} />
       <Route path="/series/:name/annuals" element={<Layout><SeriesAnnuals /></Layout>} />
       <Route path="/edition/:id" element={<Layout><Edition /></Layout>} />

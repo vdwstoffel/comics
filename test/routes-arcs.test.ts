@@ -110,6 +110,8 @@ test('an arc shows every issue in it, in reading order', async () => {
     const res = await t.app.inject({ url: '/api/arcs/Death%20Spiral' })
     expect(res.statusCode).toBe(200)
     expect(res.json().arc.issues.map((i: { name: string }) => i.name)).toEqual(['Part One', 'Part Two', 'Part Three'])
+    // The page cannot unfollow an arc without this id.
+    expect(res.json().arcId).toBe(56676)
   } finally { await t.cleanup() }
 })
 

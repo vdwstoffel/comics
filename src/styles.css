@@ -1711,6 +1711,12 @@ textarea.input:hover:not(:focus) {
   padding: 20px 0 16px;
 }
 
+/* The doors share one section, so each labelled region inside it adds no box of its own -
+   otherwise two single-row lists sit in two lots of section padding and drift apart. */
+.filter-sidebar aside {
+  padding: 0;
+}
+
 .filter-sidebar__title {
   font-size: 0.6875rem;
   font-weight: 700;
@@ -2663,12 +2669,30 @@ textarea.input:hover:not(:focus) {
   display: block;
 }
 
+/* Two lines, always - never one, never three.
+ *
+ * A shelf row is a grid row, and a grid row is as tall as the tallest tile in it. Names
+ * here run from "Thor (2018)" to "Queen in Black: Defenders of Light and Dark (2026)", so
+ * one long name used to wrap to three lines and open a gap under every short-named tile
+ * beside it. Reserving the second line costs nothing on a short name and makes every row
+ * the same height.
+ *
+ * Clamped rather than widened because the year is at the END of the name and is what tells
+ * two runs of one series apart; the tiles carry the full name in a title so nothing that
+ * is cut off is lost.
+ */
 .volume-tile__name {
   margin-top: 8px;
   color: var(--text);
   text-decoration: none;
   font-size: 0.875rem;
   line-height: 1.3;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  overflow: hidden;
+  min-height: calc(0.875rem * 1.3 * 2);
 }
 
 .volume-tile__name:hover {
@@ -3734,3 +3758,69 @@ textarea.input:hover:not(:focus) {
   font-size: 0.8125rem;
   font-weight: 600;
 }
+
+/* A followed run with nothing to show: at least the footprint of a cover tile, so the
+   shelf stays on its grid whether a follow has a comic on it or not - and free to grow
+   past it, so it reaches the floor of a row set by a taller neighbour. */
+.follow-waiting {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.4rem;
+  aspect-ratio: 2 / 3;
+  padding: 1rem;
+  border: 1px dashed var(--border);
+  border-radius: 6px;
+  text-align: center;
+}
+.follow-waiting__name { font-weight: 600; margin: 0; color: var(--text); }
+.follow-waiting__status { margin: 0; font-size: 0.85rem; color: var(--muted); }
+
+/* The tile takes the slack and the unfollow sits on the floor, so a row of follows lines
+   up along the bottom however much each one has to say. Without this, the status line -
+   which only some follows carry - left every item a different height inside a row already
+   as tall as its tallest member. */
+.follow-item { display: flex; flex-direction: column; gap: 0.3rem; }
+.follow-item > .volume-tile { flex: 1; }
+.follow-item__status { margin: 0; font-size: 0.8rem; color: var(--muted); }
+
+/* A button does not inherit `color` - the browser applies its own `buttontext`, which is
+   black, and this page's background is near-black. So every button here names its colour
+   outright rather than leaving it to the cascade. */
+.follow-item__unfollow {
+  align-self: flex-start;
+  margin-top: auto;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.8rem;
+  color: var(--muted);
+  cursor: pointer;
+  text-decoration: underline;
+}
+.follow-item__unfollow:hover { color: var(--text); }
+
+/* The same pill the header's Upload button is, because it is the same kind of control:
+   one deliberate action, named in a word. Outline when you do not follow the thing,
+   filled when you do, so the two states read as one toggle rather than two buttons. */
+.follow-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 14px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--accent);
+  background: none;
+  border: 1px solid var(--accent);
+  border-radius: 20px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+.follow-button:hover:not(:disabled) { background: var(--accent); color: #fff; }
+.follow-button--on { background: var(--accent); border-color: transparent; color: #fff; }
+.follow-button--on:hover:not(:disabled) { background: var(--accent-hover); border-color: transparent; }
+.follow-button:disabled { opacity: 0.5; cursor: default; }
+.follow-button__why { font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem; }
