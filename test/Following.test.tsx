@@ -157,3 +157,54 @@ test('an empty shelf explains itself rather than looking broken', async () => {
   show()
   expect(await screen.findByText(/not following anything yet/i)).toBeInTheDocument()
 })
+
+/** One solicited issue, in the shape the Upcoming tab serves. */
+function solicited(headline: string, week: string) {
+  return {
+    publishers: [{
+      name: 'Marvel',
+      weeks: [{
+        week,
+        issues: [{
+          sourceId: headline, headline, seriesName: 'Iron Man', number: '16',
+          releaseDate: week, coverUrl: null, siteUrl: 'https://example.test', creators: null,
+        }],
+      }],
+    }],
+  }
+}
+
+const CAUGHT_UP = {
+  kind: 'volume' as const, refId: 1, name: 'Iron Man', state: 'caught-up' as const,
+  edition: { name: 'Iron Man (2020)', seriesName: 'Iron Man', cvName: 'Iron Man', cvStartYear: 2020 },
+}
+
+test('a caught-up follow says when the calendar has the next issue landing', async () => {
+  vi.spyOn(api, 'getFollows').mockResolvedValue({ follows: [CAUGHT_UP] })
+  vi.spyOn(api, 'getUpcoming').mockResolvedValue(solicited('Iron Man (2020) #16', '2026-10-28'))
+  show()
+  expect(await screen.findByText('Next: 28 Oct 2026')).toBeInTheDocument()
+})
+
+test('a caught-up follow nobody has solicited says there is no more to tell', async () => {
+  vi.spyOn(api, 'getFollows').mockResolvedValue({ follows: [CAUGHT_UP] })
+  vi.spyOn(api, 'getUpcoming').mockResolvedValue(solicited('Captain America (2025) #16', '2026-10-28'))
+  show()
+  expect(await screen.findByText('Waiting on the next issue — no further details')).toBeInTheDocument()
+})
+
+test('a relaunch solicited under the same title is not this run', async () => {
+  vi.spyOn(api, 'getFollows').mockResolvedValue({ follows: [CAUGHT_UP] })
+  vi.spyOn(api, 'getUpcoming').mockResolvedValue(solicited('Iron Man (2027) #16', '2026-10-28'))
+  show()
+  expect(await screen.findByText('Waiting on the next issue — no further details')).toBeInTheDocument()
+})
+
+test('an arc follow has no calendar to consult and says so', async () => {
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [{ kind: 'arc', refId: 77, name: 'Dark Reign', state: 'caught-up' }],
+  })
+  vi.spyOn(api, 'getUpcoming').mockResolvedValue(solicited('Iron Man (2020) #16', '2026-10-28'))
+  show()
+  expect(await screen.findByText('Waiting on the next issue — no further details')).toBeInTheDocument()
+})

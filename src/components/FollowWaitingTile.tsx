@@ -1,8 +1,11 @@
 import type { ApiFollow } from '../api'
 import { followStatus } from '../lib/followStatus'
+import type { FollowSoon } from '../lib/followStatus'
 
 interface FollowWaitingTileProps {
   follow: ApiFollow
+  /** What the solicitation calendar had to say. Absent reads as "not asked yet". */
+  soon?: FollowSoon
 }
 
 /**
@@ -13,11 +16,11 @@ interface FollowWaitingTileProps {
  * the follow is still alive - a shelf that hid everything it was waiting on would be
  * indistinguishable from one that had quietly forgotten.
  */
-export default function FollowWaitingTile({ follow }: FollowWaitingTileProps) {
+export default function FollowWaitingTile({ follow, soon }: FollowWaitingTileProps) {
   return (
     <div className="follow-waiting">
       <p className="follow-waiting__name">{follow.name}</p>
-      <p className="follow-waiting__status">{followStatus(follow)}</p>
+      <p className="follow-waiting__status">{followStatus(follow, soon)}</p>
     </div>
   )
 }

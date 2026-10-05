@@ -37,11 +37,27 @@ export default async function followRoutes(app: App, opts: FollowRouteOpts = {})
         removeFollow(app.db, follow.kind, follow.refId)
         continue
       }
+      // The names the solicitation calendar matches a run on - `cvStartYear` above all,
+      // which is what tells a relaunch from the run before it. The shelf does the matching
+      // itself, against a calendar only the browser has; the server's part is to say which
+      // volume this follow is, in every name that volume answers to.
+      const edition = follow.kind === 'volume' ? getEdition(app.db, follow.refId) : undefined
+
       views.push({
         kind: follow.kind,
         refId: follow.refId,
         name: follow.name,
         state: outcome.state,
+        ...(edition
+          ? {
+              edition: {
+                name: edition.name,
+                seriesName: edition.seriesName,
+                cvName: edition.cvName,
+                cvStartYear: edition.cvStartYear,
+              },
+            }
+          : {}),
         ...(outcome.state === 'wanted'
           ? {
               want: {

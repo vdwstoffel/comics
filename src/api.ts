@@ -331,6 +331,14 @@ export interface ApiFollow {
   want?: { id: number; number: string | null; name: string | null }
   /** Only on a `wanted` follow: whether that issue is already in the download queue. */
   queued?: boolean
+  /** Only on a volume follow: every name its run answers to, for matching the solicitation
+   *  calendar. `cvStartYear` is what tells a relaunch from the run before it. */
+  edition?: {
+    name: string
+    seriesName: string | null
+    cvName: string | null
+    cvStartYear: number | null
+  }
 }
 
 /** What POST /api/follows returns: the stored row, not the computed state. Callers refetch with

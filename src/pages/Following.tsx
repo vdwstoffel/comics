@@ -1,12 +1,37 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import type { ApiFollow, ApiLibraryBook } from '../api'
+import type { ApiFollow, ApiLibraryBook, ApiUpcoming } from '../api'
 import { groupByVolume, groupByArc } from '../lib/volumeGroups'
 import { followStatus } from '../lib/followStatus'
+import type { FollowSoon } from '../lib/followStatus'
+import { useUpcoming } from '../lib/useUpcoming'
+import { upcomingForEdition } from '../lib/upcomingForEdition'
 import LibraryRail from '../components/LibraryRail'
 import VolumeGroupTile from '../components/VolumeGroupTile'
 import ArcGroupTile from '../components/ArcGroupTile'
 import FollowWaitingTile from '../components/FollowWaitingTile'
+
+/**
+ * What the solicitation calendar knows about the issue after this follow's last.
+ *
+ * Only a run can be answered: the calendar is a list of volumes and issue numbers, and an
+ * arc is neither - its next part could be solicited under any title in the line. Saying
+ * "no further details" for one is not a shrug, it is the whole truth available.
+ *
+ * Every publisher's weeks together, as the volume page reads them: which publisher
+ * solicited an issue is not something this line says, and DC's list is empty anyway.
+ */
+function soonFor(follow: ApiFollow, upcoming: ApiUpcoming | undefined): FollowSoon {
+  // No data covers both "still loading" and "Marvel could not be read". Neither is being
+  // told that nothing is coming, and only that may be repeated to a reader.
+  if (!upcoming) return { state: 'pending' }
+  if (!follow.edition) return { state: 'none' }
+
+  // Sorted by week already, so the first row is the soonest - which is the only one a
+  // single line has room for, and the only one "next" can mean.
+  const [next] = upcomingForEdition(upcoming.publishers.flatMap((p) => p.weeks), follow.edition)
+  return next ? { state: 'next', week: next.week } : { state: 'none' }
+}
 
 /** The unread comics this follow holds: its edition's, or its arc's. */
 function booksFor(follow: ApiFollow, books: ApiLibraryBook[]): ApiLibraryBook[] {
@@ -24,6 +49,10 @@ export default function Following() {
     queryKey: ['library-books', null, 'unread'],
     queryFn: () => api.getLibraryBooks({ readState: 'unread', publisher: null }),
   })
+
+  // Shares a query key with the Upcoming tab and with every volume's Coming soon list, so
+  // a shelf full of follows reads the calendar once - and names the same dates it does.
+  const upcoming = useUpcoming()
 
   const unfollow = useMutation({
     mutationFn: ({ kind, refId }: { kind: 'volume' | 'arc'; refId: number }) => api.unfollow(kind, refId),
@@ -61,12 +90,13 @@ export default function Following() {
               : arcGroup
                 ? <ArcGroupTile group={arcGroup} />
                 : null
-            const status = followStatus(follow)
+            const soon = soonFor(follow, upcoming.data)
+            const status = followStatus(follow, soon)
             return (
               // The tile is reused untouched; everything this page adds hangs off the
               // wrapper, so the library's own shelf never learns that following exists.
               <div className="follow-item" key={`${follow.kind}:${follow.refId}`}>
-                {tile ?? <FollowWaitingTile follow={follow} />}
+                {tile ?? <FollowWaitingTile follow={follow} soon={soon} />}
                 {/* On a tile that already draws a comic, the status is the extra line;
                     on a waiting tile it is the tile, so it is not repeated here. */}
                 {tile && status && <p className="follow-item__status">{status}</p>}

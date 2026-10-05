@@ -46,3 +46,25 @@ test('queued but undefined queued flag is treated as not queued', () => {
   expect(followStatus({ ...base, state: 'wanted', want: { id: 2, number: '7', name: null } }))
     .toBe('#7 is out — not posted yet')
 })
+
+test('a caught-up follow says when the next issue lands', () => {
+  expect(followStatus({ ...base, state: 'caught-up' }, { state: 'next', week: '2026-10-28' }))
+    .toBe('Next: 28 Oct 2026')
+})
+
+test('a caught-up follow nobody has solicited says there is no more to tell', () => {
+  expect(followStatus({ ...base, state: 'caught-up' }, { state: 'none' }))
+    .toBe('Waiting on the next issue — no further details')
+})
+
+test('a caught-up follow claims nothing while the calendar is still loading', () => {
+  expect(followStatus({ ...base, state: 'caught-up' }, { state: 'pending' }))
+    .toBe('Waiting on the next issue to be announced')
+})
+
+test('a solicitation does not change what any other state says', () => {
+  const soon = { state: 'next' as const, week: '2026-10-28' }
+  expect(followStatus({ ...base, state: 'dormant' }, soon))
+    .toBe('Nothing read yet — finish an issue to pull the next')
+  expect(followStatus({ ...base, state: 'supplied' }, soon)).toBe('')
+})

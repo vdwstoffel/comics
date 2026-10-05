@@ -151,3 +151,30 @@ test('a fault inside the first attempt does not fail the follow', async () => {
     expect(listFollows(t.db)).toHaveLength(1)
   } finally { await t.cleanup() }
 })
+
+test('a volume follow carries the names the solicitation calendar matches on', async () => {
+  const t = await setup()
+  try {
+    updateEdition(t.db, t.edition.id, { seriesName: 'Iron Man', cvStartYear: 2020 })
+    addFollow(t.db, 'volume', t.edition.id, 'Iron Man')
+
+    const res = await t.app.inject({ method: 'GET', url: '/api/follows' })
+
+    expect(res.json().follows[0].edition).toEqual({
+      name: 'Iron Man', seriesName: 'Iron Man', cvName: 'Iron Man', cvStartYear: 2020,
+    })
+  } finally { await t.cleanup() }
+})
+
+test('an arc follow carries no edition names, having no one volume to match on', async () => {
+  const t = await setup()
+  try {
+    addFollow(t.db, 'arc', 9001, 'Dark Reign')
+
+    const res = await t.app.inject({ method: 'GET', url: '/api/follows' })
+
+    const arc = res.json().follows.find((f: { kind: string }) => f.kind === 'arc')
+    expect(arc).toMatchObject({ state: 'caught-up' })
+    expect(arc.edition).toBeUndefined()
+  } finally { await t.cleanup() }
+})
