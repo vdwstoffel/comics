@@ -3,7 +3,6 @@ import { Link } from 'react-router-dom'
 interface FilterItem {
   key: string
   label: string
-  count?: number
   /** Set to navigate instead of filtering in place. */
   href?: string
 }
@@ -25,12 +24,7 @@ export default function FilterSidebar({ title, items, active, onSelect, allHref 
   const className = (key: string | null) =>
     `filter-sidebar__item${active === key ? ' filter-sidebar__item--active' : ''}`
 
-  const body = (item: FilterItem) => (
-    <>
-      <span className="filter-sidebar__label">{item.label}</span>
-      {item.count != null && <span className="filter-sidebar__count">{item.count}</span>}
-    </>
-  )
+  const body = (item: FilterItem) => <span className="filter-sidebar__label">{item.label}</span>
 
   return (
     <aside className="filter-sidebar" aria-label={title}>

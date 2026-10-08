@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import type { ApiBookArc, ApiCredit, ApiTag } from '../api'
 import CharacterDialog from './CharacterDialog'
+import { useBackOrigin } from '../lib/backOrigin'
 
 /** Past this many, the cast is longer than everything else on the page put together. */
 const CHARACTER_SHOW_THRESHOLD = 40
@@ -63,6 +64,9 @@ export default function IssueDetail({
   const [unfolded, setUnfolded] = useState(false)
   const [showAllCharacters, setShowAllCharacters] = useState(false)
   const [character, setCharacter] = useState<string | null>(null)
+  // These links are drawn inside a run, and a run's name is the one page name no url
+  // carries - so it is handed over rather than read off the route.
+  const back = useBackOrigin(editionName)
 
   const byRole = credits.reduce<Record<string, string[]>>((acc, c) => {
     const key = c.role.charAt(0).toUpperCase() + c.role.slice(1)
@@ -83,7 +87,10 @@ export default function IssueDetail({
 
   const details: { label: string; value: ReactNode }[] = []
   if (editionId != null && editionName) {
-    details.push({ label: 'Edition', value: <Link to={`/edition/${editionId}`}>{editionName}</Link> })
+    details.push({
+      label: 'Edition',
+      value: <Link to={`/edition/${editionId}`} state={back}>{editionName}</Link>,
+    })
   }
   if (writer) details.push({ label: 'Writer', value: writer })
   if (penciller) details.push({ label: 'Penciller', value: penciller })
@@ -128,7 +135,7 @@ export default function IssueDetail({
       {arcs.length > 0 && (
         <Section title={arcs.length > 1 ? 'Story arcs' : 'Story arc'}>
           {arcs.map((arc) => (
-            <Link key={arc.name} to={`/arcs/${encodeURIComponent(arc.name)}`} className="arc-position">
+            <Link key={arc.name} to={`/arcs/${encodeURIComponent(arc.name)}`} state={back} className="arc-position">
               <span className="arc-position__name">{arc.name}</span>
               {arc.position != null && arc.total != null && (
                 <span className="arc-position__part">Part {arc.position} of {arc.total}</span>
@@ -173,7 +180,7 @@ export default function IssueDetail({
         <Section title="Story Arcs">
           <div className="chip-row">
             {storyArcs.map((a) => (
-              <Link key={a} to={`/arcs/${encodeURIComponent(a)}`} className="chip chip--action">{a}</Link>
+              <Link key={a} to={`/arcs/${encodeURIComponent(a)}`} state={back} className="chip chip--action">{a}</Link>
             ))}
           </div>
         </Section>

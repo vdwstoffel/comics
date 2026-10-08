@@ -38,7 +38,6 @@ test('a follow with unread issues draws the run, not a waiting tile', async () =
   show()
   expect(await screen.findByRole('link', { name: /Iron Man #6/ })).toBeInTheDocument()
   expect(document.querySelector('.follow-waiting')).toBeNull()
-  expect(document.querySelector('.follow-item__status')).toBeNull()
 })
 
 test('a caught-up follow says what it is waiting for', async () => {
@@ -69,8 +68,10 @@ test('a dormant follow explains what would start it', async () => {
   expect(await screen.findByText(/finish an issue to pull the next/i)).toBeInTheDocument()
 })
 
-// The mixed case of spec §3.1: something to read AND something still missing.
-test('a follow can offer a comic and still say it is waiting', async () => {
+// The mixed case of spec §3.1 - something to read AND something still missing - used to
+// say both. The cover now answers alone: a line only some follows carried, under a tile
+// that already draws a comic, set the height of every tile in its row when it wrapped.
+test('a follow with a comic to read says nothing beside it', async () => {
   vi.spyOn(api, 'getLibraryBooks').mockResolvedValue({ books: [BOOK] })
   vi.spyOn(api, 'getFollows').mockResolvedValue({
     follows: [{
@@ -80,7 +81,32 @@ test('a follow can offer a comic and still say it is waiting', async () => {
   })
   show()
   expect(await screen.findByRole('link', { name: /Iron Man #6/ })).toBeInTheDocument()
-  expect(screen.getByText('Getting #7')).toBeInTheDocument()
+  expect(screen.queryByText('Getting #7')).not.toBeInTheDocument()
+})
+
+// The shelf answers "what am I following", and a follow with anything on it reads the
+// same whether that is one issue or nine - the deck behind the cover already shows which.
+// The Library's unread shelf is the page that is about how much there is, and keeps its.
+test('a run on the follows shelf does not count its unread issues', async () => {
+  vi.spyOn(api, 'getLibraryBooks').mockResolvedValue({ books: [BOOK] })
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [{ kind: 'volume', refId: 1, name: 'Iron Man', state: 'supplied' }],
+  })
+  show()
+  await screen.findByRole('link', { name: /Iron Man #6/ })
+  expect(screen.queryByText(/\d+ unread/)).not.toBeInTheDocument()
+})
+
+test('an arc on the follows shelf does not count its unread issues either', async () => {
+  vi.spyOn(api, 'getLibraryBooks').mockResolvedValue({
+    books: [{ ...BOOK, arcs: ['Death Spiral'] }],
+  })
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [{ kind: 'arc', refId: 56676, name: 'Death Spiral', state: 'supplied' }],
+  })
+  show()
+  await screen.findByRole('link', { name: /Death Spiral/ })
+  expect(screen.queryByText(/\d+ unread/)).not.toBeInTheDocument()
 })
 
 test('an arc follow draws its arc tile', async () => {

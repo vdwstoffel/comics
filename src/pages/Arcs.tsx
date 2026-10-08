@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ApiStoryArcSummary } from '../api'
 import CoverTile from '../components/CoverTile'
+import { useBackOrigin } from '../lib/backOrigin'
 import LibraryRail from '../components/LibraryRail'
 
 /**
@@ -13,10 +14,12 @@ import LibraryRail from '../components/LibraryRail'
 function ArcTile({ arc }: { arc: ApiStoryArcSummary }) {
   const { data } = useQuery({ queryKey: ['arc', arc.name], queryFn: () => api.getArc(arc.name), retry: false })
   const total = data?.arc.issues.length
+  const back = useBackOrigin()
 
   return (
     <CoverTile
       to={`/arcs/${encodeURIComponent(arc.name)}`}
+      state={back}
       img={data?.arc.imageUrl}
       title={arc.name}
       subtitle={total != null

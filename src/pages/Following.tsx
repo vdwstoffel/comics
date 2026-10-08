@@ -2,7 +2,6 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ApiFollow, ApiLibraryBook, ApiUpcoming } from '../api'
 import { groupByVolume, groupByArc } from '../lib/volumeGroups'
-import { followStatus } from '../lib/followStatus'
 import type { FollowSoon } from '../lib/followStatus'
 import { useUpcoming } from '../lib/useUpcoming'
 import { upcomingForEdition } from '../lib/upcomingForEdition'
@@ -86,20 +85,20 @@ export default function Following() {
               : undefined
             const volumeGroup = follow.kind === 'volume' ? groupByVolume(held)[0] : undefined
             const tile = volumeGroup
-              ? <VolumeGroupTile group={volumeGroup} />
+              ? <VolumeGroupTile group={volumeGroup} showCount={false} />
               : arcGroup
-                ? <ArcGroupTile group={arcGroup} />
+                ? <ArcGroupTile group={arcGroup} showCount={false} />
                 : null
             const soon = soonFor(follow, upcoming.data)
-            const status = followStatus(follow, soon)
             return (
               // The tile is reused untouched; everything this page adds hangs off the
               // wrapper, so the library's own shelf never learns that following exists.
               <div className="follow-item" key={`${follow.kind}:${follow.refId}`}>
+                {/* A status line only ever appears on a tile with no cover, where it IS
+                    the tile. Beside a cover it was an extra line that only some follows
+                    carried, and one that wrapped set the height of every tile in its row -
+                    paid for by a sentence the cover had already answered. */}
                 {tile ?? <FollowWaitingTile follow={follow} soon={soon} />}
-                {/* On a tile that already draws a comic, the status is the extra line;
-                    on a waiting tile it is the tile, so it is not repeated here. */}
-                {tile && status && <p className="follow-item__status">{status}</p>}
                 <button
                   type="button"
                   className="follow-item__unfollow"

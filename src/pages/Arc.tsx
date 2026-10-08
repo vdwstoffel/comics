@@ -2,6 +2,7 @@ import { useState, useRef } from 'react'
 import { Link, useParams } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
+import { useBackLink } from '../lib/backOrigin'
 import type { ApiArcIssue } from '../api'
 import CoverTile from '../components/CoverTile'
 import MissingIssueTile from '../components/MissingIssueTile'
@@ -110,12 +111,14 @@ export default function Arc() {
 
   const arc = data?.arc
   const owned = arc?.issues.filter((i) => i.owned).length ?? 0
+  // An arc is reached from the arcs shelf, the follows shelf, or an issue inside a run.
+  const back = useBackLink('/arcs', 'All story arcs')
 
   return (
     <>
       <LibraryRail />
       <main className="library-content">
-        <Link to="/arcs" className="back-link">← All story arcs</Link>
+        <Link to={back.to} onClick={back.onClick} className="back-link">← {back.label}</Link>
         {isLoading && <p>Loading…</p>}
         {isError && <p>{"Couldn't load this story arc."}</p>}
         {arc && (

@@ -64,11 +64,11 @@ function stub(arc: unknown = ARC, queue: unknown[] = []) {
 
 beforeEach(() => stub())
 
-function draw() {
+function draw(entries: unknown[] = ['/arc/Death%20Spiral']) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/arc/Death%20Spiral']}>
+      <MemoryRouter initialEntries={entries as never}>
         <Routes><Route path="/arc/:name" element={<Arc />} /></Routes>
       </MemoryRouter>
     </QueryClientProvider>,
@@ -227,4 +227,18 @@ test('a refresh in flight says so and cannot be pressed again', async () => {
 
   release()
   await waitFor(() => expect(screen.getByRole('button', { name: 'Refresh' })).toBeEnabled())
+})
+
+// --- the way back ------------------------------------------------------------
+
+// An arc is reached from the arcs shelf, the follows shelf, or an issue inside a run.
+// "All story arcs" was right on one of those routes and wrong on the other two.
+test('the way out names the page you came from', async () => {
+  draw([{ pathname: '/arc/Death%20Spiral', state: { from: { href: '/following', label: 'Following' } } }])
+  expect(await screen.findByText(/← Following/)).toBeInTheDocument()
+})
+
+test('an arc opened cold still offers the arcs shelf', async () => {
+  draw()
+  expect(await screen.findByText(/← All story arcs/)).toHaveAttribute('href', '/arcs')
 })

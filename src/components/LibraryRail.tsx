@@ -35,13 +35,11 @@ export default function LibraryRail({
   const { data: followsData } = useQuery({ queryKey: ['follows'], queryFn: api.getFollows })
 
   const publishers = publishersData?.publishers ?? []
-  const items: { key: string; label: string; count?: number }[] = publishers.map((p) => ({
-    key: p.name, label: p.name, count: p.count,
-  }))
+  const items: { key: string; label: string }[] = publishers.map((p) => ({ key: p.name, label: p.name }))
 
   // Editions with no publisher of their own still need a way to be found.
   const unknownCount = (allEditionsData?.editions.length ?? 0) - publishers.reduce((sum, p) => sum + p.count, 0)
-  if (unknownCount > 0) items.push({ key: '__unknown__', label: 'Unknown', count: unknownCount })
+  if (unknownCount > 0) items.push({ key: '__unknown__', label: 'Unknown' })
 
   const arcs = arcsData?.arcs ?? []
   const following = followsData?.follows ?? []
@@ -62,7 +60,7 @@ export default function LibraryRail({
         // counts both use it; this is one entry in a rail, not a change to what is tracked.
         items={(readStateData?.readStates ?? [])
           .filter((s) => s.name !== 'read')
-          .map((s) => ({ key: s.name, label: STATUS_LABELS[s.name], count: s.count }))}
+          .map((s) => ({ key: s.name, label: STATUS_LABELS[s.name] }))}
         active={activeStatus}
         onSelect={onStatus ?? ((key) => navigate(key ? `/?status=${key}` : '/'))}
       />
@@ -82,7 +80,6 @@ export default function LibraryRail({
                 <li>
                   <Link to="/arcs" className={`filter-sidebar__item${onArcs ? ' filter-sidebar__item--active' : ''}`}>
                     <span className="filter-sidebar__label">Story Arcs</span>
-                    <span className="filter-sidebar__count">{arcs.length}</span>
                   </Link>
                 </li>
               </ul>
@@ -94,7 +91,6 @@ export default function LibraryRail({
                 <li>
                   <Link to="/following" className={`filter-sidebar__item${onFollowing ? ' filter-sidebar__item--active' : ''}`}>
                     <span className="filter-sidebar__label">Following</span>
-                    <span className="filter-sidebar__count">{following.length}</span>
                   </Link>
                 </li>
               </ul>

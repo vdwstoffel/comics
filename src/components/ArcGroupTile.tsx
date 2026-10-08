@@ -1,11 +1,16 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { deckDepth } from '../lib/deckDepth'
+import { useBackOrigin } from '../lib/backOrigin'
 import TileProgress from './TileProgress'
 import type { ArcGroup } from '../lib/volumeGroups'
 
 interface ArcGroupTileProps {
   group: ArcGroup
+  /** Whether to say how many unread issues are behind the cover, and across how many
+   *  series. Off on the Following shelf for the same reason a run's count is: that page
+   *  is about which stories you keep up with, not how far behind you are on them. */
+  showCount?: boolean
 }
 
 /**
@@ -22,7 +27,8 @@ interface ArcGroupTileProps {
  * The cover is the first unread comic rather than Comic Vine's artwork for the arc. The
  * shelf has to draw before Comic Vine answers, and without a key at all.
  */
-export default function ArcGroupTile({ group }: ArcGroupTileProps) {
+export default function ArcGroupTile({ group, showCount = true }: ArcGroupTileProps) {
+  const back = useBackOrigin()
   const next = group.books[0]
 
   // Drawn back to front, so the deepest card is furthest from the cover in the document
@@ -32,7 +38,7 @@ export default function ArcGroupTile({ group }: ArcGroupTileProps) {
 
   return (
     <div className="volume-tile">
-      <Link className="arc-tile__link" to={`/arcs/${encodeURIComponent(group.name)}`}>
+      <Link className="arc-tile__link" to={`/arcs/${encodeURIComponent(group.name)}`} state={back}>
         <span className="volume-tile__deck">
           {plates.map((step) => (
             <span
@@ -52,11 +58,13 @@ export default function ArcGroupTile({ group }: ArcGroupTileProps) {
         {/* Clamped to two lines for the shelf's sake; the full name lives in the title,
             because an arc's is long and the part that is cut is the part that names it. */}
         <span className="volume-tile__name" title={group.name}>{group.name}</span>
-        <span className="volume-tile__count">
-          {/* An arc that never leaves its own series is still an arc, but "1 series" is a
-              line of text that tells the reader nothing. */}
-          {group.books.length} unread{group.seriesCount > 1 ? ` · ${group.seriesCount} series` : ''}
-        </span>
+        {showCount && (
+          <span className="volume-tile__count">
+            {/* An arc that never leaves its own series is still an arc, but "1 series" is
+                a line of text that tells the reader nothing. */}
+            {group.books.length} unread{group.seriesCount > 1 ? ` · ${group.seriesCount} series` : ''}
+          </span>
+        )}
       </Link>
     </div>
   )

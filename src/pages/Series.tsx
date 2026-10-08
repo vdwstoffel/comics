@@ -6,6 +6,7 @@ import { statusFrom, withStatus } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { splitAnnuals } from '../lib/annuals'
+import { useBackOrigin } from '../lib/backOrigin'
 
 export default function Series() {
   const { name } = useParams()
@@ -15,6 +16,7 @@ export default function Series() {
   const navigate = useNavigate()
   const qc = useQueryClient()
   const [confirmRemove, setConfirmRemove] = useState(false)
+  const back = useBackOrigin()
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['series', seriesName, status],
@@ -94,6 +96,7 @@ export default function Series() {
           <CoverTile
             key={edition.id}
             to={withStatus(`/edition/${edition.id}`, status)}
+            state={back}
             img={`/api/editions/${edition.id}/thumbnail`}
             title={edition.name}
             subtitle={`${edition.bookCount} issue${edition.bookCount === 1 ? '' : 's'}`}

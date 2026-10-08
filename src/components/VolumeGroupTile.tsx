@@ -1,11 +1,16 @@
 import type { CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { deckDepth } from '../lib/deckDepth'
+import { useBackOrigin } from '../lib/backOrigin'
 import TileProgress from './TileProgress'
 import type { VolumeGroup } from '../lib/volumeGroups'
 
 interface VolumeGroupTileProps {
   group: VolumeGroup
+  /** Whether to say how many unread issues are behind the cover. Off on the Following
+   *  shelf, which is about which runs you keep up with rather than how far behind you
+   *  are on them - the deck of cards behind the cover still shows that much. */
+  showCount?: boolean
 }
 
 /**
@@ -31,7 +36,10 @@ interface VolumeGroupTileProps {
  * unmatched comic has no number either, and the volume's name alone would collide with
  * the name link right beside it, so it says which of the two it is instead.
  */
-export default function VolumeGroupTile({ group }: VolumeGroupTileProps) {
+export default function VolumeGroupTile({ group, showCount = true }: VolumeGroupTileProps) {
+  // Read off the page this tile is drawn on rather than passed in: the library and the
+  // follows shelf draw the same tile and it has no idea which of them it is on.
+  const back = useBackOrigin()
   // The server sorts by series then issue number and the grouping keeps that order, so
   // the first book is the lowest-numbered comic you have not read.
   const next = group.books[0]
@@ -78,10 +86,11 @@ export default function VolumeGroupTile({ group }: VolumeGroupTileProps) {
         className="volume-tile__name"
         title={group.editionName}
         to={`/edition/${group.editionId}?status=unread`}
+        state={back}
       >
         {group.editionName}
       </Link>
-      <div className="volume-tile__count">{group.books.length} unread</div>
+      {showCount && <div className="volume-tile__count">{group.books.length} unread</div>}
     </div>
   )
 }

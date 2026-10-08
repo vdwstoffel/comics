@@ -4,6 +4,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ApiVolumeIssue, ApiBook } from '../api'
 import { useDownload } from '../lib/useDownload'
+import { useBackLink } from '../lib/backOrigin'
 import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import MissingIssueTile from '../components/MissingIssueTile'
@@ -75,6 +76,9 @@ export default function Edition() {
   const [searchParams, setSearchParams] = useSearchParams()
   const status = statusFrom(searchParams)
   const navigate = useNavigate()
+  // A run is reached from the library, a series, the follows shelf or an issue's details;
+  // the link out names whichever of those it was.
+  const back = useBackLink('/', 'Library')
   const qc = useQueryClient()
   const [editing, setEditing] = useState(false)
   const [confirmRemove, setConfirmRemove] = useState(false)
@@ -276,7 +280,7 @@ export default function Edition() {
 
   return (
     <div>
-      <Link to="/" className="back-link">← Library</Link>
+      <Link to={back.to} onClick={back.onClick} className="back-link">← {back.label}</Link>
       <div className="edition-header">
         <div className="edition-header__title-row">
           <h1 className="page-title">{data.edition.name}</h1>

@@ -189,7 +189,7 @@ function statusFetch(series: unknown[] = [ASM_SERIES]) {
 
 const gridCalls = () => calls.filter((c) => c.includes('/api/series'))
 
-test('the sidebar offers a Status section with a count per state', async () => {
+test('the sidebar offers a Status section with an entry per state', async () => {
   statusFetch()
   renderWithProviders(<Library />)
 
@@ -201,7 +201,8 @@ test('the sidebar offers a Status section with a count per state', async () => {
   expect(within(status).getByText('Unread')).toBeInTheDocument()
   expect(within(status).queryByText('Reading')).not.toBeInTheDocument()
   expect(within(status).queryByText('Read')).not.toBeInTheDocument()
-  expect(within(status).getByRole('button', { name: /Unread/ })).toHaveTextContent('4')
+  // The entry names the shelf and nothing else - no tally rides along with it.
+  expect(within(status).getByRole('button', { name: /Unread/ })).toHaveTextContent(/^Unread$/)
 })
 
 // Rewritten when Unread stopped being a question about series. It asks which COMICS
@@ -369,11 +370,13 @@ test('the sidebar does not list the arcs themselves', async () => {
   expect(within(rail).queryByText('Court of Owls')).not.toBeInTheDocument()
 })
 
-test('the Story Arcs entry counts the arcs', async () => {
+// The rail is a set of doors, not a report: a tally beside each one is noise next to the
+// name you are actually aiming for, and the shelf itself says how much is there.
+test('the Story Arcs entry carries no tally', async () => {
   globalThis.fetch = makeFetch(ARC_ROUTES)
   renderWithProviders(<Library />)
   const rail = await screen.findByLabelText('Story Arcs')
-  expect(within(rail).getByText('2')).toBeInTheDocument()
+  expect(within(rail).queryByText('2')).not.toBeInTheDocument()
 })
 
 test('the Story Arcs entry stays out of the way when there are no arcs', async () => {

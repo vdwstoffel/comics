@@ -59,11 +59,11 @@ function issue(number: string, year: number | null) {
 beforeEach(() => { mockFetch() })
 afterEach(() => { cleanup() })
 
-function renderPage(path = '/edition/9', client?: QueryClient) {
+function renderPage(path = '/edition/9', client?: QueryClient, entries?: unknown[]) {
   const qc = client ?? new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const ui: ReactNode = (
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={[path]}>
+      <MemoryRouter initialEntries={(entries ?? [path]) as never}>
         <Where />
         <Routes><Route path="/edition/:id" element={<Edition />} /></Routes>
       </MemoryRouter>
@@ -1159,4 +1159,36 @@ test('the grid carries no sidebar', async () => {
 
   await screen.findByText('One')
   expect(screen.queryByRole('complementary')).toBeNull()
+})
+
+// --- the way back ------------------------------------------------------------
+
+// A run is reached from the library, from a series, from the follows shelf and from an
+// issue's details. "Back to Library" was right on one of those routes and a lie on the
+// rest - it announced the home shelf and then delivered it.
+test('the way out names the page you came from', async () => {
+  renderPage('/edition/9', undefined, [
+    { pathname: '/edition/9', state: { from: { href: '/series/Amazing%20Spider-Man', label: 'Amazing Spider-Man' } } },
+  ])
+  expect(await screen.findByRole('link', { name: /Amazing Spider-Man/ })).toBeInTheDocument()
+})
+
+test('a run opened cold still offers the library', async () => {
+  renderPage()
+  const back = await screen.findByText(/← Library/)
+  expect(back).toHaveAttribute('href', '/')
+})
+
+// The run rewrites its own query string whenever the carousel moves or the covers open,
+// and a replaced history entry carries no state. Read live, the way back would be lost
+// the moment you touched anything on the page.
+test('the way back survives the page writing to its own url', async () => {
+  mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
+  renderPage('/edition/9', undefined, [
+    { pathname: '/edition/9', state: { from: { href: '/following', label: 'Following' } } },
+  ])
+  expect(await screen.findByText(/← Following/)).toBeInTheDocument()
+  fireEvent.click(await screen.findByRole('button', { name: /show covers/i }))
+  await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('view=grid'))
+  expect(screen.getByText(/← Following/)).toBeInTheDocument()
 })

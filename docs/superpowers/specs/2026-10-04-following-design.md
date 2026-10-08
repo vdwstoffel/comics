@@ -239,9 +239,11 @@ rather than by its outcome:
 - **it has unread issues** → `groupByVolume` / `groupByArc` and the existing
   `VolumeGroupTile` / `ArcGroupTile`, unchanged, so the deck of plates, the
   "cover opens the next issue" rule and the spoiler rules hold here without
-  being restated. A `wanted` outcome adds a status line beneath it; this is the
-  mixed case of §3.1, and it needs no special case because the two questions
-  were never the same question.
+  being restated. No status line: originally a `wanted` outcome added one
+  beneath the tile — the mixed case of §3.1 — but a line only some follows
+  carried, under a tile that already draws a comic, set the height of every
+  tile in its row as soon as it wrapped to two lines. What is still missing is
+  what the Downloads page is for; the shelf answers "what can I read".
 - **it has none** → `FollowWaitingTile`.
 
 The division of labour is the point: the server knows what is wanted, the client

@@ -11,6 +11,10 @@
   --accent: #e5484d;
   --accent-hover: #f2555a;
   --radius: 10px;
+  /* The strip a cover tile keeps clear down its right-hand side for the deck behind it.
+     Named because it decides a cover's width, so anything that has to sit on the same
+     footprint - a followed run with no comic on the shelf - has to subtract the same. */
+  --deck-gutter: 18px;
   --shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
   --shadow-hover: 0 12px 32px rgba(0, 0, 0, 0.6);
   --scroll-thumb: #3a3f4a;
@@ -1757,23 +1761,6 @@ textarea.input:hover:not(:focus) {
   white-space: nowrap;
 }
 
-.filter-sidebar__count {
-  flex-shrink: 0;
-  min-width: 1.5rem;
-  padding: 1px 8px;
-  border-radius: 999px;
-  background: var(--elevated);
-  color: var(--muted);
-  font-size: 0.75rem;
-  font-weight: 600;
-  text-align: center;
-}
-
-.filter-sidebar__item--active .filter-sidebar__count {
-  background: var(--accent);
-  color: #fff;
-}
-
 .filter-sidebar__item:hover {
   background: var(--elevated);
 }
@@ -2601,7 +2588,7 @@ textarea.input:hover:not(:focus) {
    come out ragged. */
 .volume-tile__deck {
   position: relative;
-  padding-right: 18px;
+  padding-right: var(--deck-gutter);
 }
 
 .volume-tile__cover {
@@ -2628,7 +2615,7 @@ textarea.input:hover:not(:focus) {
   top: calc(var(--step) * 5px);
   bottom: calc(var(--step) * 5px);
   left: calc(var(--step) * 6px);
-  right: calc(18px - var(--step) * 6px);
+  right: calc(var(--deck-gutter) - var(--step) * 6px);
   border: 1px solid var(--border);
   border-radius: var(--radius);
   background: var(--elevated);
@@ -3759,15 +3746,18 @@ textarea.input:hover:not(:focus) {
   font-weight: 600;
 }
 
-/* A followed run with nothing to show: at least the footprint of a cover tile, so the
-   shelf stays on its grid whether a follow has a comic on it or not - and free to grow
-   past it, so it reaches the floor of a row set by a taller neighbour. */
+/* A followed run with nothing to show: exactly the footprint of the cover beside it, so a
+   row of follows reads as one shelf rather than two sizes of tile. That means subtracting
+   the deck gutter as well as matching the aspect - a cover's height follows its width, so
+   a box the full width of the cell comes out taller than every cover on the row. It does
+   not stretch to the floor of the row for the same reason: the covers do not either, and
+   the unfollow beneath it is what lines the row up along the bottom. */
 .follow-waiting {
   display: flex;
-  flex: 1;
   flex-direction: column;
   justify-content: center;
   gap: 0.4rem;
+  margin-right: var(--deck-gutter);
   aspect-ratio: 2 / 3;
   padding: 1rem;
   border: 1px dashed var(--border);
@@ -3778,12 +3768,11 @@ textarea.input:hover:not(:focus) {
 .follow-waiting__status { margin: 0; font-size: 0.85rem; color: var(--muted); }
 
 /* The tile takes the slack and the unfollow sits on the floor, so a row of follows lines
-   up along the bottom however much each one has to say. Without this, the status line -
-   which only some follows carry - left every item a different height inside a row already
-   as tall as its tallest member. */
+   up along the bottom however much each one has to say. Without this, a run carrying a
+   name and an unread count beside one carrying neither left every item a different height
+   inside a row already as tall as its tallest member. */
 .follow-item { display: flex; flex-direction: column; gap: 0.3rem; }
 .follow-item > .volume-tile { flex: 1; }
-.follow-item__status { margin: 0; font-size: 0.8rem; color: var(--muted); }
 
 /* A button does not inherit `color` - the browser applies its own `buttontext`, which is
    black, and this page's background is near-black. So every button here names its colour
