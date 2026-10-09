@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import Settings from '../src/pages/Settings'
 
-const SETTINGS = { downloadConcurrency: 1, comicVineApiKey: 'stored-key' }
+const SETTINGS = { downloadConcurrency: 1, comicVineApiKey: 'stored-key', hidePageBar: false }
 
 let posted: string[]
 let bodies: string[]
@@ -171,4 +171,39 @@ test('the select shows the patched value without waiting for the invalidated ref
   await waitFor(() => expect(select).toHaveValue('3'))
 
   releaseSecondGet()
+})
+
+test('the page-bar checkbox is clear on an install that never set it', async () => {
+  draw()
+  await waitFor(() => expect(screen.getByLabelText(/hide the page bar/i)).not.toBeChecked())
+})
+
+test('the page-bar checkbox shows what is stored', async () => {
+  globalThis.fetch = vi.fn(async () => (
+    { ok: true, json: async () => ({ ...SETTINGS, hidePageBar: true }) }
+  )) as unknown as typeof fetch
+  draw()
+  await waitFor(() => expect(screen.getByLabelText(/hide the page bar/i)).toBeChecked())
+})
+
+test('ticking the box saves that and nothing else', async () => {
+  draw()
+  fireEvent.click(await screen.findByLabelText(/hide the page bar/i))
+  await waitFor(() => expect(posted).toContain('PATCH /api/settings'))
+  expect(JSON.parse(bodies[0])).toEqual({ hidePageBar: true })
+})
+
+test('clearing the box saves the bar back', async () => {
+  globalThis.fetch = vi.fn(async (url: string, init?: { method?: string; body?: string }) => {
+    if (init?.method) { posted.push(`${init.method} ${url}`); bodies.push(String(init.body)) }
+    if (init?.method === 'PATCH') {
+      return { ok: true, json: async () => ({ ...SETTINGS, ...JSON.parse(String(init.body)) }) }
+    }
+    return { ok: true, json: async () => ({ ...SETTINGS, hidePageBar: true }) }
+  }) as unknown as typeof fetch
+  draw()
+  await waitFor(() => expect(screen.getByLabelText(/hide the page bar/i)).toBeChecked())
+  fireEvent.click(screen.getByLabelText(/hide the page bar/i))
+  await waitFor(() => expect(posted).toContain('PATCH /api/settings'))
+  expect(JSON.parse(bodies[0])).toEqual({ hidePageBar: false })
 })

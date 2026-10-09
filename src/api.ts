@@ -109,6 +109,8 @@ export interface DownloadsView {
 export interface ApiSettings {
   downloadConcurrency: number
   comicVineApiKey: string
+  /** Whether the reader reads without a scrubber and page counter at the bottom. */
+  hidePageBar: boolean
 }
 
 export interface ApiVolumeIssue {

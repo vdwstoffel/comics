@@ -2,7 +2,7 @@ import { test, expect, vi } from 'vitest'
 import Fastify from 'fastify'
 import settingsRoutes from '../server/routes/settings.js'
 import { openDb } from '../server/db.js'
-import { getDownloadConcurrency, getComicVineKey } from '../server/models/settings.js'
+import { getDownloadConcurrency, getComicVineKey, getHidePageBar } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
 
 async function setup(cvOk = true) {
@@ -36,7 +36,7 @@ test('a fresh install reports the default', async () => {
   try {
     const res = await t.app.inject({ url: '/api/settings' })
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toEqual({ downloadConcurrency: 1, comicVineApiKey: '' })
+    expect(res.json()).toEqual({ downloadConcurrency: 1, comicVineApiKey: '', hidePageBar: false })
   } finally { await t.cleanup() }
 })
 
@@ -47,7 +47,7 @@ test('a change is persisted and echoed back', async () => {
       method: 'PATCH', url: '/api/settings', payload: { downloadConcurrency: 3 },
     })
     expect(res.statusCode).toBe(200)
-    expect(res.json()).toEqual({ downloadConcurrency: 3, comicVineApiKey: '' })
+    expect(res.json()).toEqual({ downloadConcurrency: 3, comicVineApiKey: '', hidePageBar: false })
     expect(getDownloadConcurrency(t.db)).toBe(3)
     expect((await t.app.inject({ url: '/api/settings' })).json().downloadConcurrency).toBe(3)
   } finally { await t.cleanup() }
@@ -170,7 +170,7 @@ test('a patch that names only one setting leaves the other alone', async () => {
     await t.app.inject({ method: 'PATCH', url: '/api/settings', payload: { comicVineApiKey: 'abc123' } })
 
     const res = await t.app.inject({ url: '/api/settings' })
-    expect(res.json()).toEqual({ downloadConcurrency: 4, comicVineApiKey: 'abc123' })
+    expect(res.json()).toEqual({ downloadConcurrency: 4, comicVineApiKey: 'abc123', hidePageBar: false })
   } finally { await t.cleanup() }
 })
 
@@ -221,5 +221,68 @@ test('a patch with a good number and a bad key keeps the number and rejects the 
     expect(getDownloadConcurrency(t.db)).toBe(3)
     expect(getComicVineKey(t.db)).toBe('')
     expect(t.wake).toHaveBeenCalled()
+  } finally { await t.cleanup() }
+})
+
+test('hiding the page bar is persisted and echoed back', async () => {
+  const t = await setup()
+  try {
+    const res = await t.app.inject({
+      method: 'PATCH', url: '/api/settings', payload: { hidePageBar: true },
+    })
+    expect(res.statusCode).toBe(200)
+    expect(res.json().hidePageBar).toBe(true)
+    expect(getHidePageBar(t.db)).toBe(true)
+    expect((await t.app.inject({ url: '/api/settings' })).json().hidePageBar).toBe(true)
+  } finally { await t.cleanup() }
+})
+
+test('showing the page bar again is persisted too', async () => {
+  const t = await setup()
+  try {
+    await t.app.inject({ method: 'PATCH', url: '/api/settings', payload: { hidePageBar: true } })
+    const res = await t.app.inject({
+      method: 'PATCH', url: '/api/settings', payload: { hidePageBar: false },
+    })
+    expect(res.json().hidePageBar).toBe(false)
+    expect(getHidePageBar(t.db)).toBe(false)
+  } finally { await t.cleanup() }
+})
+
+// The field is a flag, and a truthy string is the shape a careless caller sends. Taking
+// it would store a preference the caller never actually expressed.
+test('a hidePageBar that is not a boolean is refused', async () => {
+  const t = await setup()
+  try {
+    for (const bad of ['true', 1, null, {}]) {
+      const res = await t.app.inject({
+        method: 'PATCH', url: '/api/settings', payload: { hidePageBar: bad },
+      })
+      expect(res.statusCode).toBe(400)
+      // Named, so this cannot pass on the "nothing to update" refusal an unknown field gets.
+      expect(res.json().error).toMatch(/hidePageBar/)
+    }
+    expect(getHidePageBar(t.db)).toBe(false)
+  } finally { await t.cleanup() }
+})
+
+// Each control saves on its own, knowing nothing about the others.
+test('hiding the page bar leaves the other settings alone', async () => {
+  const t = await setup()
+  try {
+    await t.app.inject({ method: 'PATCH', url: '/api/settings', payload: { downloadConcurrency: 4 } })
+    const res = await t.app.inject({
+      method: 'PATCH', url: '/api/settings', payload: { hidePageBar: true },
+    })
+    expect(res.json()).toEqual({ downloadConcurrency: 4, comicVineApiKey: '', hidePageBar: true })
+  } finally { await t.cleanup() }
+})
+
+// Saving a reading preference has nothing to do with the download queue.
+test('hiding the page bar does not wake the pool', async () => {
+  const t = await setup()
+  try {
+    await t.app.inject({ method: 'PATCH', url: '/api/settings', payload: { hidePageBar: true } })
+    expect(t.wake).not.toHaveBeenCalled()
   } finally { await t.cleanup() }
 })

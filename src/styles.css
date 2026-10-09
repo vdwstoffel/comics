@@ -418,6 +418,25 @@ img {
   color: var(--muted);
 }
 
+.settings__toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  /* The label wraps the box, so the whole row is the target - and 44px of it, the same
+     real target the dial below gets on the tablet this page was built for. */
+  min-height: 44px;
+  font-size: 0.875rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.settings__toggle input {
+  width: 18px;
+  height: 18px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
 /* 44px so it is a real target on the tablet this page was built for. */
 .settings__concurrency select {
   min-height: 44px;
@@ -1475,6 +1494,12 @@ textarea.input:hover:not(:focus) {
   gap: 12px;
   padding: 8px 16px;
   background: #000;
+}
+
+/* With the scrubber gone there is no `flex: 1` left to push the button over, and the
+   one control still here belongs where the thumb already reaches for it. */
+.reader-bottom-bar--bare {
+  justify-content: flex-end;
 }
 
 .reader-counter {

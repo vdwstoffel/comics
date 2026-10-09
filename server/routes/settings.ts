@@ -2,18 +2,21 @@ import { createComicVine } from '../lib/comicvine.js'
 import {
   getDownloadConcurrency, setDownloadConcurrency,
   getComicVineKey, setComicVineKey,
+  getHidePageBar, setHidePageBar,
 } from '../models/settings.js'
 import type { App } from '../types.js'
 
 interface PatchBody {
   downloadConcurrency?: unknown
   comicVineApiKey?: unknown
+  hidePageBar?: unknown
 }
 
 export default async function settingsRoutes(app: App) {
   const view = () => ({
     downloadConcurrency: getDownloadConcurrency(app.db),
     comicVineApiKey: getComicVineKey(app.db),
+    hidePageBar: getHidePageBar(app.db),
   })
 
   app.get('/api/settings', async () => view())
@@ -27,11 +30,12 @@ export default async function settingsRoutes(app: App) {
     const isObject = typeof body === 'object'
     const hasConcurrency = isObject && 'downloadConcurrency' in body
     const hasKey = isObject && 'comicVineApiKey' in body
+    const hasHidePageBar = isObject && 'hidePageBar' in body
 
     // An absent field is left alone, so one control can save without knowing about the
-    // others. A body naming neither is still refused: a misspelled field would otherwise
-    // return 200 having done nothing.
-    if (!hasConcurrency && !hasKey) {
+    // others. A body naming none of them is still refused: a misspelled field would
+    // otherwise return 200 having done nothing.
+    if (!hasConcurrency && !hasKey && !hasHidePageBar) {
       return reply.code(400).send({ error: 'nothing to update' })
     }
 
@@ -51,6 +55,15 @@ export default async function settingsRoutes(app: App) {
       // visible until the download in progress happened to end. Only a concurrency change
       // wakes it - saving a key has nothing to do with the queue.
       app.downloader.wake()
+    }
+
+    // A reading preference, and nothing the queue has any interest in - so no wake() here.
+    if (hasHidePageBar) {
+      const value = body.hidePageBar
+      if (typeof value !== 'boolean') {
+        return reply.code(400).send({ error: 'hidePageBar must be a boolean' })
+      }
+      setHidePageBar(app.db, value)
     }
 
     if (hasKey) {

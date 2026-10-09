@@ -4,6 +4,7 @@ import {
   getSetting, setSetting, getDownloadConcurrency, setDownloadConcurrency,
   CONCURRENCY_DEFAULT, CONCURRENCY_MIN, CONCURRENCY_MAX,
   getComicVineKey, setComicVineKey,
+  getHidePageBar, setHidePageBar,
 } from '../server/models/settings.js'
 
 const db = () => openDb(':memory:')
@@ -95,4 +96,32 @@ test('the empty string clears the key rather than storing a blank one', () => {
   setComicVineKey(d, 'abc123')
   setComicVineKey(d, '')
   expect(getComicVineKey(d)).toBe('')
+})
+
+// An install that never opens the control reads exactly as it does today: bar shown.
+test('the page bar is shown on a fresh install', () => {
+  expect(getHidePageBar(db())).toBe(false)
+})
+
+test('hiding the page bar round-trips', () => {
+  const d = db()
+  setHidePageBar(d, true)
+  expect(getHidePageBar(d)).toBe(true)
+})
+
+test('showing the page bar again round-trips', () => {
+  const d = db()
+  setHidePageBar(d, true)
+  setHidePageBar(d, false)
+  expect(getHidePageBar(d)).toBe(false)
+})
+
+// A row put there by hand, or by a future version writing it some other way, must not
+// hide the bar on a guess - the stored flag is read as exactly one thing or it is false.
+test('a stored value that is not the flag reads as shown', () => {
+  const d = db()
+  for (const junk of ['maybe', 'true', 'yes', '2', '']) {
+    setSetting(d, 'hide_page_bar', junk)
+    expect(getHidePageBar(d)).toBe(false)
+  }
 })

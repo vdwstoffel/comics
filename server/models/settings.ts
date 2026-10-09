@@ -64,3 +64,20 @@ export function getComicVineKey(db: Db): string {
 export function setComicVineKey(db: Db, key: string): void {
   setSetting(db, COMIC_VINE_KEY, key.trim())
 }
+
+const HIDE_PAGE_BAR_KEY = 'hide_page_bar'
+
+/**
+ * Whether the reader hides the scrubber and page counter while you read.
+ *
+ * Stored as `'1'`/`'0'` and read as exactly `'1'`: an absent row, or one some other
+ * version wrote in some other shape, reads as "shown". Hiding a control is the surprising
+ * answer of the two, and it is never the one a value we do not recognise gets to give.
+ */
+export function getHidePageBar(db: Db): boolean {
+  return getSetting(db, HIDE_PAGE_BAR_KEY) === '1'
+}
+
+export function setHidePageBar(db: Db, hide: boolean): void {
+  setSetting(db, HIDE_PAGE_BAR_KEY, hide ? '1' : '0')
+}

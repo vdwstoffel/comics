@@ -214,3 +214,35 @@ test('turning the page returns to fit', async () => {
   await screen.findByAltText('page 2')
   expect(screen.getByAltText('page 2').style.transform).toBe('')
 })
+
+/** A reader whose settings answer says to hide the bar's page controls. */
+function readerWithHiddenBar() {
+  globalThis.fetch = vi.fn(async (url: string, opts?: RequestInit) => {
+    if (url === '/api/settings') return { ok: true, json: async () => ({ hidePageBar: true }) }
+    if (url === '/api/books/5' && !opts) return { ok: true, json: async () => ({ book: { id: 5, pageCount: 3 }, progress: { lastPage: 0, completed: false } }) }
+    return { ok: true, json: async () => ({ progress: { lastPage: 1, completed: false } }) }
+  }) as unknown as typeof fetch
+  return renderReader()
+}
+
+test('hiding the page bar takes the scrubber and the counter away', async () => {
+  const { container } = readerWithHiddenBar()
+  // The fullscreen button is the one control that stays, and waiting on it means the
+  // settings answer has landed - so an absent counter below is a decision, not a race.
+  await within(container).findByRole('button', { name: /fullscreen/i })
+  expect(within(container).queryByRole('slider', { name: /go to page/i })).toBeNull()
+  expect(within(container).queryByText('1 / 3')).toBeNull()
+})
+
+test('the bar itself stays, so the fullscreen button keeps its place', async () => {
+  const { container } = readerWithHiddenBar()
+  await within(container).findByRole('button', { name: /fullscreen/i })
+  expect(container.querySelector('.reader-bottom-bar')).not.toBeNull()
+})
+
+// Default install: nothing is taken away.
+test('the scrubber and counter are there when the setting is off', async () => {
+  const { container } = renderReader()
+  expect(await within(container).findByText('1 / 3')).toBeInTheDocument()
+  expect(within(container).getByRole('slider', { name: /go to page/i })).toBeInTheDocument()
+})

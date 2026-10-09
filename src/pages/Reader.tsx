@@ -20,6 +20,8 @@ export default function Reader() {
   // leaves you in its run instead, standing on it.
   const toRun = (location.state as { back?: string } | null)?.back === 'run'
   const { data, isFetching } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
+  // The same query key the Settings page uses, so arriving from it is a cache hit.
+  const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings })
   const [page, setPage] = useState<number | null>(null)
   const [scrubbing, setScrubbing] = useState<number | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -79,6 +81,11 @@ export default function Reader() {
   const run = `/edition/${data.book.editionId}?issue=book-${id}`
   const runBack = toRun ? run : null
   const displayPage = scrubbing ?? page
+  // Withheld until the settings answer rather than drawn and then taken away: a bar that
+  // flashes in and vanishes is exactly what the setting exists to stop. It costs an
+  // install that keeps the bar nothing visible - the book query gates the whole reader
+  // behind "Loading…" and outlasts a local settings read every time.
+  const showPageControls = settings !== undefined && !settings.hidePageBar
   return (
     <div className="reader-root">
       {/* A real link, so middle-click and "open in new tab" still work and a comic opened
@@ -118,23 +125,27 @@ export default function Reader() {
           onClick={() => setPage((p) => Math.min((p ?? 0) + 1, total - 1))}
           className="reader-zone reader-zone--next" />
       </div>
-      <div className="reader-bottom-bar">
-        <input
-          type="range"
-          className="reader-scrubber"
-          min={0}
-          max={total - 1}
-          step={1}
-          value={displayPage}
-          aria-label="Go to page"
-          onInput={(e) => setScrubbing(Number((e.target as HTMLInputElement).value))}
-          onChange={(e) => {
-            const v = Number(e.target.value)
-            setPage(v)
-            setScrubbing(null)
-          }}
-        />
-        <span className="reader-counter">{displayPage + 1} / {total}</span>
+      {/* The bar survives the setting even when both page controls leave it: the fullscreen
+          button lives here, and on a tablet there is no `f` key to replace it with. */}
+      <div className={`reader-bottom-bar${showPageControls ? '' : ' reader-bottom-bar--bare'}`}>
+        {showPageControls && (
+          <input
+            type="range"
+            className="reader-scrubber"
+            min={0}
+            max={total - 1}
+            step={1}
+            value={displayPage}
+            aria-label="Go to page"
+            onInput={(e) => setScrubbing(Number((e.target as HTMLInputElement).value))}
+            onChange={(e) => {
+              const v = Number(e.target.value)
+              setPage(v)
+              setScrubbing(null)
+            }}
+          />
+        )}
+        {showPageControls && <span className="reader-counter">{displayPage + 1} / {total}</span>}
         <button
           className="reader-fullscreen"
           onClick={toggle}
