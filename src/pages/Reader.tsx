@@ -19,7 +19,7 @@ export default function Reader() {
   // yet - including the one you just did, until the shelf catches up. Closing the comic
   // leaves you in its run instead, standing on it.
   const toRun = (location.state as { back?: string } | null)?.back === 'run'
-  const { data } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
+  const { data, isFetching } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
   const [page, setPage] = useState<number | null>(null)
   const [scrubbing, setScrubbing] = useState<number | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
@@ -37,10 +37,16 @@ export default function Reader() {
   // place twice.
   useEffect(() => { zoom.reset() }, [page, zoom.reset])
 
-  // Resume at last-read page once the book loads.
+  // Resume at last-read page once the book loads - and only from a read of the server,
+  // never from the copy the cache is still holding. The reader is the one thing that
+  // moves your place, so a copy taken before the last visit is behind by exactly the
+  // comic you just read: opening a comic you had read ten pages of put you back on page
+  // one, and the save below then wrote page one over where you actually were. Which page
+  // you landed on came down to whether the cache had been dropped yet, which looked like
+  // the shelf you came from deciding it.
   useEffect(() => {
-    if (data && page === null) setPage(data.progress.lastPage || 0)
-  }, [data, page])
+    if (data && !isFetching && page === null) setPage(data.progress.lastPage || 0)
+  }, [data, isFetching, page])
 
   // Debounced progress save whenever the page changes.
   useEffect(() => {
