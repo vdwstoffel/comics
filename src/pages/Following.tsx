@@ -4,6 +4,7 @@ import type { ApiFollow, ApiLibraryBook, ApiUpcoming } from '../api'
 import { groupByVolume, groupByArc } from '../lib/volumeGroups'
 import type { FollowSoon } from '../lib/followStatus'
 import { useUpcoming } from '../lib/useUpcoming'
+import { sortFollows } from '../lib/followOrder'
 import { upcomingForEdition } from '../lib/upcomingForEdition'
 import LibraryRail from '../components/LibraryRail'
 import VolumeGroupTile from '../components/VolumeGroupTile'
@@ -61,6 +62,26 @@ export default function Following() {
   const all = follows.data?.follows ?? []
   const unread = books.data?.books ?? []
 
+  // What the shelf has worked out about each follow: the tile to draw, and the two facts
+  // the running order is decided on. Both are browser-side - the server lists follows
+  // alphabetically and knows neither your unread shelf nor Marvel's calendar - so the
+  // order is settled here, with that alphabetical list left to break ties inside each band.
+  const shelf = sortFollows(all.map((follow) => {
+    const held = booksFor(follow, unread)
+    // The shelf draws the arc you follow, not whichever arc a tie-in happens to
+    // list first: groupByArc credits a book to every arc it carries.
+    const arcGroup = follow.kind === 'arc'
+      ? groupByArc(held).arcs.find((a) => a.name === follow.name)
+      : undefined
+    const volumeGroup = follow.kind === 'volume' ? groupByVolume(held)[0] : undefined
+    const tile = volumeGroup
+      ? <VolumeGroupTile group={volumeGroup} showCount={false} />
+      : arcGroup
+        ? <ArcGroupTile group={arcGroup} showCount={false} />
+        : null
+    return { follow, tile, hasTile: tile != null, soon: soonFor(follow, upcoming.data) }
+  }))
+
   return (
     <>
       <LibraryRail />
@@ -76,40 +97,25 @@ export default function Following() {
             that every follow would look empty, and the waiting tile would state - falsely -
             that nothing is there to read. */}
         <div className="tile-grid">
-          {follows.data && books.data && all.map((follow) => {
-            const held = booksFor(follow, unread)
-            // The shelf draws the arc you follow, not whichever arc a tie-in happens to
-            // list first: groupByArc credits a book to every arc it carries.
-            const arcGroup = follow.kind === 'arc'
-              ? groupByArc(held).arcs.find((a) => a.name === follow.name)
-              : undefined
-            const volumeGroup = follow.kind === 'volume' ? groupByVolume(held)[0] : undefined
-            const tile = volumeGroup
-              ? <VolumeGroupTile group={volumeGroup} showCount={false} />
-              : arcGroup
-                ? <ArcGroupTile group={arcGroup} showCount={false} />
-                : null
-            const soon = soonFor(follow, upcoming.data)
-            return (
-              // The tile is reused untouched; everything this page adds hangs off the
-              // wrapper, so the library's own shelf never learns that following exists.
-              <div className="follow-item" key={`${follow.kind}:${follow.refId}`}>
-                {/* A status line only ever appears on a tile with no cover, where it IS
-                    the tile. Beside a cover it was an extra line that only some follows
-                    carried, and one that wrapped set the height of every tile in its row -
-                    paid for by a sentence the cover had already answered. */}
-                {tile ?? <FollowWaitingTile follow={follow} soon={soon} />}
-                <button
-                  type="button"
-                  className="follow-item__unfollow"
-                  aria-label={`Unfollow ${follow.name} (${follow.kind === 'arc' ? 'story arc' : 'run'})`}
-                  onClick={() => unfollow.mutate({ kind: follow.kind, refId: follow.refId })}
-                >
-                  Unfollow
-                </button>
-              </div>
-            )
-          })}
+          {follows.data && books.data && shelf.map(({ follow, tile, soon }) => (
+            // The tile is reused untouched; everything this page adds hangs off the
+            // wrapper, so the library's own shelf never learns that following exists.
+            <div className="follow-item" key={`${follow.kind}:${follow.refId}`}>
+              {/* A status line only ever appears on a tile with no cover, where it IS
+                  the tile. Beside a cover it was an extra line that only some follows
+                  carried, and one that wrapped set the height of every tile in its row -
+                  paid for by a sentence the cover had already answered. */}
+              {tile ?? <FollowWaitingTile follow={follow} soon={soon} />}
+              <button
+                type="button"
+                className="follow-item__unfollow"
+                aria-label={`Unfollow ${follow.name} (${follow.kind === 'arc' ? 'story arc' : 'run'})`}
+                onClick={() => unfollow.mutate({ kind: follow.kind, refId: follow.refId })}
+              >
+                Unfollow
+              </button>
+            </div>
+          ))}
         </div>
       </main>
     </>

@@ -234,3 +234,34 @@ test('an arc follow has no calendar to consult and says so', async () => {
   show()
   expect(await screen.findByText('Waiting on the next issue — no further details')).toBeInTheDocument()
 })
+
+/** The shelf in the order it is drawn, read off the one control every follow carries. */
+function shelfNames(): string[] {
+  return [...document.querySelectorAll('.follow-item__unfollow')].map((b) => (
+    (b.getAttribute('aria-label') ?? '').replace(/^Unfollow /, '').replace(/ \((run|story arc)\)$/, '')
+  ))
+}
+
+// Alphabetically these are Avengers, Iron Man, Thor, Venom. By what you can do with them
+// they are the comic on the shelf, the issue that is out, the dated wait, and the rest.
+test('the shelf leads with what you can read, then what is out, then what is dated', async () => {
+  vi.spyOn(api, 'getLibraryBooks').mockResolvedValue({
+    books: [{ ...BOOK, editionId: 4, editionName: 'Venom', seriesName: 'Venom', title: 'Venom' }],
+  })
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [
+      { kind: 'volume', refId: 1, name: 'Avengers', state: 'caught-up' },
+      { ...CAUGHT_UP, refId: 2 },
+      {
+        kind: 'volume', refId: 3, name: 'Thor', state: 'wanted',
+        want: { id: 2, number: '7', name: null }, queued: false,
+      },
+      { kind: 'volume', refId: 4, name: 'Venom', state: 'supplied' },
+    ],
+  })
+  vi.spyOn(api, 'getUpcoming').mockResolvedValue(solicited('Iron Man (2020) #16', '2026-10-28'))
+  show()
+  // Waiting on the calendar: until it answers, the dated follow has no date to sort on.
+  await screen.findByText('Next: 28 Oct 2026')
+  expect(shelfNames()).toEqual(['Venom', 'Thor', 'Iron Man', 'Avengers'])
+})

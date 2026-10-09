@@ -40,7 +40,12 @@ export function getFollow(db: Db, kind: FollowKind, refId: number): Follow | und
   return row ? toFollow(row) : undefined
 }
 
-/** Alphabetical, because the shelf is a list you scan by name rather than by age. */
+/**
+ * Alphabetical, because the shelf is a list you scan by name rather than by age - though
+ * the Following page now spends this as a tiebreaker inside each of its bands rather than
+ * as the whole order. What you can read now, what is out but unposted, and when the next
+ * issue lands are browser-side facts no query here can see; see src/lib/followOrder.
+ */
 export function listFollows(db: Db): Follow[] {
   return (db.prepare('SELECT * FROM follow ORDER BY name COLLATE NOCASE').all() as Row[]).map(toFollow)
 }
