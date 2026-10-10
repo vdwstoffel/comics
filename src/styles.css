@@ -670,7 +670,8 @@ img {
 }
 
 .volume-issue__get,
-.volume-issue__find {
+.volume-issue__find,
+.volume-issue__upload {
   align-self: start;
   font-size: 0.8125rem;
   padding: 2px 8px;
@@ -679,8 +680,35 @@ img {
 }
 
 .volume-issue__find:hover,
+.volume-issue__upload:hover,
 .volume-issue__get:hover:not(:disabled) {
   color: var(--text);
+}
+
+/* A label rather than a button, because only a label can open a file picker - so it has
+   to be told to behave like one. */
+.volume-issue__upload {
+  cursor: pointer;
+}
+
+.volume-issue__upload:has(input:disabled) {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* The input is what gets clicked and what a screen reader reads, so it is taken out of
+   the layout rather than hidden: display:none or visibility:hidden would drop it from the
+   accessibility tree and make the label a dead end. */
+.volume-issue__file {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
 .volume-issue__error {
@@ -2559,6 +2587,36 @@ textarea.input:hover:not(:focus) {
   background: none;
 }
 
+/* The tile is a link, so the controls for a gap cannot live inside it - they are laid
+   over it instead, which is what this positions them against. */
+.cover-tile__stack {
+  position: relative;
+}
+
+/* Exactly over the image box: same width, same 2/3 cover shape, pinned to the top so the
+   title and subtitle below stay clear. Transparent to the pointer so the cover underneath
+   is still the link it was; the controls themselves take their clicks back. */
+.cover-tile__overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  aspect-ratio: 2 / 3;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  padding: 12px;
+  pointer-events: none;
+  text-align: center;
+}
+
+.cover-tile__overlay > * {
+  pointer-events: auto;
+  align-self: center;
+}
+
 /* What you can do with the comic that just finished uploading. */
 .upload-done {
   display: flex;
@@ -3054,15 +3112,41 @@ textarea.input:hover:not(:focus) {
    cover that failed to load. */
 .issue-carousel__plate {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 18px;
   width: 100%;
   height: 100%;
+  padding: 16px;
   border: 1px dashed var(--border);
   border-radius: var(--radius);
   color: var(--muted);
+}
+
+.issue-carousel__plate-label {
   font-size: 1.5rem;
   font-weight: 600;
+}
+
+/* What to do about the gap, under its number. A column because there are two offers and
+   the plate is tall and narrow; centred because the plate has nothing else in it. */
+.issue-carousel__plate-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  text-align: center;
+}
+
+.issue-carousel__plate-actions .volume-issue__get,
+.issue-carousel__plate-actions .volume-issue__find,
+.issue-carousel__plate-actions .volume-issue__upload {
+  align-self: center;
+  font-size: 0.875rem;
+  padding: 6px 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
 }
 
 /* Above the neighbours, always. They are positioned and this is not, which paints them
@@ -3360,6 +3444,7 @@ textarea.input:hover:not(:focus) {
    rather than of the page's main offer. */
 .edition-side .btn,
 .edition-side .btn-ghost,
+.edition-side .volume-issue__upload,
 .edition-side .volume-issue__find {
   font-size: 0.75rem;
   padding: 2px 8px;

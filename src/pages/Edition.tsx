@@ -8,6 +8,7 @@ import { useBackLink } from '../lib/backOrigin'
 import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import MissingIssueTile from '../components/MissingIssueTile'
+import IssueUploadAction from '../components/IssueUploadAction'
 import { tileLabel } from '../lib/tileLabel'
 import { findIssueHref } from '../lib/findIssueHref'
 import { useUpcoming } from '../lib/useUpcoming'
@@ -27,10 +28,12 @@ import EditionRun from '../components/EditionRun'
  * less certain offers `Find`, which opens the search with the series and year filled
  * in so you choose by eye. The button never guesses; that is the whole point of it.
  */
-function VolumeIssue({ issue, book, editionId, seriesName }: {
+function VolumeIssue({ issue, book, editionId, editionName, seriesName }: {
   issue: ApiVolumeIssue
   book?: ApiBook
   editionId: string
+  /** What the run is called, which is where a comic uploaded into a gap is filed. */
+  editionName: string
   seriesName: string
 }) {
   const qc = useQueryClient()
@@ -66,6 +69,7 @@ function VolumeIssue({ issue, book, editionId, seriesName }: {
       pending={get.isPending}
       failed={get.isError}
       queued={liveByIssue.has(issue.id)}
+      upload={<IssueUploadAction editionName={editionName} issueId={issue.id} label={label} />}
     />
   )
 }
@@ -447,6 +451,7 @@ export default function Edition() {
                   issue={issue}
                   book={bookById.get(issue.bookId ?? -1)}
                   editionId={id!}
+                  editionName={data.edition.name}
                   seriesName={data.edition.seriesName?.trim() || data.edition.cvName || data.edition.name}
                 />
               ))}

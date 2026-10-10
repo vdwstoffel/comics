@@ -82,3 +82,33 @@ test('cover art is drawn when one is given and absent when not', () => {
   draw({ hasMatch: false })
   expect(screen.queryByRole('img')).toBeNull()
 })
+
+// The grid view of a run offers the same two ways to fill a gap as the carousel does. The
+// tile passes the offer straight through rather than building one of its own, so the two
+// views cannot word it differently.
+test('an upload offer is passed through to the tile', () => {
+  draw({ hasMatch: true, upload: <button type="button">↑ Upload</button> })
+  expect(screen.getByRole('button', { name: /Upload/ })).toBeInTheDocument()
+})
+
+test('a tile given no upload offer draws none', () => {
+  draw({ hasMatch: true })
+  expect(screen.queryByRole('button', { name: /Upload/ })).toBeNull()
+})
+
+// The gap's cover is a dashed blank and the controls were small print beneath it. They go
+// in the blank: it is the only empty space on the tile, and it is exactly the thing the
+// controls are about.
+test('a gap with no cover art carries its controls in the blank', () => {
+  draw({ hasMatch: true, upload: <button type="button">↑ Upload</button> })
+  const get = screen.getByRole('button', { name: /Get/ })
+  expect(get.closest('.cover-tile__overlay')).not.toBeNull()
+  expect(screen.getByRole('button', { name: /Upload/ }).closest('.cover-tile__overlay')).not.toBeNull()
+})
+
+// The releases tab passes real cover art, and art is the whole point of that page. The
+// controls stay beneath it there rather than blotting it out.
+test('a gap that does have cover art keeps its controls beneath it', () => {
+  draw({ hasMatch: true, coverUrl: 'https://cv/cover.jpg' })
+  expect(screen.getByRole('button', { name: /Get/ }).closest('.cover-tile__overlay')).toBeNull()
+})

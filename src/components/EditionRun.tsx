@@ -145,16 +145,23 @@ export default function EditionRun({
 
   const missing = entries.filter((e) => !e.owned && e.issueId != null)
 
-  const fill = (entry: VolumeEntry) => (
+  // `offerUpload` is what separates the two places this is drawn. The centred issue is one
+  // comic you are looking at, so it offers the file picker; the sidebar is a list of every
+  // gap at once, where a picker per row is noise.
+  const fill = (entry: VolumeEntry, offerUpload = false) => (
     <MissingIssueAction
       editionId={editionId}
+      editionName={editionName}
       issueId={entry.issueId!}
       label={entry.label}
       match={entry.match}
       coverDate={entry.coverDate}
       seriesName={seriesName}
+      offerUpload={offerUpload}
     />
   )
+
+  const gap = !current.owned && current.issueId != null
 
   return (
     <div className="edition-run">
@@ -170,6 +177,7 @@ export default function EditionRun({
           }))}
           index={at}
           onMove={move}
+          action={gap ? fill(current, true) : undefined}
         />
 
         <div className="edition-run__identity" data-testid="issue-identity">
@@ -184,7 +192,6 @@ export default function EditionRun({
             readState={current.readState}
             percent={current.percent}
             onEdit={current.bookId != null ? () => setEditing(true) : undefined}
-            action={!current.owned && current.issueId != null ? fill(current) : undefined}
             onRemove={current.bookId != null ? () => setConfirmRemove(true) : undefined}
           />
         </div>

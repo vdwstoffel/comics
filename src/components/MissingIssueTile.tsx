@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import CoverTile from './CoverTile'
 import IssueAction from './IssueAction'
 
@@ -21,6 +22,8 @@ interface MissingIssueTileProps {
   failed: boolean
   /** Already in the download queue — pressing Get again would just 409 on the server. */
   queued?: boolean
+  /** The offer to fill this gap from a file you already have. Passed straight through. */
+  upload?: ReactNode
 }
 
 /**
@@ -31,21 +34,36 @@ interface MissingIssueTileProps {
  * draw too; this is the tile around it.
  */
 export default function MissingIssueTile({
-  label, siteUrl, hasMatch, matchTitle, findTo, coverUrl, onGet, pending, failed, queued,
+  label, siteUrl, hasMatch, matchTitle, findTo, coverUrl, onGet, pending, failed, queued, upload,
 }: MissingIssueTileProps) {
-  return (
-    <div className="volume-issue">
-      <CoverTile href={siteUrl} img={coverUrl} title={label} subtitle="Missing" />
-      <IssueAction
-        label={label}
-        hasMatch={hasMatch}
-        matchTitle={matchTitle}
-        findTo={findTo}
-        onGet={onGet}
-        pending={pending}
-        failed={failed}
-        queued={queued}
-      />
-    </div>
+  const action = (
+    <IssueAction
+      label={label}
+      hasMatch={hasMatch}
+      matchTitle={matchTitle}
+      findTo={findTo}
+      onGet={onGet}
+      pending={pending}
+      failed={failed}
+      queued={queued}
+      upload={upload}
+    />
   )
+
+  // With no art the cover is a dashed blank, and the controls belong in it: it is the only
+  // empty space on the tile and it is the very thing they are about. With art - the
+  // releases tab passes some - they stay beneath, because blotting out the cover is the
+  // opposite of what that page is for.
+  return coverUrl
+    ? (
+      <div className="volume-issue">
+        <CoverTile href={siteUrl} img={coverUrl} title={label} subtitle="Missing" />
+        {action}
+      </div>
+    )
+    : (
+      <div className="volume-issue">
+        <CoverTile href={siteUrl} title={label} subtitle="Missing" overlay={action} />
+      </div>
+    )
 }

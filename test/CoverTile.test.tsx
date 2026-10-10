@@ -80,3 +80,23 @@ test('carries router state through to where it leads', () => {
   fireEvent.click(screen.getByRole('link'))
   expect(screen.getByTestId('landed')).toHaveTextContent('{"back":"run"}')
 })
+
+// A gap's cover is a dashed blank with nothing in it, and the controls that fill the gap
+// were sitting under it as small print. They belong in that blank. They cannot be nested
+// in the tile, though - the tile is a link to Comic Vine, and a button inside a link both
+// navigates and acts - so the slot is layered over it instead.
+test('an overlay is drawn over the cover rather than inside its link', () => {
+  render(<MemoryRouter>
+    <CoverTile to="/book/1" title="#250" overlay={<button type="button">↓ Get</button>} />
+  </MemoryRouter>)
+
+  const get = screen.getByRole('button', { name: '↓ Get' })
+  expect(get).toBeInTheDocument()
+  expect(get.closest('a')).toBeNull()
+})
+
+test('a tile given no overlay is the plain link it always was', () => {
+  render(<MemoryRouter><CoverTile to="/book/1" title="#250" /></MemoryRouter>)
+  expect(screen.getByRole('link')).toHaveClass('cover-tile')
+  expect(document.querySelector('.cover-tile__overlay')).toBeNull()
+})

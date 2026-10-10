@@ -1,5 +1,5 @@
 import { test, expect, vi } from 'vitest'
-import { render, screen, fireEvent } from '@testing-library/react'
+import { render, screen, fireEvent, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import type { ComponentProps } from 'react'
 import IssueCarousel from '../src/components/IssueCarousel'
@@ -124,4 +124,21 @@ test('a short drag is not a swipe', () => {
 test('the end of the run has no next neighbour', () => {
   draw({ index: RUN.length - 1 })
   expect(screen.queryByTestId('carousel-next-peek')).toBeNull()
+})
+
+// A gap's plate is a dashed blank carrying its number and nothing else, and it is the
+// biggest empty space on the page. What to do about the gap goes there, rather than in
+// the identity line below where it read as a footnote to a comic that is not there.
+test('the centred gap carries what to do about it on its plate', () => {
+  draw({ index: 2, action: <button type="button">↓ Get</button> })
+  const plate = document.querySelector('.issue-carousel__current .issue-carousel__plate')
+  expect(plate).not.toBeNull()
+  expect(within(plate as HTMLElement).getByRole('button', { name: '↓ Get' })).toBeInTheDocument()
+})
+
+// The peeks are dimmed, aria-hidden and a page-turn away. Controls there would be a second
+// set of buttons for a comic you are not looking at.
+test('the peeking neighbours carry no controls', () => {
+  draw({ index: 2, action: <button type="button">↓ Get</button> })
+  expect(screen.getAllByRole('button', { name: '↓ Get' })).toHaveLength(1)
 })

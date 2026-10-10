@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import TileProgress from './TileProgress'
 
@@ -14,9 +15,17 @@ interface CoverTileProps {
   state?: unknown
   /** Runs as well as following the link, not instead of it. */
   onClick?: () => void
+  /**
+   * Controls laid over the cover itself - what to do about a comic that is not there.
+   *
+   * Layered over the tile rather than nested in it, because the tile is a link and a
+   * button inside a link would both navigate and act. A gap's cover is a dashed blank
+   * with nothing in it, which is the one place on the tile these do not crowd anything.
+   */
+  overlay?: ReactNode
 }
 
-export default function CoverTile({ to, href, img, title, subtitle, readState, percent, state, onClick }: CoverTileProps) {
+export default function CoverTile({ to, href, img, title, subtitle, readState, percent, state, onClick, overlay }: CoverTileProps) {
   const isRead = readState === 'read'
 
   const inner = (
@@ -38,8 +47,15 @@ export default function CoverTile({ to, href, img, title, subtitle, readState, p
   )
 
   // A comic the library does not have lives on Comic Vine, which is not a route.
-  if (href) {
-    return <a href={href} target="_blank" rel="noreferrer" className="cover-tile">{inner}</a>
-  }
-  return <Link to={to ?? '#'} state={state} onClick={onClick} className="cover-tile">{inner}</Link>
+  const card = href
+    ? <a href={href} target="_blank" rel="noreferrer" className="cover-tile">{inner}</a>
+    : <Link to={to ?? '#'} state={state} onClick={onClick} className="cover-tile">{inner}</Link>
+
+  if (!overlay) return card
+  return (
+    <div className="cover-tile__stack">
+      {card}
+      <div className="cover-tile__overlay">{overlay}</div>
+    </div>
+  )
 }

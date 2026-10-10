@@ -5,6 +5,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { useLocation } from 'react-router-dom'
 import Edition from '../src/pages/Edition'
+import { FakeXhr, installFakeXhr } from './helpers/fakeXhr'
 
 /** The current url, so a test can see what the page has written into it. */
 function Where() {
@@ -1017,13 +1018,15 @@ test('pressing get in the list downloads that issue into this edition', async ()
 })
 
 // Landing on a gap has to put its Get button in front of you - that is the reason a gap
-// counts as unread when the page chooses where to open.
+// counts as unread when the page chooses where to open. In front of you now means on the
+// plate where the cover would be, rather than in the identity line underneath it.
 test('a centred gap offers to fill itself', async () => {
   mockFetchWithIssues(MATCHED)
   renderPage()
 
   await screen.findByTestId('carousel-current')
-  expect(screen.getByTestId('issue-identity')).toHaveTextContent(/Get/)
+  const plate = document.querySelector('.issue-carousel__current .issue-carousel__plate')
+  expect(plate).toHaveTextContent(/Get/)
 })
 
 /* ── Coming back to the issue you were on ─────────────────────────────────── */
@@ -1191,4 +1194,80 @@ test('the way back survives the page writing to its own url', async () => {
   fireEvent.click(await screen.findByRole('button', { name: /show covers/i }))
   await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('view=grid'))
   expect(screen.getByText(/← Following/)).toBeInTheDocument()
+})
+
+// A gap in a run can be filled from a file you already have, not only from the index. The
+// run is what makes this worth offering here: the edition and the issue are both known, so
+// the comic is filed into this run and read as this issue with nothing typed.
+test('a missing issue in the grid offers to upload one', async () => {
+  mockFetchWithIssues(VOLUME_ISSUES)
+  renderGrid()
+
+  expect(await screen.findByText('#250')).toBeInTheDocument()
+  expect(screen.getByLabelText(/^Upload #250$/)).toBeInTheDocument()
+})
+
+// On the plate itself - the big dashed blank where the cover would be - and nowhere else.
+// The sidebar lists every gap in the run, and an upload control on each row would be a
+// column of file pickers for comics you are not looking at.
+test('a missing issue centred in the run offers to upload one, on its plate and only there', async () => {
+  mockFetchWithIssues(VOLUME_ISSUES)
+  renderPage('/edition/9?view=carousel&issue=issue-1136140')
+
+  await waitFor(() => expect(screen.getAllByLabelText(/^Upload #250$/)).toHaveLength(1))
+  const plate = document.querySelector('.issue-carousel__current .issue-carousel__plate')
+  expect(within(plate as HTMLElement).getByLabelText(/^Upload #250$/)).toBeInTheDocument()
+})
+
+// The sidebar's job is to say what is still missing and let you fetch it. Uploading is a
+// per-comic act you do while looking at that comic.
+test('the sidebar list of gaps offers Get but no upload', async () => {
+  // Matched, so the sidebar's rows show Get rather than Find - the control being kept.
+  mockFetchWithIssues({
+    ...VOLUME_ISSUES,
+    issues: VOLUME_ISSUES.issues.map((i) => (
+      i.owned ? i : { ...i, match: { indexId: i.id, title: `Venom ${i.number}` } }
+    )),
+  })
+  renderPage('/edition/9?view=carousel&issue=issue-1136140')
+
+  const side = await waitFor(() => {
+    const el = document.querySelector('.edition-side')
+    expect(el).not.toBeNull()
+    return el as HTMLElement
+  })
+  expect(within(side).getAllByRole('button', { name: /^Get #/ }).length).toBeGreaterThan(0)
+  expect(within(side).queryByLabelText(/^Upload #/)).toBeNull()
+})
+
+// The whole point of the offer: the file goes into THIS run, under Comic Vine's id for
+// THIS issue. Without the edition name the server would file it under "Unsorted".
+test('an uploaded comic is filed into the run it was pressed in', async () => {
+  installFakeXhr()
+  mockFetchWithIssues(VOLUME_ISSUES)
+  renderGrid()
+
+  const input = await screen.findByLabelText(/^Upload #250$/)
+  fireEvent.change(input, { target: { files: [new File(['x'], 'venom.250.cbz')] } })
+
+  await waitFor(() => expect(FakeXhr.last).toBeDefined())
+  expect(FakeXhr.last!.url).toBe('/api/upload')
+  expect(FakeXhr.last!.body!.get('edition')).toBe('Amazing Spider-Man (2025)')
+  expect(FakeXhr.last!.body!.get('issueId')).toBe('1136140')
+})
+
+// Same filing rule from the carousel. Worth its own test because the run reaches the
+// offer by a different path than the grid does, and an edition name dropped on the way
+// would file the comic under "Unsorted" without anything on screen looking wrong.
+test('a comic uploaded from the carousel is filed into the run too', async () => {
+  installFakeXhr()
+  mockFetchWithIssues(VOLUME_ISSUES)
+  renderPage('/edition/9?view=carousel&issue=issue-1136140')
+
+  const inputs = await screen.findAllByLabelText(/^Upload #250$/)
+  fireEvent.change(inputs[0], { target: { files: [new File(['x'], 'venom.250.cbz')] } })
+
+  await waitFor(() => expect(FakeXhr.last).toBeDefined())
+  expect(FakeXhr.last!.body!.get('edition')).toBe('Amazing Spider-Man (2025)')
+  expect(FakeXhr.last!.body!.get('issueId')).toBe('1136140')
 })

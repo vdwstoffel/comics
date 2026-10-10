@@ -1,4 +1,5 @@
 import { useRef } from 'react'
+import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
 import TileProgress from './TileProgress'
 
@@ -28,15 +29,29 @@ interface IssueCarouselProps {
   entries: CarouselEntry[]
   index: number
   onMove: (index: number) => void
+  /**
+   * What to do about the centred issue when it is a gap, drawn on its plate.
+   *
+   * The plate is the biggest empty space on the page and it is the very thing the
+   * controls are about, so they sit in it rather than in the identity line below - where
+   * they read as a footnote to a comic that is not there. Only the centre gets them: the
+   * peeks are dimmed, aria-hidden and a page-turn away.
+   */
+  action?: ReactNode
 }
 
 /** A cover, or the plate that stands in for one. Shared by the centre and the peeks. */
-function Cover({ entry }: { entry: CarouselEntry }) {
+function Cover({ entry, action }: { entry: CarouselEntry; action?: ReactNode }) {
   return (
     <div className="issue-carousel__cover">
       {entry.coverUrl
         ? <img src={entry.coverUrl} alt="" />
-        : <div className="issue-carousel__plate">{entry.label}</div>}
+        : (
+          <div className="issue-carousel__plate">
+            <span className="issue-carousel__plate-label">{entry.label}</span>
+            {action && <div className="issue-carousel__plate-actions">{action}</div>}
+          </div>
+        )}
       <TileProgress readState={entry.readState} percent={entry.percent} />
     </div>
   )
@@ -55,7 +70,7 @@ function Cover({ entry }: { entry: CarouselEntry }) {
  * missing art; it is the rule the rest of the app follows, because a cover is a spoiler
  * for a comic you have not read, and an issue you do not own is one you certainly have not.
  */
-export default function IssueCarousel({ entries, index, onMove }: IssueCarouselProps) {
+export default function IssueCarousel({ entries, index, onMove, action }: IssueCarouselProps) {
   // Where a drag began, so pointerup can measure it. A ref rather than state: nothing on
   // screen changes between the two events, so re-rendering mid-drag would be waste.
   const from = useRef<{ x: number; y: number } | null>(null)
@@ -130,7 +145,7 @@ export default function IssueCarousel({ entries, index, onMove }: IssueCarouselP
               <Cover entry={current} />
             </Link>
           )
-          : <Cover entry={current} />}
+          : <Cover entry={current} action={action} />}
         <span className="issue-carousel__label">{current.label}</span>
       </div>
 
