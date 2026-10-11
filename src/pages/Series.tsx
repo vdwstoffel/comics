@@ -7,6 +7,7 @@ import CoverTile from '../components/CoverTile'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { splitAnnuals } from '../lib/annuals'
 import { useBackOrigin } from '../lib/backOrigin'
+import OtherVolumes from '../components/OtherVolumes'
 
 export default function Series() {
   const { name } = useParams()
@@ -24,11 +25,13 @@ export default function Series() {
   })
 
   // Same reason as the edition page: a ?status= filter narrows the editions listed, so
-  // the confirm counts the whole series instead of the visible slice.
+  // the confirm counts the whole series instead of the visible slice. The shelf of other
+  // volumes needs it for the same reason - what is hidden by a filter is still owned -
+  // and that is wanted on sight rather than on a click, so the filter alone asks for it.
   const { data: unfiltered } = useQuery({
     queryKey: ['series', seriesName, null],
     queryFn: () => api.getSeriesByName(seriesName),
-    enabled: confirmRemove && status !== null,
+    enabled: status !== null,
   })
 
   const remove = useMutation({
@@ -61,6 +64,11 @@ export default function Series() {
   // Under a ?status= filter the listed editions are only a slice, so the confirm waits
   // for the unfiltered series rather than understating what it is about to delete.
   const scope = status ? unfiltered?.series : series
+  // What is already shelved, and so is not news. Comic Vine ids only - an edition that
+  // was never matched cannot be recognised in a Comic Vine answer either way.
+  const ownedVolumeIds = (scope?.editions ?? [])
+    .map((e) => e.comicvineId)
+    .filter((id): id is number => id != null)
   const editionCount = scope?.editions.length ?? null
   const issueCount = scope?.bookCount ?? null
 
@@ -113,6 +121,10 @@ export default function Series() {
           />
         )}
       </div>
+
+      {/* Held back until the whole series is in hand: offering a volume as new because a
+          filter is hiding the copy you own is worse than offering it a moment later. */}
+      {scope && <OtherVolumes series={series.name} ownedVolumeIds={ownedVolumeIds} />}
     </div>
   )
 }

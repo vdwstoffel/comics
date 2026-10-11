@@ -377,6 +377,15 @@ test('a yearFrom in the url fills the bound and is sent with the search', async 
     expect(calls.some((c) => c.includes('yearFrom=2011'))).toBe(true))
 })
 
+// Find on a volume carries both bounds, because a volume is looked for around the year
+// it launched rather than from that year onwards.
+test('a yearTo in the url fills the bound and is sent with the search', async () => {
+  renderPage('/search?q=Batman&yearFrom=1962&yearTo=1964')
+  expect(screen.getByLabelText(/year to/i)).toHaveValue(1964)
+  await waitFor(() =>
+    expect(calls.some((c) => c.includes('yearFrom=1962') && c.includes('yearTo=1964'))).toBe(true))
+})
+
 test('arriving with no params leaves the page empty and prompting', async () => {
   renderPage()
   expect(screen.getByRole('searchbox')).toHaveValue('')

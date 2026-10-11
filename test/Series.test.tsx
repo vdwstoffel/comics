@@ -180,3 +180,54 @@ test('a lone annual is drawn as itself, with no annuals tile', async () => {
   expect(await screen.findByText('Amazing Spider-Man Annual (2026)')).toBeInTheDocument()
   expect(screen.queryByText('Annuals')).not.toBeInTheDocument()
 })
+
+// The shelf's own behaviour is covered in OtherVolumes.test.tsx. This is the one thing
+// only the series page can answer: that it is mounted, and told which series it is for.
+test('the series page offers the volumes Comic Vine has and the library does not', async () => {
+  globalThis.fetch = vi.fn(async (url: string) => {
+    if (String(url).includes('/api/comicvine/volumes')) {
+      return { ok: true, status: 200, json: async () => ({
+        volumes: [{ id: 2127, name: 'The Amazing Spider-Man', startYear: 1963, publisher: 'Marvel', issueCount: 651, siteUrl: 'https://comicvine.gamespot.com/the-amazing-spider-man/4050-2127/' }],
+        fetchedAt: null, stale: false,
+      }) }
+    }
+    return { ok: true, status: 200, json: async () => ({ series: SERIES }) }
+  }) as unknown as typeof fetch
+
+  renderAt('/series/Amazing%20Spider-Man')
+
+  expect(await screen.findByText('1963')).toBeInTheDocument()
+  const calls = (globalThis.fetch as unknown as { mock: { calls: string[][] } }).mock.calls.map((c) => String(c[0]))
+  expect(calls).toContain('/api/comicvine/volumes?series=Amazing%20Spider-Man')
+})
+
+// A ?status= filter narrows which editions are listed, the same way it narrows the
+// confirm's count. Recognising what is already shelved has to see the whole series, or
+// a volume you own reappears below as something new.
+test('a volume hidden by a status filter is still not offered as new', async () => {
+  const shelved = { id: 9, name: 'The Amazing Spider-Man (2025)', bookCount: 3, comicvineId: 163325 }
+  globalThis.fetch = vi.fn(async (url: string) => {
+    const u = String(url)
+    if (u.includes('/api/comicvine/volumes')) {
+      return { ok: true, status: 200, json: async () => ({
+        volumes: [
+          { id: 2127, name: 'The Amazing Spider-Man', startYear: 1963, publisher: 'Marvel', issueCount: 651, siteUrl: 'https://comicvine.gamespot.com/x/4050-2127/' },
+          { id: 163325, name: 'The Amazing Spider-Man', startYear: 2025, publisher: 'Marvel', issueCount: 36, siteUrl: 'https://comicvine.gamespot.com/x/4050-163325/' },
+        ],
+        fetchedAt: null, stale: false,
+      }) }
+    }
+    // Everything unread has been read, so the filter hides the run it belongs to.
+    const editions = u.includes('readState=unread') ? [] : [shelved]
+    return { ok: true, status: 200, json: async () => ({
+      series: { name: 'The Amazing Spider-Man', bookCount: 3, editions },
+    }) }
+  }) as unknown as typeof fetch
+
+  renderAt('/series/The%20Amazing%20Spider-Man?status=unread')
+
+  await waitFor(() => {
+    const years = screen.getAllByTestId('other-volume-year').map((el) => el.textContent)
+    expect(years).toEqual(['1963'])
+  })
+})

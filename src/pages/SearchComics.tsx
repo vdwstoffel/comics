@@ -56,16 +56,21 @@ export default function SearchComics() {
   // Arriving from an edition carries its series and first year, so the page opens on
   // results rather than a blank box. Both the raw and the committed values are seeded,
   // which is what saves the first search from waiting out a debounce tick.
+  //
+  // A ceiling as well as a floor, because Find on a whole volume carries both: a volume
+  // is looked for around the year it launched rather than from that year onwards.
   const [urlParams] = useSearchParams()
   const seededQuery = urlParams.get('q')?.trim() ?? ''
   const seededYearFrom = urlParams.get('yearFrom')?.trim() ?? ''
+  const seededYearTo = urlParams.get('yearTo')?.trim() ?? ''
 
   const [input, setInput] = useState(seededQuery)
   const [query, setQuery] = useState(seededQuery)
   const [category, setCategory] = useState<string | null>(null)
-  const [yearInput, setYearInput] = useState({ from: seededYearFrom, to: '' })
+  const [yearInput, setYearInput] = useState({ from: seededYearFrom, to: seededYearTo })
   const [years, setYears] = useState<{ from?: number; to?: number }>({
     from: fullYear(seededYearFrom),
+    to: fullYear(seededYearTo),
   })
 
   // Debounce so a fetch fires per pause, not per keystroke.
