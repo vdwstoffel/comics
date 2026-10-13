@@ -5,6 +5,7 @@ import { groupByVolume, groupByArc } from '../lib/volumeGroups'
 import type { FollowSoon } from '../lib/followStatus'
 import { useUpcoming } from '../lib/useUpcoming'
 import { sortFollows } from '../lib/followOrder'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { upcomingForEdition } from '../lib/upcomingForEdition'
 import LibraryRail from '../components/LibraryRail'
 import VolumeGroupTile from '../components/VolumeGroupTile'
@@ -41,6 +42,7 @@ function booksFor(follow: ApiFollow, books: ApiLibraryBook[]): ApiLibraryBook[] 
 }
 
 export default function Following() {
+  useDocumentTitle('Following')
   const queryClient = useQueryClient()
   const follows = useQuery({ queryKey: ['follows'], queryFn: api.getFollows })
   // The same shelf query the library makes, so the two pages share a cache entry and

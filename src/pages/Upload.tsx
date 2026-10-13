@@ -7,8 +7,10 @@ import type { ApiBook, CvSearchResult } from '../api'
 import EditionCombobox from '../components/EditionCombobox'
 import ComicVineMatchDialog from '../components/ComicVineMatchDialog'
 import { cvQueryFromFileName } from '../lib/cvQuery'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 export default function Upload() {
+  useDocumentTitle('Upload')
   // Arriving from a search result carries the link its post page pointed at, so the page
   // opens ready to download rather than waiting for a paste.
   const [urlParams] = useSearchParams()

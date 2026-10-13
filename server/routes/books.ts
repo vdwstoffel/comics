@@ -1,6 +1,7 @@
 import { createReadStream, existsSync } from 'node:fs'
 import { join, extname } from 'node:path'
 import { getBook, updateBook, listLibraryBooks } from '../models/books.js'
+import { getEdition } from '../models/editions.js'
 import { getProgress, setProgress, deriveReadState } from '../models/progress.js'
 import { getBookCredits, getBookTags } from '../models/metadata.js'
 import { readPage } from '../lib/cbz.js'
@@ -40,6 +41,10 @@ export default async function booksRoutes(app: App) {
     if (!book) return reply.code(404).send({ error: 'book not found' })
     return {
       book,
+      // The run's name, which the book row holds only as an id. The reader has nothing on
+      // screen but the comic, so the browser tab is where the comic is named - and "#141"
+      // on its own names nothing.
+      editionName: getEdition(app.db, book.editionId)?.name ?? null,
       progress: getProgress(app.db, book.id),
       credits: getBookCredits(app.db, book.id),
       tags: getBookTags(app.db, book.id),

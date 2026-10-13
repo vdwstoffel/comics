@@ -1,6 +1,7 @@
 import { useParams, Navigate } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 /**
  * What is left of the comic's own page.
@@ -16,6 +17,8 @@ import { api } from '../api'
  * from instead of landing on this and being sent forward again.
  */
 export default function BookRedirect() {
+  // On the way through to the run, which names itself the moment it arrives.
+  useDocumentTitle()
   const { id } = useParams()
   const { data, isError } = useQuery({
     queryKey: ['book', id],

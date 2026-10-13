@@ -3,12 +3,14 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useDownload } from '../lib/useDownload'
 import QueueList from '../components/QueueList'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 function mb(bytes: number): string {
   return `${(bytes / 1_000_000).toFixed(1)} MB`
 }
 
 export default function Downloads() {
+  useDocumentTitle('Downloads')
   const qc = useQueryClient()
   const { active, queue, history } = useDownload()
   // Every mutation ends by re-reading the one query the whole app shares.

@@ -8,6 +8,7 @@ import CoverTile from '../components/CoverTile'
 import LibraryRail from '../components/LibraryRail'
 import { tileLabel } from '../lib/tileLabel'
 import { groupBySeries, groupByArc } from '../lib/volumeGroups'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 import SeriesGroupTile from '../components/SeriesGroupTile'
 import ArcGroupTile from '../components/ArcGroupTile'
 
@@ -18,6 +19,8 @@ const NOTHING: Record<FilterState, string> = {
 }
 
 export default function Library() {
+  // The shelf is where the app starts, so it is the app's own name and nothing else.
+  useDocumentTitle()
   const [selectedPublisher, setSelectedPublisher] = useState<string | null>(null)
   // Which series has its volumes on screen. One key rather than a flag per tile: the
   // panels float over the shelf, so two of them open at once would overlap into something

@@ -88,6 +88,13 @@ async function startEditing() {
   fireEvent.click(await screen.findByLabelText(/edit edition/i))
 }
 
+// The run names the browser tab, and can only do so once the query answers - which is
+// why the hook takes a subject that is not there yet rather than a page calling it late.
+test('the browser tab takes the name of the run once it loads', async () => {
+  renderPage()
+  await waitFor(() => expect(document.title).toBe('Amazing Spider-Man (2025) — Continuity'))
+})
+
 test('the edit row offers a series field holding the current series', async () => {
   renderPage()
   await startEditing()

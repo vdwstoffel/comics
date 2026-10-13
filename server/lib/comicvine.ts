@@ -3,7 +3,7 @@ import type { Block } from './html.js'
 import { sortArcIssues } from './arcOrder.js'
 
 const BASE = 'https://comicvine.gamespot.com/api'
-const UA = 'comic-app/0.1 (self-hosted personal comic library)'
+const UA = 'continuity/0.1 (self-hosted personal comic library)'
 const TYPE_PREFIX: Record<string, string> = { issue: '4000', volume: '4050', character: '4005', storyArc: '4045' }
 
 // Everything the character card renders. `description` is the ~30KB profile behind the

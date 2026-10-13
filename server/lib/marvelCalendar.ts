@@ -160,14 +160,14 @@ export function parseCalendar(html: string): UpcomingIssue[] {
 /**
  * How this app identifies itself to Marvel.
  *
- * Marvel refuses `fetchSourcePage`'s bare `comic-app/0.1 (...)` with a 403, and refuses a
+ * Marvel refuses `fetchSourcePage`'s bare `continuity/0.1 (...)` with a 403, and refuses a
  * bare `Mozilla/5.0` too (both measured 2026-09-25). The long-standing
  * `Mozilla/5.0 (compatible; <app>; <purpose>)` convention is accepted and still says
  * plainly who is calling and why - which is why it is used rather than a copied Chrome
  * string that would flatly claim to be a browser.
  */
 export const MARVEL_USER_AGENT =
-  'Mozilla/5.0 (compatible; comic-app/0.1; self-hosted personal comic library)'
+  'Mozilla/5.0 (compatible; continuity/0.1; self-hosted personal comic library)'
 
 /**
  * Fetch one calendar page.

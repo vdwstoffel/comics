@@ -18,6 +18,7 @@ import EditionEditDialog from '../components/EditionEditDialog'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import FollowButton from '../components/FollowButton'
 import EditionRun from '../components/EditionRun'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 /**
  * One issue of the run: the comic if you have it, otherwise its place in the run and a
@@ -106,6 +107,8 @@ export default function Edition() {
     queryKey: ['edition', id, status],
     queryFn: () => api.getEditionDetail(id!, status ?? undefined),
   })
+
+  useDocumentTitle(data?.edition.name)
 
   // Removing takes the whole edition, so the confirm must count every issue - the list
   // above it may be showing only the ?status= slice. Fetched only when the dialog opens.

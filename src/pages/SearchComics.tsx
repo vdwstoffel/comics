@@ -6,6 +6,7 @@ import { api } from '../api'
 import type {
   ComicIndexGroup, ComicIndexQuery, CvVolumeMatch, IssueRun, ReleaseKind, ScrapeStatus,
 } from '../api'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 const PAGE_SIZE = 50
 const DEBOUNCE_MS = 250
@@ -53,6 +54,7 @@ function fullYear(value: string): number | undefined {
 }
 
 export default function SearchComics() {
+  useDocumentTitle('Search')
   // Arriving from an edition carries its series and first year, so the page opens on
   // results rather than a blank box. Both the raw and the committed values are seeded,
   // which is what saves the first search from waiting out a debounce tick.

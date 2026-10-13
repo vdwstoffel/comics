@@ -367,7 +367,14 @@ export interface EditionsListResponse { editions: ApiEdition[] }
 export interface SeriesListResponse { series: ApiSeries[] }
 export interface SeriesResponse { series: ApiSeries }
 export interface EditionDetailResponse { edition: ApiEdition; books: ApiBook[] }
-export interface BookResponse { book: ApiBook; progress: ApiProgress; credits?: ApiCredit[]; tags?: ApiTag[] }
+/** `editionName` is the run this comic belongs to, which the book itself holds only as an id. */
+export interface BookResponse {
+  book: ApiBook
+  editionName?: string | null
+  progress: ApiProgress
+  credits?: ApiCredit[]
+  tags?: ApiTag[]
+}
 export interface ProgressResponse { progress: ApiProgress }
 export interface CvSearchResponse { results: CvSearchResult[] }
 /** `verified` is false when the character was resolved by name search rather than by id. */

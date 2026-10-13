@@ -11,6 +11,7 @@ import { useDownload } from '../lib/useDownload'
 import { arcIssueLabel } from '../lib/arcIssueLabel'
 import FollowButton from '../components/FollowButton'
 import ArcReorderList from '../components/ArcReorderList'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 /**
  * An issue in the arc. Yours shows its own cover and opens in the library; one you do not
@@ -71,6 +72,7 @@ function ArcIssue({ issue }: { issue: ApiArcIssue }) {
 export default function Arc() {
   const { name } = useParams()
   const arcName = decodeURIComponent(name ?? '')
+  useDocumentTitle(arcName)
   // Set just before a refetch and consumed by it, so pressing Refresh bypasses the
   // server's day-long cache while an ordinary render does not. It stays out of the query
   // key deliberately: a forced read and a normal one are the same data, not two caches.

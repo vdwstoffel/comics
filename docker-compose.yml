@@ -1,7 +1,7 @@
 services:
-  comic-app:
+  continuity:
     build: .
-    container_name: comic-app
+    container_name: continuity
     user: "1000:1000"          # write files into ./data as the host user, not root
     environment:
       - DATA_DIR=/data

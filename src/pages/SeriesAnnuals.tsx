@@ -4,6 +4,7 @@ import { api } from '../api'
 import { statusFrom, withStatus } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import { splitAnnuals, annualYear } from '../lib/annuals'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 /**
  * Every annual of one series, as the comics themselves.
@@ -20,6 +21,7 @@ import { splitAnnuals, annualYear } from '../lib/annuals'
 export default function SeriesAnnuals() {
   const { name } = useParams()
   const seriesName = decodeURIComponent(name ?? '')
+  useDocumentTitle(seriesName && `${seriesName} annuals`)
   const [searchParams] = useSearchParams()
   const status = statusFrom(searchParams)
 

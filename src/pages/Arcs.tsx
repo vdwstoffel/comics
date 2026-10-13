@@ -3,6 +3,7 @@ import { api } from '../api'
 import type { ApiStoryArcSummary } from '../api'
 import CoverTile from '../components/CoverTile'
 import { useBackOrigin } from '../lib/backOrigin'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 import LibraryRail from '../components/LibraryRail'
 
 /**
@@ -30,6 +31,7 @@ function ArcTile({ arc }: { arc: ApiStoryArcSummary }) {
 }
 
 export default function Arcs() {
+  useDocumentTitle('Story Arcs')
   const { data, isLoading, error } = useQuery({ queryKey: ['arcs'], queryFn: api.getArcs })
   const arcs = data?.arcs ?? []
 

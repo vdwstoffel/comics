@@ -8,11 +8,13 @@ import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import { splitAnnuals } from '../lib/annuals'
 import { useBackOrigin } from '../lib/backOrigin'
 import OtherVolumes from '../components/OtherVolumes'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 export default function Series() {
   const { name } = useParams()
   const [searchParams] = useSearchParams()
   const seriesName = decodeURIComponent(name ?? '')
+  useDocumentTitle(seriesName)
   const status = statusFrom(searchParams)
   const navigate = useNavigate()
   const qc = useQueryClient()

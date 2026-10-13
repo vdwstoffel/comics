@@ -3,7 +3,7 @@ import { stripHtml } from './html.js'
 import type { ComicIndexEntry } from '../types.js'
 
 export const BASE_URL = 'https://getcomics.org/sitemap/'
-export const USER_AGENT = 'comic-app/0.1 (self-hosted personal comic library)'
+export const USER_AGENT = 'continuity/0.1 (self-hosted personal comic library)'
 const PAGE_PARAM = 'lcp_page0'
 const FRAGMENT = 'lcp_instance_0'
 

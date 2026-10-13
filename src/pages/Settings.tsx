@@ -2,8 +2,10 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ApiSettings } from '../api'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 export default function Settings() {
+  useDocumentTitle('Settings')
   const qc = useQueryClient()
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings })
 

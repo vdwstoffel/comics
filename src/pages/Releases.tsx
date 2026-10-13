@@ -11,6 +11,7 @@ import { usePublisher } from '../lib/usePublisher'
 import { writeOutDay } from '../lib/releaseWeek'
 import { useUpcoming } from '../lib/useUpcoming'
 import { useDownload } from '../lib/useDownload'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 function label(issue: ApiReleaseIssue): string {
   const series = issue.volumeName ?? 'Unknown series'
@@ -285,6 +286,7 @@ const TABS = [
 ] as const
 
 export default function Releases() {
+  useDocumentTitle('Latest releases')
   const [params, setParams] = useSearchParams()
   // The tab lives in the url so a reload, or a back press, does not drop you onto the
   // covers when you were reading the table.

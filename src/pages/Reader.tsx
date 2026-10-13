@@ -4,6 +4,7 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
 import { useFullscreen } from '../lib/useFullscreen'
 import { useZoom } from '../lib/useZoom'
+import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 export default function Reader() {
   const { id } = useParams()
@@ -22,6 +23,12 @@ export default function Reader() {
   const { data, isFetching } = useQuery({ queryKey: ['book', id], queryFn: () => api.getBook(id!) })
   // The same query key the Settings page uses, so arriving from it is a cache hit.
   const { data: settings } = useQuery({ queryKey: ['settings'], queryFn: api.getSettings })
+
+  // Nothing on this page says which comic you are reading - that is the point of it - so
+  // the browser tab is the only thing that does. Either half can be missing: a comic with
+  // no number is still in a run, and a run that lost its name still has a number.
+  useDocumentTitle(data && [data.editionName, data.book.number && `#${data.book.number}`]
+    .filter(Boolean).join(' '))
   const [page, setPage] = useState<number | null>(null)
   const [scrubbing, setScrubbing] = useState<number | null>(null)
   const saveTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined)
