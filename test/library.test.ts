@@ -682,3 +682,92 @@ test('an edition already at its target keeps it even when another issue is skipp
 
   expect(getEdition(ctx.db, edition.id)!.folder).toBe(nested)
 })
+
+/** An edition holding one file, with whatever metadata the test needs. */
+async function shelved(name: string, folder: string, file: string, fields: Record<string, unknown>) {
+  const dir = join(ctx.config.comicsDir, folder)
+  mkdirSync(dir, { recursive: true })
+  await makeCbz(dir, ['p1.png'], file)
+  const edition = upsertEdition(ctx.db, { name, folder })
+  updateEdition(ctx.db, edition.id, fields)
+  const book = insertBook(ctx.db, {
+    editionId: edition.id, filePath: `${folder}/${file}`, pageCount: 1, fileSize: 100,
+  })!
+  return { edition, book }
+}
+
+const COLLECTS_2018 = {
+  seriesName: 'The Amazing Spider-Man',
+  collectsVolumeId: 112161,
+  collectsCvName: 'The Amazing Spider-Man',
+  collectsCvStartYear: 2018,
+}
+
+// The GUI puts these two omnibuses on one shelf because they are one run. The folders
+// said otherwise: "Amazing Spider-Man/…Nick Spencer Omnibus" and "The Amazing
+// Spider-Man: Beyond/…Beyond Omnibus", two top-level folders for three books.
+test('editions of one volume are filed in one folder, named for the volume', async () => {
+  const spencer = await shelved(
+    'Amazing Spider-Man By Nick Spencer Omnibus (2023)',
+    'Amazing Spider-Man/Amazing Spider-Man By Nick Spencer Omnibus (2023)',
+    'spencer_0001.cbz',
+    { comicvineId: 147403, ...COLLECTS_2018 },
+  )
+  const beyond = await shelved(
+    'The Amazing Spider-Man: Beyond Omnibus (2023)',
+    'The Amazing Spider-Man: Beyond/The Amazing Spider-Man: Beyond Omnibus (2023)',
+    'beyond_0001.cbz',
+    { comicvineId: 151026, ...COLLECTS_2018 },
+  )
+
+  expect(planReorganize(ctx.db)).toEqual([
+    {
+      bookId: spencer.book.id,
+      from: 'Amazing Spider-Man/Amazing Spider-Man By Nick Spencer Omnibus (2023)/spencer_0001.cbz',
+      to: 'The Amazing Spider-Man/The Amazing Spider-Man (2018)/spencer_0001.cbz',
+    },
+    {
+      bookId: beyond.book.id,
+      from: 'The Amazing Spider-Man: Beyond/The Amazing Spider-Man: Beyond Omnibus (2023)/beyond_0001.cbz',
+      to: 'The Amazing Spider-Man/The Amazing Spider-Man (2018)/beyond_0001.cbz',
+    },
+  ])
+})
+
+test('the files of one volume actually end up side by side', async () => {
+  await shelved('Spencer Omnibus', 'a/Spencer Omnibus', 'spencer_0001.cbz', { comicvineId: 1, ...COLLECTS_2018 })
+  await shelved('Beyond Omnibus', 'b/Beyond Omnibus', 'beyond_0001.cbz', { comicvineId: 2, ...COLLECTS_2018 })
+
+  expect(await reorganizeLibrary(ctx)).toMatchObject({ moved: 2, skipped: 0 })
+  const shelf = join(ctx.config.comicsDir, 'The Amazing Spider-Man', 'The Amazing Spider-Man (2018)')
+  expect(existsSync(join(shelf, 'spencer_0001.cbz'))).toBe(true)
+  expect(existsSync(join(shelf, 'beyond_0001.cbz'))).toBe(true)
+  // Re-running settles rather than shuffling.
+  expect(planReorganize(ctx.db)).toEqual([])
+})
+
+// An edition that collects nothing is still filed under its own name, which is what
+// almost every edition in the library is.
+test('an edition that collects nothing keeps its own folder', async () => {
+  await shelved('Venom (2025)', 'Venom/Venom (2025)', 'venom_0001.cbz', {
+    seriesName: 'Venom', comicvineId: 99,
+  })
+  expect(planReorganize(ctx.db)).toEqual([])
+})
+
+// A collects link used to correct a mis-matched volume - "Batman (2012)" that is really
+// the 2011 run - refiles under the right name too.
+test('a corrected volume is filed under the volume it actually is', async () => {
+  const { book } = await shelved('Batman (2012)', 'Batman/Batman (2012)', 'batman_0001.cbz', {
+    seriesName: 'Batman',
+    comicvineId: 48729,
+    collectsVolumeId: 42721,
+    collectsCvName: 'Batman',
+    collectsCvStartYear: 2011,
+  })
+  expect(planReorganize(ctx.db)).toEqual([{
+    bookId: book.id,
+    from: 'Batman/Batman (2012)/batman_0001.cbz',
+    to: 'Batman/Batman (2011)/batman_0001.cbz',
+  }])
+})

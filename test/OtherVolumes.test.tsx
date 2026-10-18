@@ -24,12 +24,14 @@ afterEach(() => { cleanup() })
  * Renders with the answer already in hand, so what is on the page is settled before the
  * first assertion - an absence asserted against a request still in flight proves nothing.
  */
-function renderWith(volumes: CvVolumeMatch[], owned: number[] = [], stale = false) {
+function renderWith(volumes: CvVolumeMatch[], owned: number[] = [], stale = false, publisher?: string | null) {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   qc.setQueryData(KEY, { volumes, fetchedAt: '2026-10-11T12:00:00.000Z', stale })
   render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter><OtherVolumes series={SERIES} ownedVolumeIds={owned} /></MemoryRouter>
+      <MemoryRouter>
+        <OtherVolumes series={SERIES} ownedVolumeIds={owned} publisher={publisher} />
+      </MemoryRouter>
     </QueryClientProvider>,
   )
   return qc
@@ -167,4 +169,49 @@ test('the name still leads out to Comic Vine', () => {
   const out = screen.getByRole('link', { name: 'The Amazing Spider-Man' })
   expect(out).toHaveAttribute('href', V1963.siteUrl)
   expect(out).toHaveAttribute('target', '_blank')
+})
+
+// Comic Vine answers "Batman" with nine foreign reprint lines - Panini Verlag, ECC
+// Ediciones, Editorial Novaro - and one DC run. None of the nine is a volume you could
+// ever go and find, and together they bury the one that is.
+const PANINI: CvVolumeMatch = {
+  id: 9001, name: 'Batman', startYear: 2017, publisher: 'Panini Verlag', issueCount: 79,
+  siteUrl: 'https://comicvine.gamespot.com/batman/4050-9001/',
+}
+const NOVARO: CvVolumeMatch = {
+  id: 9002, name: 'Batman', startYear: 1954, publisher: 'Editorial Novaro', issueCount: 1287,
+  siteUrl: 'https://comicvine.gamespot.com/batman/4050-9002/',
+}
+const DC1940: CvVolumeMatch = {
+  id: 9003, name: 'Batman', startYear: 1940, publisher: 'DC Comics', issueCount: 716,
+  siteUrl: 'https://comicvine.gamespot.com/batman/4050-9003/',
+}
+const NO_PUBLISHER: CvVolumeMatch = {
+  id: 9004, name: 'Batman', startYear: 1999, issueCount: 3,
+  siteUrl: 'https://comicvine.gamespot.com/batman/4050-9004/',
+}
+
+test('only volumes from the series publisher are offered', () => {
+  renderWith([PANINI, NOVARO, DC1940], [], false, 'DC Comics')
+  const years = screen.getAllByTestId('other-volume-year').map((el) => el.textContent)
+  expect(years).toEqual(['1940'])
+})
+
+test('a volume Comic Vine credits to nobody is not offered as the publisher you wanted', () => {
+  renderWith([DC1940, NO_PUBLISHER], [], false, 'DC Comics')
+  const years = screen.getAllByTestId('other-volume-year').map((el) => el.textContent)
+  expect(years).toEqual(['1940'])
+})
+
+// A library that has never been told who published a series cannot filter by it, and
+// showing nothing would be worse than showing everything.
+test('a series with no publisher of its own filters nothing', () => {
+  renderWith([PANINI, NOVARO, DC1940], [], false, null)
+  expect(screen.getAllByTestId('other-volume-year')).toHaveLength(3)
+})
+
+test('the publisher filter and the owned filter both apply', () => {
+  renderWith([PANINI, DC1940, { ...V1963, publisher: 'DC Comics', id: 9005 }], [9005], false, 'DC Comics')
+  const years = screen.getAllByTestId('other-volume-year').map((el) => el.textContent)
+  expect(years).toEqual(['1940'])
 })

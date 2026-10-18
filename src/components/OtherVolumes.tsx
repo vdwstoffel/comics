@@ -42,10 +42,18 @@ function newestFirst(a: CvVolumeMatch, b: CvVolumeMatch): number {
  * A row goes two ways: the name leads out to Comic Vine, and Find goes to the index
  * search for that volume. Nothing here writes to the library either way.
  */
-export default function OtherVolumes({ series, ownedVolumeIds }: {
+export default function OtherVolumes({ series, ownedVolumeIds, publisher }: {
   series: string
   /** Comic Vine ids of the editions already shelved, which are not news. */
   ownedVolumeIds: number[]
+  /**
+   * Who publishes this series, as the library knows it. Comic Vine lists every
+   * licensed reprint line under the same name - "Batman" answers with Panini Verlag,
+   * ECC Ediciones, Editorial Novaro and six more before it gets to DC - and none of
+   * those is a volume anyone here could go and find. Null when the library has never
+   * been told, and then nothing is filtered: showing everything beats showing nothing.
+   */
+  publisher?: string | null
 }) {
   const { data } = useQuery({
     queryKey: ['cv-volumes', series],
@@ -54,7 +62,14 @@ export default function OtherVolumes({ series, ownedVolumeIds }: {
 
   const owned = new Set(ownedVolumeIds)
   // filter() hands back a new array, so the sort cannot reach the cached response.
-  const volumes = (data?.volumes ?? []).filter((v) => !owned.has(v.id)).sort(newestFirst)
+  //
+  // A volume Comic Vine credits to nobody is dropped along with the foreign lines: it
+  // cannot be shown to be the publisher you asked for, and the list is long enough
+  // without rows that might not be.
+  const volumes = (data?.volumes ?? [])
+    .filter((v) => !owned.has(v.id))
+    .filter((v) => !publisher || v.publisher === publisher)
+    .sort(newestFirst)
 
   // No key configured, Comic Vine unreachable with nothing held, nothing found, or
   // nothing found that is not already shelved. The series page is not the place to

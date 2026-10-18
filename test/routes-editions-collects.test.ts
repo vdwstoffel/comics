@@ -30,11 +30,19 @@ beforeEach(async () => {
   app = Fastify()
   app.decorate('db', openDb(':memory:'))
   app.decorate('config', config)
+  // The real one walks the whole library and moves files; here we only need to know
+  // that it was asked to.
+  const refiled: number[] = []
+  ;(app as unknown as { refiled: number[] }).refiled = refiled
   detect = vi.fn(async () => PROPOSAL)
   volumeLookup = vi.fn(async () => ({
     name: 'The Amazing Spider-Man', startYear: 2022, siteUrl: PROPOSAL.siteUrl ?? undefined,
   }))
-  await app.register(editionRoutes, { detect, lookupVolume: volumeLookup })
+  await app.register(editionRoutes, {
+    detect,
+    lookupVolume: volumeLookup,
+    refile: async () => { refiled.push(1) },
+  })
 
   const edition = upsertEdition(app.db, { name: 'Amazing Spider-Man By Zeb Wells (2023)', folder: 'z' })
   updateEdition(app.db, edition.id, { comicvineId: 150443 })
@@ -173,4 +181,25 @@ test('a hand-set link that Comic Vine cannot name is still set', async () => {
   const res = await put(`/api/editions/${id}/collects`, { volumeId: 142577 })
   expect(res.statusCode).toBe(200)
   expect(getEdition(app.db, id)!.collectsVolumeId).toBe(142577)
+})
+
+// Moving a comic into a volume moves it on disk too. The scan would heal it eventually,
+// but "eventually" means the folders disagree with the app until you next scan.
+test('confirming a link re-files the edition under the volume', async () => {
+  const refile = (app as unknown as { refiled: number[] }).refiled
+  await put(`/api/editions/${id}/collects`, PROPOSAL)
+  expect(refile).toContain(1)
+})
+
+test('withdrawing a link re-files it back', async () => {
+  const refile = (app as unknown as { refiled: number[] }).refiled
+  await put(`/api/editions/${id}/collects`, PROPOSAL)
+  await del(`/api/editions/${id}/collects`)
+  expect(refile.length).toBe(2)
+})
+
+test('a 404 re-files nothing', async () => {
+  const refile = (app as unknown as { refiled: number[] }).refiled
+  await del('/api/editions/9999/collects')
+  expect(refile).toHaveLength(0)
 })

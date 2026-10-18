@@ -6,7 +6,7 @@ import {
 import type { EditionUpdate } from '../models/editions.js'
 import { listBooksByEdition } from '../models/books.js'
 import { deriveReadState } from '../models/progress.js'
-import { renameEdition, removeEdition } from '../services/library.js'
+import { renameEdition, removeEdition, reorganizeLibrary } from '../services/library.js'
 import { createComicVine } from '../lib/comicvine.js'
 import type { CvVolumeIssue } from '../lib/comicvine.js'
 import { cacheVolumeIssues, getCachedVolumeIssues } from '../models/volumeIssues.js'
@@ -19,7 +19,7 @@ import type { CollectsProposal } from '../services/detectCollects.js'
 import { editionFilterOf, readStateOf } from './filters.js'
 import type { LibraryQuery } from './filters.js'
 import { getComicVineKey } from '../models/settings.js'
-import type { App } from '../types.js'
+import type { App, Ctx } from '../types.js'
 
 interface IdParams { id: string }
 interface EditEditionBody { name?: string; seriesName?: string }
@@ -49,6 +49,8 @@ export interface EditionRouteOpts {
   detect?: typeof detectCollectsReal
   /** Names a volume set by hand. Injected so tests never touch the network. */
   lookupVolume?: (id: number) => Promise<{ name?: string; startYear?: number; siteUrl?: string }>
+  /** Puts the files where the answer says they belong. Injected: it moves real files. */
+  refile?: (ctx: Ctx) => Promise<unknown>
   /** The pause between issues of a "Get all" walk. Injected as 0 by tests. */
   bulkDelayMs?: number
 }
@@ -60,7 +62,23 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
     detect = detectCollectsReal,
     lookupVolume = (volumeId: number) =>
       createComicVine({ apiKey: () => getComicVineKey(app.db) }).getVolume(volumeId),
+    refile = reorganizeLibrary,
   } = opts
+
+  /**
+   * Re-file after the link changed. A failure here is not a failure of the answer: the
+   * column is written, the app already draws the new shelf, and the next scan moves
+   * whatever this could not. Losing the answer over a file that would not budge would
+   * be the worse trade.
+   */
+  async function refileQuietly() {
+    try {
+      await refile({ db: app.db, config: app.config })
+    } catch (err) {
+      app.log.warn({ err }, 'could not re-file after a collects change')
+    }
+  }
+
   app.get<{ Querystring: LibraryQuery }>('/api/editions', async (req) => {
     return { editions: listEditions(app.db, editionFilterOf(req.query)) }
   })
@@ -201,6 +219,9 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
       // The suggestion has served its purpose; the answer is the link now.
       collectsProposal: null,
     })
+    // A comic moved into a volume moves on disk with it. The next scan would heal it
+    // anyway, but until then the folders would disagree with the app.
+    await refileQuietly()
     return { edition: getEdition(app.db, edition.id) }
   })
 
@@ -222,6 +243,7 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
       // Declined, so the suggestion goes too. ?recheck=1 is how you ask again.
       collectsProposal: null,
     })
+    await refileQuietly()
     return { edition: getEdition(app.db, edition.id) }
   })
 

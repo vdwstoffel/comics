@@ -819,7 +819,10 @@ test('searchVolumes asks only for the volume resource and the fields a row rende
 
   const params = new URL(seen).searchParams
   expect(params.get('resources')).toBe('volume')
-  expect(params.get('limit')).toBe('10')
+  // Enough to filter. Comic Vine lists every licensed reprint line under one name, and
+  // nine of the ten it offered for "Batman" were foreign editions - so a list cut to ten
+  // before the publisher filter leaves one row and hides the runs worth finding.
+  expect(params.get('limit')).toBe('50')
   expect(params.get('field_list')).toBe(
     'id,name,start_year,publisher,count_of_issues,deck,image,site_detail_url'
   )

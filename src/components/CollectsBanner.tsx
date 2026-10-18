@@ -34,8 +34,12 @@ export function volumeIdFrom(text: string): number | null {
  * exactly like the feature working. So the volume is named, linked for checking, and
  * nothing is written until someone has looked.
  *
- * Once confirmed it stays, as the plainest statement of what this edition actually is -
- * and as the way back out, because a link confirmed in error has to be reversible.
+ * Once confirmed it says "Shelved under", not "Collects", because the field turned out
+ * to do two jobs. Most of the time it is what it was built for - this omnibus reprints
+ * that run. But it is also the only way to correct an edition matched to the wrong
+ * volume: "Batman (2012)" that is really the 2011 run does not COLLECT the 2011 run, it
+ * IS it. Nothing in the data tells those two apart, and nothing needs to - both belong
+ * on that volume's shelf, which is what the wording now says and what the app does.
  *
  * When there is nothing to propose it shrinks to one quiet control. Detection reads
  * prose a Comic Vine editor typed and will miss; a miss, or a mistaken No, must not cost
@@ -53,7 +57,7 @@ export default function CollectsBanner({
     if (!open) {
       return (
         <button type="button" className="btn btn-ghost" onClick={() => setOpen(true)}>
-          Collects another volume?
+          Part of another volume?
         </button>
       )
     }
@@ -97,12 +101,12 @@ export default function CollectsBanner({
   return (
     <div className="edition__cv-suggestion">
       <span>
-        {confirmed ? 'Collects ' : 'This looks like a collection of '}
+        {confirmed ? 'Shelved under ' : 'This looks like a collection of '}
         <a href={href} target="_blank" rel="noreferrer">{label}</a>
       </span>
       {confirmed ? (
         <button type="button" className="btn btn-ghost" disabled={saving} onClick={onDecline}>
-          Not a collection
+          Not this volume
         </button>
       ) : (
         <>

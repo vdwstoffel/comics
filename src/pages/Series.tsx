@@ -79,6 +79,10 @@ export default function Series() {
   const ownedVolumeIds = (scope?.editions ?? [])
     .flatMap((e) => [e.comicvineId, e.collectsVolumeId])
     .filter((id): id is number => id != null)
+  // Who publishes this series: whatever its editions say, which in a library organised
+  // by series is one answer. The first is as good as any; a series split across two
+  // publishers is a mis-grouping rather than a case to design for.
+  const seriesPublisher = (scope?.editions ?? []).find((e) => e.publisher)?.publisher ?? null
   const editionCount = scope?.editions.length ?? null
   const issueCount = scope?.bookCount ?? null
 
@@ -142,7 +146,13 @@ export default function Series() {
 
       {/* Held back until the whole series is in hand: offering a volume as new because a
           filter is hiding the copy you own is worse than offering it a moment later. */}
-      {scope && <OtherVolumes series={series.name} ownedVolumeIds={ownedVolumeIds} />}
+      {scope && (
+        <OtherVolumes
+          series={series.name}
+          ownedVolumeIds={ownedVolumeIds}
+          publisher={seriesPublisher}
+        />
+      )}
     </div>
   )
 }

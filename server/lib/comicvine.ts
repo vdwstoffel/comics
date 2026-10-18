@@ -24,8 +24,19 @@ const VOLUME_ISSUE_FIELDS = 'id,issue_number,name,cover_date,site_detail_url'
 // description is deliberately absent: a search returns ten of these, and the reading of a
 // series happens on Comic Vine rather than here.
 const VOLUME_SEARCH_FIELDS = 'id,name,start_year,publisher,count_of_issues,deck,image,site_detail_url'
-/** Enough candidates to hold the one you meant, few enough not to bury the heading. */
-const VOLUME_SEARCH_LIMIT = 10
+/**
+ * Enough candidates that the one you meant survives being filtered.
+ *
+ * Comic Vine lists every licensed reprint line under the same name. "Batman" answers
+ * with Panini Verlag, ECC Ediciones, Panini Brasil, Grupo Editorial Vid, Ediciones
+ * Zinco, Editions Interpresse, Epucol, Editorial Novaro and Murray Comics before it
+ * gets to a second DC volume - so ten results, cut to the series' own publisher, left
+ * exactly one row and hid the runs you could actually go and find.
+ *
+ * Fifty costs the same single request and the same single cached row; Comic Vine caps
+ * a list response at a hundred either way.
+ */
+const VOLUME_SEARCH_LIMIT = 50
 // Comic Vine caps a list response at 100 regardless of what `limit` asks for.
 const LIST_PAGE = 100
 // What a release tile renders. `image` is here because covers are the point of the

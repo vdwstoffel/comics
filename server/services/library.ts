@@ -2,6 +2,7 @@ import { mkdir, rename, rmdir, unlink } from 'node:fs/promises'
 import { existsSync, statSync } from 'node:fs'
 import { join, basename, extname, dirname, resolve, sep } from 'node:path'
 import { editionFolderPath, dedupeDestPath } from '../lib/paths.js'
+import { groupIntoShelves } from '../models/shelves.js'
 import { renameLock } from '../lib/mutex.js'
 import { deriveSeriesName } from '../lib/seriesName.js'
 import {
@@ -265,10 +266,35 @@ export interface MovePlan {
  * Every book not yet living at `<series>/<edition>/<file>`, with the path it should
  * have. Reads only - the caller looks at this before anything moves.
  */
+/**
+ * Edition id -> the folder its books belong in: `<series>/<volume>`.
+ *
+ * The leaf is the SHELF's name, not the edition's. Comic Vine gives every
+ * collected-edition line a volume of its own, so one run of trades spreads itself over
+ * several top-level folders named after whoever wrote each paperback - "Amazing
+ * Spider-Man/…By Nick Spencer Omnibus" and "The Amazing Spider-Man: Beyond/…Beyond
+ * Omnibus" for three books of one 2018 run. Filing by the shelf puts them where the app
+ * already shows them, and makes the disk readable on its own terms.
+ *
+ * Computed over the whole library at once, because a shelf is a fact about several
+ * editions: two of them must agree on the folder or they would each claim a different
+ * one and move the files back and forth on every pass.
+ */
+function shelfFolders(db: Db): Map<number, string> {
+  const folders = new Map<number, string>()
+  for (const shelf of groupIntoShelves(listEditions(db))) {
+    for (const edition of shelf.editions) {
+      folders.set(edition.id, editionFolderPath(edition.seriesName, shelf.name))
+    }
+  }
+  return folders
+}
+
 export function planReorganize(db: Db): MovePlan[] {
   const plans: MovePlan[] = []
+  const folders = shelfFolders(db)
   for (const edition of listEditions(db)) {
-    const folder = editionFolderPath(edition.seriesName, edition.name)
+    const folder = folders.get(edition.id) ?? editionFolderPath(edition.seriesName, edition.name)
     for (const book of listBooksByEdition(db, edition.id)) {
       const to = `${folder}/${basename(book.filePath)}`
       if (to !== book.filePath) plans.push({ bookId: book.id, from: book.filePath, to })
@@ -302,8 +328,9 @@ export async function reorganizeLibrary(ctx: Ctx): Promise<{ moved: number; skip
   const { db, config } = ctx
   let moved = 0
   let skipped = 0
+  const folders = shelfFolders(db)
   for (const edition of listEditions(db)) {
-    const folder = editionFolderPath(edition.seriesName, edition.name)
+    const folder = folders.get(edition.id) ?? editionFolderPath(edition.seriesName, edition.name)
     const previousFolder = edition.folder
     if (previousFolder !== folder) setEditionFolder(db, edition.id, folder)
 
