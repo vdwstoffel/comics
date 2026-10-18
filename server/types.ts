@@ -23,6 +23,23 @@ export interface Edition {
   /** Comic Vine's own page for this volume, stored rather than built: the canonical url
    *  carries a slug we cannot derive from the id. */
   cvSiteUrl: string | null
+  /** The Comic Vine volume this edition REPRINTS, where `comicvineId` is the volume it
+   *  IS. Both are right at once for a collected edition: "Amazing Spider-Man By Zeb
+   *  Wells" is its own volume AND a bundle of The Amazing Spider-Man (2022)'s comics.
+   *  Editions answering this the same way share a shelf. */
+  collectsVolumeId: number | null
+  /** Comic Vine's name and start year for that reprinted volume, denormalised so a shelf
+   *  heading costs no request. */
+  collectsCvName: string | null
+  collectsCvStartYear: number | null
+  collectsCvSiteUrl: string | null
+  /** When we last worked out what this collects. Null means nobody has looked; set with
+   *  a null `collectsVolumeId` means we looked and the answer was no - which is what
+   *  stops a decline being proposed again on every page view. */
+  collectsCheckedAt: string | null
+  /** Comic Vine's suggestion as JSON, held apart from the confirmed link above: an
+   *  answer nobody has agreed to must not move an edition between shelves. */
+  collectsProposal: string | null
   createdAt: string
   bookCount?: number
 }

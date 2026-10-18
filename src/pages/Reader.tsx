@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
 import { useParams, useLocation, useNavigate, Link } from 'react-router-dom'
+import { runHref } from './BookRedirect'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
 import { useFullscreen } from '../lib/useFullscreen'
@@ -85,7 +86,7 @@ export default function Reader() {
   //
   // Where back goes when there is no history to step through, as well as where the shelf
   // asks it to go: the comic's own page is gone, so the run is the only place a comic is.
-  const run = `/edition/${data.book.editionId}?issue=book-${id}`
+  const run = runHref(data.shelfVolumeId ?? null, data.book.editionId, id!)
   const runBack = toRun ? run : null
   const displayPage = scrubbing ?? page
   // Withheld until the settings answer rather than drawn and then taken away: a bar that

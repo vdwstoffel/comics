@@ -8,6 +8,7 @@ import { openDb } from './db.js'
 import scanRoutes from './routes/scan.js'
 import editionRoutes from './routes/editions.js'
 import seriesRoutes from './routes/series.js'
+import volumeRoutes from './routes/volumes.js'
 import booksRoutes from './routes/books.js'
 import uploadRoutes from './routes/upload.js'
 import comicvineRoutes from './routes/comicvine.js'
@@ -66,6 +67,7 @@ export async function buildServer(): Promise<App> {
   await app.register(scanRoutes)
   await app.register(editionRoutes)
   await app.register(seriesRoutes)
+  await app.register(volumeRoutes)
   await app.register(booksRoutes)
   await app.register(uploadRoutes)
   await app.register(comicvineRoutes)

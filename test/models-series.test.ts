@@ -170,3 +170,39 @@ test('The Amazing Spider-Man shelves before Batman, not after Thor', () => {
     .toEqual(['The Amazing Spider-Man', 'Batman', 'Thor'])
   db.close()
 })
+
+// Alphabetically these read "Captain America (2025)", "by Rick Remender…", "by
+// Ta-Nehisi…". By the runs they are, they read 2013, 2018, 2025 - which is the order
+// you would read them in.
+test('a series lists its shelves oldest run first', () => {
+  const db = openDb(':memory:')
+  const omnibus = (name: string, ownId: number, ownYear: number, collects: number, year: number) => {
+    const e = seed(db, name, 1, 'Marvel')
+    updateEdition(db, e.id, {
+      comicvineId: ownId, cvName: name, cvStartYear: ownYear, seriesName: 'Captain America',
+      collectsVolumeId: collects, collectsCvName: 'Captain America', collectsCvStartYear: year,
+    })
+  }
+  const run = seed(db, 'Captain America (2025)', 15, 'Marvel')
+  updateEdition(db, run.id, { comicvineId: 165232, cvName: 'Captain America', cvStartYear: 2025, seriesName: 'Captain America' })
+  omnibus('Captain America by Ta-Nehisi Coates Omnibus (2023)', 152563, 2023, 112027, 2018)
+  omnibus('Captain America by Rick Remender Omnibus (2021)', 138889, 2021, 54110, 2013)
+
+  const series = listSeries(db).find((s) => s.name === 'Captain America')!
+  expect(series.shelves.map((s) => s.name)).toEqual([
+    'Captain America (2013)', 'Captain America (2018)', 'Captain America (2025)',
+  ])
+  db.close()
+})
+
+test('a shelf with no year sorts last, by name', () => {
+  const db = openDb(':memory:')
+  const dated = seed(db, 'Thor (2020)', 1, 'Marvel')
+  updateEdition(db, dated.id, { comicvineId: 1, cvName: 'Thor', cvStartYear: 2020, seriesName: 'Thor' })
+  const undated = seed(db, 'Thor Scans', 1, 'Marvel')
+  updateEdition(db, undated.id, { seriesName: 'Thor' })
+
+  const series = listSeries(db).find((s) => s.name === 'Thor')!
+  expect(series.shelves.map((s) => s.name)).toEqual(['Thor (2020)', 'Thor Scans'])
+  db.close()
+})

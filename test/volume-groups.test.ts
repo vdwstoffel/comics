@@ -7,6 +7,8 @@ const book = (
 ): ApiLibraryBook => ({
   id, editionId, editionName, seriesName, arcs: [], title: `#${id}`, number: String(id),
   pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0,
+  // Nothing collects anything here, so every edition is its own shelf.
+  shelfKey: `edition:${editionId}`, shelfName: editionName, shelfVolumeId: null,
 })
 
 test('books of one volume become a single group', () => {
@@ -184,4 +186,48 @@ test('a comic tagged with two arcs appears under both', () => {
 
 test('nothing in, no arcs out', () => {
   expect(groupByArc([])).toEqual({ arcs: [], rest: [] })
+})
+
+const collected = (id: number, editionId: number, editionName: string): ApiLibraryBook => ({
+  ...book(id, editionId, editionName, 'Amazing Spider-Man'),
+  shelfKey: 'volume:142577',
+  shelfName: 'The Amazing Spider-Man (2022)',
+  shelfVolumeId: 142577,
+})
+
+// Comic Vine gives each paperback line its own volume, so one run of trades arrives as
+// several editions. On the shelf they are one run.
+test('trades from three editions of one volume are a single group', () => {
+  const groups = groupByVolume([
+    collected(1, 83, 'Wells and Romita Jr. (2022)'),
+    collected(2, 84, 'By Zeb Wells (2023)'),
+    collected(3, 85, 'The 8 Deaths Of Spider-Man (2025)'),
+  ])
+
+  expect(groups).toHaveLength(1)
+  expect(groups[0].shelfName).toBe('The Amazing Spider-Man (2022)')
+  expect(groups[0].shelfVolumeId).toBe(142577)
+  expect(groups[0].books.map((b) => b.id)).toEqual([1, 2, 3])
+})
+
+// Spec §5.4: trade numbering collides across collection lines - Wells & Romita hold
+// volumes 1-3, Zeb Wells 4-12, and The 8 Deaths of Spider-Man is its own volume "1".
+// The server sorts the library by issue number, so without a re-sort the home tile's
+// cover opens the END of the run.
+test('a collapsed group reads in date order, not issue-number order', () => {
+  const dated = (id: number, editionId: number, number: string, date: string) => ({
+    ...collected(id, editionId, 'x'), number, date,
+  })
+  const groups = groupByVolume([
+    dated(3, 85, '1', '2025-07-01'),   // 8 Deaths: number 1, but the last story
+    dated(1, 83, '1', '2022-10-01'),   // World Without Love: the beginning
+    dated(2, 84, '4', '2023-05-01'),
+  ])
+
+  expect(groups[0].books.map((b) => b.id)).toEqual([1, 2, 3])
+})
+
+test('an uncollapsed group is left in the order the server sent', () => {
+  const groups = groupByVolume([book(2, 9, 'Venom (2025)'), book(1, 9, 'Venom (2025)')])
+  expect(groups[0].books.map((b) => b.id)).toEqual([2, 1])
 })

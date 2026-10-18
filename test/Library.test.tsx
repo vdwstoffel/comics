@@ -161,6 +161,23 @@ const READ_STATES = {
   ],
 }
 
+/**
+ * The shelf fields the server always sends. These fixtures predate them, and nothing
+ * here collects anything, so every edition is a shelf of its own.
+ */
+function shelved(books: unknown[]): unknown[] {
+  return books.map((b) => {
+    const book = b as { editionId: number; editionName: string; shelfKey?: string }
+    if (book.shelfKey) return book
+    return {
+      ...book,
+      shelfKey: `edition:${book.editionId}`,
+      shelfName: book.editionName,
+      shelfVolumeId: null,
+    }
+  })
+}
+
 const LIBRARY_BOOKS = [
   { id: 7, editionId: 9, editionName: 'The Amazing Spider-Man (2025)', seriesName: 'The Amazing Spider-Man',
     arcs: [], number: '29', title: 'Bad Things',
@@ -179,7 +196,7 @@ function statusFetch(series: unknown[] = [ASM_SERIES]) {
     calls.push(u)
     const body =
       u.includes('/api/read-states') ? READ_STATES
-        : u.includes('/api/books') ? { books: LIBRARY_BOOKS }
+        : u.includes('/api/books') ? { books: shelved(LIBRARY_BOOKS) }
         : u.includes('/api/series') ? { series }
           : u.includes('/api/publishers') ? { publishers: [{ name: 'Marvel', count: 3 }] }
               : { editions: [] }
@@ -412,7 +429,7 @@ function groupedFetch(books: unknown[] = GROUPED_BOOKS) {
     calls.push(u)
     const body =
       u.includes('/api/read-states') ? READ_STATES
-        : u.includes('/api/books') ? { books }
+        : u.includes('/api/books') ? { books: shelved(books) }
         : u.includes('/api/series') ? { series: [ASM_SERIES] }
         : u.includes('/api/publishers') ? { publishers: [] }
         : { editions: [] }

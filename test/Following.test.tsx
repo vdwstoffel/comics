@@ -9,6 +9,7 @@ const BOOK = {
   id: 9, editionId: 1, editionName: 'Iron Man', seriesName: 'Iron Man', arcs: [],
   title: 'Iron Man', number: '6', pageCount: 20, comicinfoSynced: false,
   readState: 'unread' as const, percent: 0,
+  shelfKey: 'edition:1', shelfName: 'Iron Man', shelfVolumeId: null,
 }
 
 function show() {
@@ -246,7 +247,10 @@ function shelfNames(): string[] {
 // they are the comic on the shelf, the issue that is out, the dated wait, and the rest.
 test('the shelf leads with what you can read, then what is out, then what is dated', async () => {
   vi.spyOn(api, 'getLibraryBooks').mockResolvedValue({
-    books: [{ ...BOOK, editionId: 4, editionName: 'Venom', seriesName: 'Venom', title: 'Venom' }],
+    books: [{
+      ...BOOK, editionId: 4, editionName: 'Venom', seriesName: 'Venom', title: 'Venom',
+      shelfKey: 'edition:4', shelfName: 'Venom',
+    }],
   })
   vi.spyOn(api, 'getFollows').mockResolvedValue({
     follows: [

@@ -173,3 +173,49 @@ test('a book in no arc carries an empty list', () => {
   expect(book.arcs).toEqual([])
   db.close()
 })
+
+/** The real collected case: two paperback lines, one 2022 run. */
+function seedCollected(db: ReturnType<typeof openDb>) {
+  const wells = upsertEdition(db, { name: 'Wells and Romita Jr. (2022)', folder: 'w', seriesName: 'Amazing Spider-Man' })
+  const zeb = upsertEdition(db, { name: 'By Zeb Wells (2023)', folder: 'z', seriesName: 'Amazing Spider-Man' })
+  const collects = {
+    collectsVolumeId: 142577, collectsCvName: 'The Amazing Spider-Man', collectsCvStartYear: 2022,
+  }
+  updateEdition(db, wells.id, { comicvineId: 149382, ...collects })
+  updateEdition(db, zeb.id, { comicvineId: 150443, ...collects })
+  const mk = (editionId: number, file: string) =>
+    insertBook(db, { editionId, filePath: file, pageCount: 20, fileSize: 1 })!
+  return { wells: wells.id, zeb: zeb.id, wellsBook: mk(wells.id, 'w/1.cbz'), zebBook: mk(zeb.id, 'z/4.cbz') }
+}
+
+test('a collected comic carries its shelf, named for the volume', () => {
+  const db = openDb(':memory:')
+  const { zeb } = seedCollected(db)
+  const book = listLibraryBooks(db, {}).find((b) => b.editionId === zeb)!
+  expect(book.shelfKey).toBe('volume:142577')
+  expect(book.shelfName).toBe('The Amazing Spider-Man (2022)')
+  expect(book.shelfVolumeId).toBe(142577)
+  db.close()
+})
+
+test('a comic in a stand-alone edition is its own shelf, under its own name', () => {
+  const db = openDb(':memory:')
+  seed(db)
+  const book = listLibraryBooks(db, {}).find((b) => b.editionName === 'Batman (2016)')!
+  expect(book.shelfName).toBe('Batman (2016)')
+  expect(book.shelfVolumeId).toBeNull()
+  db.close()
+})
+
+// Spec §5.1: whether a shelf is collapsed is a fact about the library, not about what
+// a filter happens to be showing.
+test('a filter that hides one collection does not un-collapse the shelf', () => {
+  const db = openDb(':memory:')
+  const { zeb, wellsBook } = seedCollected(db)
+  setProgress(db, wellsBook.id, { lastPage: 20, completed: true })
+
+  const books = listLibraryBooks(db, { readState: 'unread' })
+  expect(books.every((b) => b.editionId !== undefined)).toBe(true)
+  expect(books.find((b) => b.editionId === zeb)!.shelfVolumeId).toBe(142577)
+  db.close()
+})

@@ -2,6 +2,7 @@ import { createReadStream, existsSync } from 'node:fs'
 import { join, extname } from 'node:path'
 import { getBook, updateBook, listLibraryBooks } from '../models/books.js'
 import { getEdition } from '../models/editions.js'
+import { shelfVolumeIdsByEdition } from '../models/shelves.js'
 import { getProgress, setProgress, deriveReadState } from '../models/progress.js'
 import { getBookCredits, getBookTags } from '../models/metadata.js'
 import { readPage } from '../lib/cbz.js'
@@ -41,6 +42,11 @@ export default async function booksRoutes(app: App) {
     if (!book) return reply.code(404).send({ error: 'book not found' })
     return {
       book,
+      // Where this comic lives. Three trade lines of one run are one shelf, and the
+      // shelf is the comic's home: every route to a comic comes through here, so this
+      // one field is what sends the reader, Downloads, Upload, Releases and the arcs
+      // to the run rather than to whichever paperback line it shipped in.
+      shelfVolumeId: shelfVolumeIdsByEdition(app.db).get(book.editionId) ?? null,
       // The run's name, which the book row holds only as an id. The reader has nothing on
       // screen but the comic, so the browser tab is where the comic is named - and "#141"
       // on its own names nothing.

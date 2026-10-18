@@ -354,6 +354,33 @@ export function openDb(dbPath: string): Db {
   if (!editionCols.includes('cv_start_year')) db.exec('ALTER TABLE edition ADD COLUMN cv_start_year INTEGER')
   if (!editionCols.includes('cv_site_url')) db.exec('ALTER TABLE edition ADD COLUMN cv_site_url TEXT')
 
+  // The Comic Vine volume this edition REPRINTS, which is a different question from the
+  // one `comicvine_id` answers. Comic Vine gives each collected-edition line a volume of
+  // its own, so one run of trades arrives as several editions whose own ids are all
+  // correct and all different - and whose answer to "what does this collect?" is the
+  // same. That shared answer is what gathers them onto one shelf.
+  //
+  // The name and year are denormalised here for the reason cv_name and cv_start_year are:
+  // a shelf heading should not need a Comic Vine request, nor vanish when a cache is cold.
+  //
+  // `collects_checked_at` is what separates "nobody has looked" from "looked, and the
+  // answer was no" - the same distinction volume_cache and release_day exist to keep.
+  // Without it a decline is re-proposed on every page view.
+  if (!editionCols.includes('collects_volume_id')) db.exec('ALTER TABLE edition ADD COLUMN collects_volume_id INTEGER')
+  if (!editionCols.includes('collects_cv_name')) db.exec('ALTER TABLE edition ADD COLUMN collects_cv_name TEXT')
+  if (!editionCols.includes('collects_cv_start_year')) db.exec('ALTER TABLE edition ADD COLUMN collects_cv_start_year INTEGER')
+  if (!editionCols.includes('collects_cv_site_url')) db.exec('ALTER TABLE edition ADD COLUMN collects_cv_site_url TEXT')
+  if (!editionCols.includes('collects_checked_at')) db.exec('ALTER TABLE edition ADD COLUMN collects_checked_at TEXT')
+  // What Comic Vine suggested, held apart from what you confirmed.
+  //
+  // It cannot share the four columns above: those decide which shelf an edition is on,
+  // and a suggestion nobody has agreed to must move nothing. Held at all because the
+  // banner asks you to click through to Comic Vine and check it - which blurs the tab,
+  // which refetches, which would otherwise run detection again or, worse, serve nothing
+  // and make the banner vanish mid-decision. JSON because it is one opaque answer that
+  // is written and read whole, never queried.
+  if (!editionCols.includes('collects_proposal')) db.exec('ALTER TABLE edition ADD COLUMN collects_proposal TEXT')
+
   // An arc issue gained the id of the volume it belongs to, which is what decides where
   // a download of it lands. Arcs cached before this read back without one until their
   // next refresh; the download falls back to the volume's name meanwhile.

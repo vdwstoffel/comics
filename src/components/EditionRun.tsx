@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import type { ReactNode } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
@@ -30,6 +31,8 @@ interface EditionRunProps {
   refreshing?: boolean
   stale?: boolean
   cvUrl?: string | null
+  /** Passed through to the sidebar: the collections a volume shelf gathered. */
+  collections?: ReactNode
 }
 
 /**
@@ -43,7 +46,7 @@ interface EditionRunProps {
  */
 export default function EditionRun({
   editionId, editionName, entries, seriesName, soon, gettable, onGetAll, getAllPending,
-  onRefresh, refreshing, stale, cvUrl,
+  onRefresh, refreshing, stale, cvUrl, collections,
 }: EditionRunProps) {
   const qc = useQueryClient()
   const navigate = useNavigate()
@@ -148,6 +151,8 @@ export default function EditionRun({
   // `offerUpload` is what separates the two places this is drawn. The centred issue is one
   // comic you are looking at, so it offers the file picker; the sidebar is a list of every
   // gap at once, where a picker per row is noise.
+  // A gap belongs to the run that has it, which on a volume shelf is the edition that
+  // holds that volume's issues rather than whichever collection is centred.
   const fill = (entry: VolumeEntry, offerUpload = false) => (
     <MissingIssueAction
       editionId={editionId}
@@ -211,8 +216,12 @@ export default function EditionRun({
             writer={current.writer}
             penciller={current.penciller}
             date={current.date ?? current.coverDate}
-            editionId={current.bookId != null ? Number(editionId) : undefined}
-            editionName={current.bookId != null ? editionName : undefined}
+            /* The comic's own edition when it carries one: a volume shelf gathers
+               several collections, and which paperback this trade came from is the
+               thing the row exists to say. An edition page sends the same answer for
+               every entry, so nothing changes there. */
+            editionId={current.bookId != null ? (current.editionId ?? Number(editionId)) : undefined}
+            editionName={current.bookId != null ? (current.editionName ?? editionName) : undefined}
             arcs={arcsData?.arcs}
           />
         </div>
@@ -239,6 +248,7 @@ export default function EditionRun({
         refreshing={refreshing}
         stale={stale}
         cvUrl={cvUrl}
+        collections={collections}
         renderAction={(issueId) => {
           const entry = missing.find((e) => e.issueId === issueId)
           return entry ? fill(entry) : null

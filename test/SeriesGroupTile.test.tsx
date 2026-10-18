@@ -8,11 +8,15 @@ import type { ApiLibraryBook } from '../src/api'
 const book = (id: number, editionId: number, editionName: string): ApiLibraryBook => ({
   id, editionId, editionName, seriesName: 'Batman', arcs: [], title: `Secret ${id}`,
   number: String(id), pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0,
+  shelfKey: `edition:${editionId}`, shelfName: editionName, shelfVolumeId: null,
 })
 
 const volume = (editionId: number, editionName: string, unread: number, from = 1) => ({
   editionId,
   editionName,
+  shelfKey: `edition:${editionId}`,
+  shelfName: editionName,
+  shelfVolumeId: null,
   books: Array.from({ length: unread }, (_, i) => book(from + i, editionId, editionName)),
 })
 

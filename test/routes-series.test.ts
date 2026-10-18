@@ -219,3 +219,33 @@ test('DELETE /api/series/:name 404s on a series that matches nothing', async () 
   expect(res.statusCode).toBe(404)
   expect(res.json()).toEqual({ error: 'series not found' })
 })
+
+// Comic Vine gives every collected-edition line a volume of its own, so one run of trades
+// arrives as several editions. The series payload carries both: the editions, unchanged
+// for everything that already reads them, and the shelves they gather onto.
+test('a series carries its shelves alongside its editions', async () => {
+  const wells = seed('The Amazing Spider-Man by Wells and Romita Jr. (2022)', 3, 'Marvel')
+  const zeb = seed('Amazing Spider-Man By Zeb Wells (2023)', 9, 'Marvel')
+  const collects = {
+    seriesName: 'Amazing Spider-Man',
+    collectsVolumeId: 142577,
+    collectsCvName: 'The Amazing Spider-Man',
+    collectsCvStartYear: 2022,
+  }
+  updateEdition(app.db, wells.id, { comicvineId: 149382, ...collects })
+  updateEdition(app.db, zeb.id, { comicvineId: 150443, ...collects })
+
+  const { series } = (await get('/api/series/Amazing%20Spider-Man')).json()
+  expect(series.editions).toHaveLength(4)
+  expect(series.shelves).toHaveLength(3)
+  expect(series.shelves.map((s: { name: string }) => s.name)).toContain('The Amazing Spider-Man (2022)')
+  const collected = series.shelves.find((s: { volumeId: number | null }) => s.volumeId === 142577)
+  expect(collected.bookCount).toBe(12)
+  expect(collected.editions).toHaveLength(2)
+})
+
+test('a series whose editions collect nothing gets one shelf per edition', async () => {
+  const { series } = (await get('/api/series/Amazing%20Spider-Man')).json()
+  expect(series.shelves).toHaveLength(2)
+  expect(series.shelves.every((s: { volumeId: number | null }) => s.volumeId === null)).toBe(true)
+})

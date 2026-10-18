@@ -9,6 +9,7 @@ const book = (id: number, editionName: string): ApiLibraryBook => ({
   id, editionId: 2, editionName, seriesName: editionName, arcs: ['Armageddon'],
   title: `Secret ${id}`, number: String(id), pageCount: 20, comicinfoSynced: false,
   readState: 'unread', percent: 0,
+  shelfKey: 'edition:2', shelfName: editionName, shelfVolumeId: null,
 })
 
 const group = (books: ApiLibraryBook[], seriesCount = 2, name = 'Armageddon'): ArcGroup =>

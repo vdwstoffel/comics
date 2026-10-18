@@ -68,7 +68,7 @@ export default function VolumeGroupTile({ group, showCount = true }: VolumeGroup
           className="volume-tile__cover"
           to={`/read/${next.id}`}
           state={{ back: 'run' }}
-          aria-label={next.number ? `${group.editionName} #${next.number}` : `${group.editionName}, next unread`}
+          aria-label={next.number ? `${group.shelfName} #${next.number}` : `${group.shelfName}, next unread`}
         >
           {/* The comic this opens, not the volume it belongs to: a volume's own
               thumbnail is its lowest-numbered issue overall, which on a run you are
@@ -82,13 +82,18 @@ export default function VolumeGroupTile({ group, showCount = true }: VolumeGroup
       {/* The name is clamped to two lines so the shelf's rows come out even, and the year
           that tells two runs of one series apart sits at the end of it - so the whole name
           is carried here, where a cut-off one can still be read. */}
+      {/* A shelf of several editions is a thing of its own and has a page of its own;
+          a shelf of one is that edition and links where it always did. Three paperback
+          lines of one run are the first case, which is why this is not an edition id. */}
       <Link
         className="volume-tile__name"
-        title={group.editionName}
-        to={`/edition/${group.editionId}?status=unread`}
+        title={group.shelfName}
+        to={group.shelfVolumeId == null
+          ? `/edition/${group.editionId}?status=unread`
+          : `/volume/${group.shelfVolumeId}?status=unread`}
         state={back}
       >
-        {group.editionName}
+        {group.shelfName}
       </Link>
       {showCount && <div className="volume-tile__count">{group.books.length} unread</div>}
     </div>

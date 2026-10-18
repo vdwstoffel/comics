@@ -14,8 +14,30 @@ const SERIES = {
   ],
 }
 
+interface FixtureEdition { id: number; name: string; bookCount: number }
+
+/**
+ * The shelves the server would send for a fixture whose editions collect nothing: one
+ * per edition, none collapsed. Saves restating every edition twice in every fixture.
+ */
+function withShelves(body: unknown): unknown {
+  const series = (body as { series?: { editions?: FixtureEdition[]; shelves?: unknown } }).series
+  if (!series?.editions || series.shelves) return body
+  return {
+    ...(body as object),
+    series: {
+      ...series,
+      shelves: series.editions.map((e) => ({
+        key: `edition:${e.id}`, volumeId: null, name: e.name,
+        editions: [e], bookCount: e.bookCount, siteUrl: null, holdsIssues: false,
+      })),
+    },
+  }
+}
+
 function mockFetch(body: unknown, ok = true) {
-  globalThis.fetch = vi.fn(async () => ({ ok, status: ok ? 200 : 404, json: async () => body })) as unknown as typeof fetch
+  const sent = withShelves(body)
+  globalThis.fetch = vi.fn(async () => ({ ok, status: ok ? 200 : 404, json: async () => sent })) as unknown as typeof fetch
 }
 
 beforeEach(() => { mockFetch({ series: SERIES }) })
@@ -191,7 +213,7 @@ test('the series page offers the volumes Comic Vine has and the library does not
         fetchedAt: null, stale: false,
       }) }
     }
-    return { ok: true, status: 200, json: async () => ({ series: SERIES }) }
+    return { ok: true, status: 200, json: async () => withShelves({ series: SERIES }) }
   }) as unknown as typeof fetch
 
   renderAt('/series/Amazing%20Spider-Man')
@@ -219,12 +241,97 @@ test('a volume hidden by a status filter is still not offered as new', async () 
     }
     // Everything unread has been read, so the filter hides the run it belongs to.
     const editions = u.includes('readState=unread') ? [] : [shelved]
-    return { ok: true, status: 200, json: async () => ({
+    return { ok: true, status: 200, json: async () => withShelves({
       series: { name: 'The Amazing Spider-Man', bookCount: 3, editions },
     }) }
   }) as unknown as typeof fetch
 
   renderAt('/series/The%20Amazing%20Spider-Man?status=unread')
+
+  await waitFor(() => {
+    const years = screen.getAllByTestId('other-volume-year').map((el) => el.textContent)
+    expect(years).toEqual(['1963'])
+  })
+})
+
+const COLLECTED = {
+  name: 'The Amazing Spider-Man',
+  bookCount: 50,
+  editions: [
+    { id: 83, name: 'The Amazing Spider-Man by Wells and Romita Jr. (2022)', bookCount: 3 },
+    { id: 84, name: 'Amazing Spider-Man By Zeb Wells (2023)', bookCount: 9 },
+    { id: 85, name: 'Amazing Spider-Man: The 8 Deaths Of Spider-Man (2025)', bookCount: 1 },
+    { id: 64, name: 'The Amazing Spider-Man Epic Collection', bookCount: 2 },
+  ],
+  shelves: [
+    {
+      key: 'volume:142577', volumeId: 142577, name: 'The Amazing Spider-Man (2022)',
+      bookCount: 13, siteUrl: 'https://comicvine.gamespot.com/x/4050-142577/', holdsIssues: false,
+      editions: [
+        { id: 83, name: 'The Amazing Spider-Man by Wells and Romita Jr. (2022)', bookCount: 3 },
+        { id: 84, name: 'Amazing Spider-Man By Zeb Wells (2023)', bookCount: 9 },
+        { id: 85, name: 'Amazing Spider-Man: The 8 Deaths Of Spider-Man (2025)', bookCount: 1 },
+      ],
+    },
+    {
+      key: 'volume:77149', volumeId: null, name: 'The Amazing Spider-Man Epic Collection',
+      bookCount: 2, siteUrl: null, holdsIssues: false,
+      editions: [{ id: 64, name: 'The Amazing Spider-Man Epic Collection', bookCount: 2 }],
+    },
+  ],
+}
+
+test('three collections of one volume draw as one tile', async () => {
+  mockFetch({ series: COLLECTED })
+  renderAt('/series/The%20Amazing%20Spider-Man')
+
+  expect(await screen.findByText('The Amazing Spider-Man (2022)')).toBeInTheDocument()
+  expect(screen.queryByText('Amazing Spider-Man By Zeb Wells (2023)')).not.toBeInTheDocument()
+  expect(screen.getByText('13 issues')).toBeInTheDocument()
+})
+
+test('a collapsed tile opens the volume shelf and a lone volume opens its edition', async () => {
+  mockFetch({ series: COLLECTED })
+  renderAt('/series/The%20Amazing%20Spider-Man')
+
+  const collected = (await screen.findByText('The Amazing Spider-Man (2022)')).closest('a')
+  expect(collected).toHaveAttribute('href', '/volume/142577')
+  const lone = screen.getByText('The Amazing Spider-Man Epic Collection').closest('a')
+  expect(lone).toHaveAttribute('href', '/edition/64')
+})
+
+test('a collapsed tile carries the status onwards', async () => {
+  mockFetch({ series: COLLECTED })
+  renderAt('/series/The%20Amazing%20Spider-Man?status=unread')
+
+  const collected = (await screen.findByText('The Amazing Spider-Man (2022)')).closest('a')
+  expect(collected).toHaveAttribute('href', '/volume/142577?status=unread')
+})
+
+// Spec §6: the page would otherwise offer "The Amazing Spider-Man (2022) · Find ↗"
+// directly beneath a shelf of the same name, which reads as a bug.
+test('a volume you own in trades is no longer offered as one to find', async () => {
+  globalThis.fetch = vi.fn(async (url: string) => {
+    if (String(url).includes('/api/comicvine/volumes')) {
+      return { ok: true, status: 200, json: async () => ({
+        volumes: [
+          { id: 2127, name: 'The Amazing Spider-Man', startYear: 1963, publisher: 'Marvel', issueCount: 651, siteUrl: 'https://comicvine.gamespot.com/x/4050-2127/' },
+          { id: 142577, name: 'The Amazing Spider-Man', startYear: 2022, publisher: 'Marvel', issueCount: 70, siteUrl: 'https://comicvine.gamespot.com/x/4050-142577/' },
+        ],
+        fetchedAt: null, stale: false,
+      }) }
+    }
+    return { ok: true, status: 200, json: async () => ({
+      series: {
+        ...COLLECTED,
+        editions: COLLECTED.editions.map((e) => (
+          e.id === 84 ? { ...e, comicvineId: 150443, collectsVolumeId: 142577 } : e
+        )),
+      },
+    }) }
+  }) as unknown as typeof fetch
+
+  renderAt('/series/The%20Amazing%20Spider-Man')
 
   await waitFor(() => {
     const years = screen.getAllByTestId('other-volume-year').map((el) => el.textContent)

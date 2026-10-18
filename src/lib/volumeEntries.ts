@@ -33,6 +33,15 @@ export interface VolumeEntry {
   summary?: string | null
   writer?: string | null
   penciller?: string | null
+  /**
+   * The edition this comic is actually in.
+   *
+   * On an edition page every entry answers the same, and the page could say it once. On
+   * a volume shelf it cannot: the shelf gathers several collections of one run, and
+   * which paperback a trade came from is exactly what the detail block should say.
+   */
+  editionId?: number
+  editionName?: string
   /** Comic Vine's page for the issue, which is all a gap has to link to. */
   siteUrl?: string
   coverDate?: string
@@ -43,12 +52,16 @@ interface VolumeEntriesInput {
   issues: ApiVolumeIssue[]
   extras: ApiEditionExtra[]
   books: ApiBook[]
+  /** Names for the editions the books are in. Absent on a page that holds only one. */
+  editions?: Array<{ id: number; name: string }>
 }
 
 /** The fields an entry takes from a book, when there is a book to take them from. */
-function fromBook(book: ApiBook): Partial<VolumeEntry> {
+function fromBook(book: ApiBook, editionNames?: Map<number, string>): Partial<VolumeEntry> {
   return {
     bookId: book.id,
+    editionId: book.editionId,
+    editionName: editionNames?.get(book.editionId),
     coverUrl: `/api/books/${book.id}/thumbnail`,
     readTo: `/read/${book.id}`,
     readState: book.readState,
@@ -74,8 +87,9 @@ function fromBook(book: ApiBook): Partial<VolumeEntry> {
  * `?status=`, so "owned, but not in this list" is an ordinary state, and a tile linking to
  * a book the page does not hold would be a broken image above a dead link.
  */
-export function volumeEntries({ issues, extras, books }: VolumeEntriesInput): VolumeEntry[] {
+export function volumeEntries({ issues, extras, books, editions }: VolumeEntriesInput): VolumeEntry[] {
   const byId = new Map(books.map((b) => [b.id, b]))
+  const editionNames = editions ? new Map(editions.map((e) => [e.id, e.name])) : undefined
 
   const run: VolumeEntry[] = issues.map((issue) => {
     const book = issue.bookId != null ? byId.get(issue.bookId) : undefined
@@ -90,7 +104,7 @@ export function volumeEntries({ issues, extras, books }: VolumeEntriesInput): Vo
       // Comic Vine's story title is the gap's only name; a book of your own overrides it
       // below, because what the file says it is beats what the catalogue says it is.
       title: issue.name,
-      ...(book ? fromBook(book) : {}),
+      ...(book ? fromBook(book, editionNames) : {}),
     }
   })
 
@@ -101,7 +115,7 @@ export function volumeEntries({ issues, extras, books }: VolumeEntriesInput): Vo
       label: tileLabel(book, extra.number, extra.title),
       owned: true,
       title: extra.title,
-      ...(book ? fromBook(book) : {}),
+      ...(book ? fromBook(book, editionNames) : {}),
     }
   })
 
@@ -113,6 +127,6 @@ export function volumeEntries({ issues, extras, books }: VolumeEntriesInput): Vo
     key: `book-${book.id}`,
     label: tileLabel(book),
     owned: true,
-    ...fromBook(book),
+    ...fromBook(book, editionNames),
   }))
 }

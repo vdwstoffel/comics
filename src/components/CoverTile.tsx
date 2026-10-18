@@ -23,9 +23,15 @@ interface CoverTileProps {
    * with nothing in it, which is the one place on the tile these do not crowd anything.
    */
   overlay?: ReactNode
+  /**
+   * The comic the page was opened on - the one you just closed the reader on, say.
+   * Marked rather than scrolled to: a shelf of thirteen fits on a screen, and moving
+   * the page under someone who has just arrived is worse than letting them find it.
+   */
+  current?: boolean
 }
 
-export default function CoverTile({ to, href, img, title, subtitle, readState, percent, state, onClick, overlay }: CoverTileProps) {
+export default function CoverTile({ to, href, img, title, subtitle, readState, percent, state, onClick, overlay, current }: CoverTileProps) {
   const isRead = readState === 'read'
 
   const inner = (
@@ -49,7 +55,17 @@ export default function CoverTile({ to, href, img, title, subtitle, readState, p
   // A comic the library does not have lives on Comic Vine, which is not a route.
   const card = href
     ? <a href={href} target="_blank" rel="noreferrer" className="cover-tile">{inner}</a>
-    : <Link to={to ?? '#'} state={state} onClick={onClick} className="cover-tile">{inner}</Link>
+    : (
+      <Link
+        to={to ?? '#'}
+        state={state}
+        onClick={onClick}
+        className="cover-tile"
+        data-current={current ? 'true' : undefined}
+      >
+        {inner}
+      </Link>
+    )
 
   if (!overlay) return card
   return (

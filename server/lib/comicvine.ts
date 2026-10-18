@@ -122,6 +122,8 @@ export interface CvNamedRef {
 
 export interface CvIssue {
   title?: string
+  /** The description with its markup intact - see CvVolume.descriptionHtml. */
+  descriptionHtml?: string
   number?: string
   date?: string
   year?: number
@@ -218,6 +220,15 @@ export interface CvVolume {
   name?: string
   publisher?: string
   summary?: string
+  /**
+   * The description with its markup intact.
+   *
+   * `summary` is this run through stripHtml, which takes the `data-ref-id` attributes
+   * with it - and those attributes are the only machine-readable statement Comic Vine
+   * makes about what a collected edition reprints. Anything reading for that reference
+   * has to read this field; `summary` is for showing to people.
+   */
+  descriptionHtml?: string
   startYear?: number
   siteUrl?: string
 }
@@ -388,6 +399,7 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         title: r.name, number: r.issue_number, date: ym(r.cover_date),
         year: yearNum && !isNaN(yearNum) ? yearNum : undefined,
         summary: stripHtml(r.description),
+        descriptionHtml: r.description,
         writer: credit(r.person_credits, /writer/i),
         penciller: credit(r.person_credits, /pencil/i),
         credits,
@@ -465,6 +477,7 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
         name: r.name,
         publisher: r.publisher?.name,
         summary: stripHtml(r.description),
+        descriptionHtml: r.description,
         startYear: Number.isInteger(started) ? started : undefined,
         siteUrl: r.site_detail_url,
       }

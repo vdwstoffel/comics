@@ -3,25 +3,66 @@ import type { ApiLibraryBook } from '../api'
 export interface VolumeGroup {
   editionId: number
   editionName: string
+  /** The shelf these books are on, and what it is called. */
+  shelfKey: string
+  shelfName: string
+  /** Where the shelf lives when it is more than one edition; null when it is not. */
+  shelfVolumeId: number | null
   books: ApiLibraryBook[]
 }
 
 /**
  * The unread shelf, one entry per volume instead of one per comic.
  *
- * Grouped by edition id rather than by adjacency. The server already sorts its answer by
+ * Grouped by shelf rather than by adjacency. The server already sorts its answer by
  * series then issue number, so a volume's comics do arrive together and a fold over
  * neighbours would work today — but it would quietly split a volume in two the day that
  * sort changed, and the map costs nothing to be right either way.
  *
+ * The key is the shelf, not the edition: Comic Vine gives each collected-edition line a
+ * volume of its own, so thirteen trades of one run arrive under three edition ids and
+ * would otherwise draw as three tiles of the thing they are one of.
+ *
  * Insertion order is kept, so the shelf reads in whatever order the server chose.
  */
+/**
+ * The order a collected run reads in: by date, undated last, ties on id.
+ *
+ * The same rule the volume shelf uses, and for the same reason - trade numbering
+ * collides across collection lines. Wells & Romita hold volumes 1-3, Zeb Wells hold
+ * 4-12, and The 8 Deaths of Spider-Man is its own volume "1" despite collecting the
+ * END of the run. The server orders the library by issue number, which would put that
+ * last book first and have the home tile's cover open the finale.
+ */
+function byDate(a: ApiLibraryBook, b: ApiLibraryBook): number {
+  if (a.date === b.date) return a.id - b.id
+  if (!a.date) return 1
+  if (!b.date) return -1
+  return a.date.localeCompare(b.date) || a.id - b.id
+}
+
 export function groupByVolume(books: ApiLibraryBook[]): VolumeGroup[] {
-  const groups = new Map<number, VolumeGroup>()
+  const groups = new Map<string, VolumeGroup>()
   for (const book of books) {
-    const group = groups.get(book.editionId)
+    const group = groups.get(book.shelfKey)
     if (group) group.books.push(book)
-    else groups.set(book.editionId, { editionId: book.editionId, editionName: book.editionName, books: [book] })
+    else {
+      groups.set(book.shelfKey, {
+        // The first book's edition, which is what an uncollapsed shelf links to and
+        // what a collapsed one falls back to if it somehow has no volume.
+        editionId: book.editionId,
+        editionName: book.editionName,
+        shelfKey: book.shelfKey,
+        shelfName: book.shelfName,
+        shelfVolumeId: book.shelfVolumeId,
+        books: [book],
+      })
+    }
+  }
+  // Only a collapsed shelf is re-ordered. A single volume's books arrive in the server's
+  // issue order, which is right for it and is what every existing shelf expects.
+  for (const group of groups.values()) {
+    if (group.shelfVolumeId != null) group.books.sort(byDate)
   }
   return [...groups.values()]
 }

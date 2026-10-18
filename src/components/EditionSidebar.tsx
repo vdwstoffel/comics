@@ -25,6 +25,12 @@ interface EditionSidebarProps {
   stale?: boolean
   /** Comic Vine's own page for the volume. Null when the edition has no volume. */
   cvUrl?: string | null
+  /**
+   * The collections this run was gathered from, on a volume shelf that spans several.
+   * Beside the run rather than over it, for the same reason the Comic Vine link is:
+   * it says where this came from, which is context and not an action.
+   */
+  collections?: ReactNode
 }
 
 /**
@@ -76,10 +82,11 @@ function Section({ title, count, aside, quiet, children }: {
  */
 export default function EditionSidebar({
   missing, soon, gettable, onGetAll, getAllPending, renderAction,
-  onRefresh, refreshing, stale, cvUrl,
+  onRefresh, refreshing, stale, cvUrl, collections,
 }: EditionSidebarProps) {
   return (
     <aside className="edition-side">
+      {collections && <div className="edition-side__collections">{collections}</div>}
       {/* Where the run came from, beside the run rather than over it. There is no date
           here: when Comic Vine was last read is bookkeeping nobody acts on, and it was
           spending a line of the page's header to say it. That the run could NOT be read

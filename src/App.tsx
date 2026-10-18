@@ -4,6 +4,7 @@ import Library from './pages/Library'
 import Series from './pages/Series'
 import SeriesAnnuals from './pages/SeriesAnnuals'
 import Edition from './pages/Edition'
+import Volume from './pages/Volume'
 import BookRedirect from './pages/BookRedirect'
 import Reader from './pages/Reader'
 import Upload from './pages/Upload'
@@ -102,6 +103,9 @@ export default function App() {
       <Route path="/series/:name" element={<Layout><Series /></Layout>} />
       <Route path="/series/:name/annuals" element={<Layout><SeriesAnnuals /></Layout>} />
       <Route path="/edition/:id" element={<Layout><Edition /></Layout>} />
+      {/* A run that arrived as several collections. Keyed by the Comic Vine volume,
+          because that is the one thing all of its editions agree on. */}
+      <Route path="/volume/:volumeId" element={<Layout><Volume /></Layout>} />
       {/* The comic's own page is gone; everything it said and did lives in the run. */}
       <Route path="/book/:id" element={<Layout><BookRedirect /></Layout>} />
       <Route path="/read/:id" element={<ReaderLayout><Reader /></ReaderLayout>} />

@@ -197,3 +197,38 @@ test('a gap claims no embedded metadata', () => {
 
   expect(entries[0].comicinfoSynced).toBeFalsy()
 })
+
+// A volume shelf gathers several collections, so "which edition is this comic in?" has
+// a different answer per entry. On an edition page every answer is the same one.
+test('an entry carries the edition its book is in', () => {
+  const entries = volumeEntries({
+    issues: [],
+    extras: [],
+    books: [book(1, { editionId: 83 }), book(2, { editionId: 84 })],
+    editions: [
+      { id: 83, name: 'Wells and Romita Jr. (2022)' },
+      { id: 84, name: 'By Zeb Wells (2023)' },
+    ],
+  })
+
+  expect(entries.map((e) => e.editionName)).toEqual([
+    'Wells and Romita Jr. (2022)', 'By Zeb Wells (2023)',
+  ])
+  expect(entries[1].editionId).toBe(84)
+})
+
+test('an entry whose edition was not named keeps the id and no name', () => {
+  const [entry] = volumeEntries({ issues: [], extras: [], books: [book(1, { editionId: 83 })] })
+  expect(entry.editionId).toBe(83)
+  expect(entry.editionName).toBeUndefined()
+})
+
+test('an issue of the run takes the edition from the book behind it', () => {
+  const [entry] = volumeEntries({
+    issues: [{ id: 500, number: '12', owned: true, bookId: 77 }],
+    extras: [],
+    books: [book(77, { editionId: 16 })],
+    editions: [{ id: 16, name: 'The Amazing Spider-Man (2025)' }],
+  })
+  expect(entry.editionName).toBe('The Amazing Spider-Man (2025)')
+})

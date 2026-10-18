@@ -9,11 +9,15 @@ const book = (id: number): ApiLibraryBook => ({
   id, editionId: 9, editionName: 'Venom (2025)', seriesName: 'Venom', arcs: [],
   title: `Secret ${id}`, number: String(254 + id),
   pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0,
+  shelfKey: 'edition:9', shelfName: 'Venom (2025)', shelfVolumeId: null,
 })
 
 const group = (unread: number): VolumeGroup => ({
   editionId: 9,
   editionName: 'Venom (2025)',
+  shelfKey: 'edition:9',
+  shelfName: 'Venom (2025)',
+  shelfVolumeId: null,
   books: Array.from({ length: unread }, (_, i) => book(i + 1)),
 })
 
@@ -84,6 +88,9 @@ test('a comic with no issue number is still named apart from the volume link', (
   const untagged: VolumeGroup = {
     editionId: 4,
     editionName: 'Knull (2026)',
+    shelfKey: 'edition:4',
+    shelfName: 'Knull (2026)',
+    shelfVolumeId: null,
     books: [{ ...book(1), number: null, title: null }],
   }
   render(<MemoryRouter><VolumeGroupTile group={untagged} /></MemoryRouter>)
@@ -122,4 +129,25 @@ test('the deck opens the comic itself', () => {
   renderTile(3)
   const cover = screen.getByRole('link', { name: 'Venom (2025) #255' })
   expect(cover).toHaveAttribute('href', '/read/1')
+})
+
+/** Thirteen trades of one run, arriving as three editions. */
+const collectedGroup = (): VolumeGroup => ({
+  ...group(3),
+  editionId: 84,
+  editionName: 'By Zeb Wells (2023)',
+  shelfKey: 'volume:142577',
+  shelfName: 'The Amazing Spider-Man (2022)',
+  shelfVolumeId: 142577,
+})
+
+test('a collapsed tile is named for the volume and links to its shelf', () => {
+  render(<MemoryRouter><VolumeGroupTile group={collectedGroup()} /></MemoryRouter>)
+  const name = screen.getByRole('link', { name: 'The Amazing Spider-Man (2022)' })
+  expect(name).toHaveAttribute('href', '/volume/142577?status=unread')
+})
+
+test('an uncollapsed tile still links to its edition', () => {
+  render(<MemoryRouter><VolumeGroupTile group={group(2)} /></MemoryRouter>)
+  expect(screen.getByRole('link', { name: 'Venom (2025)' })).toHaveAttribute('href', '/edition/9?status=unread')
 })

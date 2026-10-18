@@ -57,19 +57,27 @@ export default function Series() {
   //
   // Only from two upwards: a tile that opens onto a single tile is a click that buys
   // nothing, which is the rule the shelf already applies to a series holding one volume.
-  const { runs, annuals } = splitAnnuals(series.editions)
+  //
+  // Split over shelves rather than editions: by the time the page draws, three trade
+  // lines of one run are already one thing, and an annual is a shelf of its own.
+  const { runs, annuals } = splitAnnuals(series.shelves)
   const grouped = annuals.length > 1
-  const shown = grouped ? runs : series.editions
-  // An edition the server did not count contributes nothing rather than an NaN subtitle.
-  const annualIssues = annuals.reduce((n, e) => n + (e.bookCount ?? 0), 0)
+  const shown = grouped ? runs : series.shelves
+  // A shelf the server did not count contributes nothing rather than an NaN subtitle.
+  const annualIssues = annuals.reduce((n, s) => n + (s.bookCount ?? 0), 0)
 
   // Under a ?status= filter the listed editions are only a slice, so the confirm waits
   // for the unfiltered series rather than understating what it is about to delete.
   const scope = status ? unfiltered?.series : series
   // What is already shelved, and so is not news. Comic Vine ids only - an edition that
   // was never matched cannot be recognised in a Comic Vine answer either way.
+  //
+  // Both ids, because both are ways of owning a volume: the run you hold as issues, and
+  // the run you hold as trades of it. Without the second, the page offers "The Amazing
+  // Spider-Man (2022) · Find" directly under a shelf of that name. The cost, taken
+  // knowingly: the offer to go and find that run as single issues goes with it.
   const ownedVolumeIds = (scope?.editions ?? [])
-    .map((e) => e.comicvineId)
+    .flatMap((e) => [e.comicvineId, e.collectsVolumeId])
     .filter((id): id is number => id != null)
   const editionCount = scope?.editions.length ?? null
   const issueCount = scope?.bookCount ?? null
@@ -102,14 +110,22 @@ export default function Series() {
       )}
 
       <div className="tile-grid">
-        {shown.map((edition) => (
+        {shown.map((shelf) => (
           <CoverTile
-            key={edition.id}
-            to={withStatus(`/edition/${edition.id}`, status)}
+            key={shelf.key}
+            /* A shelf of several editions is a thing of its own and has a page of its
+               own; a shelf of one is that edition, and goes on linking where it always
+               did. volumeId carries exactly that distinction. */
+            to={withStatus(
+              shelf.volumeId == null ? `/edition/${shelf.editions[0].id}` : `/volume/${shelf.volumeId}`,
+              status,
+            )}
             state={back}
-            img={`/api/editions/${edition.id}/thumbnail`}
-            title={edition.name}
-            subtitle={`${edition.bookCount} issue${edition.bookCount === 1 ? '' : 's'}`}
+            /* The shelf has no art of its own, so it borrows the first edition's, the
+               way the annuals tile borrows the first annual's. */
+            img={`/api/editions/${shelf.editions[0].id}/thumbnail`}
+            title={shelf.name}
+            subtitle={`${shelf.bookCount} issue${shelf.bookCount === 1 ? '' : 's'}`}
           />
         ))}
         {grouped && (
@@ -117,7 +133,7 @@ export default function Series() {
             to={withStatus(`/series/${encodeURIComponent(seriesName)}/annuals`, status)}
             /* The first annual's cover, because the group has no art of its own and a
                blank box beside the run would read as a thumbnail that failed to load. */
-            img={`/api/editions/${annuals[0].id}/thumbnail`}
+            img={`/api/editions/${annuals[0].editions[0].id}/thumbnail`}
             title="Annuals"
             subtitle={`${annualIssues} issue${annualIssues === 1 ? '' : 's'}`}
           />

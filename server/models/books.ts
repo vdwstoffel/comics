@@ -1,5 +1,6 @@
-import { BOOK_STATE_SQL } from './editions.js'
+import { BOOK_STATE_SQL, listEditions } from './editions.js'
 import { deriveReadState } from './progress.js'
+import { groupIntoShelves } from './shelves.js'
 import type { FilterState, BookWithProgress } from './progress.js'
 import type { Db, Book } from '../types.js'
 
@@ -84,6 +85,15 @@ export function findBookByPath(db: Db, filePath: string): Book | undefined {
  */
 export interface LibraryBook extends BookWithProgress {
   editionName: string
+  /**
+   * The shelf this comic belongs to, and what that shelf is called. Three paperback
+   * lines of one run are three editions and one shelf, and the home page groups on this
+   * rather than on the edition so the run draws as one tile there too.
+   */
+  shelfKey: string
+  shelfName: string
+  /** The volume route for the shelf, or null when its edition stands alone. */
+  shelfVolumeId: number | null
   /** Null for an edition nobody has given a series to - the shelf falls back to the
    *  volume's own name, which is a decision about tiles rather than about the data. */
   seriesName: string | null
@@ -146,6 +156,15 @@ export function listLibraryBooks(
     .all(...params) as Array<BookRow & { series_name: string | null; edition_name: string }>
 
   const arcs = arcsByBook(db)
+  // Built from the whole library, never from the filtered rows above: whether a shelf is
+  // collapsed is a fact about which editions exist, not about which of their books a
+  // read-state filter happens to be showing.
+  const shelves = new Map<number, { key: string; name: string; volumeId: number | null }>()
+  for (const shelf of groupIntoShelves(listEditions(db))) {
+    for (const edition of shelf.editions) {
+      shelves.set(edition.id, { key: shelf.key, name: shelf.name, volumeId: shelf.volumeId })
+    }
+  }
 
   return rows
     .sort((a, b) => {
@@ -158,6 +177,11 @@ export function listLibraryBooks(
       editionName: r.edition_name,
       seriesName: r.series_name?.trim() || null,
       arcs: arcs.get(r.id) ?? [],
+      // An edition with no shelf cannot happen - every edition is on one - but a book
+      // standing under its own volume's name is the honest fallback if one ever does.
+      shelfKey: shelves.get(r.edition_id)?.key ?? `edition:${r.edition_id}`,
+      shelfName: shelves.get(r.edition_id)?.name ?? r.edition_name,
+      shelfVolumeId: shelves.get(r.edition_id)?.volumeId ?? null,
     }))
 }
 
@@ -172,6 +196,35 @@ export function listBooksByEdition(db: Db, editionId: number, readState?: Filter
     .sort((a, b) => String(a.number ?? a.filePath).localeCompare(String(b.number ?? b.filePath), undefined, { numeric: true }))
 }
 
+
+/**
+ * Every book on a shelf: the books of several editions, read as one run.
+ *
+ * Ordered by date, which is the only thing that orders them. Trade numbering collides
+ * across collection lines - "by Wells and Romita Jr." holds volumes 1-3 and "By Zeb
+ * Wells" holds 4-12, which chain, but "The 8 Deaths of Spider-Man" is its own volume 1 -
+ * so a shelf sorted by number would put the last story first.
+ *
+ * An undated book goes last rather than to the front, where a null would sort it, and
+ * ties break on id so the order never changes between two reads of the same shelf.
+ */
+export function listBooksByShelf(db: Db, editionIds: number[], readState?: FilterState): Book[] {
+  if (!editionIds.length) return []
+  const filter = readState ? `AND ${BOOK_STATE_SQL[readState]}` : ''
+  const holes = editionIds.map(() => '?').join(',')
+  return (db
+    .prepare(`SELECT b.* FROM book b
+              LEFT JOIN read_progress p ON p.book_id = b.id
+              WHERE b.edition_id IN (${holes}) ${filter}`)
+    .all(...editionIds) as BookRow[])
+    .map((r) => toBook(r) as Book)
+    .sort((a, b) => {
+      if (a.date === b.date) return a.id - b.id
+      if (!a.date) return 1
+      if (!b.date) return -1
+      return a.date.localeCompare(b.date) || a.id - b.id
+    })
+}
 
 const BOOK_FIELDS: Record<string, string> = {
   title: 'title', number: 'number', writer: 'writer', penciller: 'penciller',

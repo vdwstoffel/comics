@@ -14,6 +14,12 @@ interface EditionRow {
   cv_name: string | null
   cv_start_year: number | null
   cv_site_url: string | null
+  collects_volume_id: number | null
+  collects_cv_name: string | null
+  collects_cv_start_year: number | null
+  collects_cv_site_url: string | null
+  collects_checked_at: string | null
+  collects_proposal: string | null
   created_at: string
   book_count?: number
 }
@@ -26,6 +32,12 @@ function toEdition(row: EditionRow | undefined): Edition | undefined {
     comicvineId: row.comicvine_id ?? null, seriesName: row.series_name ?? null,
     cvName: row.cv_name ?? null, cvStartYear: row.cv_start_year ?? null,
     cvSiteUrl: row.cv_site_url ?? null,
+    collectsVolumeId: row.collects_volume_id ?? null,
+    collectsCvName: row.collects_cv_name ?? null,
+    collectsCvStartYear: row.collects_cv_start_year ?? null,
+    collectsCvSiteUrl: row.collects_cv_site_url ?? null,
+    collectsCheckedAt: row.collects_checked_at ?? null,
+    collectsProposal: row.collects_proposal ?? null,
     createdAt: row.created_at, bookCount: row.book_count ?? undefined,
   }
 }
@@ -171,9 +183,9 @@ export function listPublishers(db: Db): PublisherFacet[] {
 // Name changes must go through renameEdition() in services/library.ts, which also
 // moves the files on disk and updates the `folder` column. Updating `name` directly
 // here will leave files in the old folder and break the path invariant.
-const EDITION_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name', seriesName: 'series_name', cvName: 'cv_name', cvStartYear: 'cv_start_year', cvSiteUrl: 'cv_site_url' }
+const EDITION_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name', seriesName: 'series_name', cvName: 'cv_name', cvStartYear: 'cv_start_year', cvSiteUrl: 'cv_site_url', collectsVolumeId: 'collects_volume_id', collectsCvName: 'collects_cv_name', collectsCvStartYear: 'collects_cv_start_year', collectsCvSiteUrl: 'collects_cv_site_url', collectsCheckedAt: 'collects_checked_at', collectsProposal: 'collects_proposal' }
 
-export type EditionUpdate = Partial<Pick<Edition, 'publisher' | 'summary' | 'comicvineId' | 'name' | 'seriesName' | 'cvName' | 'cvStartYear' | 'cvSiteUrl'>>
+export type EditionUpdate = Partial<Pick<Edition, 'publisher' | 'summary' | 'comicvineId' | 'name' | 'seriesName' | 'cvName' | 'cvStartYear' | 'cvSiteUrl' | 'collectsVolumeId' | 'collectsCvName' | 'collectsCvStartYear' | 'collectsCvSiteUrl' | 'collectsCheckedAt' | 'collectsProposal'>>
 
 export const EDITION_UPDATABLE_FIELDS = Object.keys(EDITION_FIELDS) as (keyof EditionUpdate)[]
 

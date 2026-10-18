@@ -2,78 +2,22 @@ import { useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import type { ApiVolumeIssue, ApiBook } from '../api'
+import type { ApiBook, ApiCollectsProposal } from '../api'
 import { useDownload } from '../lib/useDownload'
 import { useBackLink } from '../lib/backOrigin'
 import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
-import MissingIssueTile from '../components/MissingIssueTile'
-import IssueUploadAction from '../components/IssueUploadAction'
 import { tileLabel } from '../lib/tileLabel'
-import { findIssueHref } from '../lib/findIssueHref'
 import { useUpcoming } from '../lib/useUpcoming'
 import { upcomingForEdition } from '../lib/upcomingForEdition'
 import { volumeEntries } from '../lib/volumeEntries'
 import EditionEditDialog from '../components/EditionEditDialog'
+import CollectsBanner from '../components/CollectsBanner'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import FollowButton from '../components/FollowButton'
 import EditionRun from '../components/EditionRun'
+import VolumeIssueTile from '../components/VolumeIssueTile'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
-
-/**
- * One issue of the run: the comic if you have it, otherwise its place in the run and a
- * way to fill it.
- *
- * A missing issue shows no art - a cover is a spoiler for a comic you have not read -
- * and offers `Get` only when exactly one scraped release can be this issue. Anything
- * less certain offers `Find`, which opens the search with the series and year filled
- * in so you choose by eye. The button never guesses; that is the whole point of it.
- */
-function VolumeIssue({ issue, book, editionId, editionName, seriesName }: {
-  issue: ApiVolumeIssue
-  book?: ApiBook
-  editionId: string
-  /** What the run is called, which is where a comic uploaded into a gap is filed. */
-  editionName: string
-  seriesName: string
-}) {
-  const qc = useQueryClient()
-  const label = `#${issue.number ?? '?'}`
-  const { liveByIssue } = useDownload()
-
-  const get = useMutation({
-    mutationFn: () => api.downloadMissingIssue(editionId, issue.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['download'] }),
-  })
-
-  if (issue.owned && issue.bookId != null) {
-    return (
-      <CoverTile
-        to={`/edition/${editionId}?view=carousel&issue=book-${issue.bookId}`}
-        img={`/api/books/${issue.bookId}/thumbnail`}
-        title={book?.title || issue.name || label}
-        subtitle={label}
-        readState={book?.readState}
-        percent={book?.percent}
-      />
-    )
-  }
-
-  return (
-    <MissingIssueTile
-      label={label}
-      siteUrl={issue.siteUrl}
-      hasMatch={issue.match != null}
-      matchTitle={issue.match?.title}
-      findTo={findIssueHref(seriesName, issue.coverDate)}
-      onGet={() => get.mutate()}
-      pending={get.isPending}
-      failed={get.isError}
-      queued={liveByIssue.has(issue.id)}
-      upload={<IssueUploadAction editionName={editionName} issueId={issue.id} label={label} />}
-    />
-  )
-}
 
 export default function Edition() {
   const { id } = useParams()
@@ -189,6 +133,39 @@ export default function Edition() {
   // Renaming onto an existing name merges into it; the button has to say so.
   const collides = needsRename
     && (editionsData?.editions ?? []).some((e) => e.name === suggested && e.id !== data?.edition.id)
+
+  // What this edition reprints. Asked for once per edition, ever: the server stamps the
+  // question as put, so a decline is not re-proposed on every visit.
+  // Set when the user asks Comic Vine again after a decline or a miss, and consumed by
+  // the refetch - the same shape the run's Refresh uses, and out of the query key for
+  // the same reason: a forced read and a normal one are the same data, not two caches.
+  const recheckCollects = useRef(false)
+  const { data: collects, refetch: refetchCollects } = useQuery({
+    queryKey: ['edition-collects', id],
+    queryFn: () => {
+      const force = recheckCollects.current
+      recheckCollects.current = false
+      return api.getCollects(id!, force)
+    },
+  })
+
+  const invalidateShelves = () => {
+    qc.invalidateQueries({ queryKey: ['edition-collects', id] })
+    qc.invalidateQueries({ queryKey: ['series'] })
+    qc.invalidateQueries({ queryKey: ['volume'] })
+    // The home shelf groups on the answer too.
+    qc.invalidateQueries({ queryKey: ['books'] })
+  }
+
+  const confirmCollects = useMutation({
+    mutationFn: (proposal: ApiCollectsProposal) => api.confirmCollects(id!, proposal),
+    onSuccess: invalidateShelves,
+  })
+
+  const declineCollects = useMutation({
+    mutationFn: () => api.declineCollects(id!),
+    onSuccess: invalidateShelves,
+  })
 
   const applyName = useMutation({
     mutationFn: () => api.renameEdition(id!, suggested!, data!.edition.cvName!),
@@ -422,6 +399,20 @@ export default function Edition() {
           </button>
         </div>
       )}
+      {/* What this edition reprints, which is a different question from what it is -
+          and the one that decides which shelf its comics live on. */}
+      <CollectsBanner
+        proposal={collects?.proposal ?? null}
+        confirmed={collects?.confirmed ?? false}
+        saving={confirmCollects.isPending || declineCollects.isPending}
+        onConfirm={(proposal) => confirmCollects.mutate(proposal)}
+        onDecline={() => declineCollects.mutate()}
+        onRecheck={() => { recheckCollects.current = true; void refetchCollects() }}
+        onSetByHand={(volumeId) => confirmCollects.mutate({
+          volumeId, name: null, startYear: null, siteUrl: null,
+        })}
+      />
+
       {!suggested && (
         <button type="button" className="btn btn-ghost" disabled={lookup.isPending} onClick={() => lookup.mutate()}>
           {lookup.isPending ? 'Checking…' : 'Check Comic Vine'}
@@ -449,7 +440,7 @@ export default function Edition() {
           ? (
             <>
               {runIssues.map((issue) => (
-                <VolumeIssue
+                <VolumeIssueTile
                   key={issue.id}
                   issue={issue}
                   book={bookById.get(issue.bookId ?? -1)}

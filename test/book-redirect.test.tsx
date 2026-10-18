@@ -18,6 +18,7 @@ function draw(path = '/book/19') {
         <Routes>
           <Route path="/book/:id" element={<BookRedirect />} />
           <Route path="/edition/:id" element={<p>the run</p>} />
+          <Route path="/volume/:volumeId" element={<p>the shelf</p>} />
           <Route path="/" element={<p>the library</p>} />
         </Routes>
       </MemoryRouter>
@@ -54,4 +55,27 @@ test('a comic the library does not have sends you to the library', async () => {
   // Waiting on the destination, not on the url: every path contains a slash, so a text
   // match on '/' would pass before the redirect had happened at all.
   expect(await screen.findByText('the library')).toBeInTheDocument()
+})
+
+/** The book payload, with whatever shelf answer this test wants. */
+function mockBook(shelfVolumeId: number | null) {
+  globalThis.fetch = vi.fn(async () => ({
+    ok: true,
+    json: async () => ({ book: { id: 19, editionId: 84, pageCount: 20 }, progress: {}, shelfVolumeId }),
+  })) as unknown as typeof fetch
+}
+
+// Spec §5.2. Three trade lines of one run are one shelf, and that shelf is where the
+// comics on it live: landing on "Amazing Spider-Man By Zeb Wells (2023)" would put you
+// back on one of the three shelves the whole feature exists to stop showing.
+test('a collected comic opens on its volume shelf', async () => {
+  mockBook(142577)
+  draw()
+  await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/volume/142577?issue=book-19'))
+})
+
+test('a comic in a stand-alone edition still opens in that edition', async () => {
+  mockBook(null)
+  draw()
+  await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/edition/84?issue=book-19'))
 })

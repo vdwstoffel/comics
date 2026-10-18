@@ -14,6 +14,8 @@ import { findMatchForIssue } from '../services/issueMatching.js'
 import { startIssueDownload, issueLabel } from '../services/issueDownload.js'
 import { queueMissingIssues, missingMatchedIssues } from '../services/bulkIssueDownload.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
+import { detectCollects as detectCollectsReal } from '../services/detectCollects.js'
+import type { CollectsProposal } from '../services/detectCollects.js'
 import { editionFilterOf, readStateOf } from './filters.js'
 import type { LibraryQuery } from './filters.js'
 import { getComicVineKey } from '../models/settings.js'
@@ -22,15 +24,43 @@ import type { App } from '../types.js'
 interface IdParams { id: string }
 interface EditEditionBody { name?: string; seriesName?: string }
 
+/** The stored suggestion. Unparseable means nobody suggested anything worth keeping. */
+function readProposal(stored: string | null): CollectsProposal | null {
+  if (!stored) return null
+  try {
+    const parsed = JSON.parse(stored) as CollectsProposal
+    return Number.isFinite(parsed?.volumeId) ? parsed : null
+  } catch {
+    return null
+  }
+}
+
+interface CollectsBody {
+  volumeId: number
+  name?: string | null
+  startYear?: number | null
+  siteUrl?: string | null
+}
+
 export interface EditionRouteOpts {
   /** Injected so tests never touch the network. */
   fetchPage?: (url: string) => Promise<string>
+  /** Injected for the same reason: detection reads Comic Vine's prose. */
+  detect?: typeof detectCollectsReal
+  /** Names a volume set by hand. Injected so tests never touch the network. */
+  lookupVolume?: (id: number) => Promise<{ name?: string; startYear?: number; siteUrl?: string }>
   /** The pause between issues of a "Get all" walk. Injected as 0 by tests. */
   bulkDelayMs?: number
 }
 
 export default async function editionRoutes(app: App, opts: EditionRouteOpts = {}) {
-  const { fetchPage = fetchSourcePage, bulkDelayMs } = opts
+  const {
+    fetchPage = fetchSourcePage,
+    bulkDelayMs,
+    detect = detectCollectsReal,
+    lookupVolume = (volumeId: number) =>
+      createComicVine({ apiKey: () => getComicVineKey(app.db) }).getVolume(volumeId),
+  } = opts
   app.get<{ Querystring: LibraryQuery }>('/api/editions', async (req) => {
     return { editions: listEditions(app.db, editionFilterOf(req.query)) }
   })
@@ -81,6 +111,120 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
 
   // An edition whose books were matched before the volume was recorded has no
   // suggestion to show. Walk to the first matched book and resolve its volume once.
+  /**
+   * What this edition reprints: the stored answer when there is one, otherwise a
+   * proposal worked out from Comic Vine.
+   *
+   * Comic Vine is asked exactly once per edition, ever. `collects_checked_at` is what
+   * records that the question was put, so a decline - or a look that found nothing -
+   * is not re-proposed on every page view. Nothing here writes the link itself.
+   */
+  app.get<{ Params: IdParams; Querystring: { recheck?: string } }>(
+    '/api/editions/:id/collects',
+    async (req, reply) => {
+      const edition = getEdition(app.db, Number(req.params.id))
+      if (!edition) return reply.code(404).send({ error: 'edition not found' })
+
+      // Confirmed: the stored link is the answer, and Comic Vine is not consulted again.
+      if (edition.collectsVolumeId != null) {
+        return {
+          proposal: {
+            volumeId: edition.collectsVolumeId,
+            name: edition.collectsCvName,
+            startYear: edition.collectsCvStartYear,
+            siteUrl: edition.collectsCvSiteUrl,
+          },
+          confirmed: true,
+          checkedAt: edition.collectsCheckedAt,
+        }
+      }
+
+      // Already asked. Serve what Comic Vine said last time rather than asking again -
+      // and rather than serving nothing, which would make the banner disappear the
+      // moment you tabbed away to check the link it is asking you to check.
+      if (edition.collectsCheckedAt && req.query.recheck !== '1') {
+        return {
+          proposal: readProposal(edition.collectsProposal),
+          confirmed: false,
+          checkedAt: edition.collectsCheckedAt,
+        }
+      }
+
+      // Nothing to go on yet: this edition has no volume of its own, so detection would
+      // return null for a reason that says nothing about what it collects. Asking is
+      // deferred rather than answered, or pressing "Check Comic Vine" and coming back
+      // would find the question already closed.
+      if (!edition.comicvineId) return { proposal: null, confirmed: false, checkedAt: null }
+
+      const cv = createComicVine({ apiKey: () => getComicVineKey(app.db) })
+      let proposal: CollectsProposal | null
+      try {
+        proposal = await detect({ db: app.db, cv }, edition.id)
+      } catch {
+        // A missing key, a rate limit, a network blip. None of those are an answer, and
+        // recording them as one would close the question for good.
+        return { proposal: null, confirmed: false, checkedAt: null }
+      }
+
+      // Comic Vine answered - even if the answer was "nothing". That is worth recording:
+      // it is what stops the question being put again on every page view.
+      const checkedAt = new Date().toISOString()
+      updateEdition(app.db, edition.id, {
+        collectsCheckedAt: checkedAt,
+        collectsProposal: proposal ? JSON.stringify(proposal) : null,
+      })
+      return { proposal, confirmed: false, checkedAt }
+    },
+  )
+
+  /** Yes: this edition reprints that volume. The one thing that writes the link. */
+  app.put<{ Params: IdParams; Body: CollectsBody }>('/api/editions/:id/collects', async (req, reply) => {
+    const edition = getEdition(app.db, Number(req.params.id))
+    if (!edition) return reply.code(404).send({ error: 'edition not found' })
+    const volumeId = Number(req.body?.volumeId)
+    if (!Number.isFinite(volumeId)) return reply.code(400).send({ error: 'volumeId required' })
+
+    // Set by hand, a volume id is all you have to type. The name is what the shelf is
+    // headed with, so it is looked up rather than left blank - and a Comic Vine that
+    // will not answer is no reason to refuse a link the user is sure of.
+    const named = req.body.name != null ? req.body : {
+      ...req.body,
+      ...(await lookupVolume(volumeId).catch(() => ({})) as Partial<CollectsBody>),
+    }
+
+    updateEdition(app.db, edition.id, {
+      collectsVolumeId: volumeId,
+      collectsCvName: named.name ?? null,
+      collectsCvStartYear: named.startYear ?? null,
+      collectsCvSiteUrl: named.siteUrl ?? null,
+      collectsCheckedAt: new Date().toISOString(),
+      // The suggestion has served its purpose; the answer is the link now.
+      collectsProposal: null,
+    })
+    return { edition: getEdition(app.db, edition.id) }
+  })
+
+  /**
+   * No. Both "this collects nothing" and taking back a confirmation that was wrong -
+   * which is the failure the confirmation step exists to guard, so it has to be
+   * reversible. The stamp stays, so the question is not asked again.
+   */
+  app.delete<{ Params: IdParams }>('/api/editions/:id/collects', async (req, reply) => {
+    const edition = getEdition(app.db, Number(req.params.id))
+    if (!edition) return reply.code(404).send({ error: 'edition not found' })
+
+    updateEdition(app.db, edition.id, {
+      collectsVolumeId: null,
+      collectsCvName: null,
+      collectsCvStartYear: null,
+      collectsCvSiteUrl: null,
+      collectsCheckedAt: edition.collectsCheckedAt ?? new Date().toISOString(),
+      // Declined, so the suggestion goes too. ?recheck=1 is how you ask again.
+      collectsProposal: null,
+    })
+    return { edition: getEdition(app.db, edition.id) }
+  })
+
   app.post<{ Params: IdParams }>('/api/editions/:id/comicvine-volume', async (req, reply) => {
     const edition = getEdition(app.db, Number(req.params.id))
     if (!edition) return reply.code(404).send({ error: 'edition not found' })

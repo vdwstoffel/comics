@@ -10,6 +10,11 @@ export interface ApiEdition {
   bookCount?: number
   cvName?: string | null
   cvStartYear?: number | null
+  /** The Comic Vine volume this edition reprints, where `comicvineId` is the one it is. */
+  collectsVolumeId?: number | null
+  collectsCvName?: string | null
+  collectsCvStartYear?: number | null
+  collectsCvSiteUrl?: string | null
 }
 
 export interface ApiBook {
@@ -36,10 +41,26 @@ export interface ApiBook {
   cvSiteUrl?: string | null
 }
 
+/** One volume's worth of editions: three trade lines of one run are one of these. */
+export interface ApiShelf {
+  key: string
+  /** The volume route target. Null when the shelf is one edition, which links to itself. */
+  volumeId: number | null
+  name: string
+  editions: ApiEdition[]
+  bookCount: number
+  /** The year the volume began. What a series orders its shelves by. */
+  startYear: number | null
+  siteUrl: string | null
+  /** True when an edition here holds the volume's own issues rather than collections. */
+  holdsIssues: boolean
+}
+
 export interface ApiSeries {
   name: string
   bookCount: number
   editions: ApiEdition[]
+  shelves: ApiShelf[]
 }
 
 export interface ApiCredit {
@@ -131,6 +152,11 @@ export interface ApiVolumeIssue {
 export interface ApiLibraryBook extends ApiBook {
   editionId: number
   editionName: string
+  /** The shelf this comic is on: three paperback lines of one run share one. */
+  shelfKey: string
+  shelfName: string
+  /** The volume route for that shelf, or null when its edition stands alone. */
+  shelfVolumeId: number | null
   /** Null for a volume nobody has given a series to; the shelf falls back to its name. */
   seriesName: string | null
   /** Empty for the many comics tagged with no arc at all. */
@@ -364,6 +390,22 @@ export interface PublisherFacet {
 }
 
 export interface EditionsListResponse { editions: ApiEdition[] }
+export interface VolumeShelfResponse { shelf: ApiShelf; books: ApiBook[] }
+
+/** The Comic Vine volume an edition reprints, proposed or confirmed. */
+export interface ApiCollectsProposal {
+  volumeId: number
+  name: string | null
+  startYear: number | null
+  siteUrl: string | null
+}
+
+export interface CollectsResponse {
+  proposal: ApiCollectsProposal | null
+  confirmed: boolean
+  /** When Comic Vine was last asked. Non-null means it will not be asked again. */
+  checkedAt: string | null
+}
 export interface SeriesListResponse { series: ApiSeries[] }
 export interface SeriesResponse { series: ApiSeries }
 export interface EditionDetailResponse { edition: ApiEdition; books: ApiBook[] }
@@ -371,6 +413,8 @@ export interface EditionDetailResponse { edition: ApiEdition; books: ApiBook[] }
 export interface BookResponse {
   book: ApiBook
   editionName?: string | null
+  /** The volume shelf this comic belongs to, or null when its edition stands alone. */
+  shelfVolumeId?: number | null
   progress: ApiProgress
   credits?: ApiCredit[]
   tags?: ApiTag[]
@@ -546,6 +590,23 @@ export const api = {
       method: 'PATCH', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ seriesName }),
     }),
+  /** What this edition reprints: the stored answer, or a proposal worked out once. */
+  getCollects: (id: string | number, recheck = false) =>
+    json<CollectsResponse>(`/api/editions/${id}/collects${recheck ? '?recheck=1' : ''}`),
+  confirmCollects: (id: string | number, proposal: ApiCollectsProposal) =>
+    json<EditionResponse>(`/api/editions/${id}/collects`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(proposal),
+    }),
+  declineCollects: (id: string | number) =>
+    json<EditionResponse>(`/api/editions/${id}/collects`, { method: 'DELETE' }),
+
+  /** One volume's shelf: every comic of it you own, across every collection of it. */
+  getVolumeShelf: (volumeId: string | number, readState?: FilterState) => {
+    const query = readState ? `?readState=${readState}` : ''
+    return json<VolumeShelfResponse>(`/api/volumes/${volumeId}${query}`)
+  },
   getEditionDetail: (id: string | number, readState?: FilterState) => {
     const query = readState ? `?readState=${readState}` : ''
     return json<EditionDetailResponse>(`/api/editions/${id}${query}`)
