@@ -109,8 +109,9 @@ function ThisWeek() {
             {writeOutDay(data.day)}
             {/*
               Comic Vine fills a Wednesday in over the hours after it, and a day fetched
-              before it finished can be held for six hours - or, once fetched after the
-              day ended, for good. This is the way to ask again without waiting either out.
+              before it finished can be held for six hours - or, once it holds issues and
+              the day has ended, for good. This is the way to ask again without waiting
+              either out.
             */}
             <button
               type="button"

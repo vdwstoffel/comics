@@ -101,12 +101,30 @@ test('an empty day fetched during that same day is refetched, not frozen empty',
   expect(getFreshRelease(db, '2026-09-09', new Date('2026-09-10T09:00:00.000Z'))).toBeUndefined()
 })
 
-// An empty day that was fetched after the day ended really is quiet, and must not
-// refetch forever - that is what release_day exists for.
-test('an empty day fetched after the day ended stays empty rather than refetching', () => {
+// The deepest variant: Comic Vine's store_date backfill can arrive DAYS after the
+// Wednesday, not hours. A day read the next morning, while that backfill had not landed,
+// came back empty and was stamped final - and the route's one-week step-back then served
+// last Wednesday, confidently, for good. "Fetched after the day ended" is evidence that
+// the day is over, not that Comic Vine has finished writing it down.
+test('an empty day fetched the morning after is refetched, not frozen as a quiet week', () => {
   const db = openDb(':memory:')
-  cacheRelease(db, '2026-09-09', [], '2026-09-10T09:00:00.000Z')
-  const held = getFreshRelease(db, '2026-09-09', new Date('2026-09-20T09:00:00.000Z'))
+  cacheRelease(db, '2026-10-21', [], '2026-10-22T18:18:00.000Z')
+  expect(getFreshRelease(db, '2026-10-21', new Date('2026-10-23T09:00:00.000Z'))).toBeUndefined()
+})
+
+test('an empty day fetched six days on is still inside the week and refetched', () => {
+  const db = openDb(':memory:')
+  cacheRelease(db, '2026-09-09', [], '2026-09-15T09:00:00.000Z')
+  expect(getFreshRelease(db, '2026-09-09', new Date('2026-09-15T20:00:00.000Z'))).toBeUndefined()
+})
+
+// An empty day that was still empty a week later really is quiet, and must not refetch
+// forever - that is what release_day exists for. The week is the margin: the next
+// Wednesday has been and gone, so nothing further is coming for this one.
+test('an empty day still empty a week later settles as a genuinely quiet Wednesday', () => {
+  const db = openDb(':memory:')
+  cacheRelease(db, '2026-09-09', [], '2026-09-16T09:00:00.000Z')
+  const held = getFreshRelease(db, '2026-09-09', new Date('2026-09-30T09:00:00.000Z'))
   expect(held).toBeDefined()
   expect(held?.issues).toEqual([])
 })

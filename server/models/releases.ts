@@ -1,4 +1,5 @@
 import type { CvReleaseIssue } from '../lib/comicvine.js'
+import { shiftDays } from '../lib/releaseDay.js'
 import type { Db } from '../types.js'
 
 /**
@@ -7,6 +8,17 @@ import type { Db } from '../types.js'
  * that caught three issues of an eventual twenty must not hold them forever.
  */
 export const TODAY_MAX_AGE_MS = 6 * 60 * 60 * 1000
+
+/**
+ * How long an EMPTY day stays open to being asked about again.
+ *
+ * Comic Vine's store_date backfill arrives over days, not hours. So a fetch made after
+ * the Wednesday ended is evidence that the day is over - not that Comic Vine has
+ * finished writing it down, and an empty answer the next morning is as likely to be a
+ * backfill that has not landed as a Wednesday with nothing on it. A week is the margin:
+ * once the NEXT Wednesday has been and gone, nothing further is coming for this one.
+ */
+export const EMPTY_DAY_SETTLES_AFTER_DAYS = 7
 
 /** A release issue as stored: Comic Vine's fields plus the publisher we resolved. */
 export type ReleaseIssue = CvReleaseIssue & { publisher: string }
@@ -173,16 +185,25 @@ export function getCachedRelease(
 /**
  * What we hold for a day, if it can still be trusted - the one place that decides.
  *
- * A snapshot is final only once it was FETCHED after the day it describes had ended.
+ * A snapshot is final only once it was FETCHED late enough that nothing more can arrive.
  * Comic Vine carries no future store_dates (spec §2.4), so a Wednesday only fills in on
  * or after that Wednesday: an evening visit that caught 12 of an eventual 22 issues - or
  * none at all - is the normal case, not the exception. Keying permanence on the day
  * merely being in the past instead froze exactly that partial snapshot the moment UTC
  * midnight passed, and an empty one froze into a permanent fallback to last Wednesday.
  *
- * So: fetched_at's date strictly after `day` means nothing more can arrive and the
- * snapshot is read at any age; fetched_at on `day` or earlier means the day was still
- * filling in when we looked, and it expires after TODAY_MAX_AGE_MS.
+ * "Late enough" differs by what we found, because the two answers carry different
+ * evidence:
+ *
+ * - We hold issues: fetched_at's date strictly after `day`. The day is over and we have
+ *   its contents, so the snapshot is read at any age.
+ * - We hold nothing: fetched_at's date at or after `day` plus
+ *   EMPTY_DAY_SETTLES_AFTER_DAYS. An empty answer the morning after is as likely to be a
+ *   backfill that has not landed as a quiet Wednesday, and reading it as final was what
+ *   pinned the Latest tab to last week with neither `stale` nor `unavailable` to show.
+ *
+ * Anything short of that means the day may still be filling in, and it expires after
+ * TODAY_MAX_AGE_MS.
  */
 export function getFreshRelease(
   db: Db,
@@ -191,7 +212,13 @@ export function getFreshRelease(
 ): CachedRelease | undefined {
   const held = getCachedRelease(db, day, Infinity, now)
   if (!held) return undefined
-  const settled = held.fetchedAt.slice(0, 10) > day
+  const fetchedOn = held.fetchedAt.slice(0, 10)
+  // Two rules, because the two shapes carry different evidence. A day we hold issues for
+  // is final the moment it was fetched after the day ended. An empty one proves only
+  // that we found nothing yet, and needs the backfill margin before it counts as quiet.
+  const settled = held.issues.length > 0
+    ? fetchedOn > day
+    : fetchedOn >= shiftDays(day, EMPTY_DAY_SETTLES_AFTER_DAYS)
   if (settled) return held
   return withinAge(held.fetchedAt, TODAY_MAX_AGE_MS, now) ? held : undefined
 }

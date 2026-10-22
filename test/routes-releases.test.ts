@@ -5,6 +5,7 @@ import { openDb } from '../server/db.js'
 import { upsertEdition } from '../server/models/editions.js'
 import { insertBook, updateBook } from '../server/models/books.js'
 import { cacheRelease, getCachedRelease } from '../server/models/releases.js'
+import type { ReleaseIssue } from '../server/models/releases.js'
 import { setComicVineKey } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
 
@@ -12,6 +13,16 @@ import type { Config } from '../server/config.js'
 // rather than injected: the route reads `new Date()` directly, and a seam in production
 // code that exists only for a test is a seam worth not having.
 const NOW = new Date('2026-09-14T12:00:00.000Z')
+
+// A cached day that actually holds something. The settling rule reads the two shapes
+// differently - a day with issues is final once the day has ended, an empty one has to
+// outlast the backfill - so a test about the first cannot be written with an empty day.
+const HELD: ReleaseIssue[] = [
+  { id: 1192026, number: '14', publisher: 'Marvel', volumeId: 176900, volumeName: 'Black Cat',
+    coverDate: '2026-11-01', storeDate: '2026-09-09', coverUrl: 'c1.jpg', siteUrl: 'https://cv/1' },
+  { id: 1191941, number: '1102', publisher: 'DC Comics', volumeId: 91078, volumeName: 'Action Comics',
+    coverDate: '2026-11-01', storeDate: '2026-09-09', coverUrl: 'c2.jpg', siteUrl: 'https://cv/2' },
+]
 
 beforeEach(() => { vi.useFakeTimers({ shouldAdvanceTime: true }); vi.setSystemTime(NOW) })
 afterEach(() => { vi.useRealTimers() })
@@ -365,16 +376,31 @@ test('a day fetched during that same day is asked about again later', async () =
   } finally { await t.cleanup() }
 })
 
-test('a day fetched after the day ended costs no Comic Vine requests', async () => {
+test('a day that holds issues and has ended costs no Comic Vine requests', async () => {
   const t = await setup(LIVE)
-  // Thursday morning: nothing more can arrive for a Wednesday that is over.
+  // Thursday morning, and we have the day's contents: nothing more can arrive.
+  cacheRelease(t.db, '2026-09-09', HELD, '2026-09-10T09:00:00.000Z')
+  try {
+    const res = await t.app.inject({ url: '/api/releases' })
+    expect(res.json().day).toBe('2026-09-09')
+    expect(t.urls.filter((u) => u.includes('filter=store_date%3A2026-09-09'))).toHaveLength(0)
+  } finally { await t.cleanup() }
+})
+
+// The symptom this rule was changed for: Comic Vine's store_date backfill had not landed
+// when we looked on the Thursday, so the Wednesday read as empty and was stamped final.
+// The step-back below then served last Wednesday - correct date, wrong week, and no
+// `stale` or `unavailable` to explain it - and no later visit ever asked again.
+test('an empty day fetched the morning after is asked about again, not frozen', async () => {
+  const t = await setup(LIVE)
   cacheRelease(t.db, '2026-09-09', [], '2026-09-10T09:00:00.000Z')
   try {
     const res = await t.app.inject({ url: '/api/releases' })
-    // Settled and genuinely empty, so it falls back - but only the fallback day is
-    // fetched; the settled day itself is never re-asked.
-    expect(res.json().day).toBe('2026-09-02')
-    expect(t.urls.filter((u) => u.includes('filter=store_date%3A2026-09-09'))).toHaveLength(0)
+    expect(t.urls.filter((u) => u.includes('filter=store_date%3A2026-09-09')).length)
+      .toBeGreaterThan(0)
+    // And having asked, it finds the real Wednesday rather than falling back a week.
+    expect(res.json().day).toBe('2026-09-09')
+    expect(res.json().publishers.flatMap((p: { issues: unknown[] }) => p.issues)).toHaveLength(2)
   } finally { await t.cleanup() }
 })
 
@@ -384,8 +410,8 @@ test('what makes a cached day final is the fetch time, not the day being past', 
   const during = await setup(LIVE)
   const after = await setup(LIVE)
   try {
-    cacheRelease(during.db, '2026-09-09', [], '2026-09-09T20:00:00.000Z')
-    cacheRelease(after.db, '2026-09-09', [], '2026-09-10T09:00:00.000Z')
+    cacheRelease(during.db, '2026-09-09', HELD, '2026-09-09T20:00:00.000Z')
+    cacheRelease(after.db, '2026-09-09', HELD, '2026-09-10T09:00:00.000Z')
     const asked = (t: { urls: string[] }) =>
       t.urls.filter((u) => u.includes('filter=store_date%3A2026-09-09')).length
     await during.app.inject({ url: '/api/releases' })
