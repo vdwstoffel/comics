@@ -203,3 +203,40 @@ test('a 404 re-files nothing', async () => {
   await del('/api/editions/9999/collects')
   expect(refile).toHaveLength(0)
 })
+
+test('the limited flag can be set and cleared through the edition patch', async () => {
+  await app.inject({ method: 'PATCH', url: `/api/editions/${id}`, payload: { limited: true } })
+  expect(getEdition(app.db, id)!.limited).toBe(true)
+
+  await app.inject({ method: 'PATCH', url: `/api/editions/${id}`, payload: { limited: false } })
+  expect(getEdition(app.db, id)!.limited).toBe(false)
+})
+
+test('a patch with nothing in it is still a 400', async () => {
+  const res = await app.inject({ method: 'PATCH', url: `/api/editions/${id}`, payload: {} })
+  expect(res.statusCode).toBe(400)
+})
+
+// Changing the series changes which folder an edition's files belong in, exactly as a
+// collects link does. It used to write the column and leave the files behind, so the
+// disk disagreed with the app until the next scan.
+test('changing the series re-files the edition', async () => {
+  const refiled = (app as unknown as { refiled: number[] }).refiled
+  await app.inject({ method: 'PATCH', url: `/api/editions/${id}`, payload: { seriesName: 'Avengers' } })
+  expect(refiled).toHaveLength(1)
+})
+
+// The limited flag decides which heading it is drawn under and nothing about where it
+// lives, so there is nothing to move.
+test('ticking limited moves no files', async () => {
+  const refiled = (app as unknown as { refiled: number[] }).refiled
+  await app.inject({ method: 'PATCH', url: `/api/editions/${id}`, payload: { limited: true } })
+  expect(refiled).toHaveLength(0)
+})
+
+// A rename already moves the files itself.
+test('a rename does not re-file twice', async () => {
+  const refiled = (app as unknown as { refiled: number[] }).refiled
+  await app.inject({ method: 'PATCH', url: `/api/editions/${id}`, payload: { name: 'Renamed (2023)' } })
+  expect(refiled).toHaveLength(0)
+})

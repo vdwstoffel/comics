@@ -22,7 +22,7 @@ import { getComicVineKey } from '../models/settings.js'
 import type { App, Ctx } from '../types.js'
 
 interface IdParams { id: string }
-interface EditEditionBody { name?: string; seriesName?: string }
+interface EditEditionBody { name?: string; seriesName?: string; limited?: boolean }
 
 /** The stored suggestion. Unparseable means nobody suggested anything worth keeping. */
 function readProposal(stored: string | null): CollectsProposal | null {
@@ -107,8 +107,9 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
   app.patch<{ Params: IdParams; Body: EditEditionBody }>('/api/editions/:id', async (req, reply) => {
     const wantsRename = req.body?.name !== undefined
     const wantsReseries = req.body?.seriesName !== undefined
-    if (!wantsRename && !wantsReseries) {
-      return reply.code(400).send({ error: 'name or seriesName is required' })
+    const wantsLimited = typeof req.body?.limited === 'boolean'
+    if (!wantsRename && !wantsReseries && !wantsLimited) {
+      return reply.code(400).send({ error: 'name, seriesName or limited is required' })
     }
 
     const name = (req.body?.name ?? '').trim()
@@ -121,7 +122,18 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
     if (wantsReseries) {
       updateEdition(app.db, existing.id, { seriesName: req.body!.seriesName!.trim() || null })
     }
-    if (!wantsRename) return { edition: getEdition(app.db, existing.id) }
+    // Which section of the series page this belongs under. Moves nothing: a limited
+    // series is filed under its franchise either way.
+    if (wantsLimited) updateEdition(app.db, existing.id, { limited: req.body!.limited! })
+
+    if (!wantsRename) {
+      // A series change moves an edition into a different folder, so the files follow -
+      // the same bargain a collects change makes. Not for `limited`, which decides
+      // which heading it is drawn under and nothing about where it lives; and not when
+      // renaming, because renameEdition moves the files itself just below.
+      if (wantsReseries) await refileQuietly()
+      return { edition: getEdition(app.db, existing.id) }
+    }
 
     const result = await renameEdition({ db: app.db, config: app.config }, existing.id, name)
     return { edition: result.edition }

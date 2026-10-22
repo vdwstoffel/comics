@@ -128,3 +128,28 @@ test('an edition Comic Vine knows nothing about has no year to sort by', () => {
   expect(shelf.startYear).toBeNull()
   db.close()
 })
+
+test('a shelf is limited only when every edition on it is', () => {
+  const db = openDb(':memory:')
+  seed(db, 'Batman (2025)', 14, { comicvineId: 166619, cvName: 'Batman', cvStartYear: 2025, seriesName: 'Batman' })
+  seed(db, 'Batman: Bad Seeds - Sunset (2026)', 1, { seriesName: 'Batman', limited: true })
+  const shelves = groupIntoShelves(listEditions(db))
+  expect(shelves.find((s) => s.name === 'Batman (2025)')!.limited).toBe(false)
+  expect(shelves.find((s) => s.name.includes('Sunset'))!.limited).toBe(true)
+  db.close()
+})
+
+// A collected run gathers several editions. One trade line ticked by hand must not
+// drag the whole run into the limited section.
+test('a run whose trade line was ticked limited is still a run', () => {
+  const db = openDb(':memory:')
+  const collects = {
+    seriesName: 'The Amazing Spider-Man', collectsVolumeId: 142577,
+    collectsCvName: 'The Amazing Spider-Man', collectsCvStartYear: 2022,
+  }
+  seed(db, 'by Wells and Romita Jr. (2022)', 3, { comicvineId: 149382, ...collects })
+  seed(db, 'By Zeb Wells (2023)', 9, { comicvineId: 150443, limited: true, ...collects })
+  const shelf = groupIntoShelves(listEditions(db)).find((s) => s.key === 'volume:142577')!
+  expect(shelf.limited).toBe(false)
+  db.close()
+})

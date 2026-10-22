@@ -63,6 +63,13 @@ export default function Series() {
   const { runs, annuals } = splitAnnuals(series.shelves)
   const grouped = annuals.length > 1
   const shown = grouped ? runs : series.shelves
+  // A limited series is a volume of its own but not a run of this one, and on a
+  // franchise shelf there will eventually be more minis than runs. Split, the runs stay
+  // where they have always been and the rest stops crowding them. The heading only
+  // appears when something is under it: most series have no minis at all, and a
+  // standing empty section on every one of those pages would be noise.
+  const mainShelves = shown.filter((s) => !s.limited)
+  const limitedShelves = shown.filter((s) => s.limited)
   // A shelf the server did not count contributes nothing rather than an NaN subtitle.
   const annualIssues = annuals.reduce((n, s) => n + (s.bookCount ?? 0), 0)
 
@@ -114,7 +121,7 @@ export default function Series() {
       )}
 
       <div className="tile-grid">
-        {shown.map((shelf) => (
+        {mainShelves.map((shelf) => (
           <CoverTile
             key={shelf.key}
             /* A shelf of several editions is a thing of its own and has a page of its
@@ -143,6 +150,27 @@ export default function Series() {
           />
         )}
       </div>
+
+      {limitedShelves.length > 0 && (
+        <section className="series-limited">
+          <h2 className="shelf-heading">Limited series</h2>
+          <div className="tile-grid">
+            {limitedShelves.map((shelf) => (
+              <CoverTile
+                key={shelf.key}
+                to={withStatus(
+                  shelf.volumeId == null ? `/edition/${shelf.editions[0].id}` : `/volume/${shelf.volumeId}`,
+                  status,
+                )}
+                state={back}
+                img={`/api/editions/${shelf.editions[0].id}/thumbnail`}
+                title={shelf.name}
+                subtitle={`${shelf.bookCount} issue${shelf.bookCount === 1 ? '' : 's'}`}
+              />
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Held back until the whole series is in hand: offering a volume as new because a
           filter is hiding the copy you own is worse than offering it a moment later. */}

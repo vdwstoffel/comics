@@ -4066,3 +4066,25 @@ textarea.input:hover:not(:focus) {
 .edition-side__collections-list a:hover {
   text-decoration: underline;
 }
+
+/* A limited series is a volume of its own but not a run of the series it is under, so
+   the runs keep the top of the page and these sit below them. */
+.series-limited {
+  margin-top: 32px;
+}
+
+/* The checkbox and its words read as one line, which is what a label is for. */
+.modal-field--check label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 0.875rem;
+  color: var(--text);
+}
+
+.modal-field--check input {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent, #e5484d);
+}

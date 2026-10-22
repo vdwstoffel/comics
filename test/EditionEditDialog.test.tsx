@@ -36,7 +36,7 @@ test('saving passes the edited values back, trimmed', () => {
   fireEvent.change(screen.getByLabelText(/edition name/i), { target: { value: '  Batman Vol. 2  ' } })
   fireEvent.change(screen.getByLabelText(/^series$/i), { target: { value: '  Batman  ' } })
   fireEvent.click(screen.getByRole('button', { name: 'Save' }))
-  expect(onSave).toHaveBeenCalledWith({ name: 'Batman Vol. 2', seriesName: 'Batman' })
+  expect(onSave).toHaveBeenCalledWith({ name: 'Batman Vol. 2', seriesName: 'Batman', limited: false })
 })
 
 test('pressing Enter in a field saves', () => {
@@ -87,4 +87,32 @@ test('Save is disabled while a save is in flight', () => {
 test('an error is shown inside the dialog', () => {
   renderDialog({ error: 'Rename failed: folder exists' })
   expect(screen.getByText(/folder exists/)).toBeInTheDocument()
+})
+
+test('the limited box shows what the edition is, and saves a change to it', () => {
+  const onSave = vi.fn()
+  render(
+    <EditionEditDialog
+      name="Batman: Bad Seeds - Sunset (2026)"
+      seriesName="Batman"
+      limited
+      onSave={onSave}
+      onClose={vi.fn()}
+    />,
+  )
+  const box = screen.getByRole('checkbox', { name: /limited series/i })
+  expect(box).toBeChecked()
+
+  fireEvent.click(box)
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ limited: false }))
+})
+
+test('an edition nobody marked limited saves unchanged', () => {
+  const onSave = vi.fn()
+  render(<EditionEditDialog name="Batman (2025)" seriesName="Batman" onSave={onSave} onClose={vi.fn()} />)
+  expect(screen.getByRole('checkbox', { name: /limited series/i })).not.toBeChecked()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Save' }))
+  expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ limited: false }))
 })

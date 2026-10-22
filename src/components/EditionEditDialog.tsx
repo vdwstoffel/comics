@@ -3,17 +3,24 @@ import { useEffect, useState } from 'react'
 interface EditionEditDialogProps {
   name: string
   seriesName: string | null
+  /**
+   * A limited series rather than a run of its series. Arrives already decided - an
+   * edition that had to lose a subtitle to find its franchise is one - and this is
+   * where that guess gets overruled.
+   */
+  limited?: boolean
   saving?: boolean
   error?: string | null
-  onSave: (next: { name: string; seriesName: string }) => void
+  onSave: (next: { name: string; seriesName: string; limited: boolean }) => void
   onClose: () => void
 }
 
 export default function EditionEditDialog({
-  name, seriesName, saving = false, error = null, onSave, onClose,
+  name, seriesName, limited = false, saving = false, error = null, onSave, onClose,
 }: EditionEditDialogProps) {
   const [nameInput, setNameInput] = useState(name)
   const [seriesInput, setSeriesInput] = useState(seriesName ?? '')
+  const [limitedInput, setLimitedInput] = useState(limited)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose() }
@@ -26,7 +33,7 @@ export default function EditionEditDialog({
 
   const save = () => {
     if (!canSave) return
-    onSave({ name: trimmedName, seriesName: seriesInput.trim() })
+    onSave({ name: trimmedName, seriesName: seriesInput.trim(), limited: limitedInput })
   }
 
   const onFieldKeyDown = (e: React.KeyboardEvent) => { if (e.key === 'Enter') save() }
@@ -61,6 +68,20 @@ export default function EditionEditDialog({
             onChange={(e) => setSeriesInput(e.target.value)}
             onKeyDown={onFieldKeyDown}
           />
+        </div>
+
+        {/* Under Series because that is what it qualifies: which shelf of the series
+            this volume belongs on, the runs or the rest. */}
+        <div className="modal-field modal-field--check">
+          <label htmlFor="edition-limited">
+            <input
+              id="edition-limited"
+              type="checkbox"
+              checked={limitedInput}
+              onChange={(e) => setLimitedInput(e.target.checked)}
+            />
+            Limited series
+          </label>
         </div>
 
         {error && <p className="modal-error">{error}</p>}

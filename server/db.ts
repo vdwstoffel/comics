@@ -381,6 +381,12 @@ export function openDb(dbPath: string): Db {
   // is written and read whole, never queried.
   if (!editionCols.includes('collects_proposal')) db.exec('ALTER TABLE edition ADD COLUMN collects_proposal TEXT')
 
+  // Whether this is a limited series rather than a run of the series it is filed under.
+  // Derived when the edition is created - having to strip a subtitle to find the
+  // franchise is exactly what makes it a mini of one - and correctable by hand, the
+  // same bargain series_name makes.
+  if (!editionCols.includes('limited')) db.exec('ALTER TABLE edition ADD COLUMN limited INTEGER NOT NULL DEFAULT 0')
+
   // An arc issue gained the id of the volume it belongs to, which is what decides where
   // a download of it lands. Arcs cached before this read back without one until their
   // next refresh; the download falls back to the volume's name meanwhile.

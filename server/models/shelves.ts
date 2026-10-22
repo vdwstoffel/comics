@@ -25,6 +25,14 @@ export interface Shelf {
    * thing you opened the shelf for.
    */
   holdsIssues: boolean
+  /**
+   * A limited series rather than a run of its series, so the series page can put it
+   * under its own heading.
+   *
+   * Only when EVERY edition here is one. A collected run gathers several editions, and
+   * one trade line ticked by hand must not drag the whole run out of the runs.
+   */
+  limited: boolean
 }
 
 /** "The Amazing Spider-Man (2022)", or just the name when there is no year to add. */
@@ -129,6 +137,7 @@ export function groupIntoShelves(editions: Edition[], all: Edition[] = editions)
       startYear,
       siteUrl,
       holdsIssues: volumeId != null && full.some((e) => e.comicvineId === volumeId),
+      limited: full.every((e) => e.limited),
     }
   })
 }

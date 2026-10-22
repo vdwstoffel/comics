@@ -15,6 +15,8 @@ export interface ApiEdition {
   collectsCvName?: string | null
   collectsCvStartYear?: number | null
   collectsCvSiteUrl?: string | null
+  /** A limited series rather than a run of its series. Derived, correctable by hand. */
+  limited?: boolean
 }
 
 export interface ApiBook {
@@ -54,6 +56,8 @@ export interface ApiShelf {
   siteUrl: string | null
   /** True when an edition here holds the volume's own issues rather than collections. */
   holdsIssues: boolean
+  /** A limited series rather than a run of its series. */
+  limited: boolean
 }
 
 export interface ApiSeries {
@@ -585,6 +589,12 @@ export const api = {
     const query = readState ? `?readState=${readState}` : ''
     return json<SeriesResponse>(`/api/series/${encodeURIComponent(name)}${query}`)
   },
+  setEditionLimited: (id: string | number, limited: boolean) =>
+    json<EditionResponse>(`/api/editions/${id}`, {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limited }),
+    }),
   setEditionSeries: (id: string | number, seriesName: string) =>
     json<EditionResponse>(`/api/editions/${id}`, {
       method: 'PATCH', headers: { 'content-type': 'application/json' },

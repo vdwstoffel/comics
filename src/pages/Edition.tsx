@@ -195,9 +195,18 @@ export default function Edition() {
     },
   })
 
-  const handleSave = async ({ name, seriesName }: { name: string; seriesName: string }) => {
+  const setLimited = useMutation({
+    mutationFn: (limited: boolean) => api.setEditionLimited(id!, limited),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['edition'] })
+      qc.invalidateQueries({ queryKey: ['series'] })
+    },
+  })
+
+  const handleSave = async ({ name, seriesName, limited }: { name: string; seriesName: string; limited: boolean }) => {
     // Only send what actually changed: a rename also moves files on disk.
     if (seriesName !== (data?.edition.seriesName ?? '')) await setSeries.mutateAsync(seriesName)
+    if (limited !== (data?.edition.limited ?? false)) await setLimited.mutateAsync(limited)
     if (name !== data?.edition.name) {
       rename.mutate(name)
       return
@@ -361,7 +370,8 @@ export default function Edition() {
         <EditionEditDialog
           name={data.edition.name}
           seriesName={data.edition.seriesName ?? null}
-          saving={rename.isPending || setSeries.isPending}
+          limited={data.edition.limited ?? false}
+          saving={rename.isPending || setSeries.isPending || setLimited.isPending}
           error={
             rename.isError ? `Rename failed: ${rename.error?.message}`
               : setSeries.isError ? `Could not change series: ${setSeries.error?.message}`

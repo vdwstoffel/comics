@@ -1,4 +1,4 @@
-import { deriveSeriesName, seriesMatchKey } from '../lib/seriesName.js'
+import { deriveSeriesName, seriesMatchKey, withoutSubtitle } from '../lib/seriesName.js'
 import { removeFollowsForEdition } from './follows.js'
 import type { FilterState } from './progress.js'
 import type { Db, Edition } from '../types.js'
@@ -20,6 +20,7 @@ interface EditionRow {
   collects_cv_site_url: string | null
   collects_checked_at: string | null
   collects_proposal: string | null
+  limited: number
   created_at: string
   book_count?: number
 }
@@ -38,6 +39,7 @@ function toEdition(row: EditionRow | undefined): Edition | undefined {
     collectsCvSiteUrl: row.collects_cv_site_url ?? null,
     collectsCheckedAt: row.collects_checked_at ?? null,
     collectsProposal: row.collects_proposal ?? null,
+    limited: !!row.limited,
     createdAt: row.created_at, bookCount: row.book_count ?? undefined,
   }
 }
@@ -54,10 +56,16 @@ function toEdition(row: EditionRow | undefined): Edition | undefined {
  * Only ever adopts a series that is already here, so nothing is invented. A series is
  * ordered by name so two candidates differing only by their article resolve the same way
  * on every call rather than however SQLite happened to return them.
+ *
+ * Failing that, the franchise the title hangs off: "Avengers: Armageddon" belongs under
+ * Avengers, and without this every limited series becomes another series on the home
+ * shelf - which is what four of them already were. The same "already here" rule carries
+ * the weight, and it is the whole safety of it: "Miles Morales: Spider-Man" has exactly
+ * this shape and is an ongoing in its own right, so it stays itself unless you happen
+ * to own a series called Miles Morales.
  */
 export function resolveSeriesName(db: Db, name: string): string {
   const derived = deriveSeriesName(name)
-  const key = seriesMatchKey(derived)
   const known = db
     .prepare(
       `SELECT DISTINCT series_name FROM edition
@@ -65,7 +73,14 @@ export function resolveSeriesName(db: Db, name: string): string {
         ORDER BY series_name`,
     )
     .all() as Array<{ series_name: string }>
-  return known.find((row) => seriesMatchKey(row.series_name) === key)?.series_name ?? derived
+
+  const owned = (candidate: string): string | undefined => {
+    const key = seriesMatchKey(candidate)
+    return known.find((row) => seriesMatchKey(row.series_name) === key)?.series_name
+  }
+
+  const franchise = withoutSubtitle(derived)
+  return owned(derived) ?? (franchise ? owned(franchise) : undefined) ?? derived
 }
 
 export function upsertEdition(
@@ -74,9 +89,15 @@ export function upsertEdition(
 ): Edition {
   const existing = db.prepare('SELECT * FROM edition WHERE name = ?').get(name) as EditionRow | undefined
   if (existing) return toEdition(existing) as Edition
+  const series = seriesName?.trim() || resolveSeriesName(db, name)
+  // A limited series is one that had to lose a subtitle to find its franchise:
+  // "Avengers: Armageddon" under Avengers. An annual adopting the run's spelling is an
+  // article away, not a subtitle, so it is not one - and neither is a collection, which
+  // deriveSeriesName already cuts back to the run's own name.
+  const limited = seriesMatchKey(deriveSeriesName(name)) !== seriesMatchKey(series)
   const info = db
-    .prepare('INSERT INTO edition (name, folder, series_name, created_at) VALUES (?,?,?,?)')
-    .run(name, folder, seriesName?.trim() || resolveSeriesName(db, name), new Date().toISOString())
+    .prepare('INSERT INTO edition (name, folder, series_name, limited, created_at) VALUES (?,?,?,?,?)')
+    .run(name, folder, series, Number(limited), new Date().toISOString())
   return toEdition(db.prepare('SELECT * FROM edition WHERE id = ?').get(info.lastInsertRowid) as EditionRow) as Edition
 }
 
@@ -183,9 +204,9 @@ export function listPublishers(db: Db): PublisherFacet[] {
 // Name changes must go through renameEdition() in services/library.ts, which also
 // moves the files on disk and updates the `folder` column. Updating `name` directly
 // here will leave files in the old folder and break the path invariant.
-const EDITION_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name', seriesName: 'series_name', cvName: 'cv_name', cvStartYear: 'cv_start_year', cvSiteUrl: 'cv_site_url', collectsVolumeId: 'collects_volume_id', collectsCvName: 'collects_cv_name', collectsCvStartYear: 'collects_cv_start_year', collectsCvSiteUrl: 'collects_cv_site_url', collectsCheckedAt: 'collects_checked_at', collectsProposal: 'collects_proposal' }
+const EDITION_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name', seriesName: 'series_name', cvName: 'cv_name', cvStartYear: 'cv_start_year', cvSiteUrl: 'cv_site_url', collectsVolumeId: 'collects_volume_id', collectsCvName: 'collects_cv_name', collectsCvStartYear: 'collects_cv_start_year', collectsCvSiteUrl: 'collects_cv_site_url', collectsCheckedAt: 'collects_checked_at', collectsProposal: 'collects_proposal', limited: 'limited' }
 
-export type EditionUpdate = Partial<Pick<Edition, 'publisher' | 'summary' | 'comicvineId' | 'name' | 'seriesName' | 'cvName' | 'cvStartYear' | 'cvSiteUrl' | 'collectsVolumeId' | 'collectsCvName' | 'collectsCvStartYear' | 'collectsCvSiteUrl' | 'collectsCheckedAt' | 'collectsProposal'>>
+export type EditionUpdate = Partial<Pick<Edition, 'publisher' | 'summary' | 'comicvineId' | 'name' | 'seriesName' | 'cvName' | 'cvStartYear' | 'cvSiteUrl' | 'collectsVolumeId' | 'collectsCvName' | 'collectsCvStartYear' | 'collectsCvSiteUrl' | 'collectsCheckedAt' | 'collectsProposal' | 'limited'>>
 
 export const EDITION_UPDATABLE_FIELDS = Object.keys(EDITION_FIELDS) as (keyof EditionUpdate)[]
 
@@ -207,7 +228,11 @@ export function carryableMetadata(edition: Edition): EditionUpdate {
 export function updateEdition(db: Db, id: number, fields: EditionUpdate): Edition | undefined {
   const sets: string[] = [], vals: unknown[] = []
   for (const [k, col] of Object.entries(EDITION_FIELDS)) {
-    if (k in fields) { sets.push(`${col} = ?`); vals.push((fields as Record<string, unknown>)[k]) }
+    if (!(k in fields)) continue
+    const value = (fields as Record<string, unknown>)[k]
+    sets.push(`${col} = ?`)
+    // SQLite has no boolean; `limited` is the only flag here and arrives as one.
+    vals.push(typeof value === 'boolean' ? Number(value) : value)
   }
   if (sets.length) db.prepare(`UPDATE edition SET ${sets.join(', ')} WHERE id = ?`).run(...vals, id)
   return getEdition(db, id)

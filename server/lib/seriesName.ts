@@ -46,3 +46,26 @@ export const LEADING_ARTICLE = /^(the|an|a)\s+/i
 export function seriesMatchKey(name: string): string {
   return name.trim().replace(LEADING_ARTICLE, '').toLowerCase()
 }
+
+/**
+ * Where a title stops naming a franchise and starts naming one story in it.
+ *
+ * "Avengers: Armageddon" is a four-issue volume of its own, but it is not its own
+ * franchise, and left alone every Avengers mini becomes another series on the home
+ * shelf. The head before the first break is the franchise it belongs to.
+ *
+ * Only ever a CANDIDATE. "Miles Morales: Spider-Man" has exactly this shape and the
+ * opposite meaning - there the colon is part of an ongoing title, not a subtitle - and
+ * nothing in the string can tell the two apart. What tells them apart is whether you
+ * own the franchise, which is resolveSeriesName's job, not this one.
+ *
+ * Breaks on a colon, an en or em dash, or a spaced hyphen. A hyphen inside a word is
+ * not a break, or every Spider-Man title would lose half its name.
+ */
+const SUBTITLE = /\s*:\s+|\s+[–—]\s+|\s+-\s+/
+
+export function withoutSubtitle(name: string): string | null {
+  const [head] = name.split(SUBTITLE)
+  const trimmed = head?.trim()
+  return trimmed && trimmed !== name.trim() ? trimmed : null
+}

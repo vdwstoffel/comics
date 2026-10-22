@@ -338,3 +338,36 @@ test('a volume you own in trades is no longer offered as one to find', async () 
     expect(years).toEqual(['1963'])
   })
 })
+
+const BATMAN = {
+  name: 'Batman',
+  bookCount: 28,
+  editions: [{ id: 41, name: 'Batman (2011)', bookCount: 10 }],
+  shelves: [
+    { key: 'volume:42721', volumeId: null, name: 'Batman (2011)', startYear: 2011, bookCount: 10, siteUrl: null, holdsIssues: true, limited: false, editions: [{ id: 41, name: 'Batman (2011)', bookCount: 10 }] },
+    { key: 'volume:166619', volumeId: null, name: 'Batman (2025)', startYear: 2025, bookCount: 14, siteUrl: null, holdsIssues: true, limited: false, editions: [{ id: 33, name: 'Batman (2025)', bookCount: 14 }] },
+    { key: 'edition:50', volumeId: null, name: 'Batman: Bad Seeds - Gotham Central (2026)', startYear: 2026, bookCount: 2, siteUrl: null, holdsIssues: false, limited: true, editions: [{ id: 50, name: 'Batman: Bad Seeds - Gotham Central (2026)', bookCount: 2 }] },
+    { key: 'edition:46', volumeId: null, name: 'Batman: Bad Seeds - Sunset (2026)', startYear: 2026, bookCount: 1, siteUrl: null, holdsIssues: false, limited: true, editions: [{ id: 46, name: 'Batman: Bad Seeds - Sunset (2026)', bookCount: 1 }] },
+  ],
+}
+
+test('the runs come first, then the limited series under their own heading', async () => {
+  mockFetch({ series: BATMAN })
+  renderAt('/series/Batman')
+
+  expect(await screen.findByRole('heading', { name: /Limited series/i })).toBeInTheDocument()
+  const grids = document.querySelectorAll('.tile-grid')
+  expect(grids).toHaveLength(2)
+  expect(grids[0]).toHaveTextContent('Batman (2011)')
+  expect(grids[0]).not.toHaveTextContent('Bad Seeds')
+  expect(grids[1]).toHaveTextContent('Bad Seeds - Gotham Central')
+})
+
+// 32 of 36 series have one shelf and none of them is a mini. A standing empty heading
+// on every one of those pages would be noise.
+test('a series with no limited series shows no such heading', async () => {
+  mockFetch({ series: COLLECTED })
+  renderAt('/series/The%20Amazing%20Spider-Man')
+  await screen.findByText('The Amazing Spider-Man (2022)')
+  expect(screen.queryByRole('heading', { name: /Limited series/i })).not.toBeInTheDocument()
+})

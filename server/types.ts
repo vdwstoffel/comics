@@ -40,6 +40,8 @@ export interface Edition {
   /** Comic Vine's suggestion as JSON, held apart from the confirmed link above: an
    *  answer nobody has agreed to must not move an edition between shelves. */
   collectsProposal: string | null
+  /** A limited series rather than a run of its series. Derived, correctable by hand. */
+  limited: boolean
   createdAt: string
   bookCount?: number
 }
