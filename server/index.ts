@@ -94,5 +94,5 @@ export async function buildServer(): Promise<App> {
 if (import.meta.url === `file://${process.argv[1]}`) {
   const app = await buildServer()
   await app.listen({ port: app.config.port, host: '0.0.0.0' })
-  console.log(`continuity listening on :${app.config.port}`)
+  console.log(`comix listening on :${app.config.port}`)
 }

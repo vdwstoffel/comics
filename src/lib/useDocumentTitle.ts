@@ -1,6 +1,6 @@
 import { useEffect } from 'react'
 
-const APP_NAME = 'Continuity'
+const APP_NAME = 'Comix'
 
 /**
  * What the browser tab says while you are on this page.

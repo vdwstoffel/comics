@@ -1,7 +1,7 @@
 services:
-  continuity:
+  comix:
     build: .
-    container_name: continuity
+    container_name: comix
     user: "1000:1000"          # write files into ./data as the host user, not root
     environment:
       - DATA_DIR=/data

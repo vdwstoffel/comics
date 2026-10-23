@@ -1,4 +1,4 @@
-# Continuity
+# Comix
 
 A self-hosted comic library built around the **run** — not just the comics you own, but
 the gaps in the middle of them and the issues coming out on Wednesday.

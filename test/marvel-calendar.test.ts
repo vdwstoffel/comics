@@ -142,7 +142,7 @@ test('names the publisher exactly as the other two tabs name it', () => {
  */
 test('identifies itself in the form Marvel accepts, without claiming to be a browser', () => {
   expect(MARVEL_USER_AGENT).toMatch(/^Mozilla\/5\.0 \(compatible;/)
-  expect(MARVEL_USER_AGENT).toContain('continuity')
+  expect(MARVEL_USER_AGENT).toContain('comix')
   expect(MARVEL_USER_AGENT).not.toMatch(/Chrome|Safari|Firefox/)
 })
 
