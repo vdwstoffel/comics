@@ -214,6 +214,8 @@ img {
    just recoloured, so it reads as the current tab and not merely as a hover. */
 .app-header__tabs {
   display: flex;
+  flex-shrink: 0;
+  white-space: nowrap;
   gap: 22px;
   /* Full header height rather than fixed padding: the underline has to sit on the
      header's bottom edge, and padding that happened to add up to 56px today would
@@ -259,6 +261,66 @@ img {
 .app-header__upload:hover {
   background: var(--accent);
   color: #fff;
+}
+
+/* Searches what you own. The auto margin keeps it beside the utilities, so the tabs stay
+   alone on the left. It is the only item in the row that may shrink (down to its
+   min-width): the tabs and the nav are flex-shrink: 0 below, so when the row runs out of
+   room this box gives way first, and past its minimum the row scrolls (see the 760px
+   rule) rather than squashing the links or overflowing the page. */
+.app-header__search {
+  flex: 0 1 260px;
+  min-width: 120px;
+  margin: 0 22px 0 auto;
+}
+
+.app-header__search-input {
+  width: 100%;
+  padding: 6px 14px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+  /* The same pill as + Upload, so the header's two controls read as one family. */
+  border-radius: 20px;
+  color: var(--text);
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+/* Tabs, a 120px box, four links and padding come to roughly 700px, so below 760px the
+   header cannot fit on one row and it is a fixed 56px that cannot wrap. The row scrolls
+   sideways inside the header instead: nothing is hidden or squashed, and the page itself
+   never overflows. Padding and gaps tighten first to put off the scrolling as long as
+   they can. */
+@media (max-width: 760px) {
+  .app-header__inner {
+    padding: 0 12px;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  .app-header__tabs {
+    gap: 14px;
+  }
+  .app-header__search {
+    margin-right: 14px;
+  }
+  .app-header__nav {
+    gap: 10px;
+  }
+}
+
+.app-header__search-input::placeholder {
+  color: var(--muted);
+}
+
+.app-header__search-input:hover:not(:focus) {
+  border-color: var(--muted);
+}
+
+.app-header__search-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.18);
 }
 
 .page-container {
@@ -1913,6 +1975,8 @@ textarea.input:hover:not(:focus) {
 .app-header__nav {
   display: flex;
   align-items: center;
+  flex-shrink: 0;
+  white-space: nowrap;
   gap: 14px;
 }
 
@@ -4087,4 +4151,12 @@ textarea.input:hover:not(:focus) {
   width: auto;
   margin: 0;
   accent-color: var(--accent, #e5484d);
+}
+
+/* Why a comic turned up, when only a credit can say so. Quiet, and under the tile it
+   explains: it is a note on the result, not a second title. */
+.search-match {
+  margin: 4px 0 0;
+  color: var(--muted);
+  font-size: 0.8125rem;
 }

@@ -23,7 +23,10 @@ its own vocabulary.
 - Find comics by who made them, whichever metadata source knows it.
 - Results read exactly as the shelf reads: same tiles, same shelves, same read
   state, same progress.
-- Reachable from every page, including mid-read.
+- Reachable from every page you browse from. **Not from the reader**: that page
+  shows nothing but the comic on purpose, and a header there would undo the
+  thing it exists to do. Closing the comic is one press, and the run you land
+  on has the box.
 - Say plainly why a comic matched when the reason was not its name.
 - An empty result hands the query straight to the download search.
 
@@ -45,11 +48,16 @@ its own vocabulary.
 208 books, 41 editions, 36 series. A `LIKE` scan over columns that are already
 indexed is microseconds, and stays so at ten times this size.
 
-SQLite FTS5 is the alternative and is rejected: it costs a schema migration and
-triggers to keep in sync, and buys an index that can silently disagree with a
-renamed edition. It earns its cost against summaries, not against names — so if
-summaries ever join §3.1, FTS is the upgrade, and nothing in §5 changes shape
-when it happens.
+SQLite FTS5 is the alternative and is rejected — though not for want of
+precedent. This repo already runs an external-content FTS5 table with three sync
+triggers over `comic_index` (`server/db.ts:163-174`), so the pattern is known
+here and the cost of adopting it again is lower than a first use would be.
+
+It is rejected for what it would buy, not what it would cost. At this size the
+`LIKE` scan is already instant, and an index over names is a second source of
+truth that can silently disagree with a renamed edition. FTS earns its keep
+against summaries, not against names — so if summaries ever join §3.1, FTS is
+the upgrade, and nothing in §5 changes shape when it happens.
 
 Filtering client-side off the loaded shelf is also rejected: it cannot see
 credits at all, and can only search whatever the current filter happened to
@@ -132,12 +140,13 @@ Each returned comic carries `matched`:
 | --- | --- |
 | `'name'` | nothing — the tile already says it |
 | `'number'` | nothing |
-| `'run'` | nothing — it matched through its edition (§3.4); the shelf heading above it is the explanation |
 | `{ role, name }` | "written by Jonathan Hickman", "cover by Chip Zdarsky" |
+| `'run'` | nothing — nothing on the comic itself matched; it came in with its edition (§3.4), and the shelf heading above it is the explanation |
 
 A comic matching on more than one of these takes the first that applies, in the
-order above: the narrowest true thing, and the only one of them that ever draws
-anything is last.
+order above: the narrowest true thing first. `'run'` is last because it is the
+fallback — it says only that the match was not on this comic — and ranking it
+above a credit would suppress the one reason that ever draws anything.
 
 Computed in TypeScript from the row and the credit map, not in SQL. The row
 already carries every text field, and the credit map must be fetched anyway (the

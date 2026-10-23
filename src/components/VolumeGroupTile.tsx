@@ -11,6 +11,11 @@ interface VolumeGroupTileProps {
    *  shelf, which is about which runs you keep up with rather than how far behind you
    *  are on them - the deck of cards behind the cover still shows that much. */
   showCount?: boolean
+  /** Whether every comic here is known to be unread. True on the shelves, which only ever
+   *  hold unread comics. A search is unfiltered and can hand back a finished run, so it
+   *  turns this off: no "unread" count, and a name that opens the whole volume rather than
+   *  an unread view of it that may be empty. */
+  unread?: boolean
 }
 
 /**
@@ -36,7 +41,7 @@ interface VolumeGroupTileProps {
  * unmatched comic has no number either, and the volume's name alone would collide with
  * the name link right beside it, so it says which of the two it is instead.
  */
-export default function VolumeGroupTile({ group, showCount = true }: VolumeGroupTileProps) {
+export default function VolumeGroupTile({ group, showCount = true, unread = true }: VolumeGroupTileProps) {
   // Read off the page this tile is drawn on rather than passed in: the library and the
   // follows shelf draw the same tile and it has no idea which of them it is on.
   const back = useBackOrigin()
@@ -89,13 +94,13 @@ export default function VolumeGroupTile({ group, showCount = true }: VolumeGroup
         className="volume-tile__name"
         title={group.shelfName}
         to={group.shelfVolumeId == null
-          ? `/edition/${group.editionId}?status=unread`
-          : `/volume/${group.shelfVolumeId}?status=unread`}
+          ? `/edition/${group.editionId}${unread ? '?status=unread' : ''}`
+          : `/volume/${group.shelfVolumeId}${unread ? '?status=unread' : ''}`}
         state={back}
       >
         {group.shelfName}
       </Link>
-      {showCount && <div className="volume-tile__count">{group.books.length} unread</div>}
+      {showCount && unread && <div className="volume-tile__count">{group.books.length} unread</div>}
     </div>
   )
 }

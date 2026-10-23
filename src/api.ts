@@ -151,6 +151,10 @@ export interface ApiVolumeIssue {
   match?: { indexId: number; title: string } | null
 }
 
+/** Why a comic turned up in a search. Mirrors server/models/books.ts: src/ imports nothing
+ *  from server/, so the shape is declared again here and the two must stay identical. */
+export type MatchReason = 'name' | 'number' | 'run' | { role: string; name: string }
+
 /** A comic as the library shelf receives it: the book plus the volume, series and arcs
  *  holding it, which is what lets the shelf group three ways without a request per group. */
 export interface ApiLibraryBook extends ApiBook {
@@ -165,6 +169,8 @@ export interface ApiLibraryBook extends ApiBook {
   seriesName: string | null
   /** Empty for the many comics tagged with no arc at all. */
   arcs: string[]
+  /** Present only on a search result: the narrowest thing that matched. */
+  matched?: MatchReason
 }
 
 export interface ApiEditionExtra {
@@ -705,6 +711,15 @@ export const api = {
 
   getLibraryBooks: ({ readState, publisher }: { readState: FilterState; publisher?: string | null }) => {
     const params = new URLSearchParams({ readState })
+    if (publisher) params.set('publisher', publisher)
+    return json<{ books: ApiLibraryBook[] }>(`/api/books?${params}`)
+  },
+
+  /** Its own call rather than a looser getLibraryBooks: that one requires a read state,
+   *  and a search starts with none. */
+  searchLibrary: ({ q, readState, publisher }: { q: string; readState?: FilterState; publisher?: string | null }) => {
+    const params = new URLSearchParams({ q })
+    if (readState) params.set('readState', readState)
     if (publisher) params.set('publisher', publisher)
     return json<{ books: ApiLibraryBook[] }>(`/api/books?${params}`)
   },

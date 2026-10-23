@@ -28,11 +28,13 @@ interface ContinueQuery { limit?: string; publisher?: string }
 
 export default async function booksRoutes(app: App) {
   // The library-wide list behind the Unread and Reading views. The rail carries a
-  // publisher and a status at once, so both narrow together.
-  app.get<{ Querystring: { readState?: string; publisher?: string } }>('/api/books', async (req) => ({
+  // publisher and a status at once, so both narrow together. A search is the same list
+  // with words added, so it rides this route rather than growing a second one.
+  app.get<{ Querystring: { readState?: string; publisher?: string; q?: string } }>('/api/books', async (req) => ({
     books: listLibraryBooks(app.db, {
       readState: readStateOf(req.query.readState),
       publisher: req.query.publisher?.trim() || undefined,
+      q: req.query.q?.trim() || undefined,
     }),
   }))
 

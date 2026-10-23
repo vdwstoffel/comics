@@ -11,6 +11,9 @@ interface LibraryRailProps {
   /** Omitted on pages that are not the library — the rail navigates home instead. */
   onPublisher?: (key: string | null) => void
   onStatus?: (key: string | null) => void
+  /** Offer Read beside Unread. Off everywhere but search: the shelf is about what is left
+   *  to read, while a search is unfiltered and so returns finished comics as well. */
+  includeRead?: boolean
 }
 
 /**
@@ -22,7 +25,7 @@ interface LibraryRailProps {
  * publisher does not, so it falls back to unfiltered.
  */
 export default function LibraryRail({
-  activePublisher = null, activeStatus = null, onPublisher, onStatus,
+  activePublisher = null, activeStatus = null, onPublisher, onStatus, includeRead = false,
 }: LibraryRailProps) {
   const navigate = useNavigate()
   const { pathname } = useLocation()
@@ -59,7 +62,7 @@ export default function LibraryRail({
         // what the unfiltered shelf is for. The state itself still exists — progress and
         // counts both use it; this is one entry in a rail, not a change to what is tracked.
         items={(readStateData?.readStates ?? [])
-          .filter((s) => s.name !== 'read')
+          .filter((s) => includeRead || s.name !== 'read')
           .map((s) => ({ key: s.name, label: STATUS_LABELS[s.name] }))}
         active={activeStatus}
         onSelect={onStatus ?? ((key) => navigate(key ? `/?status=${key}` : '/'))}

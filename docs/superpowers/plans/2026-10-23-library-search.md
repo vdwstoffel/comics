@@ -26,7 +26,7 @@ Five input classes the spec implies but does not pin. Each has a test in the tas
 
 1. **Blank `q`** (`?q=` or `?q=%20%20`) — a cleared search box. Must return the shelf unchanged, not zero results and not an error. (Task 1)
 2. **LIKE wildcards in the query** (`%`, `_`, `\`) — someone searches `100%`. Unescaped, `%` matches the entire library. Must be escaped and matched literally. (Task 1)
-3. **Non-ASCII case** — SQLite's built-in `LIKE` folds case for ASCII only, so `días` will not match `Días`. The limit is accepted, not fixed; it must be pinned by a test so nobody later "fixes" it by accident. (Task 1)
+3. **Non-ASCII case** — SQLite's built-in `LIKE` folds case for ASCII only. `días` does find `Días` (the `D` folds); `DÍAS` does not (the `Í` does not). The limit is accepted, not fixed; it must be pinned by a test so nobody later "fixes" it by accident. (Task 1)
 4. **A comic with nothing on it** — no title, no number, no credits, found only through its run. The reason computation must not crash and must report `'run'`. (Task 2)
 5. **A pasted sentence** — one OR-group per term is 9 bound parameters; SQLite's variable ceiling is 999. Terms are capped at 8, the rest ignored. (Task 1)
 

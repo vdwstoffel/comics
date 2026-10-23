@@ -32,6 +32,8 @@ interface SeriesGroupTileProps {
   /** Clicked away, or Escape. Which series is open belongs to the shelf, because only
    *  one of them ever is. */
   onClose: () => void
+  /** False when the comics may include read ones - see VolumeGroupTile. */
+  unread?: boolean
 }
 
 /**
@@ -53,7 +55,7 @@ interface SeriesGroupTileProps {
  * the shelf so there is one answer to "what does a series look like", and the panel would
  * buy the reader a second tile identical to the first.
  */
-export default function SeriesGroupTile({ group, open, onToggle, onClose }: SeriesGroupTileProps) {
+export default function SeriesGroupTile({ group, open, onToggle, onClose, unread: allUnread = true }: SeriesGroupTileProps) {
   const root = useRef<HTMLDivElement>(null)
   const panel = useRef<HTMLDivElement>(null)
 
@@ -115,7 +117,7 @@ export default function SeriesGroupTile({ group, open, onToggle, onClose }: Seri
     return () => window.removeEventListener('resize', place)
   }, [open])
 
-  if (group.volumes.length === 1) return <VolumeGroupTile group={group.volumes[0]} />
+  if (group.volumes.length === 1) return <VolumeGroupTile group={group.volumes[0]} unread={allUnread} />
 
   const unread = group.volumes.reduce((sum, v) => sum + v.books.length, 0)
   const next = group.volumes[0].books[0]
@@ -152,14 +154,14 @@ export default function SeriesGroupTile({ group, open, onToggle, onClose }: Seri
         </span>
         <span className="volume-tile__name">{group.name}</span>
         <span className="volume-tile__count">
-          {group.volumes.length} volumes · {unread} unread
+          {group.volumes.length} volumes{allUnread ? ` · ${unread} unread` : ''}
         </span>
       </button>
       {open && (
         <div className="series-tile__panel" ref={panel}>
           <div className="series-tile__volumes">
             {group.volumes.map((volume) => (
-              <VolumeGroupTile key={volume.editionId} group={volume} />
+              <VolumeGroupTile key={volume.editionId} group={volume} unread={allUnread} />
             ))}
           </div>
         </div>

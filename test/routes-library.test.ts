@@ -376,3 +376,40 @@ test('GET /api/books returns the progress its tiles draw', async () => {
   expect(book.readState).toBe('reading')
   expect(book.percent).toBeGreaterThan(0)
 })
+
+test('GET /api/books?q= narrows the shelf to what matches', async () => {
+  const { unreadMarvel, readingMarvel } = seedForBookList()
+
+  const res = await app.inject({ url: '/api/books?q=venom' })
+
+  expect(res.statusCode).toBe(200)
+  expect(res.json().books.map((b: { id: number }) => b.id).sort())
+    .toEqual([unreadMarvel.id, readingMarvel.id].sort())
+})
+
+test('q combines with readState and publisher', async () => {
+  const { unreadMarvel, readingMarvel } = seedForBookList()
+  // A finished Venom: it matches the words but not the unread filter.
+  const venomId = unreadMarvel.editionId
+  const done = insertBook(app.db, { editionId: venomId, filePath: 'v/3.cbz', pageCount: 20, fileSize: 1 })!
+  setProgress(app.db, done.id, { lastPage: 19, completed: true })
+
+  const byState = await app.inject({ url: '/api/books?q=venom&readState=unread' })
+  expect(byState.json().books.map((b: { id: number }) => b.id).sort())
+    .toEqual([unreadMarvel.id, readingMarvel.id].sort())
+
+  const wrongPublisher = await app.inject({ url: '/api/books?q=venom&publisher=DC' })
+  expect(wrongPublisher.json().books).toEqual([])
+})
+
+test('GET /api/books with no q is the shelf, unchanged', async () => {
+  const { unreadMarvel, unreadDc, readingMarvel } = seedForBookList()
+
+  // Blank and whitespace-only q mean no search: every existing shelf caller lands here.
+  for (const url of ['/api/books', '/api/books?q=', '/api/books?q=%20%20']) {
+    const res = await app.inject({ url })
+    expect(res.json().books.map((b: { id: number }) => b.id).sort()).toEqual(
+      [unreadMarvel.id, unreadDc.id, readingMarvel.id].sort())
+    expect(res.json().books.every((b: { matched?: unknown }) => b.matched === undefined)).toBe(true)
+  }
+})

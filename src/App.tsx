@@ -1,5 +1,6 @@
-import { Routes, Route, Link, useLocation } from 'react-router-dom'
-import type { ReactNode } from 'react'
+import { Routes, Route, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { useState } from 'react'
+import type { FormEvent, ReactNode } from 'react'
 import Library from './pages/Library'
 import Series from './pages/Series'
 import SeriesAnnuals from './pages/SeriesAnnuals'
@@ -12,6 +13,7 @@ import SearchComics from './pages/SearchComics'
 import Arcs from './pages/Arcs'
 import Arc from './pages/Arc'
 import Following from './pages/Following'
+import LibrarySearch from './pages/LibrarySearch'
 import Releases from './pages/Releases'
 import Downloads from './pages/Downloads'
 import Settings from './pages/Settings'
@@ -48,19 +50,90 @@ function Tabs() {
   )
 }
 
+/**
+ * Searches the comics you own. It submits to a results page rather than answering in place:
+ * there is no menu of suggestions and no history, because the results are shelves and a
+ * shelf wants a page.
+ *
+ * This is not the search that looks outward at what could be downloaded; that one is the
+ * Get comics link, and it is why that link no longer says Search.
+ */
+function LibrarySearchBox() {
+  const navigate = useNavigate()
+  const { pathname } = useLocation()
+  const [params] = useSearchParams()
+  // The results page has no box of its own, so this is the only place to refine a search.
+  // Elsewhere there is no query to show.
+  const searching = pathname === '/library/search' ? (params.get('q') ?? '') : ''
+  const [text, setText] = useState(searching)
+  const [shown, setShown] = useState(searching)
+  // Follows the url as well as the keyboard: a link, back or a reload changes the query
+  // without anyone typing in the box. Done while rendering rather than in an effect so the
+  // box never paints the old query. That is all this guarantees: it keeps the box in step
+  // with the url. Focus survives a search only within a layout. Layout and LibraryLayout are
+  // different component types, so going between them (say /releases to /library/search)
+  // remounts the whole header, dropping focus and any text typed but not submitted. Known
+  // limitation; lifting Header above Routes would fix it but restructures every route.
+  if (shown !== searching) {
+    setShown(searching)
+    setText(searching)
+  }
+
+  const onResults = pathname === '/library/search'
+
+  const submit = (e: FormEvent) => {
+    e.preventDefault()
+    const q = text.trim()
+    if (q === '') {
+      // On the results page an empty box means "clear this search": the page would
+      // otherwise keep showing, and filtering by, a query the box no longer holds.
+      if (onResults) navigate('/')
+      // Anywhere else there is nothing to ask. Leaving you where you are beats a results
+      // page that says only to type something in the box you have just pressed Enter in.
+      return
+    }
+    navigate(`/library/search?q=${encodeURIComponent(q)}`)
+  }
+
+  const change = (value: string) => {
+    setText(value)
+    // The native clear button of a search input empties the text and fires no submit, so
+    // the change is the only signal. Raw value, not trimmed: a lone space is mid-edit.
+    if (value === '' && onResults) navigate('/')
+  }
+
+  return (
+    <form role="search" className="app-header__search" onSubmit={submit}>
+      <input
+        type="search"
+        className="app-header__search-input"
+        aria-label="Search your library"
+        placeholder="Search your library"
+        value={text}
+        onChange={(e) => change(e.target.value)}
+      />
+    </form>
+  )
+}
+
+// Remounts when you move between Layout and LibraryLayout; see LibrarySearchBox.
 function Header() {
   return (
     <header className="app-header">
       <div className="app-header__inner">
         <Tabs />
+        {/* Neither a tab nor a utility link: it is not a place to browse, and it is a form
+            rather than a destination. Its own group keeps the tabs peers and the right-hand
+            side links. */}
+        <LibrarySearchBox />
         <nav className="app-header__nav">
-          {/* A utility beside Search rather than a third tab: the tabs are the two things
-              you browse. It lives here permanently because the download bar - the only
-              other way in - appears only once something is already downloading, which
+          {/* A utility beside Get comics rather than a third tab: the tabs are the two
+              things you browse. It lives here permanently because the download bar - the
+              only other way in - appears only once something is already downloading, which
               made the queue's settings unreachable until you had committed to a download. */}
           <Link to="/downloads" className="app-header__link">Downloads</Link>
           <Link to="/settings" className="app-header__link">Settings</Link>
-          <Link to="/search" className="app-header__link">Search</Link>
+          <Link to="/search" className="app-header__link">Get comics</Link>
           <Link to="/upload" className="app-header__upload">+ Upload</Link>
         </nav>
       </div>
@@ -100,6 +173,7 @@ export default function App() {
       <Route path="/arcs" element={<LibraryLayout><Arcs /></LibraryLayout>} />
       <Route path="/arcs/:name" element={<LibraryLayout><Arc /></LibraryLayout>} />
       <Route path="/following" element={<LibraryLayout><Following /></LibraryLayout>} />
+      <Route path="/library/search" element={<LibraryLayout><LibrarySearch /></LibraryLayout>} />
       <Route path="/series/:name" element={<Layout><Series /></Layout>} />
       <Route path="/series/:name/annuals" element={<Layout><SeriesAnnuals /></Layout>} />
       <Route path="/edition/:id" element={<Layout><Edition /></Layout>} />

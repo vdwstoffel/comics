@@ -100,7 +100,19 @@ export interface LibraryBook extends BookWithProgress {
   /** The story arcs this comic is tagged with, in the order they were written. Empty for
    *  the many comics that carry none. */
   arcs: string[]
+  /**
+   * Why this comic is in a search's results. Present only when the search had words in it:
+   * a shelf has no reason to give, and every shelf in the app reads this function.
+   */
+  matched?: MatchReason
 }
+
+/**
+ * The narrowest true thing about a match, in the order name, number, credit, run. 'run' is
+ * last because it means nothing on the comic itself matched - it came in with its edition -
+ * and ranking it above a credit would hide the one reason the results page ever prints.
+ */
+export type MatchReason = 'name' | 'number' | 'run' | { role: string; name: string }
 
 /**
  * Book id -> the story arcs it is tagged with.
@@ -124,20 +136,101 @@ function arcsByBook(db: Db): Map<number, string[]> {
   return arcs
 }
 
+// Each term is nine bound parameters, so eight stay far inside SQLite's historical
+// 999-variable ceiling. This build allows more, but the cap should not depend on that.
+// Eight is also more words than anyone types on purpose, so a pasted sentence searches on
+// its first eight rather than growing the query a group per word.
+const MAX_TERMS = 8
+
 /**
- * Every book in the library matching a read state and/or a publisher.
+ * The words of a search: trimmed, split on whitespace, blanks dropped, and no more than
+ * MAX_TERMS of them. A box that was cleared yields none, which is how an empty search
+ * ends up meaning "the whole shelf" without being a case of its own.
+ */
+export function searchTerms(q: string): string[] {
+  return q.split(/\s+/).filter(Boolean).slice(0, MAX_TERMS)
+}
+
+/**
+ * A term as a LIKE pattern that means what was typed. The query is a person's text, not a
+ * pattern: left alone, "%" would match the whole library and "100%" would be a search for
+ * "100". The backslash is among the characters escaped because it is the escape
+ * character itself.
+ */
+function likePattern(term: string): string {
+  return `%${term.replace(/[\\%_]/g, '\\$&')}%`
+}
+
+// What a word can be found in. The run's own names are here beside the comic's, so a run
+// that matches brings every issue in it - which is what the join to edition already gives.
+const SEARCH_COLUMNS = [
+  'e.name', 'e.series_name', 'e.cv_name', 'e.collects_cv_name',
+  'b.title', 'b.writer', 'b.penciller',
+]
+const LIKE = "LIKE ? ESCAPE '\\'"
+
+/**
+ * One group of alternatives per term, to be ANDed with the rest of the WHERE: every word
+ * has to be found, though not in the same field, so "hickman xmen" narrows.
  *
- * The rail carries both at once, so both narrow together — a view honouring only one
- * would misdescribe what it is showing. The state fragments come from BOOK_STATE_SQL, the
- * same ones the sidebar counts with, so "unread" cannot come to mean one thing in the
- * rail and another in the grid.
+ * The credits are read from book_credit as well as from the writer and penciller columns
+ * on the book. Which of the two a comic has depends on how it was imported, and a creator
+ * found on one comic but missed on the one beside it would have no explanation on screen.
+ */
+function termClause(term: string): { sql: string; params: unknown[] } {
+  const like = likePattern(term)
+  // An all-digits term is an issue number, and "251" must not find #1251. So it is
+  // compared to the number exactly, in place of the substring match every other term gets
+  // there - while still matching as text everywhere else, so a run called "2000 AD" is
+  // not lost to the rule.
+  const isNumber = /^\d+$/.test(term)
+  const alternatives = [
+    ...SEARCH_COLUMNS.map((column) => `${column} ${LIKE}`),
+    `EXISTS (SELECT 1 FROM book_credit c WHERE c.book_id = b.id AND c.name ${LIKE})`,
+  ]
+  const params: unknown[] = alternatives.map(() => like)
+  if (isNumber) { alternatives.push('b.number = ?'); params.push(term) }
+  else { alternatives.push(`b.number ${LIKE}`); params.push(like) }
+  return { sql: `(${alternatives.join(' OR ')})`, params }
+}
+
+/**
+ * Book id -> the first credit that one of the terms was found in.
+ *
+ * One query for the whole library, like arcsByBook, rather than one per result. Only
+ * book_credit is read here; the writer and penciller columns are on the row already and
+ * are checked where the reason is chosen.
+ */
+export function creditsMatching(db: Db, terms: string[]): Map<number, { name: string; role: string }> {
+  const credits = new Map<number, { name: string; role: string }>()
+  if (!terms.length) return credits
+
+  const rows = db
+    .prepare(`SELECT book_id, name, role FROM book_credit
+              WHERE ${terms.map(() => `name ${LIKE}`).join(' OR ')} ORDER BY id`)
+    .all(...terms.map(likePattern)) as Array<{ book_id: number; name: string; role: string }>
+
+  for (const { book_id: bookId, name, role } of rows) {
+    if (!credits.has(bookId)) credits.set(bookId, { name, role })
+  }
+  return credits
+}
+
+/**
+ * Every book in the library matching a read state, a publisher and/or a search.
+ *
+ * The rail carries the first two at once, so they narrow together — a view honouring only
+ * one would misdescribe what it is showing. The state fragments come from BOOK_STATE_SQL,
+ * the same ones the sidebar counts with, so "unread" cannot come to mean one thing in the
+ * rail and another in the grid. A search narrows alongside them; with no words in it
+ * there is nothing to add, and the query is exactly the one every shelf has always run.
  *
  * Ordered by series then issue number: this is the "what do I read next" list, so it
  * reads in the order you would read it.
  */
 export function listLibraryBooks(
   db: Db,
-  { readState, publisher }: { readState?: FilterState; publisher?: string },
+  { readState, publisher, q }: { readState?: FilterState; publisher?: string; q?: string },
 ): LibraryBook[] {
   const clauses: string[] = []
   const params: unknown[] = []
@@ -145,6 +238,12 @@ export function listLibraryBooks(
   if (readState) clauses.push(BOOK_STATE_SQL[readState])
   if (publisher === '__unknown__') clauses.push('e.publisher IS NULL')
   else if (publisher) { clauses.push('e.publisher = ?'); params.push(publisher) }
+  const terms = searchTerms(q ?? '')
+  for (const term of terms) {
+    const clause = termClause(term)
+    clauses.push(clause.sql)
+    params.push(...clause.params)
+  }
 
   const where = clauses.length ? `WHERE ${clauses.join(' AND ')}` : ''
   const rows = db
@@ -156,6 +255,7 @@ export function listLibraryBooks(
     .all(...params) as Array<BookRow & { series_name: string | null; edition_name: string }>
 
   const arcs = arcsByBook(db)
+  const credits = creditsMatching(db, terms)
   // Built from the whole library, never from the filtered rows above: whether a shelf is
   // collapsed is a fact about which editions exist, not about which of their books a
   // read-state filter happens to be showing.
@@ -182,7 +282,29 @@ export function listLibraryBooks(
       shelfKey: shelves.get(r.edition_id)?.key ?? `edition:${r.edition_id}`,
       shelfName: shelves.get(r.edition_id)?.name ?? r.edition_name,
       shelfVolumeId: shelves.get(r.edition_id)?.volumeId ?? null,
+      ...(terms.length ? { matched: matchReason(r, terms, credits.get(r.id)) } : {}),
     }))
+}
+
+/**
+ * Which of the comic's own fields the words were found in, else 'run'. The ComicInfo
+ * writer and penciller columns count as credits beside book_credit, because the search
+ * itself finds a creator in either - a comic found that way must not be reported as
+ * having come in with its run.
+ */
+function matchReason(
+  book: BookRow, terms: string[], credit: { name: string; role: string } | undefined,
+): MatchReason {
+  const title = (book.title ?? '').toLowerCase()
+  if (terms.some((t) => title.includes(t.toLowerCase()))) return 'name'
+  // The same exact-versus-substring rule termClause applies to the number.
+  const number = (book.number ?? '').toLowerCase()
+  if (number && terms.some((t) => (/^\d+$/.test(t) ? number === t : number.includes(t.toLowerCase())))) return 'number'
+  if (credit) return credit
+  for (const [role, name] of [['writer', book.writer], ['penciller', book.penciller]] as const) {
+    if (name && terms.some((t) => name.toLowerCase().includes(t.toLowerCase()))) return { role, name }
+  }
+  return 'run'
 }
 
 export function listBooksByEdition(db: Db, editionId: number, readState?: FilterState): Book[] {
