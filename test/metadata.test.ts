@@ -6,6 +6,7 @@ import {
   replaceBookCredits,
   getBookCredits,
   replaceBookTags,
+  replaceBookTagsOfKind,
   getBookTags,
   setTagIds,
 } from '../server/models/metadata.js'
@@ -163,4 +164,41 @@ test('setTagIds only writes to the kind it was given', () => {
   const tags = getBookTags(db, book.id)
   expect(tags).toContainEqual({ kind: 'story_arc', value: 'Venom', extId: 999 })
   expect(tags).toContainEqual({ kind: 'character', value: 'Venom' })
+})
+
+test('replacing one kind leaves the other kinds alone', () => {
+  const db = freshDb()
+  const book = makeBook(db)
+  replaceBookTags(db, book.id, [
+    { kind: 'character', value: 'Venom' },
+    { kind: 'story_arc', value: 'Death Spiral' },
+  ])
+  replaceBookTagsOfKind(db, book.id, 'character', [{ kind: 'character', value: 'Carnage' }])
+  // The character is re-inserted at a higher id than the untouched story arc, so the arc sorts first.
+  expect(getBookTags(db, book.id)).toEqual([
+    { kind: 'story_arc', value: 'Death Spiral', extId: undefined },
+    { kind: 'character', value: 'Carnage', extId: undefined },
+  ])
+})
+
+test('replaceBookTagsOfKind with an empty array clears that kind only', () => {
+  const db = freshDb()
+  const book = makeBook(db)
+  replaceBookTags(db, book.id, [
+    { kind: 'character', value: 'Venom' },
+    { kind: 'story_arc', value: 'Death Spiral' },
+  ])
+  replaceBookTagsOfKind(db, book.id, 'character', [])
+  expect(getBookTags(db, book.id)).toEqual([{ kind: 'story_arc', value: 'Death Spiral', extId: undefined }])
+})
+
+test('replaceBookTagsOfKind throws on a tag whose kind differs from the argument', () => {
+  const db = freshDb()
+  const book = makeBook(db)
+  replaceBookTags(db, book.id, [{ kind: 'story_arc', value: 'Death Spiral' }])
+  expect(() =>
+    replaceBookTagsOfKind(db, book.id, 'story_arc', [{ kind: 'storyarc', value: 'Court of Owls' }]),
+  ).toThrow()
+  // Nothing was written: the original arc is still there and no stray row was inserted.
+  expect(getBookTags(db, book.id)).toEqual([{ kind: 'story_arc', value: 'Death Spiral', extId: undefined }])
 })

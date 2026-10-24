@@ -9,6 +9,7 @@ import uploadRoutes from '../server/routes/upload.js'
 import { upsertEdition, getEditionByName, listEditions } from '../server/models/editions.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import { setComicVineKey } from '../server/models/settings.js'
+import { listManualEntries } from '../server/models/cvManualEntry.js'
 import type { FastifyInstance } from 'fastify'
 import type { Config } from '../server/config.js'
 
@@ -140,6 +141,10 @@ test('an edition name that needs sanitising keeps its name and only sanitises th
 // ---- matching as you upload ----
 
 const ISSUE = {
+  // The id every upload below sends. A real response echoes it back, and applyIssueToBook
+  // reads it to tell a record from an empty result - a response without one is Comic Vine
+  // saying the issue does not exist, and is refused rather than applied.
+  id: 1159231,
   name: 'Death Spiral, Part 3 of 9', issue_number: '255', cover_date: '2026-05-01',
   description: null, volume: { id: 167333, name: 'Venom' }, site_detail_url: 'https://cv/255',
 }
@@ -293,4 +298,82 @@ test('a .cbr keeps its converted extension in the new name', async () => {
   const res = await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' }, 'whatever.cbz')
 
   expect(res.json().book.filePath.endsWith('.cbz')).toBe(true)
+})
+
+// ---- a hand-typed id during upload ----
+
+// Comic Vine answers a typo with HTTP 200 and status_code 101. Anything else is a Comic
+// Vine that cannot be read (the 500 stub above).
+function stubCvWithTypo(typo: string) {
+  globalThis.fetch = (async (url: string) => {
+    if (String(url).includes(`/issue/4000-${typo}/`)) {
+      return { ok: true, json: async () => ({ status_code: 101, error: 'Object Not Found' }) }
+    }
+    return { ok: false, status: 500, json: async () => ({}) }
+  }) as never
+}
+
+test('an id typed by hand during upload files a reminder', async () => {
+  setComicVineKey(app.db, 'k')
+  stubCv(false)
+
+  const res = await uploadWith({ edition: 'Venom (2025)', issueId: '1159231', manual: 'true' }, 'zz-throwaway-a.cbz')
+
+  expect(res.statusCode).toBe(200)
+  expect(listManualEntries(app.db)).toHaveLength(1)
+  expect(listManualEntries(app.db)[0]).toMatchObject({ cvIssueId: 1159231 })
+  // The id is BOUND even though Comic Vine could not be read - that is the whole point of
+  // having typed it. A refactor that rethrew every failure would quietly stop recording
+  // ids during the outage this feature exists for.
+  expect(res.json().book.comicvineId).toBe(1159231)
+  // ...and the response says the metadata did not arrive. A hardcoded true here told the
+  // upload page it had, which also hid the page's "Fetch metadata" retry.
+  expect(res.json().metadataApplied).toBe(false)
+})
+
+test('an id chosen from search during upload files nothing', async () => {
+  setComicVineKey(app.db, 'k')
+  stubCv(false)
+
+  const res = await uploadWith({ edition: 'Venom (2025)', issueId: '1159231' }, 'zz-throwaway-b.cbz')
+
+  expect(res.statusCode).toBe(200)
+  expect(listManualEntries(app.db)).toEqual([])
+})
+
+test('only the exact string true counts as manual', async () => {
+  setComicVineKey(app.db, 'k')
+  stubCv(false)
+
+  await uploadWith({ edition: 'Venom (2025)', issueId: '1159231', manual: '1' }, 'zz-throwaway-c.cbz')
+
+  expect(listManualEntries(app.db)).toEqual([])
+})
+
+// The 101 is the user's typo. Nothing may bind to a record that is not there - and the
+// file, already on disk and indexed, must not be lost to it.
+test('a typo id during upload binds nothing and files nothing, but the comic is kept', async () => {
+  setComicVineKey(app.db, 'k')
+  stubCvWithTypo('9')
+
+  const res = await uploadWith({ edition: 'Venom (2025)', issueId: '9', manual: 'true' }, 'zz-throwaway-d.cbz')
+
+  expect(res.statusCode).toBe(200)
+  const body = res.json()
+  expect(body.book.id).toBeGreaterThan(0)
+  expect(body.book.comicvineId).toBeNull()
+  expect(body.metadataApplied).toBe(false)
+  expect(body.issueNotFound).toBe(true)
+  expect(listManualEntries(app.db)).toEqual([])
+  expect(existsSync(join(dir, 'comics', 'Venom', 'Venom (2025)', 'zz-throwaway-d.cbz'))).toBe(true)
+})
+
+test('a typo id without the manual flag does not bind either', async () => {
+  setComicVineKey(app.db, 'k')
+  stubCvWithTypo('9')
+
+  const res = await uploadWith({ edition: 'Venom (2025)', issueId: '9' }, 'zz-throwaway-e.cbz')
+
+  expect(res.json().book.comicvineId).toBeNull()
+  expect(res.json().issueNotFound).toBe(true)
 })

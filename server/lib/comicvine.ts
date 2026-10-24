@@ -132,6 +132,15 @@ export interface CvNamedRef {
 }
 
 export interface CvIssue {
+  /**
+   * Comic Vine's own id for the record.
+   *
+   * Requested and carried because its ABSENCE is load-bearing: a deleted or nonexistent
+   * record answers with status_code 1 and an empty `results`, which maps to an issue whose
+   * every field is empty - indistinguishable from the thin-but-real record of a comic that
+   * shipped yesterday, except by this. Callers that bind a book to an id check it.
+   */
+  id?: number
   title?: string
   /** The description with its markup intact - see CvVolume.descriptionHtml. */
   descriptionHtml?: string
@@ -269,6 +278,18 @@ export interface ComicVineClient {
   verifyKey(): Promise<void>
 }
 
+/**
+ * A failed Comic Vine call, with the number that says why.
+ *
+ * A nonexistent id comes back as HTTP 200 with status_code 101, so the HTTP status alone
+ * cannot tell "that id is wrong" from "Comic Vine is down". Callers branch on cvStatus for
+ * the first and on httpStatus, or on neither, for the second.
+ */
+export class CvApiError extends Error {
+  httpStatus?: number
+  cvStatus?: number
+}
+
 export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.now() }: ComicVineOptions): ComicVineClient {
   // Normalised once so `get` has a single shape to call. A literal is still accepted: every
   // client test and the settings route's verification pass one, and a thunk there would be
@@ -284,11 +305,11 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
 
   async function get(path: string, params: Record<string, string>): Promise<CvResponse> {
     const key = readKey()
-    if (!key) throw new Error('Comic Vine API key not configured')
+    if (!key) throw new CvApiError('Comic Vine API key not configured')
     await throttle()
     const qs = new URLSearchParams({ api_key: key, format: 'json', ...params })
     const res = await fetchImpl(`${BASE}${path}?${qs}`, { headers: { 'User-Agent': UA } })
-    if (!res.ok) throw new Error(`Comic Vine HTTP ${res.status}`)
+    if (!res.ok) throw Object.assign(new CvApiError(`Comic Vine HTTP ${res.status}`), { httpStatus: res.status })
     const data = (await res.json()) as CvResponse
     // Comic Vine answers a rate limit, a bad key or a malformed filter with HTTP 200 and
     // the failure in the body; `status_code` 1 is its only success. Checked here so every
@@ -297,7 +318,7 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
     // a real empty day. A response with no status_code at all is taken as success: the
     // field is what signals failure, and absence is not a failure signal.
     if (data.status_code != null && data.status_code !== 1) {
-      throw new Error(`Comic Vine error ${data.status_code}${data.error ? `: ${data.error}` : ''}`)
+      throw Object.assign(new CvApiError(`Comic Vine error ${data.status_code}${data.error ? `: ${data.error}` : ''}`), { cvStatus: data.status_code })
     }
     return data
   }
@@ -384,7 +405,8 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
     },
     async getIssue(id) {
       const data = await get(`/issue/${TYPE_PREFIX.issue}-${id}/`, {
-        field_list: 'name,issue_number,cover_date,description,person_credits,character_credits,team_credits,story_arc_credits,image,site_detail_url,volume',
+        // `id` first: it is how a caller tells an empty result from a thin record - see CvIssue.id.
+        field_list: 'id,name,issue_number,cover_date,description,person_credits,character_credits,team_credits,story_arc_credits,image,site_detail_url,volume',
       })
       const r = (data.results || {}) as CvResult
 
@@ -407,6 +429,7 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
       const yearNum = coverDate ? parseInt(String(coverDate).slice(0, 4), 10) : undefined
 
       return {
+        id: r.id,
         title: r.name, number: r.issue_number, date: ym(r.cover_date),
         year: yearNum && !isNaN(yearNum) ? yearNum : undefined,
         summary: stripHtml(r.description),

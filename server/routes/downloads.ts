@@ -3,7 +3,7 @@ import { move, retry, clearHistory } from '../models/downloadQueue.js'
 import type { App } from '../types.js'
 
 interface ResolveBody { url?: string }
-interface StartBody { url?: string; edition?: string; issueId?: number | string; label?: string }
+interface StartBody { url?: string; edition?: string; issueId?: number | string; label?: string; manual?: unknown }
 interface IdParams { id: string }
 
 export default async function downloadRoutes(app: App) {
@@ -32,6 +32,9 @@ export default async function downloadRoutes(app: App) {
       // A pasted link has no issue to name it after; the url stands in until the
       // response says what the file is called.
       label: req.body?.label?.trim() || url,
+      // Exactly `true`, as the upload and apply routes read theirs: a truthy string or a 1
+      // from some other client must not start filing reminders.
+      manual: req.body?.manual === true,
     })
     if (!res.queued) {
       // `reason` is what a client switches on; the message is for a person to read.

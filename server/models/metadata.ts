@@ -34,6 +34,25 @@ export function replaceBookTags(db: Db, bookId: number, tags: BookTag[]): void {
   }
 }
 
+// Must be called within a transaction for atomicity.
+// Replaces only the tags of one kind, so a record that carries no story arcs can leave
+// the arcs already on the book alone instead of wiping them. An empty `tags` clears that
+// kind, so a caller with nothing to write must skip the call rather than pass [].
+// Throws on a tag whose kind differs from `kind`: the DELETE and the INSERT would otherwise
+// disagree about which rows belong to this replace, and duplicates would pile up silently.
+export function replaceBookTagsOfKind(db: Db, bookId: number, kind: string, tags: BookTag[]): void {
+  for (const tag of tags) {
+    if (tag.kind !== kind) {
+      throw new Error(`replaceBookTagsOfKind(${kind}) given a tag of kind ${tag.kind}`)
+    }
+  }
+  db.prepare('DELETE FROM book_tag WHERE book_id = ? AND kind = ?').run(bookId, kind)
+  const insert = db.prepare('INSERT INTO book_tag (book_id, kind, value, ext_id) VALUES (?, ?, ?, ?)')
+  for (const { value, extId } of tags) {
+    insert.run(bookId, kind, value, extId ?? null)
+  }
+}
+
 /**
  * Fill in Comic Vine ids on tags of one kind that were saved without them — tags written
  * before ids were captured, or parsed out of a ComicInfo.xml during a scan. Matches on the

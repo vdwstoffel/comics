@@ -87,3 +87,48 @@ test('a failed search says so', async () => {
   renderDialog()
   expect(await screen.findByText('Search failed')).toBeInTheDocument()
 })
+
+// ---- typing an id by hand ----
+
+const ID_LABEL = /comic vine id or link/i
+
+function typeId(value: string) {
+  fireEvent.change(screen.getByLabelText(ID_LABEL), { target: { value } })
+  fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+}
+
+test('a pasted issue url applies it as a manual pick', async () => {
+  const { onPick } = renderDialog()
+  typeId('https://comicvine.gamespot.com/x/4000-1197227/')
+  expect(onPick).toHaveBeenCalledWith(
+    expect.objectContaining({ id: 1197227, name: 'Comic Vine #1197227' }), { manual: true })
+})
+
+test('a bare id is accepted too', async () => {
+  const { onPick } = renderDialog()
+  typeId('  1197227 ')
+  expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ id: 1197227 }), { manual: true })
+})
+
+test('a pasted volume url explains itself and applies nothing', async () => {
+  const { onPick } = renderDialog()
+  typeId('https://comicvine.gamespot.com/x/4050-177664/')
+  expect(onPick).not.toHaveBeenCalled()
+  expect(screen.getByText(/that is a volume link/i)).toBeInTheDocument()
+})
+
+// The outage this exists for: search answers with an error, not an empty list, so the
+// input has to be there regardless of how the search went.
+test('the manual input is usable when the search call threw', async () => {
+  globalThis.fetch = vi.fn(async () => ({ ok: false, status: 500, json: async () => ({}) })) as unknown as typeof fetch
+  const { onPick } = renderDialog()
+  expect(await screen.findByText('Search failed')).toBeInTheDocument()
+  expect(screen.getByLabelText(ID_LABEL)).toBeEnabled()
+  typeId('4000-1197227')
+  expect(onPick).toHaveBeenCalledWith(expect.objectContaining({ id: 1197227 }), { manual: true })
+})
+
+test('the manual input is there with no search at all', () => {
+  renderDialog({ defaultQuery: '' })
+  expect(screen.getByLabelText(ID_LABEL)).toBeEnabled()
+})

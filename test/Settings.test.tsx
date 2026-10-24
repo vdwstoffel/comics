@@ -23,11 +23,13 @@ afterEach(() => cleanup())
 
 function draw() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
-  return render(
+  const rendered = render(
     <QueryClientProvider client={qc}>
       <MemoryRouter><Settings /></MemoryRouter>
     </QueryClientProvider>,
   )
+  // The client itself, for the one test that asserts on what a refresh invalidates.
+  return { ...rendered, qc }
 }
 
 test('the key field shows what is stored', async () => {
@@ -206,4 +208,106 @@ test('clearing the box saves the bar back', async () => {
   fireEvent.click(screen.getByLabelText(/hide the page bar/i))
   await waitFor(() => expect(posted).toContain('PATCH /api/settings'))
   expect(JSON.parse(bodies[0])).toEqual({ hidePageBar: false })
+})
+
+// --- The pointer to the metadata follow-ups page ----------------------------------------
+// Row behaviour (Refresh, Dismiss, the three states) is covered in MetadataFollowups.test.tsx
+// against the shared FollowupList; here is what is particular to the Settings section.
+
+function serve(count: number) {
+  const followups = Array.from({ length: count }, (_, i) => ({
+    bookId: i + 1, title: `Comic ${i + 1}`, fileName: `c${i + 1}.cbz`, bookCvId: 1000 + i,
+    cvSiteUrl: null, addedAt: '2026-10-20T09:00:00Z', missing: ['summary'],
+    manual: false, typedIssueId: null, checkedAt: null, cvMissing: [],
+  }))
+  globalThis.fetch = vi.fn(async (url: string, init?: { method?: string }) => {
+    if (init?.method) { posted.push(`${init.method} ${url}`); return { ok: true, json: async () => ({ dismissed: true }) } }
+    if (url === '/api/metadata-followups') return { ok: true, json: async () => ({ followups }) }
+    return { ok: true, json: async () => SETTINGS }
+  }) as unknown as typeof fetch
+}
+
+test('the entry shows how many comics are missing metadata', async () => {
+  serve(16)
+  draw()
+  expect(await screen.findByRole('link', { name: /metadata follow-ups.*16 comics/i })).toBeInTheDocument()
+})
+
+test('the entry links to the follow-ups page', async () => {
+  serve(3)
+  draw()
+  expect(await screen.findByRole('link', { name: /metadata follow-ups/i })).toHaveAttribute('href', '/settings/metadata')
+})
+
+test('one comic is not "1 comics"', async () => {
+  serve(1)
+  draw()
+  expect(await screen.findByRole('link', { name: /1 comic$/i })).toBeInTheDocument()
+})
+
+test('the entry is absent when nothing is missing metadata', async () => {
+  serve(0)
+  draw()
+  await screen.findByLabelText(/api key/i)
+  expect(screen.queryByText(/follow-ups/i)).toBeNull()
+  expect(screen.queryByRole('link', { name: /metadata/i })).toBeNull()
+})
+
+// The old test here asserted no rows were drawn in Settings. The user has since asked for
+// the rows back as a last section, paged, so what matters now is that a page is drawn and
+// the settings above it are still reachable.
+test('only the first page of rows is drawn, and the settings above it remain', async () => {
+  serve(17)
+  draw()
+  expect(await screen.findByRole('link', { name: 'Comic 1' })).toBeInTheDocument()
+  expect(screen.getAllByRole('button', { name: /^dismiss/i })).toHaveLength(5)
+  expect(screen.queryByRole('link', { name: 'Comic 6' })).toBeNull()
+  expect(screen.getByLabelText(/at once/i)).toBeInTheDocument()
+})
+
+test('Missing metadata is the last section, after Reading', async () => {
+  serve(3)
+  draw()
+  const heading = await screen.findByRole('heading', { name: 'Missing metadata' })
+  const headings = screen.getAllByRole('heading', { level: 2 })
+  expect(headings.map((h) => h.textContent)).toEqual(['Comic Vine', 'Downloads', 'Reading', 'Missing metadata'])
+  expect(headings[headings.length - 1]).toBe(heading)
+})
+
+test('the position and total are shown, and the controls move between pages', async () => {
+  serve(17)
+  draw()
+  expect(await screen.findByText('1–5 of 17')).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: 'Previous' })).toBeDisabled()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+  expect(screen.getByText('6–10 of 17')).toBeInTheDocument()
+  expect(screen.getByRole('link', { name: 'Comic 6' })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: 'Comic 1' })).toBeNull()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+  fireEvent.click(screen.getByRole('button', { name: 'Next' }))
+  // The last page is short, and its text must say so rather than "16–20 of 17".
+  expect(screen.getByText('16–17 of 17')).toBeInTheDocument()
+  expect(screen.getAllByRole('button', { name: /^dismiss/i })).toHaveLength(2)
+  expect(screen.getByRole('button', { name: 'Next' })).toBeDisabled()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Previous' }))
+  expect(screen.getByText('11–15 of 17')).toBeInTheDocument()
+})
+
+test('no pagination controls when everything fits on one page', async () => {
+  serve(5)
+  draw()
+  await screen.findByRole('link', { name: 'Comic 5' })
+  expect(screen.queryByRole('button', { name: 'Next' })).toBeNull()
+  expect(screen.queryByRole('button', { name: 'Previous' })).toBeNull()
+  expect(screen.queryByText(/ of 5$/)).toBeNull()
+})
+
+test('a row in the Settings section can be dismissed', async () => {
+  serve(2)
+  draw()
+  fireEvent.click(await screen.findByRole('button', { name: /dismiss comic 1 /i }))
+  await waitFor(() => expect(posted).toEqual(['DELETE /api/metadata-followups/1']))
 })

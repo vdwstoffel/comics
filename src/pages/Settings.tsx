@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ApiSettings } from '../api'
+import { FollowupList, FOLLOWUP_PAGE_SIZE } from '../components/FollowupList'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 export default function Settings() {
@@ -40,6 +42,14 @@ export default function Settings() {
     mutationFn: (hidePageBar: boolean) => api.updateSettings({ hidePageBar }),
     ...applied,
   })
+
+  // Only the count: the list itself lives on its own page, because sixteen rows inline
+  // pushed Downloads and Reading off the screen. Same query key as that page, so the two
+  // share one cache entry and the count here is never out of step with the list there.
+  const { data: followupData } = useQuery({
+    queryKey: ['metadata-followups'], queryFn: api.metadataFollowups,
+  })
+  const followupCount = followupData?.followups?.length ?? 0
 
   return (
     <>
@@ -86,6 +96,17 @@ export default function Settings() {
           . Without one, search, matching and Latest releases are unavailable — the rest of
           the library works as normal.
         </p>
+
+        {/* Nothing to follow up is the normal state, and a link to an empty page would only
+            ask the reader to work out whether it means "none" or "not loaded yet". One
+            line, not a card: this is a pointer to the list, not the list. */}
+        {followupCount > 0 && (
+          <p className="settings__followups-link">
+            <Link to="/settings/metadata">
+              Metadata follow-ups — {followupCount} {followupCount === 1 ? 'comic' : 'comics'}
+            </Link>
+          </p>
+        )}
       </section>
 
       <section>
@@ -126,6 +147,16 @@ export default function Settings() {
           turn by tapping the sides or with the arrow keys.
         </p>
       </section>
+
+      {/* Last, by the user's instruction, and its own section rather than a part of Comic
+          Vine. Hidden outright when nothing is missing: a heading over an empty box
+          would only raise the question of whether it had loaded. */}
+      {followupCount > 0 && (
+        <section>
+          <h2 className="page-title">Missing metadata</h2>
+          <FollowupList pageSize={FOLLOWUP_PAGE_SIZE} />
+        </section>
+      )}
     </>
   )
 }

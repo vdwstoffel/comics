@@ -2,7 +2,7 @@ import { mkdir, rename, unlink } from 'node:fs/promises'
 import { extname, join } from 'node:path'
 import { listPages } from '../lib/cbz.js'
 import { isCbr, convertCbrToCbz } from '../lib/cbr.js'
-import { createComicVine } from '../lib/comicvine.js'
+import { createComicVine, CvApiError } from '../lib/comicvine.js'
 import { comicFileName } from '../lib/comicFileName.js'
 import { editionFolderPath, dedupeDestPath } from '../lib/paths.js'
 import { deriveSeriesName } from '../lib/seriesName.js'
@@ -21,10 +21,12 @@ export interface StoreComicInput {
   originalName: string
   editionName?: string
   issueId?: string | number
+  /** The id was typed by the user, not picked off a search result. Forwarded to the apply service, which files the reminder. */
+  manual?: boolean
 }
 
 export type StoreComicResult =
-  | { ok: true; book: Book | undefined; metadataApplied?: boolean }
+  | { ok: true; book: Book | undefined; metadataApplied?: boolean; issueNotFound?: true }
   | { ok: false; error: 'not a valid .cbr (conversion failed)' | 'not a valid .cbz (no image pages)' }
 
 /**
@@ -38,7 +40,7 @@ export type StoreComicResult =
  */
 export async function storeComic(
   ctx: Ctx,
-  { tmpPath, originalName, editionName, issueId }: StoreComicInput,
+  { tmpPath, originalName, editionName, issueId, manual }: StoreComicInput,
 ): Promise<StoreComicResult> {
   const { db, config } = ctx
   let name = originalName
@@ -118,9 +120,21 @@ export async function storeComic(
   // The file is on disk and indexed by now. Metadata is the bonus, so a Comic Vine that
   // will not answer costs the metadata, never the comic.
   try {
-    const applied = await applyIssueToBook(ctx, book.id, issueId)
-    return { ok: true, book: applied.book, metadataApplied: true }
-  } catch {
+    const applied = await applyIssueToBook(ctx, book.id, issueId, { manual })
+    // The service's own answer, never a hardcoded true: with `manual` a Comic Vine that
+    // cannot be read no longer throws, it binds the id and reports metadataApplied false.
+    // Claiming success there tells the upload page the metadata arrived, and the page
+    // hides its "Fetch metadata" retry on exactly that claim.
+    return { ok: true, book: applied.book, metadataApplied: applied.metadataApplied }
+  } catch (err) {
+    // Comic Vine's "Object Not Found" (status_code 101) means the id is a typo, and the
+    // service has written nothing. Binding it here would undo that: a comic linked to a
+    // record that is not there, with the typo hidden behind a stored upload. The comic
+    // itself is already in the library and stays - losing a file to a mistyped id would be
+    // far worse - so this is reported as a flag, not thrown, and the caller can say so.
+    if (err instanceof CvApiError && err.cvStatus === 101) {
+      return { ok: true, book: getBook(db, book.id) ?? book, metadataApplied: false, issueNotFound: true }
+    }
     // The identity came from the queue, not from Comic Vine. Record it even when the
     // metadata read fails: a follow that cannot see this issue as owned fetches it again
     // on every sweep, and the finished queue row no longer blocks the duplicate.

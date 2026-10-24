@@ -23,6 +23,9 @@ export default function Upload() {
   // The issue chosen before the file is sent. Held here so the upload can carry it, which
   // is what lets the edition be decided by Comic Vine instead of typed by hand.
   const [match, setMatch] = useState<CvSearchResult | null>(null)
+  // Whether that issue was typed by hand rather than picked from search. The server only
+  // records a reminder to re-check it when told so.
+  const [manual, setManual] = useState(false)
   const [matching, setMatching] = useState(false)
   const [uploaded, setUploaded] = useState<ApiBook | null>(null)
   // Whether metadata was successfully applied to the uploaded book. An id is recorded
@@ -65,17 +68,41 @@ export default function Upload() {
   // The fallback for a comic uploaded without a match: the file already exists, so the
   // issue is applied to it directly rather than travelling with the upload.
   const applyAfter = useMutation({
-    mutationFn: (issueId: number) => api.applyIssue(uploaded!.id, issueId),
-    onSuccess: () => { setMatching(false); setMetadataApplied(true); setMsg('Metadata added'); invalidateLibrary() },
-    onError: () => { setMatching(false); setMsg('Uploaded, but the metadata could not be applied.') },
+    mutationFn: ({ issueId, manual }: { issueId: number; manual?: boolean }) =>
+      api.applyIssue(uploaded!.id, issueId, manual),
+    // A hand-typed id during a Comic Vine outage answers 200 with metadataApplied false:
+    // the link is saved and nothing else is. Reporting that as "Metadata added" is the
+    // reading the user cannot check, and it would hide the retry button below as well.
+    onSuccess: (res) => {
+      setMatching(false)
+      const applied = res.metadataApplied !== false
+      setMetadataApplied(applied)
+      setMsg(applied
+        ? 'Metadata added'
+        : 'The link is saved, but Comic Vine could not be read, so no metadata arrived. The comic is on the Settings list to re-check.')
+      invalidateLibrary()
+    },
+    // The server's own words - a mistyped id is a 404 carrying "Comic Vine has no issue
+    // with that id.", which the generic outage wording would turn into the opposite
+    // reading. The dialog is left OPEN (and shown the same message) so the id can be
+    // corrected in place rather than retyped from the start.
+    onError: (err: Error) => setMsg(err.message || 'Uploaded, but the metadata could not be applied.'),
   })
+
+  // Opening the dialog clears the last apply's failure with it: the dialog unmounts on
+  // close but the mutation does not, so a reopen would otherwise greet you with the error
+  // from the id you already gave up on.
+  function openMatch() {
+    applyAfter.reset()
+    setMatching(true)
+  }
 
   // Resolving reveals the file name; the dialog then opens on it as it would for a file.
   const resolve = useMutation({
     mutationFn: () => api.resolveDownload(url.trim()),
-    onSuccess: (d) => { setResolvedName(d.fileName); setMatching(true) },
+    onSuccess: (d) => { setResolvedName(d.fileName); openMatch() },
     // No name means no prefilled search, not no search: the dialog still opens.
-    onError: () => { setResolvedName(null); setMatching(true) },
+    onError: () => { setResolvedName(null); openMatch() },
   })
 
   const startDownload = useMutation({
@@ -83,6 +110,9 @@ export default function Upload() {
       url: url.trim(),
       edition: edition || undefined,
       issueId: match?.id,
+      // Same rule as the upload path below: only a typed id files a reminder. Omitted
+      // rather than false so a search-chosen download sends exactly what it always did.
+      manual: match && manual ? true : undefined,
       // What the queue will call this row. A pasted link is usually an opaque token, so
       // the name resolving it revealed is the only readable thing we have; without it the
       // server falls back to the url itself.
@@ -104,8 +134,9 @@ export default function Upload() {
       : 'Could not start the download.'),
   })
 
-  function choose(r: CvSearchResult) {
+  function choose(r: CvSearchResult, opts?: { manual?: boolean }) {
     setMatch(r)
+    setManual(opts?.manual === true)
     setMatching(false)
     pick.mutate(r)
   }
@@ -121,6 +152,8 @@ export default function Upload() {
     const form = new FormData()
     if (edition) form.set('edition', edition)
     if (match) form.set('issueId', String(match.id))
+    // The server reads this only when it is exactly 'true'.
+    if (match && manual) form.set('manual', 'true')
     form.set('file', file, file.name)
     const xhr = new XMLHttpRequest()
     xhr.open('POST', '/api/upload')
@@ -128,15 +161,20 @@ export default function Upload() {
     xhr.onload = () => {
       setPct(null)
       if (xhr.status !== 200) { setMsg(`Error: ${xhr.status}`); return }
-      let body: { book?: ApiBook; metadataApplied?: boolean } = {}
+      let body: { book?: ApiBook; metadataApplied?: boolean; issueNotFound?: boolean } = {}
       // A body we cannot read still means the file landed; it only costs the shortcut.
       try { body = JSON.parse(xhr.responseText) } catch { /* keep the empty body */ }
-      setMsg(body.metadataApplied === false
-        ? 'Uploaded, but the metadata could not be applied.'
-        : 'Uploaded!')
+      // A typed id that does not exist still stores the comic (a 200), so this has to be
+      // said outright or a typo looks like success and the comic stays unmatched.
+      setMsg(body.issueNotFound
+        ? 'Uploaded, but that Comic Vine id was not found on Comic Vine, so the comic is unmatched.'
+        : body.metadataApplied === false
+          ? 'Uploaded, but the metadata could not be applied.'
+          : 'Uploaded!')
       setUploaded(body.book ?? null)
       setMetadataApplied(body.metadataApplied ?? true)
       setMatch(null)
+      setManual(false)
       invalidateLibrary()
     }
     xhr.onerror = () => { setPct(null); setMsg('Upload failed') }
@@ -173,6 +211,7 @@ export default function Upload() {
                   setFile(e.target.files?.[0] ?? null)
                   // A new file makes any held match the wrong one.
                   setMatch(null)
+                  setManual(false)
                   setUploaded(null)
                   setMetadataApplied(null)
                 }}
@@ -188,7 +227,7 @@ export default function Upload() {
                 className="upload-url"
                 placeholder="Paste a link (https://…)"
                 value={url}
-                onChange={(e) => { setUrl(e.target.value); setResolvedName(null); setMatch(null); setUploaded(null); setMetadataApplied(null) }}
+                onChange={(e) => { setUrl(e.target.value); setResolvedName(null); setMatch(null); setManual(false); setUploaded(null); setMetadataApplied(null) }}
               />
             </label>
           </div>
@@ -202,13 +241,13 @@ export default function Upload() {
                     type="button"
                     className="btn btn-ghost"
                     disabled={resolve.isPending}
-                    onClick={() => (hasUrl && !file ? resolve.mutate() : setMatching(true))}
+                    onClick={() => (hasUrl && !file ? resolve.mutate() : openMatch())}
                   >
                     {resolve.isPending ? 'Reading link…' : 'Fetch metadata'}
                   </button>
                 )}
               {match && (
-                <button type="button" className="btn btn-ghost" onClick={() => setMatching(true)}>
+                <button type="button" className="btn btn-ghost" onClick={openMatch}>
                   Change
                 </button>
               )}
@@ -243,7 +282,7 @@ export default function Upload() {
                 type="button"
                 className="btn btn-ghost"
                 disabled={applyAfter.isPending}
-                onClick={() => setMatching(true)}
+                onClick={openMatch}
               >
                 {applyAfter.isPending ? 'Adding…' : 'Fetch metadata'}
               </button>
@@ -256,7 +295,10 @@ export default function Upload() {
       {matching && (file || uploaded || hasUrl) && (
         <ComicVineMatchDialog
           defaultQuery={cvQueryFromFileName(sourceName, querySeries)}
-          onPick={uploaded ? (r) => applyAfter.mutate(r.id) : choose}
+          // Only the post-upload apply can fail from in here; a pick made before the
+          // upload is just held in state. The dialog owns no errors of its own.
+          error={applyAfter.isError ? applyAfter.error?.message : null}
+          onPick={uploaded ? (r, opts) => applyAfter.mutate({ issueId: r.id, manual: opts?.manual }) : choose}
           onClose={() => setMatching(false)}
         />
       )}

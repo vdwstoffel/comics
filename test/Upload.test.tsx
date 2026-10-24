@@ -71,12 +71,18 @@ function stubXhr() {
 }
 
 /** Answer the app's REST calls; record every URL so tests can assert on them. */
-function stubApi(urls: string[], posts: { url: string; body: unknown }[]) {
+function stubApi(
+  urls: string[],
+  posts: { url: string; body: unknown }[],
+  // What the apply route answers. Only the tests that care about an apply that bound the
+  // link and nothing else, or one that was refused, need to say.
+  postReply?: { ok: boolean; status?: number; json: () => Promise<unknown> },
+) {
   globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
     urls.push(String(url))
     if (init?.method === 'POST') {
       posts.push({ url: String(url), body: JSON.parse(String(init.body)) })
-      return { ok: true, json: async () => ({ book: { id: 46 } }) }
+      return postReply ?? { ok: true, json: async () => ({ book: { id: 46 } }) }
     }
     if (String(url).includes('/volume')) {
       return { ok: true, json: async () => ({ volume: { id: 167333, name: 'Venom', startYear: 2025, publisher: 'Marvel', editionName: 'Venom (2025)' } }) }
@@ -243,6 +249,124 @@ test('the chosen issue is uploaded along with the file', async () => {
   expect(sent.get('edition')).toBe('Venom (2025)')
 })
 
+test('a hand-typed id before upload sends the manual flag with the file', async () => {
+  stubXhr(); stubApi([], [])
+  renderUpload()
+  chooseFile()
+  fireEvent.click(await screen.findByRole('button', { name: /fetch metadata/i }))
+  fireEvent.change(await screen.findByLabelText(/comic vine id or link/i), { target: { value: '4000-1197227' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+  expect(await screen.findByText(/Comic Vine #1197227/)).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: /^upload$/i }))
+
+  await waitFor(() => expect(xhrs).toHaveLength(1))
+  const sent = xhrs[0].sentBody as FormData
+  expect(sent.get('issueId')).toBe('1197227')
+  expect(sent.get('manual')).toBe('true')
+})
+
+test('a picked search result sends no manual flag', async () => {
+  stubXhr(); stubApi([], [])
+  renderUpload()
+  chooseFile()
+  fireEvent.click(await screen.findByRole('button', { name: /fetch metadata/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /Venom/ }))
+  await waitFor(() => expect(screen.getByPlaceholderText('Edition name')).toHaveValue('Venom (2025)'))
+  fireEvent.click(screen.getByRole('button', { name: /^upload$/i }))
+  await waitFor(() => expect(xhrs).toHaveLength(1))
+  expect((xhrs[0].sentBody as FormData).get('manual')).toBeNull()
+})
+
+// The server keeps the comic when the typed id does not exist, so the response is a 200.
+// Without this the typo reads as a success and the comic stays unmatched unnoticed.
+test('an id Comic Vine does not have is reported, not passed off as success', async () => {
+  stubXhr(); stubApi([], [])
+  renderUpload()
+  await uploadOne()
+  finishUpload(200, JSON.stringify({ book: { id: 46 }, metadataApplied: false, issueNotFound: true }))
+
+  expect(await screen.findByText(/not found on comic vine/i)).toBeInTheDocument()
+  expect(screen.queryByText('Uploaded!')).not.toBeInTheDocument()
+  expect(screen.getByRole('link', { name: /view comic/i })).toBeInTheDocument()
+})
+
+test('applying a hand-typed id to an uploaded comic sends the manual flag', async () => {
+  const posts: { url: string; body: unknown }[] = []
+  stubXhr(); stubApi([], posts)
+  renderUpload()
+  await uploadOne()
+  finishUpload(200, JSON.stringify({ book: { id: 46 }, metadataApplied: false }))
+  fireEvent.click(await screen.findByRole('button', { name: /fetch metadata/i }))
+  fireEvent.change(await screen.findByLabelText(/comic vine id or link/i), { target: { value: '1197227' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+  await waitFor(() => expect(posts).toHaveLength(1))
+  expect(posts[0].body).toEqual({ issueId: 1197227, manual: true })
+})
+
+/** Type an id into the dialog opened on an already-uploaded comic. */
+async function applyTypedId(id = '1197227') {
+  fireEvent.click(screen.getAllByRole('button', { name: /fetch metadata/i })[0])
+  fireEvent.change(await screen.findByLabelText(/comic vine id or link/i), { target: { value: id } })
+  fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+}
+
+// The §3.4 case on the upload page: a 200 with the link bound and nothing else written.
+// "Metadata added" here is the one claim the user cannot check.
+test('an apply that only bound the link does not claim the metadata arrived', async () => {
+  stubXhr(); stubApi([], [], { ok: true, json: async () => ({ book: { id: 46 }, metadataApplied: false }) })
+  renderUpload()
+  await uploadOne()
+  finishUpload(200, JSON.stringify({ book: { id: 46 }, metadataApplied: false }))
+  await applyTypedId()
+
+  expect(await screen.findByText(/comic vine could not be read/i)).toBeInTheDocument()
+  expect(screen.queryByText('Metadata added')).toBeNull()
+})
+
+test('an apply that worked still says the metadata was added', async () => {
+  stubXhr(); stubApi([], [], { ok: true, json: async () => ({ book: { id: 46 }, metadataApplied: true }) })
+  renderUpload()
+  await uploadOne()
+  finishUpload(200, JSON.stringify({ book: { id: 46 }, metadataApplied: false }))
+  await applyTypedId()
+
+  expect(await screen.findByText('Metadata added')).toBeInTheDocument()
+})
+
+// A mistyped id is a 404 carrying the server's own words. The generic outage wording read
+// as the opposite of what happened, and closing the dialog meant retyping from scratch.
+test('a mistyped id shows what the server said, in a dialog that stays open', async () => {
+  stubXhr()
+  stubApi([], [], { ok: false, status: 404, json: async () => ({ error: 'Comic Vine has no issue with that id.' }) })
+  renderUpload()
+  await uploadOne()
+  finishUpload(200, JSON.stringify({ book: { id: 46 }, metadataApplied: false }))
+  await applyTypedId('999')
+
+  expect(await screen.findAllByText('Comic Vine has no issue with that id.')).not.toHaveLength(0)
+  expect(screen.getByRole('heading', { name: /fetch from comic vine/i })).toBeInTheDocument()
+  expect(screen.queryByText(/could not be applied/i)).toBeNull()
+})
+
+test('reopening the dialog drops the last failure', async () => {
+  stubXhr()
+  stubApi([], [], { ok: false, status: 404, json: async () => ({ error: 'Comic Vine has no issue with that id.' }) })
+  renderUpload()
+  await uploadOne()
+  finishUpload(200, JSON.stringify({ book: { id: 46 }, metadataApplied: false }))
+  await applyTypedId('999')
+  await screen.findAllByText('Comic Vine has no issue with that id.')
+
+  fireEvent.click(screen.getByRole('button', { name: /^close$/i }))
+  fireEvent.click(screen.getAllByRole('button', { name: /fetch metadata/i })[0])
+
+  await screen.findByRole('heading', { name: /fetch from comic vine/i })
+  // The page keeps saying what happened; the dialog must not, or a fresh open is refused
+  // over an id nobody has typed yet. The dialog's error is the only alert on the page.
+  expect(screen.queryByRole('alert')).toBeNull()
+})
+
 test('a comic with no match still uploads', async () => {
   stubXhr(); stubApi([], [])
   renderUpload()
@@ -330,6 +454,39 @@ test('the chosen issue and edition travel with the download', async () => {
     edition: 'The Amazing Spider-Man (2025)',
     issueId: 1159231,
   })
+})
+
+test('a hand-typed id before a download sends the manual flag with the queue request', async () => {
+  const posts: { url: string; body: Record<string, unknown> }[] = []
+  stubDownload([IDLE], [], posts)
+  renderUpload()
+  pasteUrl()
+  fireEvent.click(await screen.findByRole('button', { name: /fetch metadata/i }))
+  fireEvent.change(await screen.findByLabelText(/comic vine id or link/i), { target: { value: '4000-1197227' } })
+  fireEvent.click(screen.getByRole('button', { name: 'Apply' }))
+  expect(await screen.findByText(/Comic Vine #1197227/)).toBeInTheDocument()
+
+  fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
+
+  await waitFor(() => expect(posts.some((p) => p.url.endsWith('/api/downloads'))).toBe(true))
+  expect(posts.find((p) => p.url.endsWith('/api/downloads'))!.body)
+    .toMatchObject({ issueId: 1197227, manual: true })
+})
+
+// A search-chosen id comes from Comic Vine, so there is nothing to remind anyone about.
+test('a picked search result sends no manual flag with a download', async () => {
+  const posts: { url: string; body: Record<string, unknown> }[] = []
+  stubDownload([IDLE], [], posts)
+  renderUpload()
+  pasteUrl()
+  fireEvent.click(await screen.findByRole('button', { name: /fetch metadata/i }))
+  fireEvent.click(await screen.findByRole('button', { name: /Amazing Spider-Man/ }))
+  await waitFor(() => expect(screen.getByPlaceholderText('Edition name')).toHaveValue('The Amazing Spider-Man (2025)'))
+
+  fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
+
+  await waitFor(() => expect(posts.some((p) => p.url.endsWith('/api/downloads'))).toBe(true))
+  expect(posts.find((p) => p.url.endsWith('/api/downloads'))!.body.manual).toBeUndefined()
 })
 
 // Progress, the finished result and any failure are the download bar's job now — it

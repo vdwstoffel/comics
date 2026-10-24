@@ -5,7 +5,8 @@ import { join } from 'node:path'
 import { openDb } from '../server/db.js'
 import { createDownloadRunner } from '../server/services/downloader.js'
 import { enqueue, takeNext, recoverRunning, clearHistory } from '../server/models/downloadQueue.js'
-import { setDownloadConcurrency } from '../server/models/settings.js'
+import { setComicVineKey, setDownloadConcurrency } from '../server/models/settings.js'
+import { listManualEntries } from '../server/models/cvManualEntry.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import type { Ctx } from '../server/types.js'
 import type { Config } from '../server/config.js'
@@ -470,4 +471,34 @@ test('lowering the setting does not abort what is already running', async () => 
 
   // Both finished. Nothing was cancelled, and neither carries an error.
   expect(runner.status().history.map((e) => e.state)).toEqual(['done', 'done'])
+})
+
+// ---- a hand-typed id on a download ----
+// Comic Vine's issue endpoint is the one that works during the outage that made typing
+// ids necessary, so these stub it as unreadable: the id must still bind and be filed.
+const OUTAGE = (async () => ({ ok: false, status: 500, json: async () => ({}) })) as never
+const realFetch = globalThis.fetch
+afterEach(() => { globalThis.fetch = realFetch })
+
+async function download(req: { manual?: boolean }) {
+  setComicVineKey(ctx.db, 'k')
+  globalThis.fetch = OUTAGE
+  const runner = createDownloadRunner(ctx, { fetchImpl: async () => respond(cbzBytes, { url: REDIRECTED }) })
+  runner.enqueue({ url: OPAQUE, edition: 'Amazing Spider-Man (2025)', issueId: 1197227, ...req })
+  await runner.idle()
+  return runner.status().history[0]
+}
+
+test('a download queued with a hand-typed id files a reminder, as an upload does', async () => {
+  const entry = await download({ manual: true })
+
+  expect(entry.state).toBe('done')
+  expect(listManualEntries(ctx.db)).toMatchObject([{ bookId: entry.bookId, cvIssueId: 1197227 }])
+})
+
+test('a download queued with a search-chosen id files nothing', async () => {
+  const entry = await download({})
+
+  expect(entry.state).toBe('done')
+  expect(listManualEntries(ctx.db)).toEqual([])
 })

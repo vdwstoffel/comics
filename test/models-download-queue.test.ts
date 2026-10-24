@@ -171,3 +171,43 @@ test('two interrupted downloads come back in order, each with its own position',
   expect(q.map((e) => e.label)).toEqual(['Item 1', 'Item 2', 'Item 3'])
   expect(new Set(q.map((e) => e.position)).size).toBe(3)
 })
+
+// The flag rides the row from the form to the detached download. SQLite stores 0/1, and
+// only an explicit true may become 1.
+test('a queued row remembers whether its id was hand-typed', () => {
+  const d = db()
+  enqueue(d, { ...req(1), manual: true })
+  enqueue(d, req(2))
+  expect(listQueue(d).map((e) => e.manual)).toEqual([true, false])
+})
+
+// The user's live database has queue rows from before the column existed. They must open,
+// read as not-manual, and keep working - a migration that disturbed them would lose the
+// downloads waiting there.
+test('a queue row written before the manual column existed still reads, as not manual', async () => {
+  const { mkdtempSync, rmSync } = await import('node:fs')
+  const { tmpdir } = await import('node:os')
+  const { join } = await import('node:path')
+  const Database = (await import('better-sqlite3')).default
+  const dir = mkdtempSync(join(tmpdir(), 'oldq-'))
+  const file = join(dir, 'old.db')
+  try {
+    const first = openDb(file)
+    first.close()
+    // Put the table back the way it was: no column, one row already in it.
+    const raw = new Database(file)
+    raw.exec('DROP INDEX IF EXISTS idx_download_queue_live_issue')
+    raw.exec('DROP INDEX IF EXISTS idx_download_queue_state_position')
+    raw.exec('ALTER TABLE download_queue DROP COLUMN manual')
+    raw.prepare(`INSERT INTO download_queue (position, state, url, cv_issue_id, queued_at)
+                 VALUES (0, 'queued', 'https://x.test/old', 77, '2026-01-01T00:00:00.000Z')`).run()
+    raw.close()
+
+    const d = openDb(file)
+    expect(listQueue(d)).toMatchObject([{ url: 'https://x.test/old', cvIssueId: 77, manual: false }])
+    expect(takeNext(d)).toMatchObject({ url: 'https://x.test/old', manual: false })
+    d.close()
+  } finally {
+    rmSync(dir, { recursive: true, force: true })
+  }
+})

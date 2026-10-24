@@ -69,6 +69,21 @@ describe('against the real download runner', () => {
     expect(res.statusCode).toBe(400)
   })
 
+  // Same strictness as /api/upload and the apply route: a truthy-looking value from some
+  // other client must not make the app start filing reminders.
+  test('only a JSON true marks a queued download as hand-typed', async () => {
+    for (const [n, manual] of [[1, true], [2, 'true'], [3, 1], [4, undefined]] as const) {
+      const res = await app.inject({
+        method: 'POST', url: '/api/downloads', payload: { url: `${OPAQUE}${n}`, issueId: 9000 + n, manual },
+      })
+      expect(res.statusCode).toBe(202)
+    }
+    const rows = app.db.prepare('SELECT cv_issue_id AS id, manual FROM download_queue ORDER BY id').all()
+    expect(rows).toEqual([
+      { id: 9001, manual: 1 }, { id: 9002, manual: 0 }, { id: 9003, manual: 0 }, { id: 9004, manual: 0 },
+    ])
+  })
+
   test('starting a download is accepted and reports its queued entry', async () => {
     const res = await app.inject({ method: 'POST', url: '/api/downloads', payload: { url: OPAQUE, edition: 'ASM' } })
 

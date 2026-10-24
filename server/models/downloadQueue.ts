@@ -15,6 +15,12 @@ export interface QueueEntry {
   edition?: string
   cvIssueId?: number
   label?: string
+  /**
+   * The Comic Vine id was typed by hand rather than chosen from search. Carried here
+   * because the download runs detached from the request that knew it; storeComic reads it
+   * back to decide whether to file a reminder.
+   */
+  manual: boolean
   attempts: number
   fileName?: string
   bookId?: number
@@ -29,21 +35,25 @@ export interface EnqueueRequest {
   edition?: string
   cvIssueId?: number
   label?: string
+  manual?: boolean
 }
 
 interface Row {
   id: number; position: number; state: QueueState; url: string
   edition: string | null; cv_issue_id: number | null; label: string | null
+  manual: number
   attempts: number; file_name: string | null; book_id: number | null; error: string | null
   queued_at: string; started_at: string | null; finished_at: string | null
 }
 
-const COLS = `id, position, state, url, edition, cv_issue_id, label, attempts,
+const COLS = `id, position, state, url, edition, cv_issue_id, label, manual, attempts,
               file_name, book_id, error, queued_at, started_at, finished_at`
 
 function toEntry(r: Row): QueueEntry {
   return {
     id: r.id, position: r.position, state: r.state, url: r.url, attempts: r.attempts,
+    // SQLite has no boolean; 0 and 1 are stored, and only 1 is true.
+    manual: r.manual === 1,
     queuedAt: r.queued_at,
     ...(r.edition == null ? {} : { edition: r.edition }),
     ...(r.cv_issue_id == null ? {} : { cvIssueId: r.cv_issue_id }),
@@ -76,9 +86,9 @@ export function enqueue(
     .get() as { p: number }).p
   try {
     const info = db
-      .prepare(`INSERT INTO download_queue (position, state, url, edition, cv_issue_id, label, queued_at)
-                VALUES (?, 'queued', ?, ?, ?, ?, ?)`)
-      .run(next, req.url, req.edition ?? null, req.cvIssueId ?? null, req.label ?? null, now)
+      .prepare(`INSERT INTO download_queue (position, state, url, edition, cv_issue_id, label, manual, queued_at)
+                VALUES (?, 'queued', ?, ?, ?, ?, ?, ?)`)
+      .run(next, req.url, req.edition ?? null, req.cvIssueId ?? null, req.label ?? null, req.manual === true ? 1 : 0, now)
     const row = db.prepare(`SELECT ${COLS} FROM download_queue WHERE id = ?`).get(info.lastInsertRowid) as Row
     return { queued: true, entry: toEntry(row) }
   } catch (err) {

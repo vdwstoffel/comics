@@ -1,4 +1,4 @@
-import { createComicVine } from '../lib/comicvine.js'
+import { createComicVine, CvApiError } from '../lib/comicvine.js'
 import { applyIssueToBook } from '../services/applyIssue.js'
 import type { CvVolume } from '../lib/comicvine.js'
 import { getBook, updateBook } from '../models/books.js'
@@ -7,8 +7,24 @@ import type { EditionUpdate } from '../models/editions.js'
 import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags, setTagIds } from '../models/metadata.js'
 import { cacheVolumeSearch, getCachedVolumeSearch } from '../models/volumeSearch.js'
 import { syncComicInfoFile } from '../services/comicinfoSync.js'
+import { listMetadataFollowups, dismissFollowup, restoreFollowup } from '../models/metadataFollowups.js'
 import { getComicVineKey } from '../models/settings.js'
 import type { App } from '../types.js'
+
+/**
+ * Was this failure Comic Vine's, rather than ours?
+ *
+ * Two shapes reach here. A CvApiError is an answer we did get and could not use: an HTTP
+ * 5xx, a rate limit, a rejected key - the client wraps all of them. A connection that
+ * never completed is different: node's fetch throws TypeError('fetch failed') with the
+ * socket error on `cause`, and there was no response to wrap, so it arrives raw. Both are
+ * "Comic Vine, not Comix". Anything else - a database error, a bug in the apply - is ours
+ * and must keep its 500, or an outage message would start covering for real faults.
+ */
+function cvUnreachable(err: unknown): boolean {
+  if (err instanceof CvApiError) return true
+  return err instanceof TypeError && /fetch failed/i.test(err.message)
+}
 
 interface IdParams { id: string }
 interface SearchQuery { q?: string; type?: string }
@@ -25,12 +41,72 @@ export default async function comicvineRoutes(app: App) {
     return { results: await cv.search(q, type) }
   })
 
-  app.post<{ Params: IdParams; Body: { issueId?: number | string } }>('/api/books/:id/comicvine', async (req, reply) => {
+  /**
+   * Bind a book to a Comic Vine issue and apply what it says.
+   *
+   * `manual` means the id was TYPED by the user, and only the manual-entry input sends it.
+   * Refresh and search-and-pick go through this same route without it: a refresh must not
+   * re-stamp an entry's created_at, and an id Comic Vine itself offered is not something
+   * to be reminded about later.
+   */
+  app.post<{ Params: IdParams; Body: { issueId?: unknown; manual?: unknown } }>('/api/books/:id/comicvine', async (req, reply) => {
     const book = getBook(app.db, Number(req.params.id))
     if (!book) return reply.code(404).send({ error: 'book not found' })
-    const { issueId } = req.body || {}
-    if (!issueId) return reply.code(400).send({ error: 'missing issueId' })
-    return applyIssueToBook({ db: app.db, config: app.config }, book.id, issueId)
+    const { issueId: raw, manual } = req.body || {}
+    if (raw == null || raw === '') return reply.code(400).send({ error: 'missing issueId' })
+    // The page is not this route's only caller and its parser is a convenience, not a
+    // boundary. Digits only, no leading zero: Number('1e3') or Number('0x10') would
+    // otherwise sail through and bind a different id than the one that was typed.
+    const issueId = typeof raw === 'number' ? raw : typeof raw === 'string' && /^[1-9]\d*$/.test(raw) ? Number(raw) : NaN
+    if (!Number.isSafeInteger(issueId) || issueId <= 0) {
+      return reply.code(400).send({ error: 'issueId must be a positive integer' })
+    }
+    try {
+      const applied = await applyIssueToBook({ db: app.db, config: app.config }, book.id, issueId, { manual: manual === true })
+      // Typing an id by hand is the user saying "this comic is bound to a record I expect
+      // Comic Vine to fill in later" - which is precisely what the follow-up list is for.
+      // So it undoes an earlier dismissal: a note the user asked for again should come
+      // back, while nothing automatic is allowed to resurrect one. After the apply, so a
+      // rejected id raises nothing from the dead.
+      if (manual === true) restoreFollowup(app.db, book.id)
+      return applied
+    } catch (err) {
+      // Comic Vine's "Object Not Found" arrives as HTTP 200 with status_code 101, and the
+      // service has written nothing by the time it throws. It is the user's typo, not a
+      // server fault, so it is a 404 the page can say in words.
+      if (err instanceof CvApiError && err.cvStatus === 101) {
+        return reply.code(404).send({ error: 'Comic Vine has no issue with that id.' })
+      }
+      // Every other Comic Vine failure used to fall through to Fastify's default handler,
+      // which answers {"error":"Internal Server Error"} - and the page printed that, so a
+      // Comic Vine outage read as a bug in Comix. That is the worst possible message for
+      // this feature: an outage is exactly when the follow-up list is used, and the user
+      // already half-believes the whole API is down when in fact only issue SEARCH is
+      // failing and direct lookups answer fine. 502 says which end failed, and the detail
+      // says what Comic Vine actually did.
+      if (cvUnreachable(err)) {
+        const detail = err instanceof CvApiError ? err.message.replace(/^Comic Vine /, '') : 'no answer'
+        return reply.code(502).send({
+          error: `Comic Vine could not be read, so nothing was changed (${detail}).`,
+        })
+      }
+      // Not Comic Vine: a real fault here, kept as the 500 it has always been rather than
+      // blamed on an upstream that answered perfectly well.
+      throw err
+    }
+  })
+
+  // Comics whose metadata is incomplete, whatever matched them: no cover date, no summary
+  // or no credits. Derived from the books, so a thin record matched from search counts
+  // exactly as a hand-typed one does - the point of the list is the hole, not the route in.
+  app.get('/api/metadata-followups', async () => ({ followups: listMetadataFollowups(app.db) }))
+
+  // Dismissal is the user saying they are done with a note. It writes one row in its own
+  // table and touches nothing else: the comic keeps its Comic Vine id, its metadata, its
+  // file and its hand-typed provenance.
+  app.delete<{ Params: { bookId: string } }>('/api/metadata-followups/:bookId', async (req) => {
+    dismissFollowup(app.db, Number(req.params.bookId))
+    return { dismissed: true }
   })
 
   // What a matched issue implies about where the comic belongs, so the upload screen can

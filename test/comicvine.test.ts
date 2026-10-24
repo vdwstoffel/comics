@@ -166,6 +166,9 @@ test('apply route stores publisher on book and series when getVolume returns one
   // Mock fetch: issue returns volumeId 7890; volume returns publisher "DC"
   const mockFetchImpl = mockFetch([
     ['/issue/', { results: {
+      // The route posts issueId 42, and a real response echoes that id back. applyIssueToBook
+      // reads it to tell a record from an empty result, so a stand-in response has to carry it.
+      id: 42,
       name: 'Year One', issue_number: '1', cover_date: '2011-11-01',
       description: null,
       volume: { name: 'Batman', id: 7890 },
@@ -219,6 +222,9 @@ test('applying an issue embeds its metadata, credits and tags into the file', as
 
   const mockFetchImpl = mockFetch([
     ['/issue/', { results: {
+      // The route posts issueId 42, and a real response echoes that id back. applyIssueToBook
+      // reads it to tell a record from an empty result, so a stand-in response has to carry it.
+      id: 42,
       name: 'Shed', issue_number: '12', cover_date: '2011-11-01', description: null,
       volume: { name: 'Batman', id: 7890 },
       person_credits: [
@@ -420,6 +426,9 @@ test('applying an issue stores the Comic Vine id alongside each character tag', 
 
   const mockFetchImpl = mockFetch([
     ['/issue/', { results: {
+      // The route posts issueId 42, and a real response echoes that id back. applyIssueToBook
+      // reads it to tell a record from an empty result, so a stand-in response has to carry it.
+      id: 42,
       name: 'The Hobgoblin', issue_number: '238', cover_date: '1983-03-01', description: null,
       volume: { name: 'The Amazing Spider-Man', id: 2127 },
       person_credits: [],
@@ -662,6 +671,9 @@ test('applying an issue stores the Comic Vine id alongside each story arc tag', 
 
   const mockFetchImpl = mockFetch([
     ['/issue/', { results: {
+      // The route posts issueId 42, and a real response echoes that id back. applyIssueToBook
+      // reads it to tell a record from an empty result, so a stand-in response has to carry it.
+      id: 42,
       name: 'Court', issue_number: '1', cover_date: '2011-11-01', description: null,
       volume: { name: 'Batman', id: 7890 }, person_credits: [],
       story_arc_credits: [{ id: 42125, name: 'Court of Owls' }],
@@ -1118,4 +1130,20 @@ test('verifyKey refuses an empty key without calling Comic Vine', async () => {
   })
   await expect(cv.verifyKey()).rejects.toThrow(/not configured/)
   expect(calls).toBe(0)
+})
+
+test('a Comic Vine status_code surfaces on the error', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: mockFetch([['/issue/', { status_code: 101, error: 'Object Not Found' }]]),
+  })
+  await expect(cv.getIssue(1)).rejects.toMatchObject({ cvStatus: 101 })
+})
+
+test('an HTTP failure surfaces its status', async () => {
+  const cv = createComicVine({
+    apiKey: 'k', now: () => 0,
+    fetchImpl: async () => ({ ok: false, status: 500 }) as never,
+  })
+  await expect(cv.getIssue(1)).rejects.toMatchObject({ httpStatus: 500 })
 })

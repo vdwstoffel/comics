@@ -428,6 +428,14 @@ export interface BookResponse {
   progress: ApiProgress
   credits?: ApiCredit[]
   tags?: ApiTag[]
+  /** What an apply actually moved, so a Refresh can say what changed. Absent elsewhere. */
+  changed?: string[]
+  /**
+   * False when only the link was bound because Comic Vine could not be read - a hand-typed
+   * id during an outage. The response is a 200 and the book comes back unchanged otherwise,
+   * so this is the only thing that tells that apart from an apply that worked.
+   */
+  metadataApplied?: boolean
 }
 export interface ProgressResponse { progress: ApiProgress }
 export interface CvSearchResponse { results: CvSearchResult[] }
@@ -444,6 +452,26 @@ export interface ArcResponse {
   arcId?: number | null
   ordered?: boolean
   stale?: boolean
+}
+/**
+ * A comic whose metadata is incomplete; mirrors the server's MetadataFollowup.
+ *
+ * `missing` is what the BOOK lacks and is what put it on the list. The `manual` fields
+ * are context about a hand-typed id - including `cvMissing`, what the Comic Vine RESPONSE
+ * lacked at the last read, which is a different question and decides nothing.
+ */
+export interface ApiMetadataFollowup {
+  bookId: number
+  title: string | null
+  fileName: string
+  bookCvId: number | null
+  cvSiteUrl: string | null
+  addedAt: string
+  missing: string[]
+  manual: boolean
+  typedIssueId: number | null
+  checkedAt: string | null
+  cvMissing: string[]
 }
 export interface EditionResponse { edition: ApiEdition }
 export interface MoveBookEditionResponse { book: ApiBook; edition: ApiEdition }
@@ -673,10 +701,16 @@ export const api = {
     json<CharacterResponse>(`/api/books/${bookId}/character?name=${encodeURIComponent(name)}`),
   cvSearch: (q: string, type: string) =>
     json<CvSearchResponse>(`/api/comicvine/search?q=${encodeURIComponent(q)}&type=${type}`),
-  applyIssue: (id: string | number, issueId: number) =>
+  /** `manual` is for the hand-typed id input alone; Refresh and search-and-pick leave it off. */
+  applyIssue: (id: string | number, issueId: number, manual?: boolean) =>
     json<BookResponse>(`/api/books/${id}/comicvine`, {
-      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ issueId }),
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(manual ? { issueId, manual: true } : { issueId }),
     }),
+  metadataFollowups: () => json<{ followups: ApiMetadataFollowup[] }>('/api/metadata-followups'),
+  /** Takes the note down. The comic, its metadata and its file are untouched. */
+  dismissFollowup: (bookId: number) =>
+    json<{ dismissed: true }>(`/api/metadata-followups/${bookId}`, { method: 'DELETE' }),
   renameEdition: (id: string | number, name: string, seriesName?: string) =>
     json<EditionResponse>(`/api/editions/${id}`, {
       method: 'PATCH', headers: { 'content-type': 'application/json' },
@@ -697,7 +731,7 @@ export const api = {
     }),
 
   getDownloads: () => json<DownloadsView>('/api/downloads'),
-  queueDownload: (body: { url: string; edition?: string; issueId?: number; label?: string }) =>
+  queueDownload: (body: { url: string; edition?: string; issueId?: number; label?: string; manual?: boolean }) =>
     json<{ queued: boolean }>('/api/downloads', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     }),

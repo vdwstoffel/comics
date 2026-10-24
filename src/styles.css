@@ -515,6 +515,28 @@ img {
   color: var(--muted);
 }
 
+/* Comics whose metadata is still incomplete (the /settings/metadata page). */
+.followups { margin-top: 12px; }
+/* The one-line pointer in Settings; the rows themselves are above. */
+.settings__followups-link { margin: 12px 0 0; }
+.followups__list { list-style: none; margin: 0; padding: 0; }
+.followups__list--paged { max-height: 28rem; overflow-y: auto; }
+.followups__pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }
+.followups__position { font-size: 0.875rem; color: var(--muted); }
+.followups__row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 16px;
+  justify-content: space-between;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+}
+.followups__main p { margin: 2px 0; }
+/* The reason the comic is on the list, so it reads ahead of the context under it. */
+.followups__missing { font-size: 0.875rem; color: var(--text); font-weight: 600; }
+.followups__note { font-size: 0.8125rem; color: var(--muted); font-style: italic; }
+.followups__actions { display: flex; gap: 8px; align-items: flex-start; }
+
 /* ============================================================
    Typography helpers
    ============================================================ */
@@ -1218,6 +1240,16 @@ textarea.input:hover:not(:focus) {
   margin-bottom: 12px;
 }
 
+.issue-edit__refresh {
+  margin: 8px 0 0;
+  font-size: 0.8125rem;
+  color: var(--muted);
+}
+
+.issue-edit__refresh--error {
+  color: var(--accent);
+}
+
 .book-detail__move-error {
   color: var(--accent);
   font-size: 0.8125rem;
@@ -1434,6 +1466,45 @@ textarea.input:hover:not(:focus) {
 
 .cv-search-row input:hover:not(:focus) {
   border-color: var(--muted);
+}
+
+.cv-id-row {
+  margin-bottom: 16px;
+}
+
+.cv-id-row label {
+  display: block;
+  color: var(--muted);
+  font-size: 0.8125rem;
+  margin-bottom: 6px;
+}
+
+.cv-id-row__controls {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.cv-id-row input {
+  flex: 1;
+  background: var(--elevated);
+  border: 1px solid var(--border);
+  color: var(--text);
+  border-radius: 8px;
+  padding: 9px 13px;
+  font-size: 0.875rem;
+  font-family: inherit;
+  transition: border-color 0.15s, box-shadow 0.15s;
+}
+
+.cv-id-row input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(229, 72, 77, 0.18);
+}
+
+.cv-id-row .cv-error {
+  margin: 8px 0 0;
 }
 
 .cv-results {

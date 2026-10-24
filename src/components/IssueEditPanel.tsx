@@ -46,8 +46,28 @@ export default function IssueEditPanel({ book, onClose }: IssueEditPanelProps) {
   })
 
   const apply = useMutation({
-    mutationFn: (issueId: number) => api.applyIssue(book.id, issueId),
+    mutationFn: ({ issueId, manual }: { issueId: number; manual?: boolean }) =>
+      api.applyIssue(book.id, issueId, manual),
     onSuccess: () => { settled(); setMatching(false) },
+  })
+
+  // Opening the dialog clears the last apply's failure with it. The dialog unmounts on
+  // close while this panel stays mounted, so without the reset a fresh open is greeted by
+  // "Comic Vine has no issue with that id." about an id nobody has typed yet.
+  function openMatch() {
+    apply.reset()
+    setMatching(true)
+  }
+
+  // Kept apart from `apply`: that one closes the match dialog and says nothing of its own,
+  // while a refresh has to tell the user what it found. Comic Vine's record for a new comic
+  // is often empty for days and an empty field never overwrites anything, so a refresh that
+  // moved nothing is the likeliest outcome - and a bare "Refreshed" would read as though
+  // Comic Vine had filled the record in. `changed` is what tells the two apart. No `manual`
+  // flag: that is for a hand-typed id, and on a refresh it would re-stamp the reminder.
+  const refresh = useMutation({
+    mutationFn: (issueId: number) => api.applyIssue(book.id, issueId),
+    onSuccess: settled,
   })
 
   const move = useMutation({
@@ -94,10 +114,43 @@ export default function IssueEditPanel({ book, onClose }: IssueEditPanelProps) {
     <div className="metadata-section issue-edit">
       <div className="issue-edit__head">
         <h3 className="metadata-section__heading">Edit metadata</h3>
-        <button type="button" className="btn btn-ghost" onClick={() => setMatching(true)}>
+        <button type="button" className="btn btn-ghost" onClick={openMatch}>
           Fetch metadata
         </button>
+        {/* Only a comic already bound to a record has one to re-read. */}
+        {book.comicvineId != null && (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            disabled={refresh.isPending}
+            onClick={() => refresh.mutate(book.comicvineId as number)}
+          >
+            Refresh from Comic Vine
+          </button>
+        )}
       </div>
+      {/* The §3.4 outcome: a hand-typed id during a Comic Vine outage answers 200 with the
+          link bound and nothing else written. The dialog just closed and the comic looks
+          untouched, so without this line the only sign is a Refresh button quietly
+          appearing - indistinguishable from an apply that worked. */}
+      {apply.isSuccess && apply.data?.metadataApplied === false && (
+        <p className="issue-edit__refresh" role="status">
+          The link is saved, but Comic Vine could not be read, so no metadata arrived. The
+          comic is on the Settings list to re-check.
+        </p>
+      )}
+      {refresh.isError && (
+        <p className="issue-edit__refresh issue-edit__refresh--error" role="alert">
+          Refresh failed: {refresh.error?.message}
+        </p>
+      )}
+      {refresh.isSuccess && (
+        <p className="issue-edit__refresh" role="status">
+          {refresh.data.changed && refresh.data.changed.length > 0
+            ? `Updated from Comic Vine: ${refresh.data.changed.join(', ')}.`
+            : 'Comic Vine had nothing new for this comic.'}
+        </p>
+      )}
 
       <MetadataEditor
         book={book}
@@ -110,7 +163,11 @@ export default function IssueEditPanel({ book, onClose }: IssueEditPanelProps) {
       {matching && (
         <ComicVineMatchDialog
           defaultQuery={buildCvQuery(book, currentEdition)}
-          onPick={(r) => apply.mutate(r.id)}
+          // The server's own words, so a mistyped id reads as one ("Comic Vine has no issue
+          // with that id.") rather than as a failure with no cause. The dialog stays open
+          // on an error so the id can be corrected in place.
+          error={apply.isError ? apply.error?.message : null}
+          onPick={(r, opts) => apply.mutate({ issueId: r.id, manual: opts?.manual })}
           onClose={() => setMatching(false)}
         />
       )}

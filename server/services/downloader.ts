@@ -33,6 +33,7 @@ export interface DownloadRequest {
   edition?: string
   issueId?: string | number
   label?: string
+  manual?: boolean
 }
 
 export interface DownloadDeps {
@@ -179,11 +180,29 @@ export function createDownloadRunner(ctx: Ctx, deps: DownloadDeps = {}): Downloa
 
       const result = await storeComic(ctx, {
         tmpPath, originalName: fileName, editionName: entry.edition, issueId: entry.cvIssueId,
+        // Whether the id was typed is only known where the form was; the queue row is how
+        // that survives until this detached run, and storeComic files the reminder from it.
+        manual: entry.manual,
       })
       // storeComic consumes the tmp file either way, so there is nothing left to clean.
       tmpPath = undefined
       if (!result.ok) throw new Error(result.error)
 
+      // `result.issueNotFound` is deliberately ignored, and this is a trade-off rather
+      // than an oversight. For an id chosen from search it comes from Comic Vine itself, so
+      // it is only "not found" if the record was deleted between queueing and downloading.
+      // That is no longer the only way in: a hand-typed id (`entry.manual`) can be a typo,
+      // and a typo now reaches this line. applyIssueToBook writes nothing for it, so the
+      // book is unbound and no reminder is filed - it fails safe, but silently. The comic
+      // itself downloaded fine either way. What it costs: the book lands unbound, so a
+      // follow sweep cannot see this issue as owned and queues it again, and
+      // dedupeDestPath then keeps both files rather than overwriting.
+      //
+      // It is ignored because there is nobody to tell. This runs detached from any
+      // request; the queue row carries a status and a message, and marking a download
+      // that succeeded as failed would be a worse lie than the unbound book. Reporting it
+      // properly needs a place to put "finished, with a caveat" - which the queue has no
+      // column for. If one is ever added, this is the caller that wants it.
       finish(ctx.db, entry.id, { bookId: result.book?.id, fileName })
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err)
@@ -274,7 +293,7 @@ export function createDownloadRunner(ctx: Ctx, deps: DownloadDeps = {}): Downloa
     }),
     enqueue(req) {
       const res = enqueueRow(ctx.db, {
-        url: req.url, edition: req.edition, label: req.label,
+        url: req.url, edition: req.edition, label: req.label, manual: req.manual,
         cvIssueId: req.issueId == null ? undefined : Number(req.issueId),
       })
       if (res.queued) wake()

@@ -253,7 +253,8 @@ CREATE TABLE IF NOT EXISTS download_queue (
   error       TEXT,
   queued_at   TEXT NOT NULL,
   started_at  TEXT,
-  finished_at TEXT
+  finished_at TEXT,
+  manual      INTEGER NOT NULL DEFAULT 0
 );
 
 -- The duplicate guard. Partial, so it covers live rows only: a comic that finished or
@@ -287,6 +288,41 @@ CREATE TABLE IF NOT EXISTS follow (
   name       TEXT NOT NULL,
   created_at TEXT NOT NULL,
   PRIMARY KEY (kind, ref_id)
+);
+
+-- Comics bound to a Comic Vine issue by typing its id, kept as a reminder list: a record
+-- for a brand-new issue is often empty for days, so the bind works while no metadata
+-- arrives yet. Nothing about a comic's behaviour depends on a row here.
+-- book_id is the primary key so entering an id twice for one comic (correcting a typo)
+-- updates the row instead of leaving a stale one beside it. cv_missing is a JSON array of
+-- what the Comic Vine *response* lacked at the last read - not what the book lacks, which
+-- cannot answer it, since a thin record no longer overwrites a book's own metadata.
+-- checked_at is null until Comic Vine has been successfully read for this entry, which
+-- is different from "read, and had everything" (checked_at set, cv_missing '[]').
+CREATE TABLE IF NOT EXISTS cv_manual_entry (
+  book_id     INTEGER PRIMARY KEY REFERENCES book(id) ON DELETE CASCADE,
+  cv_issue_id INTEGER NOT NULL,
+  created_at  TEXT NOT NULL,
+  checked_at  TEXT,
+  cv_missing  TEXT
+);
+
+-- Comics you have told the metadata follow-up list to stop showing. The list itself is
+-- DERIVED from the books - a comic is on it while it has no cover date, no summary or no
+-- credits, however it came to be matched - so there is no row anywhere to delete when you
+-- are done with one, and without this table a dismissal would last until the next render.
+--
+-- Separate from cv_manual_entry on purpose, although it has the same shape. That table
+-- answers "how was this comic matched?" and is written by applyIssueToBook; this one
+-- answers "do you still want to be reminded?" and is written only by you. Merging them
+-- would mean dismissing a note deleted the provenance with it, and a hand-typed id that
+-- had been dismissed would be indistinguishable from one found through search.
+--
+-- The cascade is what keeps a deleted comic from leaving a dismissal behind: nothing else
+-- prunes this table, and a later book reusing the id would silently inherit the verdict.
+CREATE TABLE IF NOT EXISTS metadata_followup_dismissed (
+  book_id      INTEGER PRIMARY KEY REFERENCES book(id) ON DELETE CASCADE,
+  dismissed_at TEXT NOT NULL
 );
 `
 
@@ -335,6 +371,16 @@ export function openDb(dbPath: string): Db {
   if (!bookCols.includes('publisher')) db.exec('ALTER TABLE book ADD COLUMN publisher TEXT')
 
   db.exec(MIGRATION)
+
+  // Additive for the same reason as the book columns: a live database already has queue
+  // rows, and rebuilding the table would risk them. DEFAULT 0 is what makes every row
+  // queued before this column existed read as "chosen from search", which is what it was.
+  // The CREATE TABLE in MIGRATION carries the column too, for fresh databases; this is the
+  // line an existing one needs. It has to sit after db.exec(MIGRATION), which is where the
+  // table is created.
+  if (!columnsOf(db, 'download_queue').includes('manual')) {
+    db.exec('ALTER TABLE download_queue ADD COLUMN manual INTEGER NOT NULL DEFAULT 0')
+  }
 
   // Additive migration: character tags gained the Comic Vine id that says WHICH character
   // they are. Four different people have gone by "Hobgoblin"; the name alone can't pick one.

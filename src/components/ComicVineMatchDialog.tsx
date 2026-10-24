@@ -1,10 +1,14 @@
 import { useEffect, useRef, useState } from 'react'
 import { api } from '../api'
 import type { CvSearchResult } from '../api'
+import { parseCvIssueId } from '../lib/cvIssueId'
 
 interface ComicVineMatchDialogProps {
   defaultQuery?: string | null
-  onPick: (r: CvSearchResult) => void
+  /** A failure from applying a pick, which the caller owns and the dialog only displays. */
+  error?: string | null
+  /** `manual` marks an id typed by hand, which the server records so it can be re-checked later. */
+  onPick: (r: CvSearchResult, opts?: { manual?: boolean }) => void
   onClose: () => void
 }
 
@@ -13,11 +17,15 @@ function caption(r: CvSearchResult): string {
   return [r.issueNumber ? `#${r.issueNumber}` : '', r.year, r.publisher].filter(Boolean).join(' · ')
 }
 
-export default function ComicVineMatchDialog({ defaultQuery, onPick, onClose }: ComicVineMatchDialogProps) {
+export default function ComicVineMatchDialog({ defaultQuery, error, onPick, onClose }: ComicVineMatchDialogProps) {
   const [q, setQ] = useState(defaultQuery || '')
   const [results, setResults] = useState<CvSearchResult[]>([])
   const [loading, setLoading] = useState(false)
   const [err, setErr] = useState<string | null>(null)
+  const [idInput, setIdInput] = useState('')
+  // Kept apart from `err`: a failed search and a mistyped link are different problems and
+  // must not overwrite one another.
+  const [idErr, setIdErr] = useState<string | null>(null)
 
   async function doSearch(query = q) {
     if (!query.trim()) return
@@ -25,6 +33,15 @@ export default function ComicVineMatchDialog({ defaultQuery, onPick, onClose }: 
     try { setResults((await api.cvSearch(query, 'issue')).results) }
     catch { setErr('Search failed') }
     finally { setLoading(false) }
+  }
+
+  function applyTyped() {
+    const parsed = parseCvIssueId(idInput)
+    if (!parsed.ok) { setIdErr(parsed.error); return }
+    setIdErr(null)
+    // Only the id is known. The name is synthesized because callers render it: the upload
+    // page builds its "matched" label from it and would show a bare tick without one.
+    onPick({ id: parsed.id, name: `Comic Vine #${parsed.id}` }, { manual: true })
   }
 
   // A query derived from the book is worth running on the spot: the dialog opens on
@@ -52,6 +69,23 @@ export default function ComicVineMatchDialog({ defaultQuery, onPick, onClose }: 
         </div>
         {loading && <p className="cv-status">Searching…</p>}
         {err && <p className="cv-error">{err}</p>}
+        {/* Always rendered, never gated on a failed search: when Comic Vine's search is down
+            it answers with an error rather than an empty list, and this is the way round it.
+            It reaches the issue endpoint directly. */}
+        <form className="cv-id-row" onSubmit={(e) => { e.preventDefault(); applyTyped() }}>
+          <label htmlFor="cv-id-input">Comic Vine ID or link</label>
+          <div className="cv-id-row__controls">
+            <input
+              id="cv-id-input"
+              placeholder="Paste an issue link or id"
+              value={idInput}
+              onChange={(e) => { setIdInput(e.target.value); setIdErr(null) }}
+            />
+            <button type="submit" className="btn">Apply</button>
+          </div>
+          {idErr && <p className="cv-error" role="alert">{idErr}</p>}
+        </form>
+        {error && <p className="cv-error" role="alert">{error}</p>}
         <ul className="cv-results">
           {results.map((r) => (
             <li key={r.id}>

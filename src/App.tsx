@@ -17,6 +17,7 @@ import LibrarySearch from './pages/LibrarySearch'
 import Releases from './pages/Releases'
 import Downloads from './pages/Downloads'
 import Settings from './pages/Settings'
+import MetadataFollowups from './pages/MetadataFollowups'
 import DownloadBar from './components/DownloadBar'
 
 /**
@@ -188,6 +189,9 @@ export default function App() {
       <Route path="/releases" element={<Layout><Releases /></Layout>} />
       <Route path="/downloads" element={<Layout><Downloads /></Layout>} />
       <Route path="/settings" element={<Layout><Settings /></Layout>} />
+      {/* Split out of Settings: the list can run to dozens of rows and buried the settings
+          below it. */}
+      <Route path="/settings/metadata" element={<Layout><MetadataFollowups /></Layout>} />
     </Routes>
   )
 }

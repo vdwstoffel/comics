@@ -8,6 +8,10 @@ import { setComicVineKey } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
 
 const ISSUE = {
+  // The id both tests below post. A real response echoes it back, and applyIssueToBook
+  // reads it to tell a record from an empty result - a response without one is Comic Vine
+  // saying the issue does not exist, and is refused rather than applied.
+  id: 1102459,
   name: 'Death to the Tyrant',
   issue_number: '1',
   cover_date: '2025-06-01',
