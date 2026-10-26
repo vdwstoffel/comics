@@ -9,6 +9,7 @@ import Volume from './pages/Volume'
 import BookRedirect from './pages/BookRedirect'
 import Reader from './pages/Reader'
 import Upload from './pages/Upload'
+import BulkUpload from './pages/BulkUpload'
 import SearchComics from './pages/SearchComics'
 import Arcs from './pages/Arcs'
 import Arc from './pages/Arc'
@@ -185,6 +186,7 @@ export default function App() {
       <Route path="/book/:id" element={<Layout><BookRedirect /></Layout>} />
       <Route path="/read/:id" element={<ReaderLayout><Reader /></ReaderLayout>} />
       <Route path="/upload" element={<Layout><Upload /></Layout>} />
+      <Route path="/upload/bulk" element={<Layout><BulkUpload /></Layout>} />
       <Route path="/search" element={<Layout><SearchComics /></Layout>} />
       <Route path="/releases" element={<Layout><Releases /></Layout>} />
       <Route path="/downloads" element={<Layout><Downloads /></Layout>} />

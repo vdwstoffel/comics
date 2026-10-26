@@ -5,6 +5,7 @@ import { isCbr, convertCbrToCbz } from '../lib/cbr.js'
 import { createComicVine, CvApiError } from '../lib/comicvine.js'
 import { comicFileName } from '../lib/comicFileName.js'
 import { editionFolderPath, dedupeDestPath } from '../lib/paths.js'
+import { getVolumeCached } from '../models/volumeRecord.js'
 import { deriveSeriesName } from '../lib/seriesName.js'
 import { getEditionByName } from '../models/editions.js'
 import { getBook, updateBook } from '../models/books.js'
@@ -23,10 +24,33 @@ export interface StoreComicInput {
   issueId?: string | number
   /** The id was typed by the user, not picked off a search result. Forwarded to the apply service, which files the reminder. */
   manual?: boolean
+  /**
+   * The two halves of the comic's file name, when the caller already holds them.
+   *
+   * Supplying both skips a getIssue and a getVolume that exist only to look them up. A
+   * bulk upload knows the volume from the search result and the issue number from the
+   * volume's issue list, so paying for that lookup once per comic is 2 of Comic Vine's
+   * 200 requests an hour thrown away on an answer already in hand.
+   *
+   * Both or neither: half of a name is not a name.
+   */
+  volumeName?: string
+  issueNumber?: string
 }
 
 export type StoreComicResult =
-  | { ok: true; book: Book | undefined; metadataApplied?: boolean; issueNotFound?: true }
+  | {
+      ok: true
+      book: Book | undefined
+      metadataApplied?: boolean
+      issueNotFound?: true
+      /**
+       * The name this comic ASKED for, before dedupeDestPath may have had to pick another.
+       * A caller replacing an existing comic deletes it after the upload has safely landed,
+       * and then wants the name the old file was holding.
+       */
+      wantedName?: string
+    }
   | { ok: false; error: 'not a valid .cbr (conversion failed)' | 'not a valid .cbz (no image pages)' }
 
 /**
@@ -40,7 +64,7 @@ export type StoreComicResult =
  */
 export async function storeComic(
   ctx: Ctx,
-  { tmpPath, originalName, editionName, issueId, manual }: StoreComicInput,
+  { tmpPath, originalName, editionName, issueId, manual, volumeName, issueNumber }: StoreComicInput,
 ): Promise<StoreComicResult> {
   const { db, config } = ctx
   let name = originalName
@@ -90,12 +114,20 @@ export async function storeComic(
   // a scene file arrives with. Resolved BEFORE the write so the file lands with its final
   // name and there is no rename afterwards to unwind. Without a match the file keeps the
   // name it came with - renaming on a guess loses track of what it is.
+  //
+  // A caller that already knows both halves hands them over and the lookup is skipped
+  // entirely. comicFileName runs the series through slug(), which strips anything that
+  // could make a path - that is what makes a client-supplied volumeName safe here, and
+  // nothing may route around it.
   let finalName = name
-  if (issueId) {
+  if (volumeName && issueNumber) {
+    const slugged = comicFileName(volumeName, issueNumber, extname(name))
+    if (slugged) finalName = slugged
+  } else if (issueId) {
     try {
       const cv = createComicVine({ apiKey: () => getComicVineKey(db) })
       const issue = await cv.getIssue(issueId)
-      const volume = issue.volumeId ? await cv.getVolume(issue.volumeId) : undefined
+      const volume = issue.volumeId ? await getVolumeCached(db, cv, issue.volumeId) : undefined
       const slugged = comicFileName(volume?.name, issue.number, extname(name))
       if (slugged) finalName = slugged
     } catch { /* a name we cannot improve is no reason to refuse the comic */ }
@@ -115,7 +147,7 @@ export async function storeComic(
   // The NAME given, not the sanitised folder: sanitising is a filesystem concern, and
   // passing the folder on would rename the edition to whatever its directory had to be.
   const book = await ingestFile(ctx, destPath, edition)
-  if (!book || !issueId) return { ok: true, book }
+  if (!book || !issueId) return { ok: true, book, wantedName: finalName }
 
   // The file is on disk and indexed by now. Metadata is the bonus, so a Comic Vine that
   // will not answer costs the metadata, never the comic.
@@ -125,7 +157,7 @@ export async function storeComic(
     // cannot be read no longer throws, it binds the id and reports metadataApplied false.
     // Claiming success there tells the upload page the metadata arrived, and the page
     // hides its "Fetch metadata" retry on exactly that claim.
-    return { ok: true, book: applied.book, metadataApplied: applied.metadataApplied }
+    return { ok: true, book: applied.book, metadataApplied: applied.metadataApplied, wantedName: finalName }
   } catch (err) {
     // Comic Vine's "Object Not Found" (status_code 101) means the id is a typo, and the
     // service has written nothing. Binding it here would undo that: a comic linked to a
@@ -133,12 +165,12 @@ export async function storeComic(
     // itself is already in the library and stays - losing a file to a mistyped id would be
     // far worse - so this is reported as a flag, not thrown, and the caller can say so.
     if (err instanceof CvApiError && err.cvStatus === 101) {
-      return { ok: true, book: getBook(db, book.id) ?? book, metadataApplied: false, issueNotFound: true }
+      return { ok: true, book: getBook(db, book.id) ?? book, metadataApplied: false, issueNotFound: true, wantedName: finalName }
     }
     // The identity came from the queue, not from Comic Vine. Record it even when the
     // metadata read fails: a follow that cannot see this issue as owned fetches it again
     // on every sweep, and the finished queue row no longer blocks the duplicate.
     updateBook(db, book.id, { comicvineId: Number(issueId) })
-    return { ok: true, book: getBook(db, book.id) ?? book, metadataApplied: false }
+    return { ok: true, book: getBook(db, book.id) ?? book, metadataApplied: false, wantedName: finalName }
   }
 }

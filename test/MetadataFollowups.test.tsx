@@ -72,6 +72,14 @@ test('a row names what the comic is missing', async () => {
   expect(await screen.findByText(/date, credits/i)).toBeInTheDocument()
 })
 
+// What a bulk add's unplaced files look like here. The reason is rendered generically,
+// so this is the proof the new arm reaches the page rather than being computed and lost.
+test('a comic with no Comic Vine id says so on its row', async () => {
+  serve([{ ...FOLLOWUP, bookCvId: null, missing: ['comic vine id'] }])
+  draw()
+  expect(await screen.findByText(/comic vine id/i)).toBeInTheDocument()
+})
+
 // The rework in one test: this comic was matched from search, and the old list - keyed on
 // a hand-typed id - would never have shown it.
 test('a comic that was never typed by hand is listed all the same', async () => {

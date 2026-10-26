@@ -16,6 +16,7 @@ interface BookFields {
   summary?: string | null
   date?: string | null
   credits?: boolean
+  comicvineId?: number | null
 }
 
 /** A comic that is complete by default, so each test states only the hole it is about. */
@@ -31,6 +32,11 @@ function addBook(file: string, f: BookFields = {}): number {
     fileSize: 1,
   })!.id
   if (f.credits !== false) replaceBookCredits(db, id, [{ name: 'Al Ewing', role: 'writer' }])
+  // A complete comic is a MATCHED one: an absent Comic Vine id is a hole in its own
+  // right, so a test about some other hole has to supply an id or it would be on the
+  // list twice over.
+  const cvId = f.comicvineId === undefined ? 1197227 : f.comicvineId
+  if (cvId !== null) updateBook(db, id, { comicvineId: cvId })
   return id
 }
 
@@ -71,7 +77,7 @@ test('a blank string counts as missing', () => {
 test('a blank title alone does not put a comic on the list', () => {
   addBook('throwaway-1.cbz', { title: null })
   expect(listMetadataFollowups(db)).toEqual([])
-  expect(missingMetadata({ date: '2025-06-01', summary: 'x', hasCredits: true })).toEqual([])
+  expect(missingMetadata({ date: '2025-06-01', summary: 'x', hasCredits: true, comicvineId: 1197227 })).toEqual([])
 })
 
 // The point of the rework: membership is about the comic, not about how it was matched.
@@ -104,7 +110,7 @@ test('a complete comic stays off the list even when its id was typed by hand', (
 })
 
 test('an unbound comic reports no Comic Vine id, so the row can say it cannot be refreshed', () => {
-  addBook('throwaway-1.cbz', { date: null })
+  addBook('throwaway-1.cbz', { date: null, comicvineId: null })
   expect(listMetadataFollowups(db)[0]).toMatchObject({ bookCvId: null, manual: false, cvMissing: [] })
 })
 
@@ -172,4 +178,27 @@ test('deleting a book leaves no dismissal behind', () => {
   // pass just as happily with the cascade - or foreign_keys - switched off, leaving the
   // verdict to be inherited by whatever book next takes that id.
   expect(db.prepare('SELECT COUNT(*) AS n FROM metadata_followup_dismissed').get()).toEqual({ n: 0 })
+})
+
+// A scene digital release ships a filled-in ComicInfo.xml, and ingestFile reads its date,
+// summary and credits straight out of the archive. Such a comic, uploaded unmatched by a
+// bulk add, used to qualify for nothing and vanish - which is precisely the "disputed
+// comic to resolve later" the list exists for.
+test('a comic with no Comic Vine id is listed although its own metadata is complete', () => {
+  const id = addBook('throwaway-unmatched.cbz', { comicvineId: null })
+  expect(listMetadataFollowups(db).map((f) => f.bookId)).toEqual([id])
+})
+
+test('the missing Comic Vine id is named, and named first', () => {
+  addBook('throwaway-unmatched.cbz', { comicvineId: null, summary: null })
+  expect(listMetadataFollowups(db)[0].missing).toEqual(['comic vine id', 'summary'])
+})
+
+test('missingMetadata reports the id on its own account', () => {
+  expect(missingMetadata({
+    date: '2025-06-01', summary: 'x', hasCredits: true, comicvineId: null,
+  })).toEqual(['comic vine id'])
+  expect(missingMetadata({
+    date: '2025-06-01', summary: 'x', hasCredits: true, comicvineId: 1197227,
+  })).toEqual([])
 })

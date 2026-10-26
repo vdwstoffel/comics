@@ -64,13 +64,23 @@ const blank = (v: string | null): boolean => v === null || v.trim() === ''
  * record that had not been written yet - which is exactly the "check back on this later"
  * the user asked for. Measured against the same library: 3 comics have no date, 10 no
  * summary, 12 no credits, which is a list short enough to work through.
+ *
+ * NO COMIC VINE ID AT ALL is the largest hole of the four, and is reported first because
+ * a comic with no id cannot be refreshed into one - the other three can. It was added for
+ * bulk upload, where a file the matcher could not place lands unmatched on purpose: a
+ * scene digital release ships a filled-in ComicInfo.xml, ingestFile reads its date,
+ * summary and credits out of the archive, and such a comic qualified for nothing and
+ * disappeared. Measured before adding it: 0 of the 219 comics in the real library lack an
+ * id, so this adds no rows to an already-matched library.
  */
 export function missingMetadata(b: {
   date: string | null
   summary: string | null
   hasCredits: boolean
+  comicvineId: number | null
 }): string[] {
   const missing: string[] = []
+  if (b.comicvineId == null) missing.push('comic vine id')
   if (blank(b.date)) missing.push('date')
   if (blank(b.summary)) missing.push('summary')
   if (!b.hasCredits) missing.push('credits')
@@ -125,6 +135,7 @@ export function listMetadataFollowups(db: Db): MetadataFollowup[] {
         date: r.date,
         summary: r.summary,
         hasCredits: r.has_credits === 1,
+        comicvineId: r.comicvine_id,
       }),
       manual: r.cv_issue_id !== null,
       typedIssueId: r.cv_issue_id,

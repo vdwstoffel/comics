@@ -324,6 +324,25 @@ CREATE TABLE IF NOT EXISTS metadata_followup_dismissed (
   book_id      INTEGER PRIMARY KEY REFERENCES book(id) ON DELETE CASCADE,
   dismissed_at TEXT NOT NULL
 );
+
+-- The volume RECORD, as distinct from volume_issue's list of its issues. Every comic in a
+-- bulk upload belongs to the same volume, and applying an issue fetches that volume for
+-- its publisher - so adding forty comics asked Comic Vine the same question forty times,
+-- against a budget of 200 an hour.
+--
+-- Unlike volume_cache there is no separate stamp table: a volume Comic Vine has no record
+-- of raises rather than returning an empty one, so "asked and got nothing" is not a state
+-- this cache has to tell apart from "never asked".
+CREATE TABLE IF NOT EXISTS cv_volume (
+  volume_id        INTEGER PRIMARY KEY,
+  name             TEXT,
+  publisher        TEXT,
+  summary          TEXT,
+  description_html TEXT,
+  start_year       INTEGER,
+  site_url         TEXT,
+  fetched_at       TEXT NOT NULL
+);
 `
 
 function columnsOf(db: Db, table: string): string[] {

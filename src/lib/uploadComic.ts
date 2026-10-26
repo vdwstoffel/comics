@@ -10,6 +10,18 @@ export interface UploadComicInput {
   edition?: string
   /** Comic Vine's id for the issue this file fills. What the metadata is read from. */
   issueId?: number
+  /**
+   * The two halves of the file name, when the caller already knows them. Supplying both
+   * spares the server a getIssue and a getVolume whose only job is to look them up - which
+   * matters at forty comics a batch, against Comic Vine's 200 requests an hour.
+   */
+  volumeName?: string
+  issueNumber?: string
+  /**
+   * The comic this upload replaces. The server deletes it only once this file has landed
+   * safely, so a failed upload never costs you the comic you already had.
+   */
+  replaceBookId?: number
   /** Whole percent uploaded. A comic is tens of megabytes; a silent button reads as a dead one. */
   onProgress?: (percent: number) => void
 }
@@ -22,6 +34,15 @@ export interface UploadComicResult {
    * the point of uploading into a gap was the metadata.
    */
   metadataApplied?: boolean
+  /** The name the comic asked for, before a collision may have forced another. */
+  wantedName?: string
+  /** Present only when this upload replaced a comic, which deleted that comic. */
+  replaced?: { bookId: number; editionRemoved: boolean }
+  /**
+   * The comic landed, but the one it was meant to replace could not be removed. The
+   * upload succeeded - this says the old copy is probably still there.
+   */
+  replaceFailed?: boolean
 }
 
 /**
@@ -31,10 +52,16 @@ export interface UploadComicResult {
  * much of the body has gone. Shared rather than written at each call site so that the
  * run's grid and its carousel cannot drift into uploading two different ways.
  */
-export function uploadComic({ file, edition, issueId, onProgress }: UploadComicInput): Promise<UploadComicResult> {
+export function uploadComic({ file, edition, issueId, volumeName, issueNumber, replaceBookId, onProgress }: UploadComicInput): Promise<UploadComicResult> {
   const form = new FormData()
   if (edition) form.set('edition', edition)
   if (issueId != null) form.set('issueId', String(issueId))
+  // Both or neither: half of a name is not a name.
+  if (volumeName && issueNumber) {
+    form.set('volumeName', volumeName)
+    form.set('issueNumber', issueNumber)
+  }
+  if (replaceBookId != null) form.set('replaceBookId', String(replaceBookId))
   form.set('file', file, file.name)
 
   return new Promise<UploadComicResult>((resolve, reject) => {

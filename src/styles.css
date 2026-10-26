@@ -4231,3 +4231,55 @@ textarea.input:hover:not(:focus) {
   color: var(--muted);
   font-size: 0.8125rem;
 }
+
+/* ---- Bulk add ---------------------------------------------------------- */
+/* A folder of comics, matched against a volume and reviewed before anything moves.
+   Grouped by volume rather than listed flat: a file under the wrong heading reads as
+   wrong at a glance, where a wrong number in a list of forty does not. */
+.bulk-wrap { max-width: 1000px; margin: 0 auto; padding: 1rem; }
+.bulk-intro { color: var(--muted, #888); margin-bottom: 1rem; }
+.bulk-counts { font-weight: 600; margin: 0.5rem 0; }
+.bulk-warn {
+  border: 1px solid #c89b3c; border-radius: 6px; padding: 0.6rem 0.8rem;
+  margin: 0.5rem 0; font-size: 0.9rem;
+}
+.bulk-error { color: #d14; margin: 0.5rem 0; }
+
+.bulk-search { display: flex; gap: 0.75rem; align-items: flex-end; margin: 1rem 0; }
+.bulk-search__label { display: flex; flex-direction: column; gap: 0.25rem; flex: 1; }
+.bulk-search__label input { padding: 0.5rem; }
+
+.bulk-results { list-style: none; padding: 0; margin: 0 0 1rem; display: flex;
+  flex-direction: column; gap: 0.25rem; }
+
+.bulk-group { border: 1px solid var(--border, #333); border-radius: 8px;
+  margin-bottom: 1rem; overflow: hidden; }
+.bulk-group__head { padding: 0.6rem 0.8rem; background: var(--panel, #1c1c1e);
+  display: flex; flex-direction: column; gap: 0.15rem; }
+.bulk-group__meta { font-size: 0.85rem; color: var(--muted, #888); }
+.bulk-group__warn { margin: 0; padding: 0.6rem 0.8rem; color: #c89b3c; font-size: 0.9rem; }
+.bulk-group__rows { list-style: none; margin: 0; padding: 0; }
+
+.bulk-row { display: grid; grid-template-columns: minmax(0, 1.4fr) 1.5rem minmax(0, 1.4fr) auto;
+  gap: 0.6rem; align-items: center; padding: 0.45rem 0.8rem;
+  border-top: 1px solid var(--border, #333); font-size: 0.9rem; }
+.bulk-row__file { font-family: ui-monospace, monospace; font-size: 0.8rem;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted, #888); }
+.bulk-row__arrow { color: var(--muted, #666); text-align: center; }
+.bulk-row__state { display: flex; align-items: center; gap: 0.6rem; flex-wrap: wrap; }
+.bulk-row__hit { color: #3c9; }
+.bulk-row__owned { color: #c89b3c; }
+.bulk-row__note { color: var(--muted, #888); font-size: 0.85rem; }
+.bulk-row__replace { font-size: 0.8rem; color: var(--muted, #888); white-space: nowrap; }
+.bulk-row__picker { padding: 0.2rem 0.4rem; border: 1px solid #c89b3c; border-radius: 5px; }
+.bulk-row__pct { font-size: 0.8rem; color: var(--muted, #888); }
+.bulk-row__ok { font-size: 0.8rem; color: #3c9; }
+.bulk-row__warn { font-size: 0.8rem; color: #c89b3c; }
+.bulk-row__error { font-size: 0.8rem; color: #d14; }
+.bulk-row--owned-here, .bulk-row--owned-elsewhere { background: rgba(200, 155, 60, 0.07); }
+.bulk-row--needs-issue { background: rgba(200, 155, 60, 0.12); }
+
+.bulk-actions { display: flex; align-items: center; gap: 0.75rem; margin: 1rem 0; }
+.bulk-actions__note { color: var(--muted, #888); font-size: 0.85rem; }
+.bulk-summary { font-weight: 600; margin-top: 1rem; }
+.upload-bulk-link { font-size: 0.9rem; color: var(--muted, #888); margin-top: -0.5rem; }

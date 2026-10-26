@@ -9,6 +9,7 @@ import { replaceBookCredits, replaceBookTagsOfKind, getBookCredits, getBookTags 
 import { syncComicInfoFile } from './comicinfoSync.js'
 import type { BookCredit, BookTag } from '../models/metadata.js'
 import { getComicVineKey } from '../models/settings.js'
+import { getVolumeCached } from '../models/volumeRecord.js'
 import type { Ctx, Book } from '../types.js'
 
 /**
@@ -151,7 +152,9 @@ export async function applyIssueToBook(
   // is no reason to lose the issue metadata we already have.
   let volume: CvVolume | undefined
   try {
-    if (meta.volumeId) volume = await cv.getVolume(meta.volumeId)
+    // Cached for a day: every comic of a bulk upload shares this volume, so the
+    // uncached read cost one Comic Vine request per comic for an identical answer.
+    if (meta.volumeId) volume = await getVolumeCached(db, cv, meta.volumeId)
   } catch { /* best-effort; don't fail the match */ }
   const publisher = volume?.publisher
 

@@ -179,6 +179,35 @@ export interface ApiEditionExtra {
   title?: string | null
 }
 
+/** One issue of a volume, as the bulk screen needs it: owned anywhere, and where. */
+export interface ApiBulkVolumeIssue {
+  id: number
+  number?: string
+  name?: string
+  coverDate?: string
+  siteUrl?: string
+  /** Whether the library holds it ANYWHERE - decided by Comic Vine id, never by number. */
+  owned: boolean
+  bookId?: number
+  /** Which edition that copy is filed under, which is what tells a stray from a run. */
+  ownedIn?: { editionId: number; editionName: string }
+}
+
+export interface ApiVolumeIssues {
+  volumeId: number
+  volume: { name: string | null; startYear: number | null } | null
+  /** The library's existing edition for this volume, or null when it has none. */
+  edition: { id: number; name: string } | null
+  /** The name a batch of this volume should file into. Never empty. */
+  editionName: string
+  issues: ApiBulkVolumeIssue[]
+  fetchedAt?: string | null
+  /** True when Comic Vine could not be reached and this list is what we already held. */
+  stale?: boolean
+  /** True when Comic Vine could not be reached and we held nothing at all. */
+  unavailable?: boolean
+}
+
 export interface ApiEditionIssues {
   volumeId: number | null
   issues: ApiVolumeIssue[]
@@ -774,6 +803,17 @@ export const api = {
     json<{ volume: { id: number; name: string | null; startYear: number | null; publisher: string | null; editionName: string | null } | null }>(
       `/api/comicvine/issues/${issueId}/volume`,
     ),
+
+  /**
+   * A Comic Vine volume's issue list, each marked owned or not, keyed by the VOLUME.
+   *
+   * `getEditionIssues` answers the same question but needs an edition already bound to
+   * the volume; a bulk add starts from a volume the library may never have heard of.
+   * `editionName` is what a batch of it should file into - an existing edition's own
+   * name where there is one, so a run cannot end up split across two.
+   */
+  getVolumeIssues: (volumeId: number | string) =>
+    json<ApiVolumeIssues>(`/api/comicvine/volumes/${volumeId}/issues`),
 
   checkComicVineVolume: (id: string | number) =>
     json<{ matched: boolean; edition?: ApiEdition }>(`/api/editions/${id}/comicvine-volume`, { method: 'POST' }),

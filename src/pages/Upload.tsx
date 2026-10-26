@@ -199,6 +199,11 @@ export default function Upload() {
     <div className="upload-wrap">
       <div className="upload-card">
         <h1>Upload a comic</h1>
+        {/* A whole folder is a different job: one volume search for the lot, and a table
+            to check before anything moves. */}
+        <p className="upload-bulk-link">
+          Got a whole volume? <Link to="/upload/bulk">Add them in bulk</Link>.
+        </p>
         <form onSubmit={submit}>
           <div className="field">
             <label className="file-label">

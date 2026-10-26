@@ -1,11 +1,13 @@
 import { createComicVine, CvApiError } from '../lib/comicvine.js'
 import { applyIssueToBook } from '../services/applyIssue.js'
-import type { CvVolume } from '../lib/comicvine.js'
+import type { CvVolume, CvVolumeIssue } from '../lib/comicvine.js'
 import { getBook, updateBook } from '../models/books.js'
-import { getEdition, updateEdition } from '../models/editions.js'
+import { getEdition, updateEdition, getEditionByComicvineId } from '../models/editions.js'
 import type { EditionUpdate } from '../models/editions.js'
 import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags, setTagIds } from '../models/metadata.js'
 import { cacheVolumeSearch, getCachedVolumeSearch } from '../models/volumeSearch.js'
+import { cacheVolumeIssues, getCachedVolumeIssues } from '../models/volumeIssues.js'
+import { getVolumeCached } from '../models/volumeRecord.js'
 import { syncComicInfoFile } from '../services/comicinfoSync.js'
 import { listMetadataFollowups, dismissFollowup, restoreFollowup } from '../models/metadataFollowups.js'
 import { getComicVineKey } from '../models/settings.js'
@@ -161,6 +163,91 @@ export default async function comicvineRoutes(app: App) {
       if (held) return { volumes: held.volumes, fetchedAt: held.fetchedAt, stale: true }
       app.log.warn({ err, series }, 'Comic Vine volume lookup failed')
       return reply.code(502).send({ error: 'Comic Vine did not answer' })
+    }
+  })
+
+  /**
+   * One volume's issue list, keyed by the VOLUME rather than by an edition.
+   *
+   * `/api/editions/:id/issues` answers the same question but can only be reached through
+   * an edition already bound to the volume, and a bulk add starts from a volume the
+   * library may never have heard of. Same day-long cache, same stale-beats-nothing
+   * fallback, same `unavailable` shape.
+   *
+   * It deliberately does NOT compute `match` the way the edition route does: that is the
+   * scraped-release matching behind its download buttons, and a bulk add has files.
+   */
+  app.get<{ Params: { volumeId: string } }>('/api/comicvine/volumes/:volumeId/issues', async (req, reply) => {
+    const volumeId = Number(req.params.volumeId)
+    if (!Number.isFinite(volumeId)) return reply.code(404).send({ error: 'volume not found' })
+    if (!getComicVineKey(app.db)) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
+
+    /**
+     * Which of this volume's issues the library already holds, and where.
+     *
+     * Library-wide and keyed by Comic Vine id, never by issue number: before a bulk add
+     * there may be no edition for this volume at all, and a copy filed under Unsorted
+     * from an old scan is exactly the case the screen needs to tell apart from a copy
+     * already in the run.
+     */
+    const owned = new Map(
+      (app.db.prepare(
+        `SELECT b.id, b.comicvine_id, b.edition_id, e.name AS edition_name
+           FROM book b JOIN edition e ON e.id = b.edition_id
+          WHERE b.comicvine_id IS NOT NULL`,
+      ).all() as Array<{ id: number; comicvine_id: number; edition_id: number; edition_name: string }>)
+        .map((r) => [r.comicvine_id, r]),
+    )
+
+    // The volume record itself, for the name a batch of it should file into. Cached, so
+    // opening the screen twice does not cost two of Comic Vine's 200 requests an hour.
+    const volume = await getVolumeCached(app.db, cv, volumeId)
+    const existing = getEditionByComicvineId(app.db, volumeId)
+    // An edition the library already has wins, under WHATEVER it is called: composing a
+    // name unconditionally would file a batch into a second edition beside the one that
+    // already holds the run. A start year of 0 - which the live library has - would
+    // compose "... (0)" and do exactly that.
+    const year = volume?.startYear
+    const composed = volume?.name
+      ? (Number.isInteger(year) && year! > 0 ? `${volume.name} (${year})` : volume.name)
+      : null
+    const editionName = existing?.name ?? composed ?? 'Unsorted'
+
+    const decorate = (issue: CvVolumeIssue) => {
+      const hit = owned.get(issue.id)
+      return hit
+        ? {
+            ...issue,
+            owned: true,
+            bookId: hit.id,
+            ownedIn: { editionId: hit.edition_id, editionName: hit.edition_name },
+          }
+        : { ...issue, owned: false }
+    }
+
+    const common = {
+      volumeId,
+      volume: volume ? { name: volume.name ?? null, startYear: volume.startYear ?? null } : null,
+      edition: existing ? { id: existing.id, name: existing.name } : null,
+      editionName,
+    }
+
+    const fresh = getCachedVolumeIssues(app.db, volumeId)
+    if (fresh) {
+      return { ...common, issues: fresh.issues.map(decorate), fetchedAt: fresh.fetchedAt }
+    }
+
+    try {
+      const issues = await cv.listVolumeIssues(volumeId)
+      const fetchedAt = new Date().toISOString()
+      cacheVolumeIssues(app.db, volumeId, issues, fetchedAt)
+      return { ...common, issues: issues.map(decorate), fetchedAt }
+    } catch {
+      // Whatever we hold beats nothing: the issue list barely changes, and a screen that
+      // cannot open is worse than one showing a list a week old.
+      const held = getCachedVolumeIssues(app.db, volumeId, Infinity)
+      if (!held) return { ...common, issues: [], fetchedAt: null, unavailable: true }
+      return { ...common, issues: held.issues.map(decorate), fetchedAt: held.fetchedAt, stale: true }
     }
   })
 
