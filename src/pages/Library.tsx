@@ -7,9 +7,9 @@ import { statusFrom } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import LibraryRail from '../components/LibraryRail'
 import { tileLabel } from '../lib/tileLabel'
-import { groupBySeries, groupByArc } from '../lib/volumeGroups'
+import { groupByVolume, groupByArc } from '../lib/volumeGroups'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
-import SeriesGroupTile from '../components/SeriesGroupTile'
+import VolumeGroupTile from '../components/VolumeGroupTile'
 import ArcGroupTile from '../components/ArcGroupTile'
 
 /** What an empty result should say, so a blank grid never reads like a failure. */
@@ -22,10 +22,6 @@ export default function Library() {
   // The shelf is where the app starts, so it is the app's own name and nothing else.
   useDocumentTitle()
   const [selectedPublisher, setSelectedPublisher] = useState<string | null>(null)
-  // Which series has its volumes on screen. One key rather than a flag per tile: the
-  // panels float over the shelf, so two of them open at once would overlap into something
-  // unreadable, and the shelf has no use for two answers to one question.
-  const [openSeries, setOpenSeries] = useState<string | null>(null)
   // The status lives in the url so it survives a refresh and can be carried into
   // every link, which is what keeps the filter applied as you drill down.
   const [searchParams, setSearchParams] = useSearchParams()
@@ -57,7 +53,7 @@ export default function Library() {
   // effect on anything in front of you.
   const hasArcs = unread.some((b) => b.arcs.length > 0)
   const { arcs, rest } = byArc ? groupByArc(unread) : { arcs: [], rest: unread }
-  const seriesGroups = groupBySeries(rest)
+  const volumes = groupByVolume(rest)
 
   // The two rails are alternatives, not layers: choosing one clears the other.
   const choosePublisher = (key: string | null) => {
@@ -93,8 +89,10 @@ export default function Library() {
                 <>
                   {/* Unread is the shelf that accumulates - a run you are behind on puts
                       every one of its issues here at once, and the one you are partway
-                      through sits among them until you finish it - so it collapses, to a
-                      tile per series and, inside that, a tile per volume. */}
+                      through sits among them until you finish it - so it collapses to a
+                      tile per volume. No further: a tile per series hid every run and mini
+                      series behind one cover, and a volume you cannot see is one you
+                      forget you have unread issues in. */}
                   {hasArcs && (
                     <label className="shelf-toggle">
                       <input
@@ -109,24 +107,16 @@ export default function Library() {
                     <>
                       {/* Named only when both halves are on the shelf: a single unlabelled
                           grid is what every other view here is. */}
-                      {seriesGroups.length > 0 && <h2 className="shelf-heading">Story Arcs</h2>}
+                      {volumes.length > 0 && <h2 className="shelf-heading">Story Arcs</h2>}
                       <div className="tile-grid">
                         {arcs.map((arc) => <ArcGroupTile key={arc.name} group={arc} />)}
                       </div>
-                      {seriesGroups.length > 0 && <h2 className="shelf-heading">Series</h2>}
+                      {volumes.length > 0 && <h2 className="shelf-heading">Volumes</h2>}
                     </>
                   )}
-                  {seriesGroups.length > 0 && (
+                  {volumes.length > 0 && (
                     <div className="tile-grid">
-                      {seriesGroups.map((group) => (
-                        <SeriesGroupTile
-                          key={group.key}
-                          group={group}
-                          open={openSeries === group.key}
-                          onToggle={() => setOpenSeries(openSeries === group.key ? null : group.key)}
-                          onClose={() => setOpenSeries(null)}
-                        />
-                      ))}
+                      {volumes.map((group) => <VolumeGroupTile key={group.shelfKey} group={group} />)}
                     </div>
                   )}
                 </>

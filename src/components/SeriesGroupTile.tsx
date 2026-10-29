@@ -37,7 +37,7 @@ interface SeriesGroupTileProps {
 }
 
 /**
- * One series' worth of unread comics, as a single tile that opens onto its volumes.
+ * One series' worth of comics, as a single tile that opens onto its volumes.
  *
  * Three runs of Batman are three volumes, and drawing each of them on the shelf spends
  * three tiles saying "Batman" before any of them says which Batman. Collapsed, the series

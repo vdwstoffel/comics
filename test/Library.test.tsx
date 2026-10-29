@@ -514,7 +514,7 @@ test('a comic you are partway through groups with the rest of its volume', async
 })
 
 
-// --- unread grouped by series ------------------------------------------------
+// --- every volume on the shelf ----------------------------------------------
 
 // Three runs of Batman, side by side on the unread shelf. Sizes differ so a tile counting
 // the wrong one is visible in the assertion.
@@ -533,41 +533,25 @@ const BATMAN_VOLUMES = [
     pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'b/bat_2025_005.cbz' },
 ]
 
-test('the volumes of one series collapse to a single tile', async () => {
+// A series tile hid every run and mini series behind one cover, and a volume you did not
+// know you had unread issues in was a volume you never opened.
+test('every volume of one series is a tile of its own, each opening its own next comic', async () => {
   groupedFetch(BATMAN_VOLUMES)
   renderWithProviders(<Library />, '/?status=unread')
 
-  expect(await screen.findByText('Batman')).toBeInTheDocument()
-  expect(screen.getByText('3 volumes · 4 unread')).toBeInTheDocument()
-})
-
-test('the volumes stay off the shelf until the series is opened', async () => {
-  groupedFetch(BATMAN_VOLUMES)
-  renderWithProviders(<Library />, '/?status=unread')
-  await screen.findByText('Batman')
-
-  expect(screen.queryByText('Batman (2012)')).not.toBeInTheDocument()
-  expect(screen.queryByText('Batman (2025)')).not.toBeInTheDocument()
-})
-
-test('opening a series shows its volumes, each opening its own next comic', async () => {
-  groupedFetch(BATMAN_VOLUMES)
-  renderWithProviders(<Library />, '/?status=unread')
-  fireEvent.click(await screen.findByRole('button', { name: /Batman/ }))
-
-  expect(screen.getByRole('link', { name: 'Batman (2012) #1' })).toHaveAttribute('href', '/read/20')
+  expect(await screen.findByRole('link', { name: 'Batman (2012) #1' })).toHaveAttribute('href', '/read/20')
+  expect(screen.getByRole('link', { name: 'Batman (2016) #1' })).toHaveAttribute('href', '/read/22')
   expect(screen.getByRole('link', { name: 'Batman (2025) #5' })).toHaveAttribute('href', '/read/23')
+  expect(screen.getByText('2 unread')).toBeInTheDocument()
 })
 
-// A series with one run has nothing to fold, and the shelf goes on taking you straight to
-// the comic at the front of it.
-test('a series with one volume is still the volume tile you could read from', async () => {
-  groupedFetch(GROUPED_BOOKS)
+test('the unread shelf has no series tile to open', async () => {
+  groupedFetch(BATMAN_VOLUMES)
   renderWithProviders(<Library />, '/?status=unread')
+  await screen.findByRole('link', { name: 'Batman (2012) #1' })
 
-  expect(await screen.findByRole('link', { name: 'Amazing Spider-Man (2025) #29' }))
-    .toHaveAttribute('href', '/read/7')
-  expect(screen.getByText('3 unread')).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Batman/ })).toBeNull()
+  expect(screen.queryByText('3 volumes · 4 unread')).toBeNull()
 })
 
 // --- unread grouped by story arc ---------------------------------------------
@@ -611,8 +595,8 @@ test('grouping arcs gathers two series into one tile', async () => {
 })
 
 // The shelf still accounts for every unread comic: what no arc claims goes on being
-// grouped by series underneath.
-test('comics in no arc keep their series tiles', async () => {
+// drawn a volume at a time underneath.
+test('comics in no arc keep their volume tiles', async () => {
   groupedFetch(ARC_BOOKS)
   renderWithProviders(<Library />, '/?status=unread')
   fireEvent.click(await screen.findByRole('checkbox', { name: /story arcs/i }))
@@ -627,7 +611,7 @@ test('the two halves of the shelf are named once both are on it', async () => {
   fireEvent.click(await screen.findByRole('checkbox', { name: /story arcs/i }))
 
   expect(screen.getByRole('heading', { name: 'Story Arcs' })).toBeInTheDocument()
-  expect(screen.getByRole('heading', { name: 'Series' })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { name: 'Volumes' })).toBeInTheDocument()
 })
 
 // Same reason the status lives in the url: a filter you chose should survive a refresh
@@ -648,51 +632,4 @@ test('the arc toggle stays off the unfiltered shelf', async () => {
   renderWithProviders(<Library />, '/')
 
   await waitFor(() => expect(screen.queryByRole('checkbox', { name: /story arcs/i })).toBeNull())
-})
-
-// Two multi-volume series side by side, so "only one open" has something to be about.
-const TWO_SERIES = [
-  ...BATMAN_VOLUMES,
-  { id: 40, editionId: 9, editionName: 'Venom (2018)', seriesName: 'Venom', arcs: [],
-    number: '1', title: 'Rex',
-    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'v/ven_2018_001.cbz' },
-  { id: 41, editionId: 10, editionName: 'Venom (2025)', seriesName: 'Venom', arcs: [],
-    number: '1', title: 'Shadow of the Abyss',
-    pageCount: 20, comicinfoSynced: false, readState: 'unread', percent: 0, filePath: 'v/ven_2025_001.cbz' },
-]
-
-// The panel floats over the shelf, so two of them open at once would overlap into
-// something unreadable - and the shelf has no use for two answers to one question.
-test('opening a series closes the one that was open', async () => {
-  groupedFetch(TWO_SERIES)
-  renderWithProviders(<Library />, '/?status=unread')
-
-  fireEvent.click(await screen.findByRole('button', { name: /Batman/ }))
-  expect(screen.getByRole('link', { name: 'Batman (2012)' })).toBeInTheDocument()
-
-  fireEvent.click(screen.getByRole('button', { name: /Venom/ }))
-
-  expect(screen.getByRole('link', { name: 'Venom (2018)' })).toBeInTheDocument()
-  expect(screen.queryByRole('link', { name: 'Batman (2012)' })).not.toBeInTheDocument()
-})
-
-test('clicking an open series again closes it', async () => {
-  groupedFetch(TWO_SERIES)
-  renderWithProviders(<Library />, '/?status=unread')
-  const batman = await screen.findByRole('button', { name: /Batman/ })
-
-  fireEvent.click(batman)
-  fireEvent.click(batman)
-
-  expect(screen.queryByRole('link', { name: 'Batman (2012)' })).not.toBeInTheDocument()
-})
-
-test('clicking away from an open series closes it', async () => {
-  groupedFetch(TWO_SERIES)
-  renderWithProviders(<Library />, '/?status=unread')
-
-  fireEvent.click(await screen.findByRole('button', { name: /Batman/ }))
-  fireEvent.mouseDown(screen.getByRole('heading', { name: 'Library' }))
-
-  expect(screen.queryByRole('link', { name: 'Batman (2012)' })).not.toBeInTheDocument()
 })

@@ -85,14 +85,17 @@ function seriesKeyOf(book: ApiLibraryBook): { key: string; name: string } {
 }
 
 /**
- * The unread shelf, one entry per series instead of one per volume.
+ * Library search results, one entry per series instead of one per volume.
  *
- * Three runs of Batman are three volumes, and a shelf that draws each of them separately
- * spends three tiles saying "Batman" before it says anything else. Grouping them keeps the
- * volumes intact underneath — a series group holds VolumeGroups, not loose comics — so the
- * tile can unfold into exactly what the shelf used to show.
+ * Three runs of Batman are three volumes, and a result list that draws each of them
+ * separately spends three tiles saying "Batman" before it says anything else. Grouping them
+ * keeps the volumes intact underneath — a series group holds VolumeGroups, not loose
+ * comics — so the tile can unfold into exactly what the list would otherwise show.
  *
- * Insertion order is kept at both levels, so the shelf reads in whatever order the server
+ * The unread shelf does not use this. There a folded series hid the runs and mini series
+ * you had unread issues in, so it draws every volume.
+ *
+ * Insertion order is kept at both levels, so the list reads in whatever order the server
  * chose.
  */
 export function groupBySeries(books: ApiLibraryBook[]): SeriesGroup[] {
