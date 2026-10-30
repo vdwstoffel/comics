@@ -6,6 +6,7 @@ services:
     environment:
       - DATA_DIR=/data
       - PORT=3000
+      - TZ=Europe/Brussels     # the release index is checked Wednesday and Thursday at 18:00 in this zone
       - MAX_UPLOAD_BYTES=5368709120
     volumes:
       - ./data:/data

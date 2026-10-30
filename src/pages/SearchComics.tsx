@@ -320,12 +320,25 @@ export default function SearchComics() {
   )
 }
 
+/** `Wed 28 Oct, 18:00`: the weekday is the point, since checks fall on Wednesday and Thursday. */
+function when(iso: string): string {
+  return new Date(iso).toLocaleString('en-GB', {
+    weekday: 'short', day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit',
+  })
+}
+
+/**
+ * What the scraper is doing, or what it last did and when it will next look.
+ *
+ * The finished line is how you find out whether Wednesday's check ran without being
+ * there: the server remembers the last run across restarts, so this is never blank once
+ * anything has been scraped.
+ */
 function ScrapeProgress({ status }: { status: ScrapeStatus }) {
   const counts = `${status.inserted} new, ${status.updated} updated`
+  const ran = status.startedAt ?? status.finishedAt
+  const next = status.nextScheduledAt ? ` · next check ${when(status.nextScheduledAt)}` : ''
 
-  if (status.error) {
-    return <span className="search-comics__scrape-status search-comics__error">{status.error}</span>
-  }
   if (status.running) {
     return (
       <span className="search-comics__scrape-status">
@@ -333,8 +346,20 @@ function ScrapeProgress({ status }: { status: ScrapeStatus }) {
       </span>
     )
   }
-  if (status.finishedAt) {
-    return <span className="search-comics__scrape-status">Last run: {counts}</span>
+  if (status.error) {
+    const failed = ran ? `${status.scheduled ? 'Automatic check' : 'Check'} failed ${when(ran)}: ` : ''
+    return (
+      <span className="search-comics__scrape-status search-comics__error">
+        {failed}{status.error}{next}
+      </span>
+    )
+  }
+  if (status.finishedAt && ran) {
+    return (
+      <span className="search-comics__scrape-status">
+        Checked {status.scheduled ? 'automatically ' : ''}{when(ran)} · {status.inserted} new{next}
+      </span>
+    )
   }
   return null
 }

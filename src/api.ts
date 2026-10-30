@@ -579,6 +579,8 @@ export interface ComicIndexGroupsResponse {
 export interface ScrapeStatus {
   running: boolean
   mode: 'quick' | 'full' | null
+  /** Started by the Wednesday and Thursday check rather than by a press of the button. */
+  scheduled: boolean
   page: number
   totalPages: number
   inserted: number
@@ -588,6 +590,8 @@ export interface ScrapeStatus {
   error: string | null
   startedAt: string | null
   finishedAt: string | null
+  /** When the next automatic check is due. Only the status read carries it. */
+  nextScheduledAt?: string | null
 }
 
 export interface StartScrapeResponse { started: boolean; status: ScrapeStatus }

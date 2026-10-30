@@ -38,10 +38,14 @@ async function openGroup(name: RegExp = /Batman/) {
 }
 
 const IDLE_SCRAPE = {
-  running: false, mode: null, page: 0, totalPages: 0,
+  running: false, mode: null, scheduled: false, page: 0, totalPages: 0,
   inserted: 0, updated: 0, unchanged: 0, failedPages: 0,
-  error: null, startedAt: null, finishedAt: null,
+  error: null, startedAt: null, finishedAt: null, nextScheduledAt: null,
 }
+
+// Local wall-clock times, so the line reads the same in whatever zone the suite runs.
+// 28 October 2026 is a Wednesday.
+const local = (day: number, hour: number, minute = 0) => new Date(2026, 9, day, hour, minute).toISOString()
 
 let calls: string[]
 let posted: { url: string; body: string }[]
@@ -342,6 +346,50 @@ test('a scrape error is surfaced', async () => {
   })
   renderPage()
   expect(await screen.findByText(/connect ETIMEDOUT/)).toBeInTheDocument()
+})
+
+test('an automatic check says so, when it ran, and when the next one is', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return {
+      ...IDLE_SCRAPE, mode: 'quick', scheduled: true, page: 5, totalPages: 5, inserted: 142,
+      startedAt: local(28, 18), finishedAt: local(28, 18, 1), nextScheduledAt: local(29, 18),
+    }
+    return { results: [], total: 0 }
+  })
+  renderPage()
+  expect(await screen.findByText('Checked automatically Wed 28 Oct, 18:00 · 142 new · next check Thu 29 Oct, 18:00'))
+    .toBeInTheDocument()
+})
+
+test('a check from the button says when, without calling it automatic', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return {
+      ...IDLE_SCRAPE, mode: 'quick', page: 5, totalPages: 5, inserted: 9,
+      startedAt: local(28, 17, 44), finishedAt: local(28, 17, 45), nextScheduledAt: local(28, 18),
+    }
+    return { results: [], total: 0 }
+  })
+  renderPage()
+  expect(await screen.findByText('Checked Wed 28 Oct, 17:44 · 9 new · next check Wed 28 Oct, 18:00'))
+    .toBeInTheDocument()
+})
+
+// Otherwise an unreachable site reads as a quiet week.
+test('an automatic check that failed says so, and when', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return {
+      ...IDLE_SCRAPE, mode: 'quick', scheduled: true, failedPages: 3, error: 'Could not reach the release index',
+      startedAt: local(29, 18), finishedAt: local(29, 18, 1), nextScheduledAt: new Date(2026, 10, 4, 18).toISOString(),
+    }
+    return { results: [], total: 0 }
+  })
+  renderPage()
+  expect(await screen.findByText(
+    'Automatic check failed Thu 29 Oct, 18:00: Could not reach the release index · next check Wed 4 Nov, 18:00',
+  )).toBeInTheDocument()
 })
 
 test('results refresh once a run finishes', async () => {

@@ -24,6 +24,7 @@ import settingsRoutes from './routes/settings.js'
 import { clearTmpDir } from './lib/tmpFiles.js'
 import { createDownloadRunner } from './services/downloader.js'
 import { createScrapeRunner } from './services/comicIndexScraper.js'
+import { startScrapeSchedule } from './services/scrapeSchedule.js'
 import { backfillSeriesNames } from './models/series.js'
 import { recoverRunning } from './models/downloadQueue.js'
 import type { App } from './types.js'
@@ -95,4 +96,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const app = await buildServer()
   await app.listen({ port: app.config.port, host: '0.0.0.0' })
   console.log(`comix listening on :${app.config.port}`)
+  // Here rather than in buildServer, which the tests build: a check that came due would
+  // otherwise scrape someone else's site from the test suite.
+  startScrapeSchedule(app)
 }

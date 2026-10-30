@@ -343,6 +343,23 @@ CREATE TABLE IF NOT EXISTS cv_volume (
   site_url         TEXT,
   fetched_at       TEXT NOT NULL
 );
+
+-- The last scrape of the release index, so "did Wednesday's check run, and what did it
+-- find?" survives the container restarting. One row, replaced by each run: the question is
+-- only ever about the latest, and the index itself is the history.
+CREATE TABLE IF NOT EXISTS last_scrape (
+  id           INTEGER PRIMARY KEY CHECK (id = 1),
+  mode         TEXT NOT NULL,
+  scheduled    INTEGER NOT NULL,
+  total_pages  INTEGER NOT NULL,
+  inserted     INTEGER NOT NULL,
+  updated      INTEGER NOT NULL,
+  unchanged    INTEGER NOT NULL,
+  failed_pages INTEGER NOT NULL,
+  error        TEXT,
+  started_at   TEXT NOT NULL,
+  finished_at  TEXT NOT NULL
+);
 `
 
 function columnsOf(db: Db, table: string): string[] {

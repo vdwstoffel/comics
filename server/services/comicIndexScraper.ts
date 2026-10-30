@@ -1,5 +1,6 @@
 import { pageUrl, parsePage, fetchSourcePage } from '../lib/comicIndexSource.js'
 import { upsertComicIndex } from '../models/comicIndex.js'
+import { loadLastScrape, saveLastScrape } from '../models/lastScrape.js'
 import type { Ctx } from '../types.js'
 
 export type ScrapeMode = 'quick' | 'full'
@@ -7,6 +8,8 @@ export type ScrapeMode = 'quick' | 'full'
 export interface ScrapeStatus {
   running: boolean
   mode: ScrapeMode | null
+  /** Started by the Wednesday and Thursday check rather than by a press of the button. */
+  scheduled: boolean
   page: number
   totalPages: number
   inserted: number
@@ -31,7 +34,8 @@ export interface ScrapeDeps {
 export interface ScrapeRunner {
   status: () => ScrapeStatus
   /** `started` is false when a run is already in flight; `done` always resolves. */
-  start: (mode: ScrapeMode) => { started: boolean; status: ScrapeStatus; done: Promise<void> }
+  start: (mode: ScrapeMode, opts?: { scheduled?: boolean }) =>
+    { started: boolean; status: ScrapeStatus; done: Promise<void> }
 }
 
 const BLANK_LIMIT = 3
@@ -40,7 +44,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms))
 
 function idle(): ScrapeStatus {
   return {
-    running: false, mode: null, page: 0, totalPages: 0,
+    running: false, mode: null, scheduled: false, page: 0, totalPages: 0,
     inserted: 0, updated: 0, unchanged: 0, failedPages: 0,
     error: null, startedAt: null, finishedAt: null,
   }
@@ -56,7 +60,9 @@ export function createScrapeRunner(ctx: Ctx, deps: ScrapeDeps = {}): ScrapeRunne
     fullPages = 133,
   } = deps
 
-  let state = idle()
+  // The last run is read back from the database, so a restart does not forget whether
+  // Wednesday's check happened.
+  let state = loadLastScrape(ctx.db) ?? idle()
 
   async function fetchWithRetry(url: string): Promise<string | null> {
     for (let attempt = 1; attempt <= retries; attempt++) {
@@ -109,22 +115,29 @@ export function createScrapeRunner(ctx: Ctx, deps: ScrapeDeps = {}): ScrapeRunne
         if (blankStreak >= BLANK_LIMIT) break
         if (delayMs && page < totalPages) await sleep(delayMs)
       }
+      // Every page failing is the site being unreachable, not a week with nothing in it.
+      if (state.page > 0 && state.failedPages === state.page) {
+        state = { ...state, error: 'Could not reach the release index' }
+      }
     } catch (err) {
       state = { ...state, error: err instanceof Error ? err.message : String(err) }
     } finally {
       state = { ...state, running: false, finishedAt: new Date().toISOString() }
+      // The run is over whether or not it can be written down.
+      try { saveLastScrape(ctx.db, state) } catch { /* reported by the status in memory */ }
     }
   }
 
   return {
     status: () => state,
 
-    start(mode) {
+    start(mode, { scheduled = false } = {}) {
       if (state.running) return { started: false, status: state, done: Promise.resolve() }
       state = {
         ...idle(),
         running: true,
         mode,
+        scheduled,
         totalPages: mode === 'quick' ? quickPages : fullPages,
         startedAt: new Date().toISOString(),
       }

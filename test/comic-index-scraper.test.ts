@@ -142,13 +142,41 @@ test('a page that keeps failing is retried, counted and skipped', async () => {
 })
 
 test('an unexpected failure is reported and clears the running flag', async () => {
-  const db = openDb(':memory:')
+  // Closed after the runner is made, which reads the last run back as it starts.
+  const { db, runner } = makeRunner()
   db.close()
-  const { runner } = makeRunner({ db })
   await runner.start('quick').done
   const status = runner.status()
   expect(status.running).toBe(false)
   expect(status.error).toBeTruthy()
+})
+
+// Every page failing is not a quiet week: the site could not be reached, and a status
+// line saying "0 new" would hide that.
+test('a run that could not fetch a single page reports a failure', async () => {
+  const { runner } = makeRunner({ fetchPage: async () => { throw new Error('boom') } })
+  await runner.start('quick').done
+  expect(runner.status()).toMatchObject({ running: false, error: 'Could not reach the release index' })
+})
+
+test('a run says whether it was started automatically', async () => {
+  const { runner } = makeRunner()
+  await runner.start('quick').done
+  expect(runner.status().scheduled).toBe(false)
+  await runner.start('quick', { scheduled: true }).done
+  expect(runner.status().scheduled).toBe(true)
+})
+
+// What makes "did it run on Wednesday?" answerable after the container restarts.
+test('the last run is remembered across a restart', async () => {
+  const { db, runner } = makeRunner()
+  await runner.start('quick', { scheduled: true }).done
+  const restarted = createScrapeRunner({ db, config: {} as Config })
+  expect(restarted.status()).toMatchObject({
+    running: false, mode: 'quick', scheduled: true, inserted: 3, error: null,
+  })
+  expect(restarted.status().startedAt).toBe(runner.status().startedAt)
+  expect(restarted.status().finishedAt).toBe(runner.status().finishedAt)
 })
 
 // The same post can appear on more than one listing page, sometimes with a slightly

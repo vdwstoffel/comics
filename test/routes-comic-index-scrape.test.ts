@@ -42,6 +42,19 @@ test('GET reports an idle scraper before anything runs', async () => {
   expect(res.json()).toMatchObject({ running: false, mode: null, inserted: 0 })
 })
 
+test('GET says when the next automatic check is: a Wednesday or Thursday at six', async () => {
+  const before = new Date()
+  const next = new Date((await get()).json().nextScheduledAt)
+  expect(next.getTime()).toBeGreaterThan(before.getTime())
+  expect([3, 4]).toContain(next.getDay())
+  expect([next.getHours(), next.getMinutes()]).toEqual([18, 0])
+})
+
+test('a run started from the button is not marked automatic', async () => {
+  await post({ mode: 'quick' })
+  expect((await get()).json().scheduled).toBe(false)
+})
+
 test('POST starts a run and reports it as accepted', async () => {
   const res = await post({ mode: 'quick' })
   expect(res.statusCode).toBe(202)

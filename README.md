@@ -68,9 +68,14 @@ Three views under **Latest releases**:
 Press **Follow** on an edition or a story arc and it appears under **Following** in the
 library rail. Finish an issue and the next one is queued — one issue per finish, so the
 shelf never turns into a backlog. When the next issue cannot be found yet, the follow says
-so, and is retried after each scrape (**Search → Scrape**). Nothing runs on a timer: if you
-never scrape, nothing arrives. An edition you follow but have not started pulls nothing until
-you finish an issue of it.
+so, and is retried after each scrape. An edition you follow but have not started pulls
+nothing until you finish an issue of it.
+
+The release index is checked on its own every Wednesday and Thursday at 18:00 - new comics
+come out on Wednesday, and some posts land the day after. A check missed while the app was
+down runs as soon as it is back. **Check for new** under **Get comics** still scrapes on
+demand, and the line beside it says when the last check ran, what it found, and when the
+next one is due.
 
 ---
 
@@ -81,7 +86,8 @@ docker compose up -d --build
 ```
 
 Then open **http://\<host\>:8090**. The app always listens on 3000 inside the container;
-8090 is the published port, and the only part of `docker-compose.yml` that is a choice.
+8090 is the published port. That and `TZ` - the zone the Wednesday and Thursday checks
+are read in - are the only parts of `docker-compose.yml` that are a choice.
 
 Comics, thumbnails and the database persist in `./data`, which is bind-mounted and written
 as your host user.
@@ -136,6 +142,7 @@ npm start       # node build/server/index.js, serving dist/
 | `DATA_DIR` | `./data` (`/data` in Docker) | Where everything below lives |
 | `PORT` | `3000` | The port the server listens on |
 | `MAX_UPLOAD_BYTES` | `5368709120` | Ceiling on a single upload |
+| `TZ` | the system's (`Europe/Brussels` in Docker) | The zone the automatic checks' 18:00 is read in |
 
 Inside `DATA_DIR`:
 
