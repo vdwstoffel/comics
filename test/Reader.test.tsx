@@ -161,18 +161,37 @@ test('the wheel will not shrink a page below its fit', async () => {
   expect(pageImg().style.transform).toBe('')
 })
 
-// The turn zones cover the left and right thirds; panning across one would otherwise
-// flip the page out from under you.
-test('the page-turn zones stand down while zoomed', async () => {
+// Zoomed into a panel, the way on is still the right-hand edge. The arrow keys and the
+// scrubber are not where a reader's hand is, and zooming out to turn and back in to read
+// is a toll on every page.
+test('a zoomed page turns on a click in the turn zone', async () => {
   sizeViewport()
   renderReader()
   await screen.findByAltText('page 1')
-  expect(screen.getByLabelText('next')).toBeEnabled()
-
   fireEvent.wheel(viewportOf(), { deltaY: -100, clientX: 500, clientY: 400 })
 
-  expect(screen.getByLabelText('next')).toBeDisabled()
-  expect(screen.getByLabelText('previous')).toBeDisabled()
+  fireEvent.click(screen.getByLabelText('next'))
+
+  expect(await screen.findByText('2 / 3')).toBeInTheDocument()
+})
+
+// Why the zones used to stand down entirely: most of a zoomed page sits behind one, so
+// a pan starts there more often than not, and a pan that turned the page would take the
+// panel being read away mid-sentence. A press that travels is a pan; only a still one
+// counts as a click.
+test('a pan that ends in a turn zone does not turn the page', async () => {
+  sizeViewport()
+  renderReader()
+  await screen.findByAltText('page 1')
+  fireEvent.wheel(viewportOf(), { deltaY: -100, clientX: 500, clientY: 400 })
+  const zone = screen.getByLabelText('next')
+
+  fireEvent.pointerDown(zone, { pointerId: 1, clientX: 900, clientY: 400 })
+  fireEvent.pointerMove(zone, { pointerId: 1, clientX: 820, clientY: 380 })
+  fireEvent.pointerUp(zone, { pointerId: 1, clientX: 820, clientY: 380 })
+  fireEvent.click(zone)
+
+  expect(screen.getByText('1 / 3')).toBeInTheDocument()
 })
 
 test('dragging pans a zoomed page', async () => {

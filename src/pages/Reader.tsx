@@ -124,12 +124,14 @@ export default function Reader() {
           draggable={false}
         />
         {page + 1 < total && <img src={`/api/books/${id}/pages/${page + 1}`} alt="" style={{ display: 'none' }} />}
-        {/* The turn zones cover the left and right thirds. Zoomed in, a pan crosses them,
-            so they stand down and pages turn by key or scrubber until you zoom back out. */}
-        <button aria-label="previous" disabled={zoom.zoomed}
+        {/* The turn zones cover the left and right thirds, zoomed in as much as out -
+            zoomed in is when the alternatives (a key, the scrubber) are furthest from
+            where your hand already is. A pan that crosses a zone is not a turn: useZoom
+            holds the click back once the press has travelled (see TAP_SLOP there). */}
+        <button aria-label="previous"
           onClick={() => setPage((p) => Math.max((p ?? 0) - 1, 0))}
           className="reader-zone reader-zone--prev" />
-        <button aria-label="next" disabled={zoom.zoomed}
+        <button aria-label="next"
           onClick={() => setPage((p) => Math.min((p ?? 0) + 1, total - 1))}
           className="reader-zone reader-zone--next" />
       </div>

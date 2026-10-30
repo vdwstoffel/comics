@@ -5,6 +5,12 @@ import type { Point, ZoomState } from './zoom'
 /** A notch of the wheel. Small enough that a zoom feels continuous rather than stepped. */
 const WHEEL_STEP = 1.0015
 
+/**
+ * How far a press may travel and still count as a click on whatever is under it.
+ * Beyond this it was a pan, and the page-turn zone it landed on stands down for it.
+ */
+const TAP_SLOP = 6
+
 interface Pointers {
   /** Live pointers on the viewport, by id, so a pinch can be told from a drag. */
   active: Map<number, Point>
@@ -12,6 +18,10 @@ interface Pointers {
   spread: number | null
   /** Where a one-finger drag was last seen. */
   last: Point | null
+  /** Where the press began, to measure how far it has travelled since. */
+  origin: Point | null
+  /** Whether this press has moved far enough to be a pan rather than a click. */
+  panned: boolean
 }
 
 /**
@@ -28,7 +38,7 @@ export function useZoom() {
   // an effect keyed on a ref object would have bound its wheel listener to nothing and
   // never run again once the element appeared.
   const [node, setNode] = useState<HTMLElement | null>(null)
-  const pointers = useRef<Pointers>({ active: new Map(), spread: null, last: null })
+  const pointers = useRef<Pointers>({ active: new Map(), spread: null, last: null, origin: null, panned: false })
 
   const viewport = useCallback(() => {
     const box = node?.getBoundingClientRect()
@@ -61,6 +71,8 @@ export function useZoom() {
     p.active.set(e.pointerId, relative(e))
     p.last = p.active.size === 1 ? relative(e) : null
     p.spread = null
+    p.origin = relative(e)
+    p.panned = false
   }, [relative])
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
@@ -80,12 +92,15 @@ export function useZoom() {
       }
       p.spread = spread
       p.last = null
+      // Two fingers are never a click, however little they moved.
+      p.panned = true
       return
     }
 
     // Drag: pan, but only when there is something to pan. At fit the page fills the
     // frame and a drag is just a stray finger.
     const now = points[0]
+    if (p.origin && Math.hypot(now.x - p.origin.x, now.y - p.origin.y) > TAP_SLOP) p.panned = true
     if (p.last) {
       const dx = now.x - p.last.x
       const dy = now.y - p.last.y
@@ -93,6 +108,16 @@ export function useZoom() {
     }
     p.last = now
   }, [relative, viewport])
+
+  // A click arrives after the pointer is up, so by now the press has been judged. Held
+  // in the capture phase, before the turn zone under the cursor gets to act on it: the
+  // zones cover the thirds a zoomed page is mostly behind, and a pan across one that
+  // turned the page would take the panel being read away mid-sentence.
+  const onClickCapture = useCallback((e: React.MouseEvent) => {
+    const p = pointers.current
+    if (p.panned) e.stopPropagation()
+    p.panned = false
+  }, [])
 
   const onPointerUp = useCallback((e: React.PointerEvent) => {
     const p = pointers.current
@@ -106,7 +131,6 @@ export function useZoom() {
     state,
     /** Put on the element being zoomed, in place of a ref. */
     ref: setNode,
-    zoomed: state.scale > 1,
     reset,
     /** Spread onto the element being zoomed. */
     handlers: {
@@ -114,6 +138,7 @@ export function useZoom() {
       onPointerMove,
       onPointerUp,
       onPointerCancel: onPointerUp,
+      onClickCapture,
       onDoubleClick: reset,
     },
     /** The transform to put on the page, or undefined while it is simply fitted. */
