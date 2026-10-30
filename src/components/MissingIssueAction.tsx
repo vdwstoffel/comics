@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import { useDownload } from '../lib/useDownload'
-import { findIssueHref } from '../lib/findIssueHref'
+import { findIssueSeed } from '../lib/findIssueSeed'
+import { useFindRelease } from '../lib/useFindRelease'
 import IssueAction from './IssueAction'
 import IssueUploadAction from './IssueUploadAction'
 
@@ -52,19 +53,30 @@ export default function MissingIssueAction({
     onSuccess: () => qc.invalidateQueries({ queryKey: ['download'] }),
   })
 
+  // The control is named "#3" because the comic is named beside it. The dialog is not
+  // beside anything, so it gets the run's name too.
+  const find = useFindRelease({
+    gapLabel: `${editionName} ${label}`,
+    seed: findIssueSeed(seriesName, coverDate),
+    onDownload: (indexId) => api.downloadMissingIssue(editionId, issueId, indexId),
+  })
+
   return (
-    <IssueAction
-      label={label}
-      hasMatch={match != null}
-      matchTitle={match?.title}
-      findTo={findIssueHref(seriesName, coverDate)}
-      onGet={() => get.mutate()}
-      pending={get.isPending}
-      failed={get.isError}
-      queued={liveByIssue.has(issueId)}
-      upload={offerUpload
-        ? <IssueUploadAction editionName={editionName} issueId={issueId} label={label} />
-        : undefined}
-    />
+    <>
+      <IssueAction
+        label={label}
+        hasMatch={match != null}
+        matchTitle={match?.title}
+        onFind={find.onFind}
+        onGet={() => get.mutate()}
+        pending={get.isPending}
+        failed={get.isError}
+        queued={liveByIssue.has(issueId)}
+        upload={offerUpload
+          ? <IssueUploadAction editionName={editionName} issueId={issueId} label={label} />
+          : undefined}
+      />
+      {find.dialog}
+    </>
   )
 }

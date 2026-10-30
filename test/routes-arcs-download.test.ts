@@ -194,3 +194,30 @@ test('pressing get never searches Comic Vine by name', async () => {
     expect(cvUrls.filter((u) => u.includes('/search/'))).toEqual([])
   } finally { await t.cleanup() }
 })
+
+// Find's dialog, on the arc page. The user picked a row the matcher would never claim -
+// which is the whole reason Find was offered instead of Get - and it still has to fetch
+// that row and file it against the gap's Comic Vine issue.
+test('a row picked in the Find dialog is the one fetched', async () => {
+  const t = await setup(async () => POST_HTML)
+  try {
+    const picked = t.db.prepare(
+      `INSERT INTO comic_index (title, url, category, imported_at, number, year)
+       VALUES (?,?,?,?,?,?)`,
+    ).run('Felicia Hardy – Black Cat #3 (2026)', 'https://index/felicia-3', 'comics', '2026-09-14', '003', 2026)
+      .lastInsertRowid as number
+
+    const res = await t.app.inject({
+      method: 'POST',
+      url: '/api/arcs/issues/1158149/download',
+      payload: { indexId: picked },
+    })
+
+    expect(res.statusCode).toBe(202)
+    // The edition is still resolved server-side from the issue's volume, and the Comic
+    // Vine id is still the gap's - the picked row only said which post to read.
+    expect(t.enqueue).toHaveBeenCalledWith(
+      expect.objectContaining({ edition: 'Black Cat', issueId: 1158149 }),
+    )
+  } finally { await t.cleanup() }
+})

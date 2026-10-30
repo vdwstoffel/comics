@@ -5,7 +5,7 @@ import type { ComponentProps } from 'react'
 import MissingIssueTile from '../src/components/MissingIssueTile'
 
 const base = {
-  label: 'Spider-Man: Long Way Home #3', siteUrl: 'https://cv/14', findTo: '/search?q=Black+Cat',
+  label: 'Spider-Man: Long Way Home #3', siteUrl: 'https://cv/14', onFind: () => {},
   hasMatch: false, onGet: () => {}, pending: false, failed: false,
 }
 
@@ -40,17 +40,26 @@ test('the name follows the button into its working state', () => {
 
 test('find is labelled the same way', () => {
   draw({ hasMatch: false })
-  // The cover is a link too, so this asks for the one that offers to find the comic.
-  const find = screen.getByRole('link', { name: /Find/ })
-  expect(find).toHaveTextContent(/^Find ↗$/)
+  const find = screen.getByRole('button', { name: /Find/ })
+  expect(find).toHaveTextContent(/^Find$/)
   expect(find).toHaveAccessibleName('Find Spider-Man: Long Way Home #3')
 })
 
-// The button never guesses: anything less than one certain row sends you to search.
+// The button never guesses: anything less than one certain row offers the dialog. The
+// cover is still a link to Comic Vine; Find is not a link any more, because navigating
+// away is what used to lose the issue's identity.
 test('an unmatched issue offers to find it instead', () => {
   draw({ hasMatch: false })
-  expect(screen.queryByRole('button')).toBeNull()
-  expect(screen.getByRole('link', { name: /Find Spider-Man: Long Way Home #3/ })).toHaveAttribute('href', '/search?q=Black+Cat')
+  expect(screen.queryByRole('button', { name: /Get/ })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Find Spider-Man: Long Way Home #3' })).toBeInTheDocument()
+  expect(screen.queryByRole('link', { name: /Find/ })).toBeNull()
+})
+
+test('pressing find calls the handler', () => {
+  const onFind = vi.fn()
+  draw({ hasMatch: false, onFind })
+  fireEvent.click(screen.getByRole('button', { name: /Find/ }))
+  expect(onFind).toHaveBeenCalledTimes(1)
 })
 
 test('pressing get calls the handler once', () => {

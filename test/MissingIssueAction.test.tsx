@@ -42,7 +42,7 @@ test('a matched gap offers both ways to fill it', async () => {
 // Where Get has nothing to act on is exactly where having the file yourself matters most.
 test('an unmatched gap still offers the upload', async () => {
   draw({ match: null, offerUpload: true })
-  expect(await screen.findByRole('link', { name: /Find #256/ })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: /Find #256/ })).toBeInTheDocument()
   expect(screen.getByLabelText(/^Upload #256$/)).toBeInTheDocument()
 })
 

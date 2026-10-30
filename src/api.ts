@@ -621,6 +621,23 @@ function indexParams(
   return params
 }
 
+/**
+ * The three routes that fill a gap all answer the same way and all now take the same
+ * optional body: which scraped row the user picked, when Find's dialog let them pick one.
+ * A press of Get sends no body at all, exactly as it always did.
+ */
+export interface QueuedResponse { queued: boolean; entry?: QueueEntry }
+
+function pickedRowPost(indexId?: number): RequestInit {
+  return indexId == null
+    ? { method: 'POST' }
+    : {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ indexId }),
+    }
+}
+
 async function json<T>(url: string, opts?: RequestInit): Promise<T> {
   const res = await fetch(url, opts)
   if (!res.ok) {
@@ -629,11 +646,17 @@ async function json<T>(url: string, opts?: RequestInit): Promise<T> {
     // A body that is not json, or carries no `error`, falls back to the status, which is
     // what every caller received before.
     let message = `${res.status}`
+    // The machine-readable half of a refusal, where the route sends one. A status cannot
+    // stand in for it: the gap-filling routes answer 409 both for "already queued" - which
+    // means the download you asked for is happening - and for "that row is gone", which
+    // means it is not. A caller that cannot tell them apart has to string-match the prose.
+    let reason: string | undefined
     try {
-      const body = (await res.json()) as { error?: unknown }
+      const body = (await res.json()) as { error?: unknown; reason?: unknown }
       if (typeof body?.error === 'string' && body.error) message = body.error
+      if (typeof body?.reason === 'string' && body.reason) reason = body.reason
     } catch { /* not json; the status stands */ }
-    throw Object.assign(new Error(message), { status: res.status })
+    throw Object.assign(new Error(message), { status: res.status, reason })
   }
   return res.json() as Promise<T>
 }
@@ -723,13 +746,13 @@ export const api = {
 
   getUpcoming: () => json<ApiUpcoming>('/api/releases/upcoming'),
 
-  downloadRelease: (cvIssueId: number) =>
-    json<{ started: boolean }>(`/api/releases/issues/${cvIssueId}/download`, { method: 'POST' }),
+  downloadRelease: (cvIssueId: number, indexId?: number) =>
+    json<QueuedResponse>(`/api/releases/issues/${cvIssueId}/download`, pickedRowPost(indexId)),
 
   /** A gap in a story arc. Where it lands is the server's decision: an arc spans volumes,
    *  so there is no one edition the press can name. */
-  downloadArcIssue: (cvIssueId: number) =>
-    json<{ queued: boolean }>(`/api/arcs/issues/${cvIssueId}/download`, { method: 'POST' }),
+  downloadArcIssue: (cvIssueId: number, indexId?: number) =>
+    json<QueuedResponse>(`/api/arcs/issues/${cvIssueId}/download`, pickedRowPost(indexId)),
   getCharacter: (bookId: string | number, name: string) =>
     json<CharacterResponse>(`/api/books/${bookId}/character?name=${encodeURIComponent(name)}`),
   cvSearch: (q: string, type: string) =>
@@ -795,8 +818,8 @@ export const api = {
     json<ApiEditionIssues>(`/api/editions/${id}/issues${refresh ? '?refresh=1' : ''}`),
 
   /** Download the one scraped release that is this missing issue, into this edition. */
-  downloadMissingIssue: (editionId: string | number, cvIssueId: number) =>
-    json<{ started: boolean }>(`/api/editions/${editionId}/issues/${cvIssueId}/download`, { method: 'POST' }),
+  downloadMissingIssue: (editionId: string | number, cvIssueId: number, indexId?: number) =>
+    json<QueuedResponse>(`/api/editions/${editionId}/issues/${cvIssueId}/download`, pickedRowPost(indexId)),
 
   /** Every gap in this volume the index can fill, in one press. Answers with how many it
    *  is about to queue; the rows themselves arrive over the following minutes. */

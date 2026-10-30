@@ -11,7 +11,8 @@ import { createComicVine } from '../lib/comicvine.js'
 import type { CvVolumeIssue } from '../lib/comicvine.js'
 import { cacheVolumeIssues, getCachedVolumeIssues } from '../models/volumeIssues.js'
 import { findMatchForIssue } from '../services/issueMatching.js'
-import { startIssueDownload, issueLabel } from '../services/issueDownload.js'
+import { startIssueDownload, issueLabel, pickedRow } from '../services/issueDownload.js'
+import type { PickedRowBody } from '../services/issueDownload.js'
 import { queueMissingIssues, missingMatchedIssues } from '../services/bulkIssueDownload.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import { detectCollects as detectCollectsReal } from '../services/detectCollects.js'
@@ -393,7 +394,7 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
    * cannot tell a dozen relaunches of "Captain America" apart, and a fallback would
    * quietly reintroduce exactly that failure.
    */
-  app.post<{ Params: { id: string; cvIssueId: string } }>(
+  app.post<{ Params: { id: string; cvIssueId: string }; Body: PickedRowBody }>(
     '/api/editions/:id/issues/:cvIssueId/download',
     async (req, reply) => {
       const edition = getEdition(app.db, Number(req.params.id))
@@ -411,6 +412,7 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
         editionName: edition.name,
         issue,
         label: issueLabel(edition.cvName, issue.number),
+        indexId: pickedRow(req.body),
         fetchPage,
       })
       // `reason` is the machine-readable half of the refusal: a client cannot tell a

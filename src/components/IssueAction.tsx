@@ -1,5 +1,4 @@
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 
 interface IssueActionProps {
   /** The comic this acts on, which is what the control is named for. */
@@ -8,8 +7,8 @@ interface IssueActionProps {
   hasMatch: boolean
   /** The scraped title, shown on hover so you can see what would be fetched. */
   matchTitle?: string
-  /** Where Find goes: the search, with the series and year filled in. */
-  findTo: string
+  /** Open the search dialog for this gap. It fills the gap itself; nothing navigates. */
+  onFind: () => void
   onGet: () => void
   pending: boolean
   failed: boolean
@@ -44,7 +43,7 @@ interface IssueActionProps {
  * run has one.
  */
 export default function IssueAction({
-  label, hasMatch, matchTitle, findTo, onGet, pending, failed, queued, upload,
+  label, hasMatch, matchTitle, onFind, onGet, pending, failed, queued, upload,
 }: IssueActionProps) {
   return (
     <>
@@ -64,7 +63,16 @@ export default function IssueAction({
           {pending ? 'Getting…' : '↓ Get'}
         </button>
       ) : (
-        <Link className="volume-issue__find" to={findTo} aria-label={`Find ${label}`}>Find ↗</Link>
+        // No arrow any more: it promised a navigation, and Find now opens a dialog over
+        // the page that already knows which gap it is filling.
+        <button
+          type="button"
+          className="btn btn-ghost volume-issue__find"
+          onClick={onFind}
+          aria-label={`Find ${label}`}
+        >
+          Find
+        </button>
       )}
       {/*
         Beside whichever of Get or Find is showing, because the two answer different

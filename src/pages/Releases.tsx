@@ -12,6 +12,8 @@ import { writeOutDay } from '../lib/releaseWeek'
 import { useUpcoming } from '../lib/useUpcoming'
 import { useDownload } from '../lib/useDownload'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
+import { findIssueSeed } from '../lib/findIssueSeed'
+import { useFindRelease } from '../lib/useFindRelease'
 
 function label(issue: ApiReleaseIssue): string {
   const series = issue.volumeName ?? 'Unknown series'
@@ -48,29 +50,31 @@ function ReleaseIssue({ issue }: { issue: ApiReleaseIssue }) {
     )
   }
 
-  const findParams = new URLSearchParams({ q: issue.volumeName ?? '' })
-  // Comic Vine's cover date runs ahead of the scraped release year (Venom #251 has a
-  // 2026-01 cover date but is posted as "Venom #251 (2025)" - see issueMatch's
-  // YEAR_SLACK), so a floor set to the cover year exactly would filter out the very
-  // row Find is meant to surface. Back it off by the same one year the matching rule
-  // tolerates - the seed the edition page's Find already uses, and the same reason.
-  // (Not importing YEAR_SLACK here: src/ never reaches into server/.)
-  const coverYear = issue.coverDate ? Number(String(issue.coverDate).slice(0, 4)) : NaN
-  if (Number.isInteger(coverYear)) findParams.set('yearFrom', String(coverYear - 1))
+  // The year floor and the reason it is backed off a year live in findIssueSeed, shared
+  // with the edition and arc pages. An issue with no volume name seeds an empty query,
+  // which the dialog opens on rather than searching for nothing.
+  const find = useFindRelease({
+    gapLabel: text,
+    seed: findIssueSeed(issue.volumeName ?? '', issue.coverDate),
+    onDownload: (indexId) => api.downloadRelease(issue.id, indexId),
+  })
 
   return (
-    <MissingIssueTile
-      label={text}
-      siteUrl={issue.siteUrl}
-      coverUrl={issue.coverUrl}
-      hasMatch={issue.match != null}
-      matchTitle={issue.match?.title}
-      findTo={`/search?${findParams}`}
-      onGet={() => get.mutate()}
-      pending={get.isPending}
-      failed={get.isError}
-      queued={liveByIssue.has(issue.id)}
-    />
+    <>
+      <MissingIssueTile
+        label={text}
+        siteUrl={issue.siteUrl}
+        coverUrl={issue.coverUrl}
+        hasMatch={issue.match != null}
+        matchTitle={issue.match?.title}
+        onFind={find.onFind}
+        onGet={() => get.mutate()}
+        pending={get.isPending}
+        failed={get.isError}
+        queued={liveByIssue.has(issue.id)}
+      />
+      {find.dialog}
+    </>
   )
 }
 

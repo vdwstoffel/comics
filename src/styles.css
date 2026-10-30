@@ -4283,3 +4283,144 @@ textarea.input:hover:not(:focus) {
 .bulk-actions__note { color: var(--muted, #888); font-size: 0.85rem; }
 .bulk-summary { font-weight: 600; margin-top: 1rem; }
 .upload-bulk-link { font-size: 0.9rem; color: var(--muted, #888); margin-top: -0.5rem; }
+
+/* Find a release — the dialog that fills one gap from the scraped index.
+   Reuses the modal frame and .cv-search-row; only the result area is its own. */
+
+.find-release__gap {
+  color: var(--muted);
+  font-size: 0.875rem;
+  margin: -12px 0 16px;
+}
+
+.find-release__gap strong {
+  color: var(--text);
+}
+
+.find-release__filters {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 10px 0;
+  min-height: 24px;
+}
+
+.find-release__count {
+  margin-left: auto;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+.find-release__loading,
+.find-release__empty {
+  color: var(--muted);
+  font-size: 0.875rem;
+  padding: 8px 0;
+}
+
+.find-release__groups {
+  list-style: none;
+  /* The dialog is a fixed box over the page; the list is the part that scrolls, so the
+     search row above and the commit row below stay put while you read. */
+  max-height: 46vh;
+  overflow-y: auto;
+  margin: 0;
+  padding: 0;
+}
+
+.find-release__group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: none;
+  border: none;
+  border-bottom: 1px solid var(--border);
+  padding: 9px 4px;
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+  text-align: left;
+  cursor: pointer;
+}
+
+.find-release__group:hover {
+  background: var(--elevated);
+}
+
+.find-release__group-name {
+  flex: 1;
+}
+
+.find-release__group-count {
+  color: var(--muted);
+  font-weight: 400;
+  font-size: 0.8125rem;
+}
+
+.find-release__rows {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 6px 18px;
+}
+
+.find-release__row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  padding: 6px 8px;
+  color: var(--muted);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.find-release__row:hover {
+  background: var(--elevated);
+}
+
+/* Picked, not yet committed — the press that commits is in the footer. */
+.find-release__row[aria-pressed='true'] {
+  border-color: var(--accent);
+  color: var(--text);
+}
+
+.find-release__row-title {
+  flex: 1;
+}
+
+.find-release__row-year {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.find-release__more {
+  color: var(--muted);
+  font-size: 0.8125rem;
+  padding: 8px;
+}
+
+.find-release__foot {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-top: 1px solid var(--border);
+  margin-top: 14px;
+  padding-top: 14px;
+}
+
+/* Names the gap again at the point of commit: the last thing read before the press. */
+.find-release__files-as {
+  flex: 1;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+.find-release__files-as strong {
+  color: var(--text);
+}

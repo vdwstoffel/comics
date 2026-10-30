@@ -92,16 +92,17 @@ test('pressing get asks the server for that issue', async () => {
 // look by eye rather than offering a press that would refuse.
 test('a gap nothing uniquely matches offers Find instead', async () => {
   draw()
-  expect(await screen.findByRole('link', { name: 'Find Venom #3' })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: 'Find Venom #3' })).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: 'Get Venom #3' })).not.toBeInTheDocument()
 })
 
 // Find opens the search on the issue's OWN series, not the arc - the arc is not a series
-// and searching the index for it returns nothing.
+// and searching the index for it returns nothing. It opens a dialog over this page now;
+// navigating away is what used to lose the issue's Comic Vine id.
 test('Find searches for the volume the issue belongs to', async () => {
   draw()
-  const find = await screen.findByRole('link', { name: 'Find Venom #3' })
-  expect(find).toHaveAttribute('href', expect.stringContaining('q=Venom'))
+  fireEvent.click(await screen.findByRole('button', { name: 'Find Venom #3' }))
+  expect(await screen.findByLabelText('Search the index')).toHaveValue('Venom')
 })
 
 // A second press would only 409 on the server. The queue is the server's, so a row put

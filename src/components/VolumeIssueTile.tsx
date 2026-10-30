@@ -2,7 +2,8 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ApiVolumeIssue, ApiBook } from '../api'
 import { useDownload } from '../lib/useDownload'
-import { findIssueHref } from '../lib/findIssueHref'
+import { findIssueSeed } from '../lib/findIssueSeed'
+import { useFindRelease } from '../lib/useFindRelease'
 import CoverTile from './CoverTile'
 import MissingIssueTile from './MissingIssueTile'
 import IssueUploadAction from './IssueUploadAction'
@@ -37,6 +38,13 @@ export default function VolumeIssueTile({ issue, book, editionId, editionName, s
     onSuccess: () => qc.invalidateQueries({ queryKey: ['download'] }),
   })
 
+  // The tile says "#3"; the dialog floats over the page and has to say which run's #3.
+  const find = useFindRelease({
+    gapLabel: `${editionName} ${label}`,
+    seed: findIssueSeed(seriesName, issue.coverDate),
+    onDownload: (indexId) => api.downloadMissingIssue(editionId, issue.id, indexId),
+  })
+
   if (issue.owned && issue.bookId != null) {
     return (
       <CoverTile
@@ -51,17 +59,20 @@ export default function VolumeIssueTile({ issue, book, editionId, editionName, s
   }
 
   return (
-    <MissingIssueTile
-      label={label}
-      siteUrl={issue.siteUrl}
-      hasMatch={issue.match != null}
-      matchTitle={issue.match?.title}
-      findTo={findIssueHref(seriesName, issue.coverDate)}
-      onGet={() => get.mutate()}
-      pending={get.isPending}
-      failed={get.isError}
-      queued={liveByIssue.has(issue.id)}
-      upload={<IssueUploadAction editionName={editionName} issueId={issue.id} label={label} />}
-    />
+    <>
+      <MissingIssueTile
+        label={label}
+        siteUrl={issue.siteUrl}
+        hasMatch={issue.match != null}
+        matchTitle={issue.match?.title}
+        onFind={find.onFind}
+        onGet={() => get.mutate()}
+        pending={get.isPending}
+        failed={get.isError}
+        queued={liveByIssue.has(issue.id)}
+        upload={<IssueUploadAction editionName={editionName} issueId={issue.id} label={label} />}
+      />
+      {find.dialog}
+    </>
   )
 }

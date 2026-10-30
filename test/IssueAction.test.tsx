@@ -6,7 +6,7 @@ import IssueAction from '../src/components/IssueAction'
 
 const base = {
   label: 'Spider-Man: Long Way Home #3',
-  findTo: '/search?q=Black+Cat',
+  onFind: () => {},
   hasMatch: false,
   onGet: () => {},
   pending: false,
@@ -30,12 +30,26 @@ test('the name follows the button into its working state', () => {
   expect(screen.getByRole('button')).toHaveAccessibleName('Getting Spider-Man: Long Way Home #3')
 })
 
-// The button never guesses: anything less than one certain row sends you to search.
+// The button never guesses: anything less than one certain row offers the search dialog.
 test('an unmatched issue offers to find it instead', () => {
   draw({ hasMatch: false })
-  expect(screen.queryByRole('button')).toBeNull()
-  expect(screen.getByRole('link', { name: /Find Spider-Man: Long Way Home #3/ }))
-    .toHaveAttribute('href', '/search?q=Black+Cat')
+  expect(screen.queryByRole('button', { name: /Get/ })).toBeNull()
+  expect(screen.getByRole('button', { name: 'Find Spider-Man: Long Way Home #3' }))
+    .toHaveTextContent(/^Find$/)
+})
+
+// It used to be a link to the search page, which is what lost the issue's identity on
+// the way. Nothing navigates now.
+test('find is a button, not a link', () => {
+  draw({ hasMatch: false })
+  expect(screen.queryByRole('link')).toBeNull()
+})
+
+test('pressing find calls the handler once', () => {
+  const onFind = vi.fn()
+  draw({ hasMatch: false, onFind })
+  fireEvent.click(screen.getByRole('button', { name: /Find/ }))
+  expect(onFind).toHaveBeenCalledTimes(1)
 })
 
 test('pressing get calls the handler once', () => {
@@ -49,7 +63,7 @@ test('an issue already queued says so instead of offering anything to press', ()
   draw({ hasMatch: true, queued: true })
   expect(screen.getByText(/queued/i)).toBeInTheDocument()
   expect(screen.queryByRole('button', { name: /Get/ })).toBeNull()
-  expect(screen.queryByRole('link', { name: /Find/ })).toBeNull()
+  expect(screen.queryByRole('button', { name: /Find/ })).toBeNull()
 })
 
 test('a failed press reports where it was pressed', () => {
@@ -68,7 +82,7 @@ test('an upload offer is drawn beside Get', () => {
 
 test('an upload offer is drawn beside Find too', () => {
   draw({ hasMatch: false, upload: <button type="button">↑ Upload</button> })
-  expect(screen.getByRole('link', { name: /Find/ })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /Find/ })).toBeInTheDocument()
   expect(screen.getByRole('button', { name: /Upload/ })).toBeInTheDocument()
 })
 

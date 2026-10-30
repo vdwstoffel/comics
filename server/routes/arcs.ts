@@ -6,7 +6,8 @@ import { getArcOrder, saveArcOrder, clearArcOrder } from '../models/arcOrder.js'
 import { applySavedOrder } from '../lib/arcOrder.js'
 import { resolveArcId } from '../services/arcIdentity.js'
 import { findMatchForIssue } from '../services/issueMatching.js'
-import { startIssueDownload, issueLabel } from '../services/issueDownload.js'
+import { startIssueDownload, issueLabel, pickedRow } from '../services/issueDownload.js'
+import type { PickedRowBody } from '../services/issueDownload.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import { getEditionByComicvineId } from '../models/editions.js'
 import { getBookTags } from '../models/metadata.js'
@@ -233,7 +234,7 @@ export default async function arcRoutes(app: App, opts: ArcRouteOpts = {}) {
    * Arcs cached before the volume id was stored carry only the name; those fall back to
    * it rather than leaving the button dead until the arc happens to be refreshed.
    */
-  app.post<{ Params: { cvIssueId: string } }>(
+  app.post<{ Params: { cvIssueId: string }; Body: PickedRowBody }>(
     '/api/arcs/issues/:cvIssueId/download',
     async (req, reply) => {
       // Any age: a press only follows a page view that filled this cache, and a published
@@ -248,6 +249,7 @@ export default async function arcRoutes(app: App, opts: ArcRouteOpts = {}) {
         editionName: existing?.name ?? volumeName ?? 'Unsorted',
         issue: { id: issue.id, number: issue.number, coverDate: issue.coverDate },
         label: issueLabel(volumeName, issue.number),
+        indexId: pickedRow(req.body),
         fetchPage,
       })
       // `reason` is the machine-readable half of the refusal: a client cannot tell a

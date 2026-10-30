@@ -165,7 +165,7 @@ test('a matched missing issue offers to get it', async () => {
 
 test('an unmatched missing issue offers to find it', async () => {
   draw('/releases?pub=dc')
-  expect(await screen.findByRole('link', { name: /Find Action Comics #1102/ })).toBeInTheDocument()
+  expect(await screen.findByRole('button', { name: /Find Action Comics #1102/ })).toBeInTheDocument()
 })
 
 test('a day Comic Vine could not answer for says so', async () => {
@@ -178,15 +178,14 @@ test('a day Comic Vine could not answer for says so', async () => {
 // Vine's cover date runs ahead of the scraped release year, so a floor at the cover year
 // exactly filters out the very row Find is meant to surface - back it off by one, the
 // same slack the matching rule tolerates.
-test('the Find link seeds the year from the cover date, one year back', async () => {
+test('the Find dialog seeds the year from the cover date, one year back', async () => {
   draw('/releases?pub=dc')
-  const link = await screen.findByRole('link', { name: /Find Action Comics #1102/ })
-  const href = link.getAttribute('href')!
-  expect(href).toContain('q=Action+Comics')
-  expect(new URLSearchParams(href.split('?')[1]).get('yearFrom')).toBe('2025')
+  fireEvent.click(await screen.findByRole('button', { name: /Find Action Comics #1102/ }))
+  expect(await screen.findByLabelText('Search the index')).toHaveValue('Action Comics')
+  expect(screen.getByRole('button', { name: /Searching from 2025 onwards/ })).toBeInTheDocument()
 })
 
-test('an issue with no cover date gets an unseeded Find link rather than a NaN year', async () => {
+test('an issue with no cover date gets no year filter rather than a NaN year', async () => {
   stub({
     ...RELEASES,
     publishers: [{ name: 'DC Comics', issues: [
@@ -195,8 +194,9 @@ test('an issue with no cover date gets an unseeded Find link rather than a NaN y
     ] }],
   })
   draw()
-  const link = await screen.findByRole('link', { name: /Find Undated #1/ })
-  expect(link.getAttribute('href')).not.toContain('yearFrom')
+  fireEvent.click(await screen.findByRole('button', { name: /Find Undated #1/ }))
+  await screen.findByLabelText('Search the index')
+  expect(screen.queryByRole('button', { name: /Searching from/ })).not.toBeInTheDocument()
 })
 
 // --- The `stale` branch had no coverage at all, and its message had to change: `stale`

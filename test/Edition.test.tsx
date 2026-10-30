@@ -670,8 +670,9 @@ test('a missing issue the index can supply offers to get it', async () => {
 test('a missing issue with no certain match offers to find it instead, floor backed off by a year', async () => {
   mockFetchWithIssues(MATCHED)
   renderPage()
-  const find = await screen.findByRole('link', { name: /Find #2/i })
-  expect(find).toHaveAttribute('href', '/search?q=Amazing+Spider-Man&yearFrom=2025')
+  fireEvent.click(await screen.findByRole('button', { name: /Find #2/i }))
+  expect(await screen.findByLabelText('Search the index')).toHaveValue('Amazing Spider-Man')
+  expect(screen.getByRole('button', { name: /Searching from 2025 onwards/ })).toBeInTheDocument()
 })
 
 test('a missing issue with no certain match offers no get button', async () => {
@@ -744,7 +745,7 @@ test('a volume whose gaps are all ambiguous offers no get all', async () => {
   })
   renderGrid()
 
-  await screen.findByRole('link', { name: /Find #2/i })
+  await screen.findByRole('button', { name: /Find #2/i })
   expect(screen.queryByRole('button', { name: /Get all/i })).not.toBeInTheDocument()
 })
 

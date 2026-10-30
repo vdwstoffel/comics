@@ -9,8 +9,8 @@ interface MissingIssueTileProps {
   hasMatch: boolean
   /** The scraped title, shown on hover so you can see what would be fetched. */
   matchTitle?: string
-  /** Where Find goes: the search, with the series and year filled in. */
-  findTo: string
+  /** Open the search dialog for this gap. Passed straight through to IssueAction. */
+  onFind: () => void
   /**
    * Cover art, when the page has any to show. An edition page passes none - a cover is a
    * spoiler for a comic you have not read - but the Latest tab passes one, because every
@@ -34,14 +34,14 @@ interface MissingIssueTileProps {
  * draw too; this is the tile around it.
  */
 export default function MissingIssueTile({
-  label, siteUrl, hasMatch, matchTitle, findTo, coverUrl, onGet, pending, failed, queued, upload,
+  label, siteUrl, hasMatch, matchTitle, onFind, coverUrl, onGet, pending, failed, queued, upload,
 }: MissingIssueTileProps) {
   const action = (
     <IssueAction
       label={label}
       hasMatch={hasMatch}
       matchTitle={matchTitle}
-      findTo={findTo}
+      onFind={onFind}
       onGet={onGet}
       pending={pending}
       failed={failed}

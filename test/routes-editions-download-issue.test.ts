@@ -150,3 +150,92 @@ test('an edition with no volume has nothing to download against', async () => {
   expect(res.statusCode).toBe(404)
   await app.close(); db.close()
 })
+
+// --- Find's dialog: the user picked the row themselves ---
+
+/**
+ * The whole point of the Find dialog. `Thor (2025)` is posted as `The Mortal Thor`, so
+ * the derived match finds nothing and the page offers Find instead of Get. A row picked
+ * by hand must still download, against the gap it was picked for.
+ */
+test('a picked row downloads even though nothing would have matched it', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seed(db)
+  // A row the matcher cannot claim: a different series name, and a number that is not 250.
+  const picked = db.prepare(
+    'INSERT INTO comic_index (title, url, category, number, year, imported_at) VALUES (?,?,?,?,?,?)',
+  ).run('The Mortal Venom #7 (2025)', 'https://x.test/post/mortal-7', 'Marvel Comics', '007', 2025, '2026-09-13T00:00:00.000Z').lastInsertRowid as number
+
+  const { app, started, fetchPage } = server(db)
+  await app.register(editionRoutes, { fetchPage })
+
+  const res = await app.inject({
+    method: 'POST',
+    url: `/api/editions/${edition.id}/issues/1136140/download`,
+    payload: { indexId: picked },
+  })
+
+  expect(res.statusCode).toBe(202)
+  // Comic Vine's issue id is the gap's, not the row's - the row only said where to fetch.
+  expect(started).toEqual([
+    { url: 'https://dl.test/venom-250.cbz', edition: 'Venom (2025)', issueId: 1136140, label: 'Venom #250' },
+  ])
+  await app.close(); db.close()
+})
+
+// Same invariant as the derived path: picking a row is not an excuse to ask Comic Vine
+// who this comic is. The gap already said.
+test('a picked row never searches Comic Vine', async () => {
+  const db = openDb(':memory:')
+  const { edition, indexId } = seed(db)
+  const { app, fetchPage } = server(db)
+  await app.register(editionRoutes, { fetchPage })
+
+  await app.inject({
+    method: 'POST',
+    url: `/api/editions/${edition.id}/issues/1136140/download`,
+    payload: { indexId },
+  })
+
+  expect(cvUrls.filter((u) => u.includes('/search'))).toEqual([])
+  await app.close(); db.close()
+})
+
+// The index can be rescraped between the dialog opening and the press. Downloading
+// whatever now holds that id would be filing a comic nobody looked at.
+test('a picked row that no longer exists is refused', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seed(db)
+  const { app, started, fetchPage } = server(db)
+  await app.register(editionRoutes, { fetchPage })
+
+  const res = await app.inject({
+    method: 'POST',
+    url: `/api/editions/${edition.id}/issues/1136140/download`,
+    payload: { indexId: 999999 },
+  })
+
+  expect(res.statusCode).toBe(409)
+  expect(res.json().reason).toBe('no-match')
+  expect(started).toEqual([])
+  await app.close(); db.close()
+})
+
+// A body is new to this route and Get still sends none. Rubbish in it falls back to the
+// derived match rather than refusing - which is exactly what the route did before.
+test('a body with no usable row falls back to the derived match', async () => {
+  const db = openDb(':memory:')
+  const { edition } = seed(db)
+  const { app, started, fetchPage } = server(db)
+  await app.register(editionRoutes, { fetchPage })
+
+  const res = await app.inject({
+    method: 'POST',
+    url: `/api/editions/${edition.id}/issues/1136140/download`,
+    payload: { indexId: 'nonsense' },
+  })
+
+  expect(res.statusCode).toBe(202)
+  expect(started).toHaveLength(1)
+  await app.close(); db.close()
+})

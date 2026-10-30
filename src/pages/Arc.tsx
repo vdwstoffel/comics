@@ -12,6 +12,8 @@ import { arcIssueLabel } from '../lib/arcIssueLabel'
 import FollowButton from '../components/FollowButton'
 import ArcReorderList from '../components/ArcReorderList'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
+import { findIssueSeed } from '../lib/findIssueSeed'
+import { useFindRelease } from '../lib/useFindRelease'
 
 /**
  * An issue in the arc. Yours shows its own cover and opens in the library; one you do not
@@ -48,24 +50,29 @@ function ArcIssue({ issue }: { issue: ApiArcIssue }) {
   }
 
   // Find searches for the issue's OWN series, never the arc's name: an arc is not a series
-  // and the index holds nothing under it. Same one-year floor the edition page uses, for
-  // the same reason — Comic Vine's cover date runs ahead of the scraped release year.
-  const findParams = new URLSearchParams({ q: issue.volumeName ?? title })
-  const coverYear = issue.coverDate ? Number(String(issue.coverDate).slice(0, 4)) : NaN
-  if (Number.isInteger(coverYear)) findParams.set('yearFrom', String(coverYear - 1))
+  // and the index holds nothing under it. The year floor and its reasoning live in
+  // findIssueSeed, shared with the edition page.
+  const find = useFindRelease({
+    gapLabel: title,
+    seed: findIssueSeed(issue.volumeName ?? title, issue.coverDate),
+    onDownload: (indexId) => api.downloadArcIssue(issue.id, indexId),
+  })
 
   return (
-    <MissingIssueTile
-      label={title}
-      siteUrl={issue.siteUrl}
-      hasMatch={issue.match != null}
-      matchTitle={issue.match?.title}
-      findTo={`/search?${findParams}`}
-      onGet={() => get.mutate()}
-      pending={get.isPending}
-      failed={get.isError}
-      queued={liveByIssue.has(issue.id)}
-    />
+    <>
+      <MissingIssueTile
+        label={title}
+        siteUrl={issue.siteUrl}
+        hasMatch={issue.match != null}
+        matchTitle={issue.match?.title}
+        onFind={find.onFind}
+        onGet={() => get.mutate()}
+        pending={get.isPending}
+        failed={get.isError}
+        queued={liveByIssue.has(issue.id)}
+      />
+      {find.dialog}
+    </>
   )
 }
 

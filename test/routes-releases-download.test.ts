@@ -154,3 +154,25 @@ test('the queue row is labelled with the volume and issue number', async () => {
     expect(t.enqueue).toHaveBeenCalledWith(expect.objectContaining({ label: 'Black Cat #14' }))
   } finally { await t.cleanup() }
 })
+
+// Find's dialog, on This week. Same wiring as the arc page: the picked row chooses the
+// post, the gap chooses the issue, and the route still names the edition itself.
+test('a row picked in the Find dialog is the one fetched', async () => {
+  const t = await setup(async () => POST_HTML)
+  try {
+    const picked = t.db.prepare(
+      `INSERT INTO comic_index (title, url, category, imported_at, number, year)
+       VALUES (?,?,?,?,?,?)`,
+    ).run('Felicia Hardy – Black Cat #3 (2026)', 'https://index/felicia-3', 'comics', '2026-09-14', '003', 2026)
+      .lastInsertRowid as number
+
+    const res = await t.app.inject({
+      method: 'POST',
+      url: '/api/releases/issues/1192026/download',
+      payload: { indexId: picked },
+    })
+
+    expect(res.statusCode).toBe(202)
+    expect(t.enqueue).toHaveBeenCalledWith(expect.objectContaining({ issueId: 1192026 }))
+  } finally { await t.cleanup() }
+})
