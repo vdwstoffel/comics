@@ -1,9 +1,9 @@
 import { resolveDownload } from '../services/downloader.js'
-import { move, retry, clearHistory } from '../models/downloadQueue.js'
+import { move, retry, clearHistory, removeBlocked } from '../models/downloadQueue.js'
 import type { App } from '../types.js'
 
 interface ResolveBody { url?: string }
-interface StartBody { url?: string; edition?: string; issueId?: number | string; label?: string; manual?: unknown }
+interface StartBody { url?: string; edition?: string; issueId?: number | string; label?: string; manual?: unknown; postUrl?: string }
 interface IdParams { id: string }
 
 export default async function downloadRoutes(app: App) {
@@ -35,6 +35,9 @@ export default async function downloadRoutes(app: App) {
       // Exactly `true`, as the upload and apply routes read theirs: a truthy string or a 1
       // from some other client must not start filing reminders.
       manual: req.body?.manual === true,
+      // Where the link was found, when the caller knows. Only the index pages do; a
+      // hand-pasted url has no post behind it and sends none.
+      postUrl: req.body?.postUrl?.trim() || undefined,
     })
     if (!res.queued) {
       // `reason` is what a client switches on; the message is for a person to read.
@@ -69,6 +72,20 @@ export default async function downloadRoutes(app: App) {
       return reply.code(400).send({ error: 'cannot move that download there' })
     }
     return { moved: true }
+  })
+
+  /**
+   * A blocked row, dealt with. Pressed once the comic has been handed over by hand, or
+   * given up on - either way there is nothing left for this row to represent.
+   *
+   * Its own route rather than the cancel one: cancel is confined to live rows on purpose,
+   * and widening it would let a stray id erase a running download.
+   */
+  app.delete<{ Params: IdParams }>('/api/downloads/blocked/:id', async (req, reply) => {
+    if (!removeBlocked(app.db, Number(req.params.id))) {
+      return reply.code(404).send({ error: 'nothing blocked with that id' })
+    }
+    return { dismissed: true }
   })
 
   app.delete('/api/downloads/history', async () => { clearHistory(app.db); return { cleared: true } })

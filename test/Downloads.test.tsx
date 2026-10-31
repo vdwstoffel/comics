@@ -13,6 +13,15 @@ const VIEW = {
   history: [
     { id: 9, position: 0, state: 'failed', url: 'u9', label: 'Black Cat #14', attempts: 2, error: 'no link', queuedAt: 'q', finishedAt: 'f' },
   ],
+  blocked: [
+    {
+      id: 12, position: 0, state: 'blocked', url: 'https://getcomics.example/dls/tok',
+      postUrl: 'https://getcomics.example/comic/daredevil-5', label: 'Daredevil #5',
+      edition: 'Daredevil (2025)', cvIssueId: 4242, attempts: 0,
+      error: 'the site asked for a browser instead of the file',
+      queuedAt: 'q', finishedAt: 'f',
+    },
+  ],
 }
 
 let posted: string[]
@@ -69,4 +78,33 @@ test('cancelling a queued download asks the server to', async () => {
   const row = screen.getAllByRole('listitem').find((li) => li.textContent?.includes('Iron Man'))!
   fireEvent.click(within(row).getByRole('button', { name: /cancel/i }))
   await waitFor(() => expect(posted).toContain('DELETE /api/downloads/queue/2'))
+})
+
+test('a blocked download is listed apart from failures, as something to act on', async () => {
+  draw()
+  const needs = await screen.findByRole('region', { name: /needs you/i })
+  expect(within(needs).getByText(/Daredevil #5/)).toBeInTheDocument()
+  expect(within(needs).getByText(/the site asked for a browser/i)).toBeInTheDocument()
+})
+
+/**
+ * The post, not the row's own url. The /dls/ token is what just refused us and is not a
+ * page; sending someone there to "do the check themselves" would send them nowhere.
+ */
+test('the blocked row opens the post rather than the link that refused it', async () => {
+  draw()
+  const needs = await screen.findByRole('region', { name: /needs you/i })
+  const open = within(needs).getByRole('link', { name: /open post/i })
+  expect(open).toHaveAttribute('href', 'https://getcomics.example/comic/daredevil-5')
+})
+
+test('a blocked row offers to take the file, and can be dismissed', async () => {
+  draw()
+  const needs = await screen.findByRole('region', { name: /needs you/i })
+  expect(within(needs).getByLabelText(/add the file for Daredevil #5/i)).toBeInTheDocument()
+
+  fireEvent.click(within(needs).getByRole('button', { name: /dismiss Daredevil #5/i }))
+  await waitFor(() => {
+    expect(posted).toContain('DELETE /api/downloads/blocked/12')
+  })
 })

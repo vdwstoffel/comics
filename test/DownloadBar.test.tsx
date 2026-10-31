@@ -4,8 +4,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import DownloadBar from '../src/components/DownloadBar'
 
-const view = (over: Partial<{ active: unknown[]; queue: unknown[]; history: unknown[] }> = {}) => ({
-  active: [], queue: [], history: [], ...over,
+const view = (over: Partial<{ active: unknown[]; queue: unknown[]; history: unknown[]; blocked: unknown[] }> = {}) => ({
+  active: [], queue: [], history: [], blocked: [], ...over,
 })
 
 function stub(body: unknown) {
@@ -136,4 +136,41 @@ test('a download the user cancelled raises no failure bar', async () => {
   stub(view({ history: [{ id: 9, state: 'failed', label: 'Wolverine #27', error: 'cancelled', attempts: 1 }] }))
   draw()
   await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
+})
+
+const BLOCKED = {
+  id: 12, position: 0, state: 'blocked', url: 'https://getcomics.example/dls/tok',
+  postUrl: 'https://getcomics.example/comic/daredevil-5', label: 'Daredevil #5',
+  attempts: 0, error: 'the site asked for a browser instead of the file',
+  queuedAt: 'q', finishedAt: 'f',
+}
+
+/**
+ * The bar disappears when the queue empties, which is right for everything except this:
+ * a blocked row resolves only when a person acts, so a bar that vanished would take with
+ * it the app's one link to the page where acting is possible.
+ */
+test('a quiet server still shows the bar when something is waiting on you', async () => {
+  stub(view({ blocked: [BLOCKED] }))
+  draw()
+  expect(await screen.findByRole('status')).toHaveTextContent(/needs you/i)
+})
+
+test('several waiting on you are counted', async () => {
+  stub(view({ blocked: [BLOCKED, { ...BLOCKED, id: 13 }] }))
+  draw()
+  expect(await screen.findByRole('status')).toHaveTextContent(/needs you — 2/i)
+})
+
+/**
+ * A download in flight is what the bar is primarily for, so it keeps saying so - but the
+ * blocked count rides along, because nothing else on screen would mention it until the
+ * queue drained.
+ */
+test('a running download keeps the bar, with the waiting count alongside', async () => {
+  stub(view({ active: [ACTIVE], blocked: [BLOCKED] }))
+  draw()
+  const bar = await screen.findByRole('status')
+  expect(bar).toHaveTextContent(/Wolverine #27/)
+  expect(bar).toHaveTextContent(/1 needs you/i)
 })

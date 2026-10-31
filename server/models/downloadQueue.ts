@@ -1,6 +1,14 @@
 import type { Db } from '../types.js'
 
-export type QueueState = 'queued' | 'running' | 'done' | 'failed'
+/**
+ * `blocked` is a download the site refused to serve to a program: the file host answered
+ * with a bot check instead of the comic. It is deliberately neither live nor history.
+ * Not live, because nothing is going to happen to it on its own and it must not hold a
+ * worker or the duplicate guard. Not history, because it is not over - a person can still
+ * finish it by hand, and pruneHistory would throw it away at fifty rows while they were
+ * still meaning to.
+ */
+export type QueueState = 'queued' | 'running' | 'done' | 'failed' | 'blocked'
 
 /** How many finished rows are kept. A number, not a policy - see the spec's §9. */
 export const HISTORY_LIMIT = 50
@@ -21,6 +29,11 @@ export interface QueueEntry {
    * back to decide whether to file a reminder.
    */
   manual: boolean
+  /**
+   * The post this link was parsed out of. What a blocked row offers you instead of its
+   * own url: the /dls/ token is not a page, and the post is.
+   */
+  postUrl?: string
   attempts: number
   fileName?: string
   bookId?: number
@@ -36,18 +49,19 @@ export interface EnqueueRequest {
   cvIssueId?: number
   label?: string
   manual?: boolean
+  postUrl?: string
 }
 
 interface Row {
   id: number; position: number; state: QueueState; url: string
   edition: string | null; cv_issue_id: number | null; label: string | null
-  manual: number
+  manual: number; post_url: string | null
   attempts: number; file_name: string | null; book_id: number | null; error: string | null
   queued_at: string; started_at: string | null; finished_at: string | null
 }
 
-const COLS = `id, position, state, url, edition, cv_issue_id, label, manual, attempts,
-              file_name, book_id, error, queued_at, started_at, finished_at`
+const COLS = `id, position, state, url, edition, cv_issue_id, label, manual, post_url,
+              attempts, file_name, book_id, error, queued_at, started_at, finished_at`
 
 function toEntry(r: Row): QueueEntry {
   return {
@@ -58,6 +72,7 @@ function toEntry(r: Row): QueueEntry {
     ...(r.edition == null ? {} : { edition: r.edition }),
     ...(r.cv_issue_id == null ? {} : { cvIssueId: r.cv_issue_id }),
     ...(r.label == null ? {} : { label: r.label }),
+    ...(r.post_url == null ? {} : { postUrl: r.post_url }),
     ...(r.file_name == null ? {} : { fileName: r.file_name }),
     ...(r.book_id == null ? {} : { bookId: r.book_id }),
     ...(r.error == null ? {} : { error: r.error }),
@@ -86,9 +101,9 @@ export function enqueue(
     .get() as { p: number }).p
   try {
     const info = db
-      .prepare(`INSERT INTO download_queue (position, state, url, edition, cv_issue_id, label, manual, queued_at)
-                VALUES (?, 'queued', ?, ?, ?, ?, ?, ?)`)
-      .run(next, req.url, req.edition ?? null, req.cvIssueId ?? null, req.label ?? null, req.manual === true ? 1 : 0, now)
+      .prepare(`INSERT INTO download_queue (position, state, url, edition, cv_issue_id, label, manual, post_url, queued_at)
+                VALUES (?, 'queued', ?, ?, ?, ?, ?, ?, ?)`)
+      .run(next, req.url, req.edition ?? null, req.cvIssueId ?? null, req.label ?? null, req.manual === true ? 1 : 0, req.postUrl ?? null, now)
     const row = db.prepare(`SELECT ${COLS} FROM download_queue WHERE id = ?`).get(info.lastInsertRowid) as Row
     return { queued: true, entry: toEntry(row) }
   } catch (err) {
@@ -158,6 +173,41 @@ export function fail(
               WHERE id = ?`)
     .run(error, now, id)
   pruneHistory(db)
+}
+
+/**
+ * The site answered with a bot check rather than the comic, so this one is waiting on a
+ * person. Final as far as the runner is concerned - no attempt is spent and no retry is
+ * scheduled, because the next automated try would meet the same check. `pruneHistory` is
+ * deliberately not called: a blocked row is unfinished business, not history.
+ */
+export function block(
+  db: Db,
+  id: number,
+  error: string,
+  now = new Date().toISOString(),
+): void {
+  db.prepare(`UPDATE download_queue
+              SET state = 'blocked', error = ?, finished_at = ?, not_before = NULL
+              WHERE id = ?`)
+    .run(error, now, id)
+}
+
+/** Everything waiting on a person, oldest first - the order they got stuck in. */
+export function listBlocked(db: Db): QueueEntry[] {
+  return (db.prepare(`SELECT ${COLS} FROM download_queue WHERE state = 'blocked'
+                      ORDER BY finished_at, id`)
+    .all() as Row[]).map(toEntry)
+}
+
+/**
+ * Drop a blocked row, once it has been dealt with - the comic handed over by hand, or
+ * given up on. Confined to `blocked` so a stray id cannot erase a live download or a
+ * history row; both have their own routes for that.
+ */
+export function removeBlocked(db: Db, id: number): boolean {
+  return db.prepare(`DELETE FROM download_queue WHERE id = ? AND state = 'blocked'`)
+    .run(id).changes > 0
 }
 
 export function listQueue(db: Db): QueueEntry[] {

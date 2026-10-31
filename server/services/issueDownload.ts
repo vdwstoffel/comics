@@ -97,7 +97,11 @@ export async function startIssueDownload(
   }
   if (!url) return { ok: false, code: 404, reason: 'no-link', error: 'no download link on that post' }
 
-  const res = app.downloader.enqueue({ url, edition: editionName, issueId: issue.id, label: label || url })
+  // row.url is the post the link was parsed out of, and it is kept rather than dropped
+  // here: if the file host answers with a bot check, this is the page you can open.
+  const res = app.downloader.enqueue({
+    url, edition: editionName, issueId: issue.id, label: label || url, postUrl: row.url,
+  })
   if (!res.queued) {
     return {
       ok: false, code: 409, reason: 'duplicate',

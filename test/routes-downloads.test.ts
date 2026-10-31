@@ -6,7 +6,7 @@ import Fastify from 'fastify'
 import { openDb } from '../server/db.js'
 import downloadRoutes from '../server/routes/downloads.js'
 import { createDownloadRunner } from '../server/services/downloader.js'
-import { enqueue, takeNext, fail, listQueue } from '../server/models/downloadQueue.js'
+import { enqueue, takeNext, fail, block, listQueue, listBlocked } from '../server/models/downloadQueue.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import type { FastifyInstance } from 'fastify'
 import type { Config } from '../server/config.js'
@@ -103,7 +103,7 @@ describe('against the real download runner', () => {
   test('the status endpoint reports progress the page can poll', async () => {
     const idle = await app.inject({ url: '/api/downloads' })
     expect(idle.statusCode).toBe(200)
-    expect(idle.json()).toEqual({ active: [], queue: [], history: [] })
+    expect(idle.json()).toEqual({ active: [], queue: [], history: [], blocked: [] })
 
     const config = {
       comicsDir: join(dir, 'comics'), thumbsDir: join(dir, 'thumbs'), tmpDir: join(dir, 'tmp'),
@@ -143,7 +143,7 @@ async function setup() {
   app.decorate('config', {} as Config)
   const cancel = vi.fn(() => true)
   app.decorate('downloader', {
-    status: () => ({ active: [], queue: listQueue(db), history: [] }),
+    status: () => ({ active: [], queue: listQueue(db), history: [], blocked: listBlocked(db) }),
     enqueue: (req: { url: string; issueId?: number | string }) =>
       enqueue(db, { url: req.url, cvIssueId: req.issueId == null ? undefined : Number(req.issueId) }),
     cancel,
@@ -202,6 +202,47 @@ test('a failed download can be retried', async () => {
     const res = await t.app.inject({ method: 'POST', url: `/api/downloads/queue/${e.entry.id}/retry` })
     expect(res.statusCode).toBe(200)
     expect(listQueue(t.db)).toHaveLength(1)
+  } finally { await t.cleanup() }
+})
+
+test('a blocked row is dismissed once it has been dealt with', async () => {
+  const t = await setup()
+  const e = enqueue(t.db, { url: 'https://x.test/a' })
+  if (!e.queued) throw new Error('unreachable')
+  takeNext(t.db); block(t.db, e.entry.id, 'the site asked for a browser instead of the file')
+  try {
+    expect((await t.app.inject({ url: '/api/downloads' })).json().blocked).toHaveLength(1)
+
+    const res = await t.app.inject({ method: 'DELETE', url: `/api/downloads/blocked/${e.entry.id}` })
+    expect(res.statusCode).toBe(200)
+    expect(listBlocked(t.db)).toEqual([])
+  } finally { await t.cleanup() }
+})
+
+/**
+ * Confined to blocked rows on purpose: this route deletes outright, and pointing it at a
+ * running download would erase one mid-flight. Cancel is the route for those.
+ */
+test('dismissing refuses an id that is not blocked', async () => {
+  const t = await setup()
+  const e = enqueue(t.db, { url: 'https://x.test/a' })
+  if (!e.queued) throw new Error('unreachable')
+  try {
+    const res = await t.app.inject({ method: 'DELETE', url: `/api/downloads/blocked/${e.entry.id}` })
+    expect(res.statusCode).toBe(404)
+    expect(listQueue(t.db)).toHaveLength(1)
+  } finally { await t.cleanup() }
+})
+
+test('a queued download carries the post its link came from', async () => {
+  const t = await setup()
+  try {
+    const res = await t.app.inject({
+      method: 'POST',
+      url: '/api/downloads',
+      payload: { url: 'https://x.test/dls/token', postUrl: 'https://x.test/comic/asm-31' },
+    })
+    expect(res.statusCode).toBe(202)
   } finally { await t.cleanup() }
 })
 

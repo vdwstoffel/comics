@@ -429,6 +429,24 @@ img {
   border-color: var(--accent);
 }
 
+/* The fixed 56px above is a drag constraint, and nothing drags a blocked row: it lives in
+   its own list, which QueueList never measures. So this one is free to be as tall as it
+   needs - it carries a reason, a link out, a file picker and a dismiss, and at a fixed
+   height the ones that wrap would be clipped rather than wrapped. */
+.queue-list__row--blocked {
+  height: auto;
+  min-height: 56px;
+  flex-wrap: wrap;
+  padding: 10px 12px;
+  border-color: var(--accent);
+}
+
+/* The label takes the row and the controls follow underneath, so a long comic name does
+   not squeeze the buttons down to their 44px minimum and off the edge on a phone. */
+.queue-list__row--blocked .queue-list__label {
+  flex-basis: 100%;
+}
+
 .queue-list__empty {
   margin: 12px 0;
   color: var(--muted);

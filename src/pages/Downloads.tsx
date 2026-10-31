@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { api } from '../api'
 import { useDownload } from '../lib/useDownload'
 import QueueList from '../components/QueueList'
+import BlockedHandoff from '../components/BlockedHandoff'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
 function mb(bytes: number): string {
@@ -12,7 +13,7 @@ function mb(bytes: number): string {
 export default function Downloads() {
   useDocumentTitle('Downloads')
   const qc = useQueryClient()
-  const { active, queue, history } = useDownload()
+  const { active, queue, history, blocked } = useDownload()
   // Every mutation ends by re-reading the one query the whole app shares.
   const refresh = { onSuccess: () => qc.invalidateQueries({ queryKey: ['download'] }) }
 
@@ -24,6 +25,20 @@ export default function Downloads() {
   return (
     <>
       <h1 className="page-title">Downloads</h1>
+
+      {blocked.length > 0 && (
+        <section aria-label="Needs you">
+          <h2 className="page-title">Needs you</h2>
+          <p>
+            These asked for a browser instead of handing over the file. Open the post, do
+            the check yourself, then give the comic back here — it files into the right run
+            with its metadata, exactly as the download would have.
+          </p>
+          <ul className="queue-list">
+            {blocked.map((entry) => <BlockedHandoff key={entry.id} entry={entry} />)}
+          </ul>
+        </section>
+      )}
 
       <section aria-label="Now downloading">
         <h2 className="page-title">Now downloading</h2>

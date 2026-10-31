@@ -30,7 +30,7 @@ function mb(bytes: number): string {
 const CANCELLED = 'cancelled'
 
 export default function DownloadBar() {
-  const { active, queue, history } = useDownload()
+  const { active, queue, history, blocked } = useDownload()
   const waiting = queue.filter((e) => e.state === 'queued').length
   // Naming a single file is only honest when there is exactly one running. With more than
   // one active, `current` stays unset and the label reports a count instead - otherwise
@@ -42,7 +42,11 @@ export default function DownloadBar() {
   const busy = active.length > 0 || waiting > 0
   const failure = !busy && newest?.state === 'failed' && newest.error !== CANCELLED ? newest : null
 
-  if (!busy && !failure) return null
+  // Held on screen for the same reason a failure is, and more insistently: a blocked row
+  // is the one state that will NEVER resolve on its own. Nothing clears it but a person,
+  // so the bar has to keep saying so until one acts - and it outranks a failure, because
+  // it is the one with something to do about it.
+  if (!busy && !failure && blocked.length === 0) return null
 
   // Content-Length is a claim the server may not make; without it there is no percentage
   // to show, only how much has arrived. Only meaningful for a single named download - with
@@ -55,7 +59,9 @@ export default function DownloadBar() {
   return (
     <div className={`download-bar${failure ? ' download-bar--failed' : ''}`} role="status">
       <span className="download-bar__label">
-        {failure
+        {!busy && blocked.length > 0
+          ? blocked.length === 1 ? 'Needs you' : `Needs you — ${blocked.length}`
+          : failure
           ? 'Download failed'
           : active.length > 1
             ? `Downloading ${active.length}`
@@ -69,6 +75,9 @@ export default function DownloadBar() {
       {progress && <span className="download-bar__progress">{progress}</span>}
       {failure?.error && <span className="download-bar__progress">{failure.error}</span>}
       {waiting > 0 && <span className="download-bar__progress">{waiting} queued</span>}
+      {busy && blocked.length > 0 && (
+        <span className="download-bar__progress">{blocked.length} needs you</span>
+      )}
       <Link to="/downloads" className="download-bar__link">Queue</Link>
     </div>
   )

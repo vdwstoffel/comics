@@ -60,7 +60,10 @@ test('pressing get starts the download in this edition, for this issue', async (
 
   expect(res.statusCode).toBe(202)
   expect(started).toEqual([
-    { url: 'https://dl.test/venom-250.cbz', edition: 'Venom (2025)', issueId: 1136140, label: 'Venom #250' },
+    {
+      url: 'https://dl.test/venom-250.cbz', edition: 'Venom (2025)', issueId: 1136140,
+      label: 'Venom #250', postUrl: 'https://x.test/post/250',
+    },
   ])
   await app.close(); db.close()
 })
@@ -177,8 +180,13 @@ test('a picked row downloads even though nothing would have matched it', async (
 
   expect(res.statusCode).toBe(202)
   // Comic Vine's issue id is the gap's, not the row's - the row only said where to fetch.
+  // postUrl is the row's though: it is the page the link came off, kept so that a download
+  // the site refuses to serve can still send you somewhere a browser can go.
   expect(started).toEqual([
-    { url: 'https://dl.test/venom-250.cbz', edition: 'Venom (2025)', issueId: 1136140, label: 'Venom #250' },
+    {
+      url: 'https://dl.test/venom-250.cbz', edition: 'Venom (2025)', issueId: 1136140,
+      label: 'Venom #250', postUrl: 'https://x.test/post/mortal-7',
+    },
   ])
   await app.close(); db.close()
 })

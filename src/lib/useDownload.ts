@@ -13,6 +13,8 @@ export interface DownloadView {
   active: DownloadsView['active']
   queue: QueueEntry[]
   history: QueueEntry[]
+  /** Waiting on a person: the site asked for a browser rather than serving the file. */
+  blocked: QueueEntry[]
   /** Live entries by Comic Vine issue id, so a tile can say Queued instead of Get. */
   liveByIssue: Map<number, QueueEntry>
 }
@@ -40,6 +42,9 @@ export function useDownload(): DownloadView {
   const active = data?.active ?? []
   const queue = data?.queue ?? []
   const history = data?.history ?? []
+  // Not polled for: a blocked row is waiting on a person and changes only when one acts,
+  // so it arrives on whichever poll saw the download stop and stays put until then.
+  const blocked = data?.blocked ?? []
 
   // Refresh the library once per completed run, wherever the reader is standing. Keyed on
   // the newest finished id so a remount does not redo one already dealt with - but id
@@ -57,5 +62,5 @@ export function useDownload(): DownloadView {
   const liveByIssue = new Map<number, QueueEntry>()
   for (const entry of queue) if (entry.cvIssueId != null) liveByIssue.set(entry.cvIssueId, entry)
 
-  return { data, active, queue, history, liveByIssue }
+  return { data, active, queue, history, blocked, liveByIssue }
 }

@@ -102,11 +102,14 @@ export interface ApiCharacter {
 export interface QueueEntry {
   id: number
   position: number
-  state: 'queued' | 'running' | 'done' | 'failed'
+  /** `blocked` is waiting on a person: the site asked for a browser, not a program. */
+  state: 'queued' | 'running' | 'done' | 'failed' | 'blocked'
   url: string
   edition?: string
   cvIssueId?: number
   label?: string
+  /** The post the link came off. What a blocked row offers you to open. */
+  postUrl?: string
   attempts: number
   fileName?: string
   bookId?: number
@@ -129,6 +132,7 @@ export interface DownloadsView {
   active: ActiveDownload[]
   queue: QueueEntry[]
   history: QueueEntry[]
+  blocked: QueueEntry[]
 }
 
 export interface ApiSettings {
@@ -787,7 +791,7 @@ export const api = {
     }),
 
   getDownloads: () => json<DownloadsView>('/api/downloads'),
-  queueDownload: (body: { url: string; edition?: string; issueId?: number; label?: string; manual?: boolean }) =>
+  queueDownload: (body: { url: string; edition?: string; issueId?: number; label?: string; manual?: boolean; postUrl?: string }) =>
     json<{ queued: boolean }>('/api/downloads', {
       method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     }),
@@ -797,6 +801,8 @@ export const api = {
     json<{ moved: boolean }>(`/api/downloads/queue/${id}`, {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index }),
     }),
+  dismissBlocked: (id: number) =>
+    json<{ dismissed: boolean }>(`/api/downloads/blocked/${id}`, { method: 'DELETE' }),
   clearDownloadHistory: () => json<{ cleared: boolean }>('/api/downloads/history', { method: 'DELETE' }),
 
   getLibraryBooks: ({ readState, publisher }: { readState: FilterState; publisher?: string | null }) => {

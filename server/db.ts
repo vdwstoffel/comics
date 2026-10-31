@@ -254,7 +254,11 @@ CREATE TABLE IF NOT EXISTS download_queue (
   queued_at   TEXT NOT NULL,
   started_at  TEXT,
   finished_at TEXT,
-  manual      INTEGER NOT NULL DEFAULT 0
+  manual      INTEGER NOT NULL DEFAULT 0,
+  -- The post the download link was parsed out of, kept rather than discarded after the
+  -- parse: when the file host answers with a bot check instead of the comic, this is the
+  -- page a browser can open, and without it a blocked row knows only an opaque /dls/ token.
+  post_url    TEXT
 );
 
 -- The duplicate guard. Partial, so it covers live rows only: a comic that finished or
@@ -416,6 +420,13 @@ export function openDb(dbPath: string): Db {
   // table is created.
   if (!columnsOf(db, 'download_queue').includes('manual')) {
     db.exec('ALTER TABLE download_queue ADD COLUMN manual INTEGER NOT NULL DEFAULT 0')
+  }
+
+  // Additive for the same reason: the post a link came from, so a row blocked by a bot
+  // check can offer the page instead of the token. Rows queued before this column existed
+  // read back without one and fall back to showing the url they have.
+  if (!columnsOf(db, 'download_queue').includes('post_url')) {
+    db.exec('ALTER TABLE download_queue ADD COLUMN post_url TEXT')
   }
 
   // Additive migration: character tags gained the Comic Vine id that says WHICH character

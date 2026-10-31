@@ -5,9 +5,11 @@ import { extname, join } from 'node:path'
 import { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 import { downloadFileName } from '../lib/downloadName.js'
+import { needsABrowser } from '../lib/botCheck.js'
 import { storeComic } from './storeComic.js'
 import {
-  enqueue as enqueueRow, takeNext, finish, fail, listQueue, listHistory, removeIfLive,
+  enqueue as enqueueRow, takeNext, finish, fail, block, listQueue, listHistory, listBlocked,
+  removeIfLive,
 } from '../models/downloadQueue.js'
 import type { QueueEntry } from '../models/downloadQueue.js'
 import { getDownloadConcurrency } from '../models/settings.js'
@@ -17,6 +19,19 @@ import type { Ctx } from '../types.js'
 export const RETRY_BACKOFF_MS = 30_000
 /** At most this many attempts per download: the first, and one retry. */
 const MAX_ATTEMPTS = 2
+
+/**
+ * Thrown when the site answered with a bot check instead of the comic. A distinct type
+ * rather than a sentinel in the message, because the message is shown to a person and
+ * would then have to be both a human sentence and a machine token; this keeps the two
+ * apart, the way `cancelled` could not.
+ */
+export class BotCheckError extends Error {
+  constructor(message: string) {
+    super(message)
+    this.name = 'BotCheckError'
+  }
+}
 
 /** Live progress for one in-flight download. In memory: `received` changes per chunk. */
 export interface ActiveDownload {
@@ -34,6 +49,8 @@ export interface DownloadRequest {
   issueId?: string | number
   label?: string
   manual?: boolean
+  /** The post this link came off, kept so a blocked row can offer you the page. */
+  postUrl?: string
 }
 
 export interface DownloadDeps {
@@ -52,7 +69,11 @@ export interface DownloadDeps {
 }
 
 export interface DownloadRunner {
-  status: () => { active: ActiveDownload[]; queue: QueueEntry[]; history: QueueEntry[] }
+  status: () => {
+    active: ActiveDownload[]; queue: QueueEntry[]; history: QueueEntry[]
+    /** Waiting on a person: the site asked for a browser. */
+    blocked: QueueEntry[]
+  }
   enqueue: (req: DownloadRequest) => ReturnType<typeof enqueueRow>
   /** Resolves when nothing is in flight and nothing is takeable. Tests await it. */
   idle: () => Promise<void>
@@ -153,6 +174,11 @@ export function createDownloadRunner(ctx: Ctx, deps: DownloadDeps = {}): Downloa
 
       const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(timeoutMs)])
       const res = await fetchImpl(entry.url, { redirect: 'follow', signal })
+      // Asked BEFORE res.ok, because the interstitial arrives as a 200: the response HTTP
+      // is happiest with is the one that has a page where the comic should be.
+      if (needsABrowser({ status: res.status, contentType: res.headers.get('content-type') })) {
+        throw new BotCheckError('the site asked for a browser instead of the file')
+      }
       if (!res.ok) throw new Error(`${res.status} ${res.statusText}`.trim())
 
       // The name lives on the url the request LANDED on, not the one that was pasted:
@@ -210,6 +236,10 @@ export function createDownloadRunner(ctx: Ctx, deps: DownloadDeps = {}): Downloa
       // A cancel and a failure both land here, and only one of them deserves a retry.
       if (cancelled.has(entry.id)) {
         fail(ctx.db, entry.id, 'cancelled')
+      } else if (err instanceof BotCheckError) {
+        // Deliberately ahead of the retry arm and spending no attempt: another automated
+        // request meets the same check. This one waits for a person instead.
+        block(ctx.db, entry.id, message)
       } else if (entry.attempts + 1 < MAX_ATTEMPTS) {
         fail(ctx.db, entry.id, message, { retryAt: new Date(Date.now() + retryBackoffMs).toISOString() })
       } else {
@@ -290,10 +320,12 @@ export function createDownloadRunner(ctx: Ctx, deps: DownloadDeps = {}): Downloa
       active: [...active.values()],
       queue: listQueue(ctx.db),
       history: listHistory(ctx.db),
+      blocked: listBlocked(ctx.db),
     }),
     enqueue(req) {
       const res = enqueueRow(ctx.db, {
         url: req.url, edition: req.edition, label: req.label, manual: req.manual,
+        postUrl: req.postUrl,
         cvIssueId: req.issueId == null ? undefined : Number(req.issueId),
       })
       if (res.queued) wake()
