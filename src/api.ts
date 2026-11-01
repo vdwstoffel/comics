@@ -398,8 +398,16 @@ export interface ApiFollow {
   refId: number
   name: string
   state: FollowState
-  /** Only on a `wanted` follow: the issue it is after. */
-  want?: { id: number; number: string | null; name: string | null }
+  /** Only on a `wanted` follow: the issue it is after, and what Find needs to look for
+   *  it - Comic Vine's volume name, which for an arc follow is the tie-in's own run
+   *  rather than the crossover the follow is named after. */
+  want?: {
+    id: number
+    number: string | null
+    name: string | null
+    seriesName: string | null
+    coverDate: string | null
+  }
   /** Only on a `wanted` follow: whether that issue is already in the download queue. */
   queued?: boolean
   /** Only on a volume follow: every name its run answers to, for matching the solicitation

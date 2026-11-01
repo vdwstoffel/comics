@@ -64,6 +64,12 @@ export default async function followRoutes(app: App, opts: FollowRouteOpts = {})
                 id: outcome.issue.id,
                 number: outcome.issue.number ?? null,
                 name: outcome.issue.name ?? null,
+                // What Find searches the index for, and the floor it searches from.
+                // Comic Vine's name for the volume rather than the follow's own, because
+                // for an arc the two are different things: the follow is named after the
+                // crossover and the gap belongs to whichever run carries that tie-in.
+                seriesName: outcome.volumeName,
+                coverDate: outcome.issue.coverDate ?? null,
               },
               // Whether the thing it wants is already on its way, which is a different
               // sentence from "waiting" and the one a reader actually wants to read.

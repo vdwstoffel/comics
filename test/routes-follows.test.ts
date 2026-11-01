@@ -79,6 +79,19 @@ test('the list carries what each follow is waiting for', async () => {
   } finally { await t.cleanup() }
 })
 
+// Find searches the index by series and from a year floor, and neither is derivable in
+// the browser for an arc follow - whose own name is the crossover, not the run the
+// missing tie-in belongs to. Comic Vine's volume name is what the match keys on.
+test('a want carries what Find needs to look it up', async () => {
+  const t = await setup()
+  try {
+    t.own(101, true)
+    addFollow(t.db, 'volume', t.edition.id, 'Iron Man')
+    const follows = (await t.app.inject({ url: '/api/follows' })).json().follows
+    expect(follows[0].want).toMatchObject({ seriesName: 'Iron Man', coverDate: '2020-02-01' })
+  } finally { await t.cleanup() }
+})
+
 test('a dormant follow says so and carries no want', async () => {
   const t = await setup()
   try {

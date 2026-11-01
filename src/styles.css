@@ -4116,6 +4116,71 @@ textarea.input:hover:not(:focus) {
 .follow-waiting__name { font-weight: 600; margin: 0; color: var(--text); }
 .follow-waiting__status { margin: 0; font-size: 0.85rem; color: var(--muted); }
 
+/* The offer to fill the gap, inside the blank with the sentence that explains it. Spaced
+   off that sentence rather than merely stacked under it: the two are a statement and the
+   answer to it, and at the blank's 0.4rem gap the button read as a third line of text. */
+.follow-waiting__action {
+  display: flex;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 0.35rem;
+}
+
+/* The gap between two headed bands.
+
+   It is put here rather than left to the heading because `.shelf-heading:first-of-type`
+   zeroes the top margin of the first heading under a parent - written for the library,
+   where a run of headings shares one container - and each band here is a section of its
+   own, which makes every one of its headings the first of its type. */
+.follow-band + .follow-band {
+  margin-top: 28px;
+}
+
+/* A followed run whose next issue is announced: the solicitation's own cover, dimmed to
+   about a third, with the date over the middle of it. Dimming the image box rather than
+   the picture inside it is what keeps the date bright - the overlay is a sibling of the
+   whole card, outside anything this filters - and it is the property the box already
+   transitions, so lifting the dim on hover costs nothing but the one line below.
+
+   The right-hand margin is the deck gutter every cover on this page subtracts, so the
+   three headed sections come out one width rather than three. */
+.follow-upcoming {
+  margin-right: var(--deck-gutter);
+}
+
+.follow-upcoming .cover-tile__image-box {
+  filter: brightness(0.35);
+}
+
+/* Enough of the art to see what you are about to open, without ever becoming the comic
+   on the shelf beside it. */
+.follow-upcoming .cover-tile:hover .cover-tile__image-box {
+  filter: brightness(0.6);
+}
+
+/* Two lines before it is cut, exactly as the run beside it clamps its own name: a shelf
+   where half the titles wrap and half end in an ellipsis reads as two shelves. The floor
+   keeps a one-line name's unfollow level with a two-line name's. */
+.follow-upcoming .cover-tile__title {
+  white-space: normal;
+  display: -webkit-box;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  min-height: calc(0.875rem * 1.35 * 2);
+}
+
+/* The overlay hands its children their clicks back, which is right for a button and
+   wrong for a date: the cover under it is a link, and a word printed on a link should
+   not be the one part of it you cannot press. */
+.follow-upcoming__date {
+  pointer-events: none;
+  font-weight: 600;
+  font-size: 0.9rem;
+  color: var(--text);
+  text-shadow: 0 1px 6px rgba(0, 0, 0, 0.9);
+}
+
 /* The tile takes the slack and the unfollow sits on the floor, so a row of follows lines
    up along the bottom however much each one has to say. Without this, a run carrying a
    name and an unread count beside one carrying neither left every item a different height

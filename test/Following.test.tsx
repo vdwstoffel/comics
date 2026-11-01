@@ -54,7 +54,7 @@ test('a follow waiting on an unposted issue names it', async () => {
   vi.spyOn(api, 'getFollows').mockResolvedValue({
     follows: [{
       kind: 'volume', refId: 1, name: 'Iron Man', state: 'wanted',
-      want: { id: 2, number: '7', name: null }, queued: false,
+      want: { id: 2, number: '7', name: null, seriesName: 'Iron Man', coverDate: null }, queued: false,
     }],
   })
   show()
@@ -77,7 +77,7 @@ test('a follow with a comic to read says nothing beside it', async () => {
   vi.spyOn(api, 'getFollows').mockResolvedValue({
     follows: [{
       kind: 'volume', refId: 1, name: 'Iron Man', state: 'wanted',
-      want: { id: 2, number: '7', name: null }, queued: true,
+      want: { id: 2, number: '7', name: null, seriesName: 'Iron Man', coverDate: null }, queued: true,
     }],
   })
   show()
@@ -186,7 +186,7 @@ test('an empty shelf explains itself rather than looking broken', async () => {
 })
 
 /** One solicited issue, in the shape the Upcoming tab serves. */
-function solicited(headline: string, week: string) {
+function solicited(headline: string, week: string, coverUrl: string | null = null) {
   return {
     publishers: [{
       name: 'Marvel',
@@ -194,7 +194,7 @@ function solicited(headline: string, week: string) {
         week,
         issues: [{
           sourceId: headline, headline, seriesName: 'Iron Man', number: '16',
-          releaseDate: week, coverUrl: null, siteUrl: 'https://example.test', creators: null,
+          releaseDate: week, coverUrl, siteUrl: 'https://example.test', creators: null,
         }],
       }],
     }],
@@ -243,9 +243,13 @@ function shelfNames(): string[] {
   ))
 }
 
-// Alphabetically these are Avengers, Iron Man, Thor, Venom. By what you can do with them
-// they are the comic on the shelf, the issue that is out, the dated wait, and the rest.
-test('the shelf leads with what you can read, then what is out, then what is dated', async () => {
+/** Every heading the shelf drew, in the order it drew them. */
+function headings(): string[] {
+  return [...document.querySelectorAll('.shelf-heading')].map((h) => h.textContent ?? '')
+}
+
+/** A shelf of four, one in each of the states the headings sort on. */
+function mixedShelf() {
   vi.spyOn(api, 'getLibraryBooks').mockResolvedValue({
     books: [{
       ...BOOK, editionId: 4, editionName: 'Venom', seriesName: 'Venom', title: 'Venom',
@@ -258,14 +262,142 @@ test('the shelf leads with what you can read, then what is out, then what is dat
       { ...CAUGHT_UP, refId: 2 },
       {
         kind: 'volume', refId: 3, name: 'Thor', state: 'wanted',
-        want: { id: 2, number: '7', name: null }, queued: false,
+        want: { id: 2, number: '7', name: null, seriesName: 'Iron Man', coverDate: null }, queued: false,
       },
       { kind: 'volume', refId: 4, name: 'Venom', state: 'supplied' },
     ],
   })
   vi.spyOn(api, 'getUpcoming').mockResolvedValue(solicited('Iron Man (2020) #16', '2026-10-28'))
+}
+
+// Alphabetically these are Avengers, Iron Man, Thor, Venom. By what you can do with them
+// they are the comic on the shelf, the one that is out, the dated wait, and the rest.
+test('the shelf is headed by what exists, what has a date, and what has neither', async () => {
+  mixedShelf()
   show()
   // Waiting on the calendar: until it answers, the dated follow has no date to sort on.
   await screen.findByText('Next: 28 Oct 2026')
+  expect(headings()).toEqual(['Available', 'Coming soon', 'No date yet'])
   expect(shelfNames()).toEqual(['Venom', 'Thor', 'Iron Man', 'Avengers'])
+})
+
+// Published, just not here - so it is drawn beside the comics you can open, and behind
+// them: a run you can read right now outranks one you would have to go and find.
+test('an issue that is out but not posted joins the available runs, after them', async () => {
+  mixedShelf()
+  show()
+  await screen.findByText('Next: 28 Oct 2026')
+  const available = document.querySelectorAll('section')[0]!
+  expect(available.querySelector('.volume-tile__name')).toHaveTextContent('Venom')
+  expect(available.querySelector('.follow-waiting__name')).toHaveTextContent('Thor')
+  expect(document.querySelectorAll('section')[2]!.querySelectorAll('.follow-waiting__name'))
+    .toHaveLength(1)
+})
+
+test('a follow whose issue is out offers to go and find it', async () => {
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [{
+      kind: 'volume', refId: 7, name: 'Thor', state: 'wanted',
+      want: { id: 1145551, number: '4', name: null, seriesName: 'Thor', coverDate: '2026-01-01' },
+      queued: false,
+    }],
+  })
+  show()
+  expect(await screen.findByRole('button', { name: /find thor #4/i })).toBeInTheDocument()
+  // Get is the offer made when exactly one scraped row can be this issue, and the sweep
+  // has already failed to find one. Only Find is honest here.
+  expect(screen.queryByRole('button', { name: /^get /i })).not.toBeInTheDocument()
+})
+
+// The seed is the whole point of carrying seriesName and coverDate on the want: the
+// index posts Thor (2025) as "The Mortal Thor", so the search has to go out under Comic
+// Vine's name, from a year floor backed off one for the cover date running ahead.
+test('Find searches the index under the run\'s own name, from the cover year back one', async () => {
+  const groups = vi.spyOn(api, 'groupComicIndex').mockResolvedValue({
+    groups: [], totalGroups: 0, totalResults: 0,
+  })
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [{
+      kind: 'volume', refId: 7, name: 'Thor', state: 'wanted',
+      want: { id: 1145551, number: '4', name: null, seriesName: 'Thor', coverDate: '2026-01-01' },
+      queued: false,
+    }],
+  })
+  show()
+  fireEvent.click(await screen.findByRole('button', { name: /find thor #4/i }))
+  await waitFor(() => expect(groups).toHaveBeenCalled())
+  expect(groups.mock.calls[0][0]).toMatchObject({ q: 'Thor', yearFrom: 2025 })
+})
+
+test('a follow already fetching its issue says so instead of offering again', async () => {
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [{
+      kind: 'volume', refId: 7, name: 'Thor', state: 'wanted',
+      want: { id: 1145551, number: '4', name: null, seriesName: 'Thor', coverDate: null },
+      queued: true,
+    }],
+  })
+  show()
+  expect(await screen.findByRole('button', { name: /queued/i })).toBeDisabled()
+  expect(screen.queryByRole('button', { name: /find/i })).not.toBeInTheDocument()
+})
+
+// Nothing else on the shelf has anything to offer: every other blank waits on somebody
+// else, and a button that cannot do anything is worse than no button.
+test('a follow with no issue to name carries no control', async () => {
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [{ kind: 'volume', refId: 1, name: 'Iron Man', state: 'dormant' }],
+  })
+  show()
+  await screen.findByText(/finish an issue to pull the next/i)
+  expect(document.querySelector('.follow-waiting__action')).toBeNull()
+})
+
+test('a heading with nothing under it is not drawn', async () => {
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [{ kind: 'volume', refId: 1, name: 'Iron Man', state: 'dormant' }],
+  })
+  show()
+  await screen.findByText(/finish an issue to pull the next/i)
+  expect(headings()).toEqual(['No date yet'])
+})
+
+test('a dated follow draws the solicited cover, over the publisher\'s page', async () => {
+  vi.spyOn(api, 'getFollows').mockResolvedValue({ follows: [CAUGHT_UP] })
+  vi.spyOn(api, 'getUpcoming').mockResolvedValue(
+    solicited('Iron Man (2020) #16', '2026-10-28', 'https://cdn.test/iron-man-16.jpg'),
+  )
+  show()
+  const link = await screen.findByRole('link', { name: /Iron Man/ })
+  expect(link).toHaveAttribute('href', 'https://example.test')
+  expect(link.querySelector('img')).toHaveAttribute('src', 'https://cdn.test/iron-man-16.jpg')
+  expect(screen.getByText('28 Oct 2026')).toBeInTheDocument()
+  // The dated cover IS the date; the sentence the blank carried would say it twice.
+  expect(screen.queryByText('Next: 28 Oct 2026')).not.toBeInTheDocument()
+})
+
+// Marvel carries art for most solicitations and not all, and a row without it is still
+// solicited for that Wednesday.
+test('a dated follow the calendar gave no art for keeps the dated blank', async () => {
+  vi.spyOn(api, 'getFollows').mockResolvedValue({ follows: [CAUGHT_UP] })
+  vi.spyOn(api, 'getUpcoming').mockResolvedValue(solicited('Iron Man (2020) #16', '2026-10-28'))
+  show()
+  expect(await screen.findByText('Next: 28 Oct 2026')).toBeInTheDocument()
+  expect(headings()).toEqual(['Coming soon'])
+  expect(document.querySelector('.follow-upcoming')).toBeNull()
+})
+
+// followStatus prints `Next:` for a caught-up follow alone, so a dormant one shows no
+// date - and a cover with a date on it is that date, stated in art instead of words.
+test('a dormant follow is not given a cover by a solicitation its tile never shows', async () => {
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [{ ...CAUGHT_UP, state: 'dormant' as const }],
+  })
+  vi.spyOn(api, 'getUpcoming').mockResolvedValue(
+    solicited('Iron Man (2020) #16', '2026-10-28', 'https://cdn.test/iron-man-16.jpg'),
+  )
+  show()
+  await screen.findByText(/finish an issue to pull the next/i)
+  expect(headings()).toEqual(['No date yet'])
+  expect(document.querySelector('.follow-upcoming')).toBeNull()
 })

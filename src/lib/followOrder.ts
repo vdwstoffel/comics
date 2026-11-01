@@ -36,6 +36,30 @@ function weekOf(item: OrderableFollow): string {
 }
 
 /**
+ * Which of the shelf's three headed sections a follow is drawn under.
+ *
+ * A coarsening of the bands above rather than a second rule, so a follow can never be
+ * filed under a heading its tile disagrees with: `coming` is exactly the set `tierOf`
+ * dates, which is exactly the set whose tile reads `Next:`.
+ *
+ * `available` reads as "this comic exists", not "this comic is on your shelf": an issue
+ * that is out and merely unmatched is published, and the heading it used to sit under
+ * said the opposite. It keeps its place behind the runs you can actually open - that is
+ * still tier 0 before tier 1, decided by `sortFollows` and left alone here - and it is
+ * the one tile on the shelf that carries a control, because it is the one a reader can
+ * do something about.
+ *
+ * Only tier 3 is left undated: a follow that cannot name an issue at all.
+ */
+export type FollowBand = 'available' | 'coming' | 'undated'
+
+export function bandOf(item: OrderableFollow): FollowBand {
+  const tier = tierOf(item)
+  if (tier === 0 || tier === 1) return 'available'
+  return tier === 2 ? 'coming' : 'undated'
+}
+
+/**
  * The shelf's running order, as a new array.
  *
  * Name breaks every tie, so the alphabetical scan the shelf used to be survives inside

@@ -16,7 +16,20 @@ export type FollowSoon =
   /** The Wednesday it is solicited for, `YYYY-MM-DD`. The issue's number is deliberately
    *  not carried: the calendar numbers a run its own way - legacy numbering, specials -
    *  and the date is the part that is both reliable and the thing being asked. */
-  | { state: 'next'; week: string }
+  | {
+      state: 'next'
+      week: string
+      /**
+       * The solicitation's cover art, and the publisher's page for it.
+       *
+       * Optional because the calendar carries art for most rows and not all, and a run
+       * with none is still solicited for that Wednesday - it draws the dated blank the
+       * shelf has always drawn. Unlike the issue number this is safe to show: it is the
+       * cover of a comic nobody has read yet, which is the one case where cover art
+       * spoils nothing.
+       */
+      cover?: { url: string; siteUrl: string }
+    }
 
 /**
  * What a follow has to say for itself, in one line.

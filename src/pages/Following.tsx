@@ -4,13 +4,27 @@ import type { ApiFollow, ApiLibraryBook, ApiUpcoming } from '../api'
 import { groupByVolume, groupByArc } from '../lib/volumeGroups'
 import type { FollowSoon } from '../lib/followStatus'
 import { useUpcoming } from '../lib/useUpcoming'
-import { sortFollows } from '../lib/followOrder'
+import { sortFollows, bandOf } from '../lib/followOrder'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { upcomingForEdition } from '../lib/upcomingForEdition'
+import { writeOutShortDay } from '../lib/releaseWeek'
 import LibraryRail from '../components/LibraryRail'
 import VolumeGroupTile from '../components/VolumeGroupTile'
 import ArcGroupTile from '../components/ArcGroupTile'
 import FollowWaitingTile from '../components/FollowWaitingTile'
+import FollowUpcomingTile from '../components/FollowUpcomingTile'
+import FollowGapTile from '../components/FollowGapTile'
+
+/**
+ * The shelf's three headings, in the order they are drawn: what you can open now, what
+ * has a date, and what can say neither. An empty one is left out entirely rather than
+ * printed over nothing - "Coming soon" above a blank strip reads as a page that failed.
+ */
+const BANDS = [
+  { id: 'available', title: 'Available' },
+  { id: 'coming', title: 'Coming soon' },
+  { id: 'undated', title: 'No date yet' },
+] as const
 
 /**
  * What the solicitation calendar knows about the issue after this follow's last.
@@ -30,8 +44,19 @@ function soonFor(follow: ApiFollow, upcoming: ApiUpcoming | undefined): FollowSo
 
   // Sorted by week already, so the first row is the soonest - which is the only one a
   // single line has room for, and the only one "next" can mean.
-  const [next] = upcomingForEdition(upcoming.publishers.flatMap((p) => p.weeks), follow.edition)
-  return next ? { state: 'next', week: next.week } : { state: 'none' }
+  const weeks = upcoming.publishers.flatMap((p) => p.weeks)
+  const [next] = upcomingForEdition(weeks, follow.edition)
+  if (!next) return { state: 'none' }
+
+  // The solicitation's own row, read back by the id it was matched on. upcomingForEdition
+  // answers the matching rule and hands back only what that rule reads, because the
+  // volume page shares it and wants no art there; the art is this page's business alone.
+  const row = weeks.flatMap((w) => w.issues).find((i) => i.sourceId === next.sourceId)
+  return {
+    state: 'next',
+    week: next.week,
+    cover: row?.coverUrl ? { url: row.coverUrl, siteUrl: row.siteUrl } : undefined,
+  }
 }
 
 /** The unread comics this follow holds: its edition's, or its arc's. */
@@ -98,27 +123,59 @@ export default function Following() {
         {/* Held-or-waiting is only decidable once the unread books have arrived. Before
             that every follow would look empty, and the waiting tile would state - falsely -
             that nothing is there to read. */}
-        <div className="tile-grid">
-          {follows.data && books.data && shelf.map(({ follow, tile, soon }) => (
-            // The tile is reused untouched; everything this page adds hangs off the
-            // wrapper, so the library's own shelf never learns that following exists.
-            <div className="follow-item" key={`${follow.kind}:${follow.refId}`}>
-              {/* A status line only ever appears on a tile with no cover, where it IS
-                  the tile. Beside a cover it was an extra line that only some follows
-                  carried, and one that wrapped set the height of every tile in its row -
-                  paid for by a sentence the cover had already answered. */}
-              {tile ?? <FollowWaitingTile follow={follow} soon={soon} />}
-              <button
-                type="button"
-                className="follow-item__unfollow"
-                aria-label={`Unfollow ${follow.name} (${follow.kind === 'arc' ? 'story arc' : 'run'})`}
-                onClick={() => unfollow.mutate({ kind: follow.kind, refId: follow.refId })}
-              >
-                Unfollow
-              </button>
-            </div>
-          ))}
-        </div>
+        {follows.data && books.data && BANDS.map(({ id, title }) => {
+          const items = shelf.filter((item) => bandOf(item) === id)
+          if (items.length === 0) return null
+          return (
+            <section className="follow-band" key={id}>
+              <h2 className="shelf-heading">{title}</h2>
+              <div className="tile-grid">
+                {items.map(({ follow, tile, soon }) => {
+                  // Dated art is drawn under the dated heading and nowhere else. The
+                  // section decides rather than `soon` alone, because a follow can carry
+                  // a solicitation its tile never shows - a dormant run is sorted and
+                  // captioned on what you have not read, not on what Marvel announced -
+                  // and a cover with a date on it is that date, stated.
+                  const dated = id === 'coming' && soon.state === 'next' ? soon : undefined
+                  return (
+                    // The tile is reused untouched; everything this page adds hangs off the
+                    // wrapper, so the library's own shelf never learns that following exists.
+                    <div className="follow-item" key={`${follow.kind}:${follow.refId}`}>
+                      {/* A status line only ever appears on a tile with no cover, where it IS
+                          the tile. Beside a cover it was an extra line that only some follows
+                          carried, and one that wrapped set the height of every tile in its row -
+                          paid for by a sentence the cover had already answered. */}
+                      {tile ?? (dated?.cover
+                        ? (
+                          <FollowUpcomingTile
+                            name={follow.name}
+                            date={writeOutShortDay(dated.week)}
+                            coverUrl={dated.cover.url}
+                            siteUrl={dated.cover.siteUrl}
+                          />
+                        )
+                        // An issue that is published and unmatched is the one thing on
+                        // this page a reader can act on, so it is the one blank that
+                        // carries a control. Every other blank is waiting on somebody
+                        // else and has nothing to offer.
+                        : follow.state === 'wanted'
+                          ? <FollowGapTile follow={follow} soon={soon} />
+                          : <FollowWaitingTile follow={follow} soon={soon} />)}
+                      <button
+                        type="button"
+                        className="follow-item__unfollow"
+                        aria-label={`Unfollow ${follow.name} (${follow.kind === 'arc' ? 'story arc' : 'run'})`}
+                        onClick={() => unfollow.mutate({ kind: follow.kind, refId: follow.refId })}
+                      >
+                        Unfollow
+                      </button>
+                    </div>
+                  )
+                })}
+              </div>
+            </section>
+          )
+        })}
       </main>
     </>
   )
