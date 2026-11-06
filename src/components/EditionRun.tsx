@@ -1,5 +1,4 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
 import { useSearchParams, useNavigate } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
@@ -31,8 +30,6 @@ interface EditionRunProps {
   refreshing?: boolean
   stale?: boolean
   cvUrl?: string | null
-  /** Passed through to the sidebar: the collections a volume shelf gathered. */
-  collections?: ReactNode
 }
 
 /**
@@ -46,7 +43,7 @@ interface EditionRunProps {
  */
 export default function EditionRun({
   editionId, editionName, entries, seriesName, soon, gettable, onGetAll, getAllPending,
-  onRefresh, refreshing, stale, cvUrl, collections,
+  onRefresh, refreshing, stale, cvUrl,
 }: EditionRunProps) {
   const qc = useQueryClient()
   const navigate = useNavigate()
@@ -248,8 +245,7 @@ export default function EditionRun({
         refreshing={refreshing}
         stale={stale}
         cvUrl={cvUrl}
-        collections={collections}
-        renderAction={(issueId) => {
+          renderAction={(issueId) => {
           const entry = missing.find((e) => e.issueId === issueId)
           return entry ? fill(entry) : null
         }}

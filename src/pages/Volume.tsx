@@ -10,6 +10,17 @@ import CoverTile from '../components/CoverTile'
 import EditionRun from '../components/EditionRun'
 
 /**
+ * The edition that holds the volume's own issues, when the shelf holds any.
+ *
+ * It owns the run; the rest of the shelf's editions are collections of it. Telling the
+ * two apart is what keeps a shelf from naming itself among the things it was collected
+ * into, and what gives the run something to read its issue list from.
+ */
+function ownerOf(shelf: ApiShelf): ApiEdition | undefined {
+  return shelf.holdsIssues ? shelf.editions.find((e) => e.comicvineId === shelf.volumeId) : undefined
+}
+
+/**
  * One volume, and every comic of it you own.
  *
  * Comic Vine gives each collected-edition line a volume of its own, so thirteen trades
@@ -61,6 +72,10 @@ export default function Volume() {
   if (error || !data) return <p>That volume was not found.</p>
 
   const { shelf, books } = data
+  // The owning edition is the run itself, not something the run was collected into:
+  // "collected in The Amazing Spider-Man (2025)" would be the shelf pointing at itself.
+  const owner = ownerOf(shelf)
+  const collections = shelf.editions.filter((e) => e.id !== owner?.id)
 
   return (
     <div>
@@ -78,8 +93,25 @@ export default function Volume() {
           </button>
         </div>
         <p className="edition-header__count">
-          {shelf.bookCount} issue{shelf.bookCount === 1 ? '' : 's'} · {shelf.editions.length} collection
-          {shelf.editions.length === 1 ? '' : 's'}
+          {/* A shelf holding the volume's own issues counts issues; one gathered out of
+              paperback lines counts trades, which is what its comics are. */}
+          {shelf.bookCount} {shelf.holdsIssues ? 'issue' : 'trade'}{shelf.bookCount === 1 ? '' : 's'}
+          {/* Where this run was gathered from, said once, in the sentence already
+              describing the shelf - the way an edition page says what its run includes.
+              The links go into the app rather than out to Comic Vine, because that is
+              the job they do: Follow, Edit and Remove live on an edition page, and these
+              editions lost their own tile on the series page when the shelf replaced it. */}
+          {collections.length > 0 && (
+            <>
+              {' · collected in '}
+              {collections.map((edition, i) => (
+                <span key={edition.id}>
+                  {i > 0 && (i === collections.length - 1 ? ' and ' : ', ')}
+                  <Link to={withStatus(`/edition/${edition.id}`, status)} state={back}>{edition.name}</Link>
+                </span>
+              ))}
+            </>
+          )}
         </p>
       </div>
 
@@ -115,9 +147,7 @@ export default function Volume() {
  * for, and what stops a trade being mistaken for an issue it is not.
  */
 function ShelfRun({ shelf, books }: { shelf: ApiShelf; books: ApiBook[] }) {
-  const owner: ApiEdition | undefined = shelf.holdsIssues
-    ? shelf.editions.find((e) => e.comicvineId === shelf.volumeId)
-    : undefined
+  const owner = ownerOf(shelf)
 
   // Only a shelf with an owning edition has a Comic Vine run to read. A shelf of
   // collections has nothing to ask about, and does not ask.
@@ -158,36 +188,6 @@ function ShelfRun({ shelf, books }: { shelf: ApiShelf; books: ApiBook[] }) {
       onGetAll={() => {}}
       getAllPending={false}
       cvUrl={shelf.siteUrl}
-      collections={<Collections shelf={shelf} />}
     />
-  )
-}
-
-/**
- * Where the comics on this shelf actually came from.
- *
- * Beside the run rather than over it, for the reason the Comic Vine link is: it says
- * where this came from, which is context and not something to act on. It is also the
- * only way through to those editions, since their own tiles are gone from the series
- * page and Follow, Edit, Remove and the collects link all still live on them.
- */
-function Collections({ shelf }: { shelf: ApiShelf }) {
-  const [searchParams] = useSearchParams()
-  const status = statusFrom(searchParams)
-  const back = useBackOrigin()
-
-  return (
-    <>
-      <p className="edition-side__collections-head">
-        Collected in {shelf.editions.length} edition{shelf.editions.length === 1 ? '' : 's'}
-      </p>
-      <ul className="edition-side__collections-list">
-        {shelf.editions.map((edition) => (
-          <li key={edition.id}>
-            <Link to={withStatus(`/edition/${edition.id}`, status)} state={back}>{edition.name}</Link>
-          </li>
-        ))}
-      </ul>
-    </>
   )
 }

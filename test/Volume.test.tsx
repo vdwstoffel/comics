@@ -57,7 +57,7 @@ function renderAt(path: string, state?: unknown) {
 test('the shelf opens on the first comic of the run', async () => {
   renderAt('/volume/142577')
   expect(await screen.findByRole('heading', { name: 'The Amazing Spider-Man (2022)' })).toBeInTheDocument()
-  expect(screen.getByText(/13 issues/)).toBeInTheDocument()
+  expect(screen.getByText(/13 trades/)).toBeInTheDocument()
   // The earliest trade by date, out of the first of the three collections. Note the
   // title has no space after "Volume" - match the fixture, not a tidier version of it.
   const centre = document.querySelector('[data-testid="carousel-current"]')!
@@ -71,11 +71,26 @@ test('the covers view lists every trade in date order', async () => {
   expect(titles).toEqual(['Volume1: World Without Love', 'Volume 2: The New Sinister', 'TPB'])
 })
 
-test('the sidebar names the collections and links out to Comic Vine', async () => {
+// The count line carries this the way an edition page carries "includes Mortal Thor":
+// one clause on the sentence already describing the shelf. It used to be a panel in the
+// sidebar as well, under a header that had already counted the same three editions.
+test('the count line names the collections and links into them', async () => {
   renderAt('/volume/142577')
-  const zeb = await screen.findByRole('link', { name: /Zeb Wells/ })
-  expect(zeb.closest('.edition-side__collections')).toBeTruthy()
+  const zeb = await screen.findByRole('link', { name: 'Amazing Spider-Man By Zeb Wells (2023)' })
+  const count = zeb.closest('.edition-header__count')!
+  expect(count).toBeTruthy()
   expect(zeb).toHaveAttribute('href', '/edition/84')
+  // All three, read as a sentence rather than counted.
+  expect(count).toHaveTextContent(
+    '13 trades · collected in The Amazing Spider-Man by Wells and Romita Jr. (2022), '
+    + 'Amazing Spider-Man By Zeb Wells (2023) and Amazing Spider-Man: The 8 Deaths Of Spider-Man (2025)',
+  )
+  expect(count.textContent).not.toMatch(/3 collections/)
+})
+
+test('the shelf still links out to Comic Vine', async () => {
+  renderAt('/volume/142577')
+  await screen.findByRole('heading', { name: 'The Amazing Spider-Man (2022)' })
   expect(screen.getByRole('link', { name: /Comic Vine/ })).toHaveAttribute('href', CV_URL)
 })
 
@@ -87,6 +102,17 @@ test('a collections-only shelf has no gaps and asks Comic Vine for no run', asyn
   expect(document.querySelector('.edition-side__section')).toBeNull()
   const urls = (globalThis.fetch as unknown as { mock: { calls: string[][] } }).mock.calls.map((c) => String(c[0]))
   expect(urls.some((u) => u.includes('/issues'))).toBe(false)
+})
+
+// With the collections on the count line, a shelf of trades can have nothing left for
+// the sidebar - and the column is a fixed 220px whether or not it holds anything.
+test('a shelf with nothing for the sidebar draws no sidebar', async () => {
+  mockFetch({ ...SHELF, shelf: { ...SHELF.shelf, siteUrl: null } })
+  renderAt('/volume/142577')
+  await screen.findByRole('heading', { name: 'The Amazing Spider-Man (2022)' })
+  expect(document.querySelector('.edition-side')).toBeNull()
+  // The run is still there; it is only the empty column that went.
+  expect(document.querySelector('.edition-run')).toBeTruthy()
 })
 
 // Review Focus 5: a bookmark can outlive the editions that made it.
@@ -165,6 +191,18 @@ test('a gap in the owned run is listed as missing, and a trade is not', async ()
   // for the heading above it.
   const heading = await screen.findByRole('button', { name: /Missing \(1\)/ })
   expect(heading.closest('.edition-side__section')).toHaveTextContent('#4')
+})
+
+// The edition holding the issues IS the run. Naming it among the collections would be
+// the shelf saying it was collected into itself - and the old count simply totted up
+// every edition on the shelf, owner included.
+test('a mixed shelf counts issues and names only what collects them', async () => {
+  mockMixed()
+  renderAt('/volume/163325')
+  await screen.findByRole('heading', { name: 'The Amazing Spider-Man (2025)' })
+  const count = document.querySelector('.edition-header__count')!
+  expect(count).toHaveTextContent('4 issues · collected in Amazing Spider-Man By Joe Kelly (2026)')
+  expect(count.textContent).not.toContain('The Amazing Spider-Man (2025)')
 })
 
 test('the run is read from the edition that holds the volume issues', async () => {
