@@ -144,6 +144,16 @@ export interface ApiSettings {
   hidePageBar: boolean
 }
 
+/** Bytes on the server: the whole disk, then the library's share of it by kind. */
+export interface ApiStorage {
+  total: number
+  free: number
+  comics: number
+  covers: number
+  database: number
+  temp: number
+}
+
 export interface ApiVolumeIssue {
   id: number
   number?: string
@@ -834,6 +844,8 @@ export const api = {
     json<ApiSettings>('/api/settings', {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body),
     }),
+
+  getStorage: () => json<ApiStorage>('/api/storage'),
 
   getDownloads: () => json<DownloadsView>('/api/downloads'),
   queueDownload: (body: { url: string; edition?: string; issueId?: number; label?: string; manual?: boolean; postUrl?: string }) =>

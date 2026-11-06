@@ -4,6 +4,7 @@ import { api } from '../../api'
 import { useDownload } from '../../lib/useDownload'
 import QueueList from '../../components/QueueList'
 import BlockedHandoff from '../../components/BlockedHandoff'
+import StorageSummary from '../../components/StorageSummary'
 import { useAppliedSettings } from './useAppliedSettings'
 
 /** Bytes as megabytes, for a progress line a person can read. */
@@ -53,6 +54,11 @@ export default function DownloadsSection() {
       {/* A dial invites the reading that higher is better. It depends on where the
           bottleneck is: a saturated link gains nothing from more connections. */}
       <p className="settings__hint">More at once is not always faster — it depends on your connection.</p>
+
+      {/* Under the dial, which is the setting the pane leads with, and above everything
+          that moves. Room on the disk is what you want to know before queueing a run, not
+          what you find out when a download fails partway through for want of it. */}
+      <StorageSummary />
 
       {/* First of the live sections, and only when there is one: it is the only state
           that will never resolve on its own, so it goes above the things that will. */}

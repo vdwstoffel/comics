@@ -24,12 +24,24 @@ const VIEW = {
   ],
 }
 
+const STORAGE = {
+  total: 916_000_000_000,
+  free: 546_000_000_000,
+  comics: 40_000_000_000,
+  covers: 1_600_000_000,
+  database: 400_000_000,
+  temp: 0,
+}
+
 let posted: string[]
 beforeEach(() => {
   posted = []
   globalThis.fetch = vi.fn(async (url: string, init?: { method?: string }) => {
     if (init?.method) posted.push(`${init.method} ${url}`)
-    return { ok: true, json: async () => (init?.method ? {} : VIEW) }
+    // Routed by url rather than answered with one fixture: the pane now reads the queue
+    // and the disk, and handing the disk the queue's shape would size the library in NaN.
+    const body = init?.method ? {} : url.includes('/api/storage') ? STORAGE : VIEW
+    return { ok: true, json: async () => body }
   }) as unknown as typeof fetch
 })
 afterEach(() => cleanup())
@@ -107,4 +119,24 @@ test('a blocked row offers to take the file, and can be dismissed', async () => 
   await waitFor(() => {
     expect(posted).toContain('DELETE /api/downloads/blocked/12')
   })
+})
+
+// The pane opens on its control - the dial is the setting this page exists to change -
+// and what the disk holds goes between it and the lists, where it is read before you
+// queue rather than found after the queue has run.
+test('the dial still leads the pane, ahead of the disk', async () => {
+  draw()
+  const storage = await screen.findByRole('region', { name: /storage/i })
+  const dial = screen.getByLabelText(/download at once/i)
+
+  expect(dial.compareDocumentPosition(storage) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+test('what the disk holds sits above the queues', async () => {
+  draw()
+  const storage = await screen.findByRole('region', { name: /storage/i })
+  const now = screen.getByRole('region', { name: /now downloading/i })
+
+  expect(within(storage).getByText(/546 GB free of 916 GB/)).toBeInTheDocument()
+  expect(storage.compareDocumentPosition(now) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })

@@ -21,6 +21,7 @@ import runningRoutes from './routes/running.js'
 import followRoutes from './routes/follows.js'
 import upcomingRoutes from './routes/upcoming.js'
 import settingsRoutes from './routes/settings.js'
+import storageRoutes from './routes/storage.js'
 import { clearTmpDir } from './lib/tmpFiles.js'
 import { createDownloadRunner } from './services/downloader.js'
 import { createScrapeRunner } from './services/comicIndexScraper.js'
@@ -81,6 +82,7 @@ export async function buildServer(): Promise<App> {
   await app.register(followRoutes)
   await app.register(upcomingRoutes)
   await app.register(settingsRoutes)
+  await app.register(storageRoutes)
 
   const distDir = join(process.cwd(), 'dist')
   if (existsSync(distDir)) {

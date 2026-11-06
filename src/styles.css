@@ -647,6 +647,73 @@ img {
   color: var(--muted);
 }
 
+/* The disk, at the top of the Downloads pane. Two segments laid on a track: what the
+   library takes, then what else is on the same disk. The track showing through at the
+   end is the free space - drawn as absence, because that is what it is. */
+.storage__headline {
+  margin: 0 0 10px;
+  font-size: 0.875rem;
+  color: var(--muted);
+}
+
+.storage__headline strong {
+  color: var(--text);
+  font-weight: 700;
+}
+
+.storage__bar {
+  display: flex;
+  height: 8px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--border);
+}
+
+.storage__segment {
+  display: block;
+  height: 100%;
+}
+
+.storage__segment--library {
+  background: var(--accent);
+}
+
+/* Not the library's, but it is holding room the library would otherwise have, so it is
+   drawn rather than left to read as free. Dimmer than the library: it is the context, not
+   the subject - on this server it is most of the bar and all of it belongs elsewhere. */
+.storage__segment--other {
+  background: var(--muted);
+  opacity: 0.4;
+}
+
+/* The four kinds, two to a row where the pane is wide enough and one where it is not. */
+.storage__kinds {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 0 24px;
+  margin: 12px 0 0;
+}
+
+.storage__kind {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 0;
+  font-size: 0.875rem;
+  border-top: 1px solid var(--border);
+}
+
+.storage__kind dt {
+  color: var(--muted);
+}
+
+/* Tabular figures so the sizes line up down the column rather than wandering with the
+   width of each digit. */
+.storage__kind dd {
+  margin: 0;
+  font-variant-numeric: tabular-nums;
+}
+
 /* Comics whose metadata is still incomplete (the Missing metadata pane). */
 .followups { margin-top: 12px; }
 .followups__list { list-style: none; margin: 0; padding: 0; }
