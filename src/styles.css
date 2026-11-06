@@ -330,7 +330,7 @@ img {
 }
 
 /* ============================================================
-   Download queue (the /downloads page)
+   Download queue (the Settings > Downloads pane)
    ============================================================ */
 .queue-list {
   list-style: none;
@@ -455,6 +455,120 @@ img {
 /* ============================================================
    Settings
    ============================================================ */
+/* Sidebar and one pane. Capped rather than full-bleed: every control here is a field or a
+   toggle, and a 2000px row of them puts the label and its control at opposite ends of the
+   desk. The follow-up rows are the one wide thing, and they wrap. */
+.settings-page {
+  display: grid;
+  grid-template-columns: 13rem minmax(0, 1fr);
+  gap: 16px 40px;
+  align-items: start;
+  max-width: 68rem;
+  margin-top: 20px;
+}
+
+.settings-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  /* The list is short and the pane beside it is not, so the sections stay in reach
+     however far down the follow-ups you have scrolled. */
+  position: sticky;
+  top: 16px;
+}
+
+.settings-nav__item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  /* 44px for the same reason every other control on this page is: a real target on the
+     tablet this app was built for. */
+  min-height: 44px;
+  padding: 0 12px;
+  border-radius: 8px;
+  font-size: 0.9375rem;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.settings-nav__item:hover {
+  background: var(--surface);
+  color: var(--text);
+}
+
+/* The current section, carried by weight and a lit background rather than the accent -
+   the accent is this app's colour for something to act on, and a tab you are already
+   looking at is not that. */
+.settings-nav__item--active,
+.settings-nav__item--active:hover {
+  background: var(--elevated);
+  color: var(--text);
+  font-weight: 600;
+}
+
+/* The count is the reason the entry is worth a glance, so it reads as the one thing on
+   this page with work behind it. */
+.settings-nav__count {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.375rem;
+  height: 1.375rem;
+  padding: 0 6px;
+  border-radius: 999px;
+  background: var(--accent);
+  color: #fff;
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+/* One section at a time now, so its heading is a label on the pane rather than a second
+   page title under the first. */
+.settings-pane .page-title {
+  font-size: 1.375rem;
+  margin-bottom: 4px;
+}
+
+/* A block within a pane - the queue, the history - under the pane's own heading. Ruled
+   off rather than merely spaced, because the rows below one of these are themselves ruled
+   and the groups would otherwise run together. */
+.settings__subsection {
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+}
+
+.settings__subhead {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  letter-spacing: 0.01em;
+  margin-bottom: 8px;
+}
+
+/* Narrow: the sidebar becomes a row above the pane, scrolled sideways if the four
+   sections do not fit, rather than a column squeezing the fields beside it. */
+@media (max-width: 760px) {
+  .settings-page {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 16px;
+  }
+
+  .settings-nav {
+    position: static;
+    flex-direction: row;
+    gap: 6px;
+    overflow-x: auto;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .settings-nav__item {
+    flex: 0 0 auto;
+  }
+}
+
 .settings__row {
   display: flex;
   align-items: flex-end;
@@ -533,14 +647,9 @@ img {
   color: var(--muted);
 }
 
-/* Comics whose metadata is still incomplete (the /settings/metadata page). */
+/* Comics whose metadata is still incomplete (the Missing metadata pane). */
 .followups { margin-top: 12px; }
-/* The one-line pointer in Settings; the rows themselves are above. */
-.settings__followups-link { margin: 12px 0 0; }
 .followups__list { list-style: none; margin: 0; padding: 0; }
-.followups__list--paged { max-height: 28rem; overflow-y: auto; }
-.followups__pager { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 8px; }
-.followups__position { font-size: 0.875rem; color: var(--muted); }
 .followups__row {
   display: flex;
   flex-wrap: wrap;

@@ -2,7 +2,7 @@ import { test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, within, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import Downloads from '../src/pages/Downloads'
+import DownloadsSection from '../src/pages/settings/DownloadsSection'
 
 const VIEW = {
   active: [{ id: 1, label: 'Wolverine #27', fileName: 'w27.cbz', received: 500_000, total: 1_000_000, startedAt: '2026-09-15T00:00:00Z' }],
@@ -38,7 +38,7 @@ function draw() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   return render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter><Downloads /></MemoryRouter>
+      <MemoryRouter><DownloadsSection /></MemoryRouter>
     </QueryClientProvider>,
   )
 }

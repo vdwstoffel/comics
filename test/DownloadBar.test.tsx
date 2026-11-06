@@ -87,12 +87,12 @@ test('the queued count does not depend on how many are running', async () => {
 test('the bar links to the queue page', async () => {
   stub(view({ active: [ACTIVE] }))
   draw()
-  expect(await screen.findByRole('link', { name: /queue/i })).toHaveAttribute('href', '/downloads')
+  expect(await screen.findByRole('link', { name: /queue/i })).toHaveAttribute('href', '/settings/downloads')
 })
 
-// The bar holds the app's only link to /downloads. Hiding it the moment the queue empties
-// hid it exactly when it was needed: a download that failed its retry lands in history
-// with nothing running, and the user was told nothing at all.
+// Hiding the bar the moment the queue empties hid it exactly when it was needed: a
+// download that failed its retry lands in history with nothing running, and the user was
+// told nothing at all.
 test('a failure nobody has dealt with keeps the bar up, and says what went wrong', async () => {
   stub(view({ history: [{ id: 9, state: 'failed', label: 'Wolverine #27', error: '404 Not Found', attempts: 2 }] }))
   draw()
@@ -101,7 +101,7 @@ test('a failure nobody has dealt with keeps the bar up, and says what went wrong
   expect(bar).toHaveTextContent(/failed/i)
   expect(bar).toHaveTextContent(/Wolverine #27/)
   expect(bar).toHaveTextContent(/404 Not Found/)
-  expect(screen.getByRole('link', { name: /queue/i })).toHaveAttribute('href', '/downloads')
+  expect(screen.getByRole('link', { name: /queue/i })).toHaveAttribute('href', '/settings/downloads')
 })
 
 // A stylesheet keys off this; the class existed with nothing ever setting it.

@@ -1,5 +1,5 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ReactNode } from 'react'
 import { MemoryRouter, useLocation, useNavigate } from 'react-router-dom'
@@ -110,35 +110,36 @@ test('the latest releases tab is marked when you are on it', async () => {
   expect(screen.getByRole('link', { name: 'Library' })).not.toHaveAttribute('aria-current')
 })
 
-// The queue page used to be reachable only from the download bar, which appears only
-// while something is downloading - so you could not change a setting there until you had
-// already started the thing the setting governs.
-test('the header links to downloads without waiting for one to start', async () => {
-  renderAt('/')
-  const link = await screen.findByRole('link', { name: 'Downloads' })
-  expect(link).toHaveAttribute('href', '/downloads')
-})
-
 test('the header links to settings', async () => {
   renderAt('/')
   const link = await screen.findByRole('link', { name: 'Settings' })
   expect(link).toHaveAttribute('href', '/settings')
 })
 
-// It is a utility beside Get comics, not one of the two things you browse, so it never
-// takes the tab underline even when you are on it.
-test('the downloads link is not one of the tabs', async () => {
+// The queue moved in under Settings, which is always one click away. Its own header link
+// existed because the download bar - the only other way in - appears only once something
+// is already downloading; Settings covers that now, so the link went.
+test('the header no longer carries a Downloads link of its own', async () => {
+  renderAt('/')
+  await screen.findByRole('link', { name: 'Settings' })
+  expect(screen.queryByRole('link', { name: 'Downloads' })).toBeNull()
+})
+
+// It was in the header for a long time, so it is bookmarked and typed from memory.
+test('/downloads still reaches the queue, now inside Settings', async () => {
   renderAt('/downloads')
-  await screen.findByRole('link', { name: 'Downloads' })
-  expect(screen.queryByRole('link', { current: 'page' })).toBeNull()
+  expect(await screen.findByRole('region', { name: /now downloading/i })).toBeInTheDocument()
+  expect(screen.getByTestId('where')).toHaveTextContent('/settings/downloads')
 })
 
 // Same reasoning as Downloads: a utility link beside Get comics, not one of the two things
-// you browse, so it never takes the tab underline even when you are on it.
+// you browse, so it never takes the tab underline even when you are on it. Scoped to the
+// header, because Settings now has a sidebar that does mark the section you are in.
 test('the settings link is not one of the tabs', async () => {
-  renderAt('/settings')
+  const { container } = renderAt('/settings')
   await screen.findByRole('link', { name: 'Settings' })
-  expect(screen.queryByRole('link', { current: 'page' })).toBeNull()
+  const header = container.querySelector('.app-header') as HTMLElement
+  expect(within(header).queryByRole('link', { current: 'page' })).toBeNull()
 })
 
 // A page that is neither marks neither, rather than leaving the library lit while you

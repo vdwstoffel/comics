@@ -1,33 +1,26 @@
-import { useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
 import type { ApiMetadataFollowup } from '../api'
 
-/** Rows per page in Settings. Five keeps the section roughly a screenful whatever the library holds. */
-export const FOLLOWUP_PAGE_SIZE = 5
-
 /**
- * The follow-up list with its Refresh and Dismiss behaviour, shared by the Settings
- * section and the standalone /settings/metadata page so the two cannot drift apart: a
- * rule fixed in one (which id a refresh posts, what a failure says) is fixed in both.
+ * The follow-up list with its Refresh and Dismiss behaviour.
  *
- * `pageSize` is the only difference between them. Settings passes it, because sixteen
- * inline rows once pushed every other setting out of sight, and paging (rather than a
- * taller scroll box) is what keeps that section's height bounded: it never draws more
- * than a page of rows. The standalone page omits it and lists everything.
+ * It used to take a `pageSize`, because the copy inside Settings sat above the other
+ * sections and sixteen rows pushed them off the screen. Settings is a sidebar now and the
+ * list has a pane to itself with nothing under it, so there is nothing left to bury and
+ * every row is drawn.
  *
- * Renders nothing when the list is empty, including while loading, so a caller decides
- * for itself what an empty state should say (Settings: nothing at all; the page: a line).
+ * Renders nothing when the list is empty, including while loading, so the caller decides
+ * what an empty state should say.
  */
-export function FollowupList({ pageSize }: { pageSize?: number }) {
+export function FollowupList() {
   const qc = useQueryClient()
   // Same key as every other reader of the list, so they share one cache entry.
   const { data: followupData } = useQuery({
     queryKey: ['metadata-followups'], queryFn: api.metadataFollowups,
   })
   const followups = followupData?.followups ?? []
-  const [requestedPage, setRequestedPage] = useState(0)
 
   // Refresh and Dismiss both change what the list should say, so both reconcile it.
   // A refresh also rewrites the book, so both its own cache and the library list (where
@@ -54,14 +47,6 @@ export function FollowupList({ pageSize }: { pageSize?: number }) {
 
   if (followups.length === 0) return null
 
-  // The page index is derived, not trusted: dismissing the last row on the final page
-  // shrinks the list under a stored index and would leave an empty page.
-  const size = pageSize ?? followups.length
-  const pageCount = Math.ceil(followups.length / size)
-  const page = Math.min(requestedPage, pageCount - 1)
-  const first = page * size
-  const shown = followups.slice(first, first + size)
-
   return (
     <div className="followups">
       <p className="settings__hint">
@@ -80,10 +65,8 @@ export function FollowupList({ pageSize }: { pageSize?: number }) {
           Nothing was changed, so the comic stays on this list.
         </p>
       )}
-      {/* Rows vary in height (notes, wrapped actions), so the page size alone does not
-          fix the height; the max-height scroll on a paged list is the backstop. */}
-      <ul className={pageSize ? 'followups__list followups__list--paged' : 'followups__list'}>
-        {shown.map((f) => <FollowupRow
+      <ul className="followups__list">
+        {followups.map((f) => <FollowupRow
           key={f.bookId}
           followup={f}
           busy={refreshFollowup.isPending || dismissFollowup.isPending}
@@ -91,20 +74,6 @@ export function FollowupList({ pageSize }: { pageSize?: number }) {
           onDismiss={() => dismissFollowup.mutate(f.bookId)}
         />)}
       </ul>
-      {/* Absent when everything fits: controls that can only be disabled are clutter. */}
-      {pageCount > 1 && (
-        <nav className="followups__pager" aria-label="Missing metadata pages">
-          <button className="btn" type="button" onClick={() => setRequestedPage(page - 1)} disabled={page === 0}>
-            Previous
-          </button>
-          <span className="followups__position" aria-live="polite">
-            {first + 1}–{first + shown.length} of {followups.length}
-          </span>
-          <button className="btn" type="button" onClick={() => setRequestedPage(page + 1)} disabled={page >= pageCount - 1}>
-            Next
-          </button>
-        </nav>
-      )}
     </div>
   )
 }

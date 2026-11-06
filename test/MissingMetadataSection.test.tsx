@@ -2,7 +2,7 @@ import { test, expect, vi, beforeEach, afterEach } from 'vitest'
 import { render, screen, fireEvent, cleanup, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
-import MetadataFollowups from '../src/pages/MetadataFollowups'
+import MissingMetadataSection from '../src/pages/settings/MissingMetadataSection'
 
 let posted: string[]
 let bodies: string[]
@@ -16,7 +16,7 @@ function draw() {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const rendered = render(
     <QueryClientProvider client={qc}>
-      <MemoryRouter initialEntries={['/settings/metadata']}><MetadataFollowups /></MemoryRouter>
+      <MemoryRouter initialEntries={['/settings/metadata']}><MissingMetadataSection /></MemoryRouter>
     </QueryClientProvider>,
   )
   // The client itself, for the one test that asserts on what a refresh invalidates.
@@ -54,14 +54,28 @@ test('an empty list says there is nothing to follow up, under its heading', asyn
   serve([])
   draw()
   expect(await screen.findByText(/nothing to follow up/i)).toBeInTheDocument()
-  expect(screen.getByRole('heading', { level: 1, name: /metadata follow-ups/i })).toBeInTheDocument()
+  expect(screen.getByRole('heading', { level: 2, name: /missing metadata/i })).toBeInTheDocument()
 })
 
-// The way back is part of the page's contract: it is reached from Settings and has no tab.
-test('the page links back to Settings', async () => {
+// It is a pane among the settings now, headed like the rest of them. The back link it
+// carried as a standalone page is gone: the sidebar is the way between sections, and a
+// second way out sitting above the heading was the thing to drop, not to keep.
+test('the pane is headed like the other sections, with no back link above it', async () => {
   serve([FOLLOWUP])
   draw()
-  expect(await screen.findByRole('link', { name: /settings/i })).toHaveAttribute('href', '/settings')
+  await screen.findByRole('heading', { level: 2, name: /missing metadata/i })
+  expect(screen.queryByRole('heading', { level: 1 })).toBeNull()
+  expect(screen.queryByRole('link', { name: /^\u2190/ })).toBeNull()
+})
+
+// The rows paged in the old Settings section only because the other settings sat under
+// them. Nothing sits under them now, so the whole list is drawn.
+test('every row is drawn, with no pager', async () => {
+  serve(Array.from({ length: 12 }, (_, i) => ({ ...FOLLOWUP, bookId: i + 1, title: `Comic ${i + 1}` })))
+  draw()
+  await screen.findByRole('link', { name: 'Comic 1' })
+  expect(screen.getByRole('link', { name: 'Comic 12' })).toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: 'Next' })).toBeNull()
 })
 
 // The user has to be able to judge whether the rule is drawn correctly, which means

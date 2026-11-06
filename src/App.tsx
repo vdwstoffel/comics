@@ -1,4 +1,4 @@
-import { Routes, Route, Link, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
+import { Routes, Route, Link, Navigate, useLocation, useNavigate, useSearchParams } from 'react-router-dom'
 import { useState } from 'react'
 import type { FormEvent, ReactNode } from 'react'
 import Library from './pages/Library'
@@ -16,9 +16,11 @@ import Arc from './pages/Arc'
 import Following from './pages/Following'
 import LibrarySearch from './pages/LibrarySearch'
 import Releases from './pages/Releases'
-import Downloads from './pages/Downloads'
-import Settings from './pages/Settings'
-import MetadataFollowups from './pages/MetadataFollowups'
+import SettingsLayout from './pages/settings/SettingsLayout'
+import ComicVineSection from './pages/settings/ComicVineSection'
+import DownloadsSection from './pages/settings/DownloadsSection'
+import ReadingSection from './pages/settings/ReadingSection'
+import MissingMetadataSection from './pages/settings/MissingMetadataSection'
 import DownloadBar from './components/DownloadBar'
 
 /**
@@ -129,11 +131,10 @@ function Header() {
             side links. */}
         <LibrarySearchBox />
         <nav className="app-header__nav">
-          {/* A utility beside Get comics rather than a third tab: the tabs are the two
-              things you browse. It lives here permanently because the download bar - the
-              only other way in - appears only once something is already downloading, which
-              made the queue's settings unreachable until you had committed to a download. */}
-          <Link to="/downloads" className="app-header__link">Downloads</Link>
+          {/* Downloads had its own link here, because the download bar - the only other way
+              in - appears only once something is already downloading. The queue lives under
+              Settings now, which is always one click away, so the link has nothing left to
+              reach that this one does not. */}
           <Link to="/settings" className="app-header__link">Settings</Link>
           <Link to="/search" className="app-header__link">Get comics</Link>
           <Link to="/upload" className="app-header__upload">+ Upload</Link>
@@ -189,11 +190,20 @@ export default function App() {
       <Route path="/upload/bulk" element={<Layout><BulkUpload /></Layout>} />
       <Route path="/search" element={<Layout><SearchComics /></Layout>} />
       <Route path="/releases" element={<Layout><Releases /></Layout>} />
-      <Route path="/downloads" element={<Layout><Downloads /></Layout>} />
-      <Route path="/settings" element={<Layout><Settings /></Layout>} />
-      {/* Split out of Settings: the list can run to dozens of rows and buried the settings
-          below it. */}
-      <Route path="/settings/metadata" element={<Layout><MetadataFollowups /></Layout>} />
+      {/* The queue was a page of its own until it moved in beside the dial that governs
+          it. Kept as a redirect: it was in the header for a long time, so it is bookmarked
+          and typed from memory. */}
+      <Route path="/downloads" element={<Navigate to="/settings/downloads" replace />} />
+      {/* One pane at a time, chosen from the sidebar. Each section is its own url so the
+          back button steps between them, and so /settings/metadata - which Bulk upload
+          links to - still lands on the list. */}
+      <Route path="/settings" element={<Layout><SettingsLayout /></Layout>}>
+        <Route index element={<Navigate to="/settings/comic-vine" replace />} />
+        <Route path="comic-vine" element={<ComicVineSection />} />
+        <Route path="downloads" element={<DownloadsSection />} />
+        <Route path="reading" element={<ReadingSection />} />
+        <Route path="metadata" element={<MissingMetadataSection />} />
+      </Route>
     </Routes>
   )
 }

@@ -10,21 +10,20 @@ function mb(bytes: number): string {
  * What the server is downloading, on every page that has a header.
  *
  * It summarises rather than lists: with a queue there can be more than one thing waiting,
- * and the bar is a glance, not a screen. /downloads is where the detail lives.
+ * and the bar is a glance, not a screen. Settings > Downloads is where the detail lives.
  *
- * A failure keeps it on screen. The bar holds the app's ONLY link to /downloads, so
- * disappearing the moment the queue empties hid it exactly when it was needed: a download
- * that failed twice lands in history with nothing running, and the user was never told it
- * failed - Retry and Clear reachable only by typing the url. The newest history row being
- * a failure is what stands in for "not acknowledged yet"; retrying it or clearing history
- * is the acknowledgement, and both change what `history[0]` is.
+ * A failure keeps it on screen. Disappearing the moment the queue empties hid it exactly
+ * when it was needed: a download that failed twice lands in history with nothing running,
+ * and the user was never told it failed - Retry and Clear reachable only by going looking.
+ * The newest history row being a failure is what stands in for "not acknowledged yet";
+ * retrying it or clearing history is the acknowledgement, and both change `history[0]`.
  */
 
 /**
  * A cancel is recorded as a failure - there is no separate cancelled state, and there does
  * not need to be. But it is the one failure nobody has to be told about: the user stopped
  * it themselves, and raising a persistent "Download failed" over their own deliberate act
- * is both wrong and unclearable without a trip to /downloads. The runner writes this exact
+ * is both wrong and unclearable without a trip to the queue. The runner writes this exact
  * word (see `fail(db, id, 'cancelled')` in services/downloader.ts).
  */
 const CANCELLED = 'cancelled'
@@ -78,7 +77,7 @@ export default function DownloadBar() {
       {busy && blocked.length > 0 && (
         <span className="download-bar__progress">{blocked.length} needs you</span>
       )}
-      <Link to="/downloads" className="download-bar__link">Queue</Link>
+      <Link to="/settings/downloads" className="download-bar__link">Queue</Link>
     </div>
   )
 }
