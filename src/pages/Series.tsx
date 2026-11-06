@@ -82,9 +82,10 @@ export default function Series() {
   // Both ids, because both are ways of owning a volume: the run you hold as issues, and
   // the run you hold as trades of it. Without the second, the page offers "The Amazing
   // Spider-Man (2022) · Find" directly under a shelf of that name. The cost, taken
-  // knowingly: the offer to go and find that run as single issues goes with it.
+  // knowingly: the offer to go and find that run as single issues goes with it. And a
+  // run's other volumes, which are drawn inside it - Mortal Thor is in Thor (2025).
   const ownedVolumeIds = (scope?.editions ?? [])
-    .flatMap((e) => [e.comicvineId, e.collectsVolumeId])
+    .flatMap((e) => [e.comicvineId, e.collectsVolumeId, ...(e.cvParts ?? []).map((p) => p.volumeId)])
     .filter((id): id is number => id != null)
   // Who publishes this series: whatever its editions say, which in a library organised
   // by series is one answer. The first is as good as any; a series split across two

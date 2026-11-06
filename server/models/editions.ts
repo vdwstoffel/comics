@@ -1,7 +1,7 @@
 import { deriveSeriesName, seriesMatchKey, withoutSubtitle } from '../lib/seriesName.js'
 import { removeFollowsForEdition } from './follows.js'
 import type { FilterState } from './progress.js'
-import type { Db, Edition } from '../types.js'
+import type { Db, Edition, RunPart } from '../types.js'
 
 interface EditionRow {
   id: number
@@ -21,9 +21,33 @@ interface EditionRow {
   collects_checked_at: string | null
   collects_proposal: string | null
   limited: number
+  cv_parts: string | null
+  cv_parts_declined: string | null
+  cv_parts_checked_at: string | null
+  cv_parts_proposal: string | null
   created_at: string
   book_count?: number
 }
+
+/**
+ * A JSON list column, read back as a list. Anything that is not one - never written,
+ * written by hand, or cut short - reads as empty: these columns add issues to a run, and
+ * an unreadable one adding nothing is the safe failure.
+ */
+function listColumn<T>(stored: string | null | undefined, keep: (item: unknown) => item is T): T[] {
+  if (!stored) return []
+  try {
+    const parsed: unknown = JSON.parse(stored)
+    return Array.isArray(parsed) ? parsed.filter(keep) : []
+  } catch {
+    return []
+  }
+}
+
+const isRunPart = (item: unknown): item is RunPart =>
+  Number.isFinite((item as RunPart | null)?.volumeId)
+
+const isVolumeId = (item: unknown): item is number => Number.isFinite(item)
 
 function toEdition(row: EditionRow | undefined): Edition | undefined {
   if (!row) return undefined
@@ -40,6 +64,10 @@ function toEdition(row: EditionRow | undefined): Edition | undefined {
     collectsCheckedAt: row.collects_checked_at ?? null,
     collectsProposal: row.collects_proposal ?? null,
     limited: !!row.limited,
+    cvParts: listColumn(row.cv_parts, isRunPart),
+    cvPartsDeclined: listColumn(row.cv_parts_declined, isVolumeId),
+    cvPartsCheckedAt: row.cv_parts_checked_at ?? null,
+    cvPartsProposal: row.cv_parts_proposal ?? null,
     createdAt: row.created_at, bookCount: row.book_count ?? undefined,
   }
 }
@@ -204,9 +232,9 @@ export function listPublishers(db: Db): PublisherFacet[] {
 // Name changes must go through renameEdition() in services/library.ts, which also
 // moves the files on disk and updates the `folder` column. Updating `name` directly
 // here will leave files in the old folder and break the path invariant.
-const EDITION_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name', seriesName: 'series_name', cvName: 'cv_name', cvStartYear: 'cv_start_year', cvSiteUrl: 'cv_site_url', collectsVolumeId: 'collects_volume_id', collectsCvName: 'collects_cv_name', collectsCvStartYear: 'collects_cv_start_year', collectsCvSiteUrl: 'collects_cv_site_url', collectsCheckedAt: 'collects_checked_at', collectsProposal: 'collects_proposal', limited: 'limited' }
+const EDITION_FIELDS: Record<string, string> = { publisher: 'publisher', summary: 'summary', comicvineId: 'comicvine_id', name: 'name', seriesName: 'series_name', cvName: 'cv_name', cvStartYear: 'cv_start_year', cvSiteUrl: 'cv_site_url', collectsVolumeId: 'collects_volume_id', collectsCvName: 'collects_cv_name', collectsCvStartYear: 'collects_cv_start_year', collectsCvSiteUrl: 'collects_cv_site_url', collectsCheckedAt: 'collects_checked_at', collectsProposal: 'collects_proposal', limited: 'limited', cvParts: 'cv_parts', cvPartsDeclined: 'cv_parts_declined', cvPartsCheckedAt: 'cv_parts_checked_at', cvPartsProposal: 'cv_parts_proposal' }
 
-export type EditionUpdate = Partial<Pick<Edition, 'publisher' | 'summary' | 'comicvineId' | 'name' | 'seriesName' | 'cvName' | 'cvStartYear' | 'cvSiteUrl' | 'collectsVolumeId' | 'collectsCvName' | 'collectsCvStartYear' | 'collectsCvSiteUrl' | 'collectsCheckedAt' | 'collectsProposal' | 'limited'>>
+export type EditionUpdate = Partial<Pick<Edition, 'publisher' | 'summary' | 'comicvineId' | 'name' | 'seriesName' | 'cvName' | 'cvStartYear' | 'cvSiteUrl' | 'collectsVolumeId' | 'collectsCvName' | 'collectsCvStartYear' | 'collectsCvSiteUrl' | 'collectsCheckedAt' | 'collectsProposal' | 'limited' | 'cvParts' | 'cvPartsDeclined' | 'cvPartsCheckedAt' | 'cvPartsProposal'>>
 
 export const EDITION_UPDATABLE_FIELDS = Object.keys(EDITION_FIELDS) as (keyof EditionUpdate)[]
 
@@ -231,8 +259,13 @@ export function updateEdition(db: Db, id: number, fields: EditionUpdate): Editio
     if (!(k in fields)) continue
     const value = (fields as Record<string, unknown>)[k]
     sets.push(`${col} = ?`)
-    // SQLite has no boolean; `limited` is the only flag here and arrives as one.
-    vals.push(typeof value === 'boolean' ? Number(value) : value)
+    // SQLite has no boolean; `limited` is the only flag here and arrives as one. Nor a
+    // list: the run's parts are stored as JSON, and an empty list as nothing at all.
+    vals.push(
+      typeof value === 'boolean' ? Number(value)
+        : Array.isArray(value) ? (value.length ? JSON.stringify(value) : null)
+          : value,
+    )
   }
   if (sets.length) db.prepare(`UPDATE edition SET ${sets.join(', ')} WHERE id = ?`).run(...vals, id)
   return getEdition(db, id)
@@ -253,10 +286,23 @@ export function setEditionFolder(db: Db, id: number, folder: string): void {
  * series?" by identity rather than by name - the only reliable way to tell your
  * "Wolverine (2024)" from the 2026 relaunch that Comic Vine also just calls "Wolverine".
  * The column carries no unique constraint, so the lowest id wins for a stable answer.
+ *
+ * Failing that, the edition that took the volume in as a part of its run: Mortal Thor
+ * #9 from the Latest tab belongs in Thor (2025), not in a new edition of its own. An
+ * edition that IS the volume still wins - that is the stronger claim.
  */
 export function getEditionByComicvineId(db: Db, comicvineId: number): Edition | undefined {
-  return toEdition(db
+  const own = db
     .prepare('SELECT * FROM edition WHERE comicvine_id = ? ORDER BY id LIMIT 1')
+    .get(comicvineId) as EditionRow | undefined
+  if (own) return toEdition(own)
+  return toEdition(db
+    // json_each raises on malformed JSON, so a damaged column is read as an empty list
+    // rather than taking every lookup down with it.
+    .prepare(`SELECT e.* FROM edition e,
+                json_each(CASE WHEN json_valid(e.cv_parts) THEN e.cv_parts END) part
+               WHERE json_extract(part.value, '$.volumeId') = ?
+               ORDER BY e.id LIMIT 1`)
     .get(comicvineId) as EditionRow | undefined)
 }
 

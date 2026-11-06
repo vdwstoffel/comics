@@ -43,18 +43,12 @@ test('saying no declines without writing a link', () => {
   expect(onDecline).toHaveBeenCalled()
 })
 
-// Spec §5.5: the quick link to the reprinted volume belongs on every edition page.
-test('a confirmed edition says which volume it is shelved under, and links it', () => {
-  show({ confirmed: true })
-  expect(screen.getByText(/Shelved under/)).toBeInTheDocument()
-  expect(screen.getByRole('link', { name: /The Amazing Spider-Man \(2022\)/ })).toHaveAttribute('href', CV_URL)
-  expect(screen.queryByRole('button', { name: /^Yes/ })).not.toBeInTheDocument()
-})
-
-test('a confirmed link can be taken back', () => {
-  const { onDecline } = show({ confirmed: true })
-  fireEvent.click(screen.getByRole('button', { name: /Not this volume/ }))
-  expect(onDecline).toHaveBeenCalled()
+// An answer is said on the count line and changed in the edit dialog; the page only asks.
+test('a confirmed link asks nothing on the page', () => {
+  const { container } = render(
+    <CollectsBanner proposal={PROPOSAL} confirmed saving={false} onConfirm={vi.fn()} onDecline={vi.fn()} />,
+  )
+  expect(container).toBeEmptyDOMElement()
 })
 
 test('nothing proposed draws nothing at all', () => {
@@ -73,64 +67,4 @@ test('while saving, neither answer can be pressed twice', () => {
   show({ saving: true })
   expect(screen.getByRole('button', { name: /^Yes/ })).toBeDisabled()
   expect(screen.getByRole('button', { name: /^No/ })).toBeDisabled()
-})
-
-// Spec §3.3: detection reads prose and will miss. A miss, or a mistaken No, must not
-// cost the feature on that edition for good.
-test('with nothing proposed there is a quiet way in, not a standing form', () => {
-  render(
-    <CollectsBanner proposal={null} confirmed={false} saving={false}
-      onConfirm={vi.fn()} onDecline={vi.fn()} onRecheck={vi.fn()} onSetByHand={vi.fn()} />,
-  )
-  expect(screen.getByRole('button', { name: /Part of another volume/ })).toBeInTheDocument()
-  expect(screen.queryByRole('textbox')).not.toBeInTheDocument()
-})
-
-test('a Comic Vine volume link pasted by hand becomes a link', () => {
-  const onSetByHand = vi.fn()
-  render(
-    <CollectsBanner proposal={null} confirmed={false} saving={false}
-      onConfirm={vi.fn()} onDecline={vi.fn()} onRecheck={vi.fn()} onSetByHand={onSetByHand} />,
-  )
-  fireEvent.click(screen.getByRole('button', { name: /Part of another volume/ }))
-  fireEvent.change(screen.getByRole('textbox'), {
-    target: { value: 'https://comicvine.gamespot.com/the-amazing-spider-man/4050-142577/' },
-  })
-  fireEvent.click(screen.getByRole('button', { name: /^Set$/ }))
-  expect(onSetByHand).toHaveBeenCalledWith(142577)
-})
-
-test('a bare volume id works too', () => {
-  const onSetByHand = vi.fn()
-  render(
-    <CollectsBanner proposal={null} confirmed={false} saving={false}
-      onConfirm={vi.fn()} onDecline={vi.fn()} onRecheck={vi.fn()} onSetByHand={onSetByHand} />,
-  )
-  fireEvent.click(screen.getByRole('button', { name: /Part of another volume/ }))
-  fireEvent.change(screen.getByRole('textbox'), { target: { value: '142577' } })
-  fireEvent.click(screen.getByRole('button', { name: /^Set$/ }))
-  expect(onSetByHand).toHaveBeenCalledWith(142577)
-})
-
-test('nothing that names a volume cannot be set', () => {
-  const onSetByHand = vi.fn()
-  render(
-    <CollectsBanner proposal={null} confirmed={false} saving={false}
-      onConfirm={vi.fn()} onDecline={vi.fn()} onRecheck={vi.fn()} onSetByHand={onSetByHand} />,
-  )
-  fireEvent.click(screen.getByRole('button', { name: /Part of another volume/ }))
-  fireEvent.change(screen.getByRole('textbox'), { target: { value: 'spider-man' } })
-  fireEvent.click(screen.getByRole('button', { name: /^Set$/ }))
-  expect(onSetByHand).not.toHaveBeenCalled()
-})
-
-test('Comic Vine can be asked again after a decline', () => {
-  const onRecheck = vi.fn()
-  render(
-    <CollectsBanner proposal={null} confirmed={false} saving={false}
-      onConfirm={vi.fn()} onDecline={vi.fn()} onRecheck={onRecheck} onSetByHand={vi.fn()} />,
-  )
-  fireEvent.click(screen.getByRole('button', { name: /Part of another volume/ }))
-  fireEvent.click(screen.getByRole('button', { name: /Ask Comic Vine/ }))
-  expect(onRecheck).toHaveBeenCalled()
 })

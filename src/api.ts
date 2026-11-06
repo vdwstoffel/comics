@@ -17,6 +17,8 @@ export interface ApiEdition {
   collectsCvSiteUrl?: string | null
   /** A limited series rather than a run of its series. Derived, correctable by hand. */
   limited?: boolean
+  /** Other Comic Vine volumes holding issues of this run - Mortal Thor inside Thor (2025). */
+  cvParts?: Array<{ volumeId: number; name: string | null; startYear: number | null; siteUrl: string | null }>
 }
 
 export interface ApiBook {
@@ -153,6 +155,9 @@ export interface ApiVolumeIssue {
   /** The one scraped row that is this issue, when there is exactly one. Present only on
    *  issues you do not own; null when nothing matched or several things did. */
   match?: { indexId: number; title: string } | null
+  /** Present only on an issue filed under another of the run's volumes: that volume's
+   *  name, which is what its release posts - and so a search for it - go by. */
+  volumeName?: string
 }
 
 /** Why a comic turned up in a search. Mirrors server/models/books.ts: src/ imports nothing
@@ -451,6 +456,24 @@ export interface ApiCollectsProposal {
   siteUrl: string | null
 }
 
+/** Another Comic Vine volume holding a stretch of this run, and which stretch. */
+export interface ApiRunPart {
+  volumeId: number
+  name: string | null
+  startYear: number | null
+  siteUrl: string | null
+  first: string | null
+  last: string | null
+}
+
+export interface RunPartsResponse {
+  /** The volumes you said belong to this run. */
+  parts: ApiRunPart[]
+  /** What Comic Vine's note on the run suggests, until it is answered. */
+  proposal: ApiRunPart | null
+  checkedAt: string | null
+}
+
 export interface CollectsResponse {
   proposal: ApiCollectsProposal | null
   confirmed: boolean
@@ -713,6 +736,20 @@ export const api = {
     }),
   declineCollects: (id: string | number) =>
     json<EditionResponse>(`/api/editions/${id}/collects`, { method: 'DELETE' }),
+
+  /** The run's other volumes: the ones you said belong to it, and one Comic Vine suggests. */
+  getRunParts: (id: string | number, recheck = false) =>
+    json<RunPartsResponse>(`/api/editions/${id}/parts${recheck ? '?recheck=1' : ''}`),
+  /** Yes, by confirming a suggestion or from a volume id typed by hand. */
+  addRunPart: (id: string | number, part: { volumeId: number; name?: string | null; startYear?: number | null; siteUrl?: string | null }) =>
+    json<EditionResponse>(`/api/editions/${id}/parts`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(part),
+    }),
+  /** No - to a suggestion, or taking a yes back. Either way it is not suggested again. */
+  removeRunPart: (id: string | number, volumeId: number) =>
+    json<EditionResponse>(`/api/editions/${id}/parts/${volumeId}`, { method: 'DELETE' }),
 
   /** One volume's shelf: every comic of it you own, across every collection of it. */
   getVolumeShelf: (volumeId: string | number, readState?: FilterState) => {

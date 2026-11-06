@@ -1,7 +1,7 @@
 import { startIssueDownload, issueLabel } from './issueDownload.js'
 import { findMatchForIssue } from './issueMatching.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
-import type { CvVolumeIssue } from '../lib/comicvine.js'
+import type { RunIssue } from '../lib/runParts.js'
 import type { App, Edition } from '../types.js'
 
 /**
@@ -28,10 +28,10 @@ export async function bulkIssueDownloadsIdle(): Promise<void> {
  */
 export function missingMatchedIssues(
   app: App,
-  { edition, issues, owned }: { edition: Edition; issues: CvVolumeIssue[]; owned: Set<number> },
-): CvVolumeIssue[] {
+  { edition, issues, owned }: { edition: Edition; issues: RunIssue[]; owned: Set<number> },
+): RunIssue[] {
   return issues.filter((issue) =>
-    !owned.has(issue.id) && findMatchForIssue(app.db, edition.cvName, issue) !== null)
+    !owned.has(issue.id) && findMatchForIssue(app.db, issue.volumeName ?? edition.cvName, issue) !== null)
 }
 
 /**
@@ -56,7 +56,7 @@ export function queueMissingIssues(
   app: App,
   { edition, issues, fetchPage = fetchSourcePage, delayMs = 3000 }: {
     edition: Edition
-    issues: CvVolumeIssue[]
+    issues: RunIssue[]
     /** Injected so tests never touch the network. */
     fetchPage?: (url: string) => Promise<string>
     /** The pause between issues. Injected as 0 by tests, which have no site to spare. */
@@ -68,12 +68,14 @@ export function queueMissingIssues(
 
   const walk = (async () => {
     for (const [i, issue] of issues.entries()) {
+      // An issue filed under another of the run's volumes is posted under that name.
+      const volumeName = issue.volumeName ?? edition.cvName
       try {
         await startIssueDownload(app, {
-          volumeName: edition.cvName,
+          volumeName,
           editionName: edition.name,
           issue,
-          label: issueLabel(edition.cvName, issue.number),
+          label: issueLabel(volumeName, issue.number),
           fetchPage,
         })
       } catch {

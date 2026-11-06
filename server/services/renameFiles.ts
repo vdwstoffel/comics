@@ -5,6 +5,7 @@ import { dedupeDestPath } from '../lib/paths.js'
 import { renameLock } from '../lib/mutex.js'
 import { listEditions } from '../models/editions.js'
 import { listBooksByEdition, setBookEdition } from '../models/books.js'
+import { getCachedVolumeIssues } from '../models/volumeIssues.js'
 import type { Ctx, Db, Book } from '../types.js'
 
 export interface RenamePlan {
@@ -51,10 +52,21 @@ export function planRenames(db: Db): RenamePlan[] {
     if (!edition.cvName) continue
     const books = listBooksByEdition(db, edition.id)
 
+    // A comic from one of the run's other volumes keeps that volume's name - Mortal Thor
+    // #7 is mortal_thor_007 inside Thor (2025), the name it arrived with.
+    const partNameOf = new Map<number, string>()
+    for (const part of edition.cvParts) {
+      if (!part.name) continue
+      for (const issue of getCachedVolumeIssues(db, part.volumeId, Infinity)?.issues ?? []) {
+        partNameOf.set(issue.id, part.name)
+      }
+    }
+
     // Group first: a name is only a collision in the light of every other book here.
     const wanted = new Map<string, Array<{ book: Book; base: string }>>()
     for (const book of books) {
-      const base = comicFileName(edition.cvName, book.number, extname(book.filePath))
+      const volumeName = (book.comicvineId != null && partNameOf.get(book.comicvineId)) || edition.cvName
+      const base = comicFileName(volumeName, book.number, extname(book.filePath))
       if (!base) continue
       const group = wanted.get(base) ?? []
       group.push({ book, base })

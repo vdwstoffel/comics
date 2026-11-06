@@ -1279,3 +1279,85 @@ test('a comic uploaded from the carousel is filed into the run too', async () =>
   expect(FakeXhr.last!.body!.get('edition')).toBe('Amazing Spider-Man (2025)')
   expect(FakeXhr.last!.body!.get('issueId')).toBe('1136140')
 })
+
+/* ── A run filed under two volumes ─────────────────────────────────────────── */
+
+const THOR_EDITION = { id: 9, name: 'Thor (2025)', seriesName: 'Thor', summary: null, comicvineId: 166460, cvName: 'Thor', cvStartYear: 2025 }
+const MORTAL_THOR = {
+  volumeId: 177511, name: 'Mortal Thor', startYear: 2026,
+  siteUrl: 'https://comicvine.gamespot.com/mortal-thor/4050-177511/', first: '7', last: '13',
+}
+
+function mockThor(partsBody: unknown = { parts: [], proposal: MORTAL_THOR, checkedAt: '2026-11-02T00:00:00.000Z' }) {
+  const put: { url: string; body: unknown }[] = []
+  globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    const u = String(url)
+    if (u.includes('/api/downloads')) return { ok: true, json: async () => ({ active: [], queue: [], history: [] }) }
+    if (u.includes('/parts')) {
+      if (init?.method === 'PUT') {
+        put.push({ url: u, body: JSON.parse(String(init.body)) })
+        return { ok: true, json: async () => ({ edition: THOR_EDITION }) }
+      }
+      return { ok: true, json: async () => partsBody }
+    }
+    if (u.includes('/issues')) {
+      return {
+        ok: true,
+        json: async () => ({
+          volumeId: 166460, owned: 0, total: 2, extras: [], fetchedAt: '2026-11-02T00:00:00.000Z',
+          issues: [
+            { id: 6, number: '6', owned: false, match: null, coverDate: '2026-03-01' },
+            { id: 7, number: '7', owned: false, match: null, coverDate: '2026-04-01', volumeName: 'Mortal Thor' },
+          ],
+        }),
+      }
+    }
+    if (u.includes('/api/editions?') || u.endsWith('/api/editions')) return { ok: true, json: async () => ({ editions: [] }) }
+    return { ok: true, json: async () => ({ edition: THOR_EDITION, books: [] }) }
+  }) as unknown as typeof fetch
+  return put
+}
+
+test('Comic Vine\'s suggested part is offered, and yes takes it into the run', async () => {
+  const put = mockThor()
+  renderGrid()
+
+  expect(await screen.findByText(/Continues as/)).toHaveTextContent('Continues as Mortal Thor (2026) #7–13?')
+  fireEvent.click(screen.getByRole('button', { name: 'Yes' }))
+
+  await waitFor(() => expect(put).toEqual([
+    { url: '/api/editions/9/parts', body: MORTAL_THOR },
+  ]))
+})
+
+test('finding a gap from the other volume searches under that volume\'s name', async () => {
+  mockThor()
+  renderGrid()
+  fireEvent.click(await screen.findByRole('button', { name: /Find #7/i }))
+  expect(await screen.findByLabelText('Search the index')).toHaveValue('Mortal Thor')
+})
+
+// The answer is said in passing, where the run's size is - not as a row of its own with
+// a button on it between the header and the comics.
+test('a volume taken into the run is named on the count line, with nothing to press', async () => {
+  mockThor({ parts: [MORTAL_THOR], proposal: null, checkedAt: '2026-11-02T00:00:00.000Z' })
+  renderGrid()
+
+  await waitFor(() => expect(document.querySelector('.edition-header__count'))
+    .toHaveTextContent('includes Mortal Thor (2026) #7–13'))
+  expect(screen.queryByRole('button', { name: 'Not part of this run' })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /under another title/ })).not.toBeInTheDocument()
+  expect(screen.queryByRole('button', { name: /Part of another volume/ })).not.toBeInTheDocument()
+})
+
+test('the edit dialog is where a volume is taken back out of the run', async () => {
+  mockThor({ parts: [MORTAL_THOR], proposal: null, checkedAt: '2026-11-02T00:00:00.000Z' })
+  renderGrid()
+  await waitFor(() => expect(document.querySelector('.edition-header__count')).toHaveTextContent('Mortal Thor'))
+  await startEditing()
+
+  fireEvent.click(screen.getByRole('button', { name: 'Not part of this run' }))
+
+  await waitFor(() => expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
+    .some(([url, init]) => String(url) === '/api/editions/9/parts/177511' && init?.method === 'DELETE')).toBe(true))
+})

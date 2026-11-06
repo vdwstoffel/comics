@@ -2,7 +2,7 @@ import { useRef, useState } from 'react'
 import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import type { ApiBook, ApiCollectsProposal } from '../api'
+import type { ApiBook, ApiCollectsProposal, ApiRunPart } from '../api'
 import { useDownload } from '../lib/useDownload'
 import { useBackLink } from '../lib/backOrigin'
 import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
@@ -12,7 +12,9 @@ import { useUpcoming } from '../lib/useUpcoming'
 import { upcomingForEdition } from '../lib/upcomingForEdition'
 import { volumeEntries } from '../lib/volumeEntries'
 import EditionEditDialog from '../components/EditionEditDialog'
-import CollectsBanner from '../components/CollectsBanner'
+import CollectsBanner, { volumeHref, volumeLabel } from '../components/CollectsBanner'
+import RunPartsBanner, { partSpan } from '../components/RunPartsBanner'
+import EditionLinks from '../components/EditionLinks'
 import ConfirmDeleteDialog from '../components/ConfirmDeleteDialog'
 import FollowButton from '../components/FollowButton'
 import EditionRun from '../components/EditionRun'
@@ -165,6 +167,36 @@ export default function Edition() {
   const declineCollects = useMutation({
     mutationFn: () => api.declineCollects(id!),
     onSuccess: invalidateShelves,
+  })
+
+  // The run's other volumes - Mortal Thor's #7-13 inside Thor (2025). An answer changes
+  // which issues the run holds, so the run is read again with it.
+  const { data: runParts } = useQuery({
+    queryKey: ['edition-parts', id],
+    queryFn: () => api.getRunParts(id!),
+    enabled: data?.edition.comicvineId != null,
+  })
+
+  const invalidateRun = () => {
+    qc.invalidateQueries({ queryKey: ['edition-parts', id] })
+    qc.invalidateQueries({ queryKey: ['edition-issues', id] })
+    qc.invalidateQueries({ queryKey: ['edition', id] })
+    // The series page leaves out the volumes it already holds, and this one now does.
+    qc.invalidateQueries({ queryKey: ['series'] })
+  }
+
+  // The volume this edition is confirmed to reprint - said on the count line, and
+  // changed in the edit dialog.
+  const shelvedUnder = collects?.confirmed ? collects.proposal : null
+
+  const addPart = useMutation({
+    mutationFn: (part: Pick<ApiRunPart, 'volumeId'> & Partial<ApiRunPart>) => api.addRunPart(id!, part),
+    onSuccess: invalidateRun,
+  })
+
+  const removePart = useMutation({
+    mutationFn: (volumeId: number) => api.removeRunPart(id!, volumeId),
+    onSuccess: invalidateRun,
   })
 
   const applyName = useMutation({
@@ -320,6 +352,21 @@ export default function Edition() {
         </div>
         <p className="edition-header__count">
           {volume?.total ? `${volume.owned} of ${volume.total} issues` : bookLabel}
+          {/* What has been answered about this edition's other volumes, said in passing.
+              Changing it is the edit dialog's business; only a question gets a row. */}
+          {shelvedUnder && (
+            <>
+              {' · shelved under '}
+              <a href={volumeHref(shelvedUnder)} target="_blank" rel="noreferrer">{volumeLabel(shelvedUnder)}</a>
+            </>
+          )}
+          {(runParts?.parts ?? []).map((part) => (
+            <span key={part.volumeId}>
+              {' · includes '}
+              <a href={volumeHref(part)} target="_blank" rel="noreferrer">{volumeLabel(part)}</a>
+              {partSpan(part)}
+            </span>
+          ))}
         </p>
         {/* The grid's own copy of where the run came from. In the carousel the sidebar
             carries this, beside the run rather than over it. Neither says when Comic Vine
@@ -379,7 +426,32 @@ export default function Edition() {
           }
           onSave={handleSave}
           onClose={() => setEditing(false)}
-        />
+        >
+          <EditionLinks
+            collects={shelvedUnder}
+            onSetCollects={(volumeId) => confirmCollects.mutateAsync({
+              volumeId, name: null, startYear: null, siteUrl: null,
+            })}
+            onClearCollects={() => declineCollects.mutate()}
+            onRecheckCollects={() => {
+              // Whatever Comic Vine says is a question, and questions are asked on the
+              // page - so the dialog gets out of the way of it.
+              setEditing(false)
+              recheckCollects.current = true
+              void refetchCollects()
+            }}
+            parts={data.edition.comicvineId != null ? runParts?.parts ?? [] : null}
+            onAddPart={(volumeId) => addPart.mutateAsync({ volumeId })}
+            onRemovePart={(volumeId) => removePart.mutate(volumeId)}
+            saving={confirmCollects.isPending || declineCollects.isPending || addPart.isPending || removePart.isPending}
+            error={
+              addPart.isError ? addPart.error?.message
+                : removePart.isError ? removePart.error?.message
+                  : confirmCollects.isError ? confirmCollects.error?.message
+                    : null
+            }
+          />
+        </EditionEditDialog>
       )}
       {confirmRemove && (
         <ConfirmDeleteDialog
@@ -409,18 +481,21 @@ export default function Edition() {
           </button>
         </div>
       )}
-      {/* What this edition reprints, which is a different question from what it is -
-          and the one that decides which shelf its comics live on. */}
+      {/* Questions about this edition's other volumes, asked only while there is one to
+          answer: what it reprints, which is a different question from what it is, and
+          where the rest of its run is filed. */}
       <CollectsBanner
         proposal={collects?.proposal ?? null}
         confirmed={collects?.confirmed ?? false}
         saving={confirmCollects.isPending || declineCollects.isPending}
         onConfirm={(proposal) => confirmCollects.mutate(proposal)}
         onDecline={() => declineCollects.mutate()}
-        onRecheck={() => { recheckCollects.current = true; void refetchCollects() }}
-        onSetByHand={(volumeId) => confirmCollects.mutate({
-          volumeId, name: null, startYear: null, siteUrl: null,
-        })}
+      />
+      <RunPartsBanner
+        proposal={runParts?.proposal ?? null}
+        saving={addPart.isPending || removePart.isPending}
+        onConfirm={(part) => addPart.mutate(part)}
+        onDecline={(volumeId) => removePart.mutate(volumeId)}
       />
 
       {!suggested && (

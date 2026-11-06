@@ -109,3 +109,23 @@ test('an unnumbered next issue is still wanted, and carries no number to match o
   expect(outcome.state).toBe('wanted')
   if (outcome.state === 'wanted') expect(outcome.issue.number).toBeUndefined()
 })
+
+// Thor (2025) is #1-6 and #800 up on its own volume, and #7-13 on Mortal Thor's.
+test('after the last issue before a renamed stretch, it wants the first issue of that stretch', () => {
+  const t = seed([
+    { id: 101, number: '6', coverDate: '2026-03-01' },
+    { id: 102, number: '800', coverDate: '2026-10-01' },
+  ])
+  updateEdition(t.db, t.edition.id, {
+    cvParts: [{ volumeId: 600, name: 'Mortal Thor', startYear: 2026, siteUrl: null }],
+  })
+  cacheVolumeIssues(t.db, 600, [{ id: 207, number: '7', coverDate: '2026-04-01' }])
+  t.own(101, true)
+
+  expect(nextWantedIssue(t.db, t.follow)).toEqual({
+    state: 'wanted',
+    issue: expect.objectContaining({ id: 207, number: '7' }),
+    volumeName: 'Mortal Thor',
+    editionName: 'Iron Man',
+  })
+})

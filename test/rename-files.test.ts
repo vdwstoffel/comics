@@ -6,6 +6,7 @@ import { openDb } from '../server/db.js'
 import { upsertEdition, updateEdition } from '../server/models/editions.js'
 import { insertBook, updateBook, getBook } from '../server/models/books.js'
 import { planRenames, renameLibraryFiles } from '../server/services/renameFiles.js'
+import { cacheVolumeIssues } from '../server/models/volumeIssues.js'
 import type { Ctx } from '../server/types.js'
 import type { Config } from '../server/config.js'
 
@@ -149,4 +150,20 @@ test('a comic whose file has gone is skipped, and the others still rename', asyn
 
   expect(result).toMatchObject({ renamed: 1, skipped: 1 })
   expect(getBook(ctx.db, books[1].id)!.filePath).toBe('Venom/Venom (2025)/venom_0256.cbz')
+})
+
+// Mortal Thor #7 inside Thor (2025) keeps the name it arrived with.
+test('a comic from one of the run\'s other volumes is named after that volume', () => {
+  const [thor, mortal] = seed('Thor (2025)', 'Thor', [
+    { file: 'Thor 006.cbz', number: '6' },
+    { file: 'Mortal Thor 007.cbz', number: '7' },
+  ])
+  const edition = ctx.db.prepare('SELECT id FROM edition').get() as { id: number }
+  updateEdition(ctx.db, edition.id, { cvParts: [{ volumeId: 177511, name: 'Mortal Thor', startYear: 2026, siteUrl: null }] })
+  cacheVolumeIssues(ctx.db, 177511, [{ id: mortal.id, number: '7' }])
+
+  expect(planRenames(ctx.db)).toEqual([
+    { bookId: thor.id, from: 'Thor/Thor (2025)/Thor 006.cbz', to: 'Thor/Thor (2025)/thor_0006.cbz' },
+    { bookId: mortal.id, from: 'Thor/Thor (2025)/Mortal Thor 007.cbz', to: 'Thor/Thor (2025)/mortal_thor_0007.cbz' },
+  ])
 })

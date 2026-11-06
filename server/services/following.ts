@@ -6,6 +6,7 @@ import { listBooksByEdition } from '../models/books.js'
 import { createComicVine } from '../lib/comicvine.js'
 import { getComicVineKey } from '../models/settings.js'
 import { cacheVolumeIssues, getCachedVolumeIssues, VOLUME_CACHE_MAX_AGE_MS } from '../models/volumeIssues.js'
+import { heldRun } from './runParts.js'
 import { getProgress, finishedIssueIds } from '../models/progress.js'
 import type { Follow } from '../models/follows.js'
 import { cacheArc, getCachedArc, ARC_CACHE_MAX_AGE_MS } from '../models/arcCache.js'
@@ -55,8 +56,9 @@ function volumeOutcome(db: Db, follow: Follow): FollowOutcome {
   if (!edition || edition.comicvineId == null) return { state: 'unresolved' }
 
   // Read at any age. Freshness is the sweep's job; a day-old list still answers "what
-  // comes after the one I finished" correctly for every issue it does hold.
-  const cached = getCachedVolumeIssues(db, edition.comicvineId, Infinity)
+  // comes after the one I finished" correctly for every issue it does hold. The whole run,
+  // across every volume it is filed under: after Thor #6 comes Mortal Thor #7.
+  const cached = heldRun(db, edition)
   if (!cached) return { state: 'caught-up' }
 
   const ownedIds = new Set<number>()
@@ -74,7 +76,9 @@ function volumeOutcome(db: Db, follow: Follow): FollowOutcome {
   if (!next) return { state: 'caught-up' }
   if (ownedIds.has(next.id)) return { state: 'supplied' }
 
-  return { state: 'wanted', issue: next, volumeName: edition.cvName, editionName: edition.name }
+  return {
+    state: 'wanted', issue: next, volumeName: next.volumeName ?? edition.cvName, editionName: edition.name,
+  }
 }
 
 /**
@@ -294,10 +298,13 @@ async function refreshCaughtUp(app: App, follows: Follow[], limit: number): Prom
       if (follow.kind === 'volume') {
         const edition = getEdition(app.db, follow.refId)
         if (!edition?.comicvineId) continue
-        // Fresh enough already: a running volume gains an issue a month.
-        if (getCachedVolumeIssues(app.db, edition.comicvineId, VOLUME_CACHE_MAX_AGE_MS)) continue
-        spent++
-        cacheVolumeIssues(app.db, edition.comicvineId, await cv.listVolumeIssues(edition.comicvineId))
+        // Every volume the run is filed under: the next issue may be on any of them.
+        for (const volumeId of [edition.comicvineId, ...edition.cvParts.map((p) => p.volumeId)]) {
+          // Fresh enough already: a running volume gains an issue a month.
+          if (getCachedVolumeIssues(app.db, volumeId, VOLUME_CACHE_MAX_AGE_MS)) continue
+          spent++
+          cacheVolumeIssues(app.db, volumeId, await cv.listVolumeIssues(volumeId))
+        }
       } else {
         if (getCachedArc(app.db, follow.refId, ARC_CACHE_MAX_AGE_MS)) continue
         spent++

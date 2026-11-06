@@ -41,7 +41,8 @@ export default function VolumeIssueTile({ issue, book, editionId, editionName, s
   // The tile says "#3"; the dialog floats over the page and has to say which run's #3.
   const find = useFindRelease({
     gapLabel: `${editionName} ${label}`,
-    seed: findIssueSeed(seriesName, issue.coverDate),
+    // Mortal Thor #9 is posted as Mortal Thor, whatever the run around it is called.
+    seed: findIssueSeed(issue.volumeName ?? seriesName, issue.coverDate),
     onDownload: (indexId) => api.downloadMissingIssue(editionId, issue.id, indexId),
   })
 

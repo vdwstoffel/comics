@@ -161,7 +161,7 @@ export default function EditionRun({
       label={entry.label}
       match={entry.match}
       coverDate={entry.coverDate}
-      seriesName={seriesName}
+      seriesName={entry.volumeName ?? seriesName}
       offerUpload={offerUpload}
     />
   )

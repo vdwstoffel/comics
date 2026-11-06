@@ -46,6 +46,9 @@ export interface VolumeEntry {
   siteUrl?: string
   coverDate?: string
   match?: { indexId: number; title: string } | null
+  /** The volume a gap is filed under, when that is one of the run's others - the name a
+   *  search for it has to use. */
+  volumeName?: string
 }
 
 interface VolumeEntriesInput {
@@ -101,6 +104,7 @@ export function volumeEntries({ issues, extras, books, editions }: VolumeEntries
       siteUrl: issue.siteUrl,
       coverDate: issue.coverDate,
       match: issue.match,
+      ...(issue.volumeName ? { volumeName: issue.volumeName } : {}),
       // Comic Vine's story title is the gap's only name; a book of your own overrides it
       // below, because what the file says it is beats what the catalogue says it is.
       title: issue.name,

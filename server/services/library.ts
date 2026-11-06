@@ -214,7 +214,9 @@ export async function renameEdition(
     // Backfill the target's metadata from the source only where the target lacks it
     const target = getEdition(db, targetExisting.id) as Edition
     const patch: Record<string, unknown> = {}
-    const missing = (v: unknown) => v == null || v === ''
+    // An empty list is as missing as an empty string: a run with no parts of its own
+    // takes the parts of the one merging into it.
+    const missing = (v: unknown) => v == null || v === '' || (Array.isArray(v) && v.length === 0)
     for (const [key, value] of Object.entries(carry)) {
       if (missing((target as unknown as Record<string, unknown>)[key]) && !missing(value)) {
         patch[key] = value

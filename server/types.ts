@@ -42,8 +42,27 @@ export interface Edition {
   collectsProposal: string | null
   /** A limited series rather than a run of its series. Derived, correctable by hand. */
   limited: boolean
+  /** Other Comic Vine volumes holding issues of this run - Mortal Thor's #7-13 inside
+   *  Thor (2025). Confirmed by hand; their issues are drawn, matched and followed as
+   *  this run's own. */
+  cvParts: RunPart[]
+  /** Volumes you said were not part of this run, so they are not suggested again. */
+  cvPartsDeclined: number[]
+  /** When Comic Vine was last read for a part to suggest. */
+  cvPartsCheckedAt: string | null
+  /** What that read suggested, as JSON - held apart from `cvParts` because a suggestion
+   *  nobody has agreed to must change nothing about the run. */
+  cvPartsProposal: string | null
   createdAt: string
   bookCount?: number
+}
+
+/** A Comic Vine volume holding some of a run's issues under a different name. */
+export interface RunPart {
+  volumeId: number
+  name: string | null
+  startYear: number | null
+  siteUrl: string | null
 }
 
 export interface Book {

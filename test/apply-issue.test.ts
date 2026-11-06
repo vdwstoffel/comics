@@ -3,7 +3,7 @@ import { mkdtempSync, rmSync, mkdirSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { openDb } from '../server/db.js'
-import { upsertEdition, getEdition } from '../server/models/editions.js'
+import { upsertEdition, getEdition, updateEdition } from '../server/models/editions.js'
 import { insertBook, getBook, updateBook } from '../server/models/books.js'
 import { getBookTags, getBookCredits, replaceBookCredits, replaceBookTags } from '../server/models/metadata.js'
 import { applyIssueToBook } from '../server/services/applyIssue.js'
@@ -461,5 +461,21 @@ test('a failing volume fetch still applies the issue and files the entry', async
     expect(getBook(c.db, book.id)).toMatchObject({ title: 'Death Spiral, Part 3 of 9', comicvineId: 1159231 })
     expect(listManualEntries(c.db)).toHaveLength(1)
     expect(listManualEntries(c.db)[0]!.checkedAt).not.toBeNull()
+  } finally { c.db.close(); rmSync((c as { dir: string }).dir, { recursive: true, force: true }) }
+})
+
+// Mortal Thor #7 lives in Thor (2025). Its volume is not what Thor (2025) is called, and
+// taking its name would have the page offer to rename the whole run after seven issues.
+test('an issue from one of the run\'s other volumes does not rename the run', async () => {
+  const c = ctx()
+  const { edition, book } = seed(c)
+  updateEdition(c.db, edition.id, {
+    comicvineId: 166460, cvName: 'Thor', cvStartYear: 2025,
+    cvParts: [{ volumeId: 167333, name: 'Venom', startYear: 2025, siteUrl: null }],
+  })
+  try {
+    await applyIssueToBook(c, book.id, 1159231)
+    expect(getEdition(c.db, edition.id)).toMatchObject({ cvName: 'Thor', cvStartYear: 2025, comicvineId: 166460 })
+    expect(getBook(c.db, book.id)).toMatchObject({ comicvineId: 1159231, number: '255' })
   } finally { c.db.close(); rmSync((c as { dir: string }).dir, { recursive: true, force: true }) }
 })

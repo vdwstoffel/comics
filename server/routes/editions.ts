@@ -9,7 +9,10 @@ import { deriveReadState } from '../models/progress.js'
 import { renameEdition, removeEdition, reorganizeLibrary } from '../services/library.js'
 import { createComicVine } from '../lib/comicvine.js'
 import type { CvVolumeIssue } from '../lib/comicvine.js'
-import { cacheVolumeIssues, getCachedVolumeIssues } from '../models/volumeIssues.js'
+import { mergeRun, sharesNumbers } from '../lib/runParts.js'
+import { heldRun, readVolumeIssues, detectRunPart as detectRunPartReal, spanOf } from '../services/runParts.js'
+import type { RunPartSpan } from '../services/runParts.js'
+import { getVolumeCached } from '../models/volumeRecord.js'
 import { findMatchForIssue } from '../services/issueMatching.js'
 import { startIssueDownload, issueLabel, pickedRow } from '../services/issueDownload.js'
 import type { PickedRowBody } from '../services/issueDownload.js'
@@ -20,7 +23,7 @@ import type { CollectsProposal } from '../services/detectCollects.js'
 import { editionFilterOf, readStateOf } from './filters.js'
 import type { LibraryQuery } from './filters.js'
 import { getComicVineKey } from '../models/settings.js'
-import type { App, Ctx } from '../types.js'
+import type { App, Ctx, Edition } from '../types.js'
 
 interface IdParams { id: string }
 interface EditEditionBody { name?: string; seriesName?: string; limited?: boolean }
@@ -54,6 +57,36 @@ export interface EditionRouteOpts {
   refile?: (ctx: Ctx) => Promise<unknown>
   /** The pause between issues of a "Get all" walk. Injected as 0 by tests. */
   bulkDelayMs?: number
+  /** Injected so tests decide what Comic Vine's prose suggests. */
+  detectRunPart?: typeof detectRunPartReal
+}
+
+/**
+ * How long a look for the run's other volumes stands. A rename lands mid-run - Mortal
+ * Thor was announced while Thor (2025) was already on the shelf - so unlike collects the
+ * question is put again, weekly, until it has an answer.
+ */
+const RUN_PARTS_RECHECK_MS = 7 * 24 * 60 * 60 * 1000
+
+/** The stored suggestion, unless it has since been answered either way. */
+function readPartProposal(edition: Edition): RunPartSpan | null {
+  if (!edition.cvPartsProposal) return null
+  try {
+    const parsed = JSON.parse(edition.cvPartsProposal) as RunPartSpan
+    if (!Number.isFinite(parsed?.volumeId)) return null
+    const answered = edition.cvParts.some((p) => p.volumeId === parsed.volumeId)
+      || edition.cvPartsDeclined.includes(parsed.volumeId)
+    return answered ? null : parsed
+  } catch {
+    return null
+  }
+}
+
+interface RunPartBody {
+  volumeId: number
+  name?: string | null
+  startYear?: number | null
+  siteUrl?: string | null
 }
 
 export default async function editionRoutes(app: App, opts: EditionRouteOpts = {}) {
@@ -61,6 +94,7 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
     fetchPage = fetchSourcePage,
     bulkDelayMs,
     detect = detectCollectsReal,
+    detectRunPart = detectRunPartReal,
     lookupVolume = (volumeId: number) =>
       createComicVine({ apiKey: () => getComicVineKey(app.db) }).getVolume(volumeId),
     refile = reorganizeLibrary,
@@ -260,6 +294,125 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
     return { edition: getEdition(app.db, edition.id) }
   })
 
+  /**
+   * The run's other Comic Vine volumes: the ones you said belong to it, and the one Comic
+   * Vine's own note suggests, if any.
+   *
+   * Looked for again a week after the last look, because a rename happens to a run you
+   * already have. A volume you answered - Yes or No - is never suggested again.
+   */
+  app.get<{ Params: IdParams; Querystring: { recheck?: string } }>(
+    '/api/editions/:id/parts',
+    async (req, reply) => {
+      const edition = getEdition(app.db, Number(req.params.id))
+      if (!edition) return reply.code(404).send({ error: 'edition not found' })
+
+      const parts = edition.cvParts.map((part) => spanOf(app.db, part))
+      const checked = edition.cvPartsCheckedAt
+        && Date.now() - new Date(edition.cvPartsCheckedAt).getTime() < RUN_PARTS_RECHECK_MS
+      // Served from what was found last time - the suggestion links to Comic Vine for
+      // checking, and coming back from that tab must not find the question gone.
+      if (checked && req.query.recheck !== '1') {
+        return { parts, proposal: readPartProposal(edition), checkedAt: edition.cvPartsCheckedAt }
+      }
+      if (edition.comicvineId == null || !getComicVineKey(app.db)) {
+        return { parts, proposal: null, checkedAt: null }
+      }
+
+      let proposal: RunPartSpan | null
+      try {
+        const cv = createComicVine({ apiKey: () => getComicVineKey(app.db) })
+        proposal = await detectRunPart({ db: app.db, cv }, edition)
+      } catch {
+        // Not an answer: a look that failed must not stand for a week as one that found
+        // nothing.
+        return { parts, proposal: null, checkedAt: edition.cvPartsCheckedAt }
+      }
+
+      const checkedAt = new Date().toISOString()
+      updateEdition(app.db, edition.id, {
+        cvPartsCheckedAt: checkedAt,
+        cvPartsProposal: proposal ? JSON.stringify(proposal) : null,
+      })
+      return { parts, proposal, checkedAt }
+    },
+  )
+
+  /**
+   * Yes: that volume's issues are part of this run. Confirming a suggestion and pasting a
+   * link by hand both land here.
+   *
+   * A volume sharing an issue number with the run is refused, from either. Two different
+   * #7s side by side is not one run, and it is the mistake a pasted link is most likely
+   * to be - the previous volume of the same title.
+   */
+  app.put<{ Params: IdParams; Body: RunPartBody }>('/api/editions/:id/parts', async (req, reply) => {
+    const edition = getEdition(app.db, Number(req.params.id))
+    if (!edition) return reply.code(404).send({ error: 'edition not found' })
+    if (edition.comicvineId == null) return reply.code(409).send({ reason: 'no-volume', error: 'match this edition to Comic Vine first' })
+    const volumeId = Number(req.body?.volumeId)
+    if (!Number.isSafeInteger(volumeId) || volumeId <= 0) return reply.code(400).send({ error: 'volumeId required' })
+    if (volumeId === edition.comicvineId) {
+      return reply.code(409).send({ reason: 'own-volume', error: "that is this run's own volume" })
+    }
+    if (edition.cvParts.some((p) => p.volumeId === volumeId)) return { edition }
+
+    const cv = createComicVine({ apiKey: () => getComicVineKey(app.db) })
+    const own = await readVolumeIssues(app.db, cv, edition.comicvineId)
+    const theirs = await readVolumeIssues(app.db, cv, volumeId)
+    // Without both lists there is nothing to check the volume against, and nothing of it
+    // to draw either.
+    if (!own || !theirs) {
+      return reply.code(502).send({ reason: 'unreadable', error: 'could not read that volume from Comic Vine' })
+    }
+    if (sharesNumbers(own.issues, theirs.issues)) {
+      return reply.code(409).send({ reason: 'overlap', error: "that volume shares issue numbers with this run" })
+    }
+
+    // Typed by hand, a volume id is all there is; the name is what its issues are matched
+    // and filed under, so it is looked up rather than left blank.
+    const named = req.body.name != null ? req.body : {
+      ...req.body,
+      ...(await getVolumeCached(app.db, cv, volumeId) ?? {}),
+    }
+    const part = {
+      volumeId,
+      name: named.name ?? null,
+      startYear: named.startYear ?? null,
+      siteUrl: named.siteUrl ?? null,
+    }
+    updateEdition(app.db, edition.id, {
+      cvParts: [...edition.cvParts, part],
+      cvPartsDeclined: edition.cvPartsDeclined.filter((id) => id !== volumeId),
+      cvPartsProposal: readPartProposal(edition)?.volumeId === volumeId ? null : edition.cvPartsProposal,
+    })
+    return { edition: getEdition(app.db, edition.id) }
+  })
+
+  /**
+   * No: that volume is not part of this run. Declining a suggestion and taking back a
+   * Yes that was wrong are the same answer, and both are remembered so it is not
+   * suggested again.
+   */
+  app.delete<{ Params: IdParams & { volumeId: string } }>(
+    '/api/editions/:id/parts/:volumeId',
+    async (req, reply) => {
+      const edition = getEdition(app.db, Number(req.params.id))
+      if (!edition) return reply.code(404).send({ error: 'edition not found' })
+      const volumeId = Number(req.params.volumeId)
+      if (!Number.isSafeInteger(volumeId)) return reply.code(400).send({ error: 'volumeId required' })
+
+      updateEdition(app.db, edition.id, {
+        cvParts: edition.cvParts.filter((p) => p.volumeId !== volumeId),
+        cvPartsDeclined: edition.cvPartsDeclined.includes(volumeId)
+          ? edition.cvPartsDeclined
+          : [...edition.cvPartsDeclined, volumeId],
+        cvPartsProposal: readPartProposal(edition)?.volumeId === volumeId ? null : edition.cvPartsProposal,
+      })
+      return { edition: getEdition(app.db, edition.id) }
+    },
+  )
+
   app.post<{ Params: IdParams }>('/api/editions/:id/comicvine-volume', async (req, reply) => {
     const edition = getEdition(app.db, Number(req.params.id))
     if (!edition) return reply.code(404).send({ error: 'edition not found' })
@@ -328,35 +481,26 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
     // volume gains an issue a month, so a day-old list is close enough to live, and it
     // spares a paged read of a 651-issue volume on every single page view.
     const refresh = req.query?.refresh === '1'
-    const fresh = refresh ? undefined : getCachedVolumeIssues(app.db, edition.comicvineId)
-
-    let volumeIssues: CvVolumeIssue[]
-    let fetchedAt: string
-    let stale = false
-
-    if (fresh) {
-      volumeIssues = fresh.issues
-      fetchedAt = fresh.fetchedAt
-    } else {
-      const cv = createComicVine({ apiKey: () => getComicVineKey(app.db) })
-      try {
-        volumeIssues = await cv.listVolumeIssues(edition.comicvineId)
-        fetchedAt = new Date().toISOString()
-        cacheVolumeIssues(app.db, edition.comicvineId, volumeIssues, fetchedAt)
-      } catch {
-        // A list we already hold beats no list at all, however old it is.
-        const anyAge = getCachedVolumeIssues(app.db, edition.comicvineId, Infinity)
-        if (!anyAge) {
-          return {
-            volumeId: edition.comicvineId, issues: [], extras: books.map(extraOf),
-            owned: 0, total: 0, unavailable: true, siteUrl,
-          }
-        }
-        volumeIssues = anyAge.issues
-        fetchedAt = anyAge.fetchedAt
-        stale = true
+    const cv = createComicVine({ apiKey: () => getComicVineKey(app.db) })
+    const own = await readVolumeIssues(app.db, cv, edition.comicvineId, { refresh })
+    if (!own) {
+      return {
+        volumeId: edition.comicvineId, issues: [], extras: books.map(extraOf),
+        owned: 0, total: 0, unavailable: true, siteUrl,
       }
     }
+
+    // The run's other volumes, read the same way. One at a time: Comic Vine counts every
+    // request against the hour, and there are rarely more than one.
+    const parts: Array<{ name: string | null; issues: CvVolumeIssue[] }> = []
+    let stale = own.stale
+    for (const part of edition.cvParts) {
+      const held = await readVolumeIssues(app.db, cv, part.volumeId, { refresh })
+      if (held) parts.push({ name: part.name, issues: held.issues })
+      if (!held || held.stale) stale = true
+    }
+    const volumeIssues = mergeRun(own.issues, parts)
+    const fetchedAt = own.fetchedAt
 
     const byCvId = new Map(books.filter((b) => b.comicvineId).map((b) => [b.comicvineId as number, b]))
     const issues = volumeIssues.map((issue) => {
@@ -364,7 +508,9 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
       if (book) return { ...issue, owned: true, bookId: book.id }
       // Only what you are missing is worth matching; a match for a comic you already
       // have would be computed and thrown away.
-      return { ...issue, owned: false, match: findMatchForIssue(app.db, edition.cvName, issue) }
+      // Matched under the name of the volume it is filed in: Mortal Thor's #9 is posted
+      // as Mortal Thor, whatever the run around it is called.
+      return { ...issue, owned: false, match: findMatchForIssue(app.db, issue.volumeName ?? edition.cvName, issue) }
     })
 
     const accounted = new Set(issues.filter((i) => i.owned).map((i) => (i as { bookId: number }).bookId))
@@ -403,15 +549,16 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
 
       // Any age: a press only follows a page view that filled this cache, and a
       // published issue's number and cover date do not change.
-      const held = getCachedVolumeIssues(app.db, edition.comicvineId, Infinity)
+      const held = heldRun(app.db, edition)
       const issue = held?.issues.find((i) => i.id === Number(req.params.cvIssueId))
       if (!issue) return reply.code(404).send({ error: 'issue not in this volume' })
 
+      const volumeName = issue.volumeName ?? edition.cvName
       const result = await startIssueDownload(app, {
-        volumeName: edition.cvName,
+        volumeName,
         editionName: edition.name,
         issue,
-        label: issueLabel(edition.cvName, issue.number),
+        label: issueLabel(volumeName, issue.number),
         indexId: pickedRow(req.body),
         fetchPage,
       })
@@ -443,7 +590,7 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
 
     // Any age, for the same reason the single-issue route takes any age: a press only
     // follows a page view that filled this cache.
-    const held = getCachedVolumeIssues(app.db, edition.comicvineId, Infinity)
+    const held = heldRun(app.db, edition)
     if (!held) return reply.code(404).send({ error: 'no run held for this volume' })
 
     const owned = new Set(

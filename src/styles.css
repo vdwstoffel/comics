@@ -4228,23 +4228,41 @@ textarea.input:hover:not(:focus) {
 .follow-button:disabled { opacity: 0.5; cursor: default; }
 .follow-button__why { font-size: 0.8rem; color: var(--muted); margin-left: 0.5rem; }
 
-/* Setting by hand what Comic Vine's prose did not say. Deliberately plain: it appears
-   only after you ask for it, and most editions never will. */
-.collects-by-hand__input {
-  flex: 1;
-  min-width: 0;
-  max-width: 380px;
-  padding: 6px 10px;
-  font-size: 0.8125rem;
-  color: var(--text);
-  background: var(--bg);
-  border: 1px solid var(--border);
-  border-radius: 6px;
+/* An edition's ties to other Comic Vine volumes, in its edit dialog. Set once and then
+   left, which is why they are here rather than on the page above the comics. */
+.edition-links {
+  border-top: 1px solid var(--border);
+  margin-top: 8px;
+  padding-top: 18px;
+  margin-bottom: 16px;
 }
 
-.collects-by-hand__input:focus {
-  outline: none;
-  border-color: var(--muted);
+.edition-links__heading {
+  font-size: 0.875rem;
+  font-weight: 600;
+  margin-bottom: 14px;
+}
+
+.edition-links__row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin-bottom: 8px;
+  font-size: 0.875rem;
+}
+
+.edition-links__row a,
+.edition-header__count a {
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: var(--border);
+  text-underline-offset: 3px;
+}
+
+.edition-links__row a:hover,
+.edition-header__count a:hover {
+  text-decoration-color: currentColor;
 }
 
 /* Where a volume shelf's comics came from, in the sidebar beside the run — context,

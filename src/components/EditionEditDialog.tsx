@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import type { ReactNode } from 'react'
 
 interface EditionEditDialogProps {
   name: string
@@ -13,10 +14,12 @@ interface EditionEditDialogProps {
   error?: string | null
   onSave: (next: { name: string; seriesName: string; limited: boolean }) => void
   onClose: () => void
+  /** Anything else about the edition that is set here, below the fields Save covers. */
+  children?: ReactNode
 }
 
 export default function EditionEditDialog({
-  name, seriesName, limited = false, saving = false, error = null, onSave, onClose,
+  name, seriesName, limited = false, saving = false, error = null, onSave, onClose, children,
 }: EditionEditDialogProps) {
   const [nameInput, setNameInput] = useState(name)
   const [seriesInput, setSeriesInput] = useState(seriesName ?? '')
@@ -83,6 +86,8 @@ export default function EditionEditDialog({
             Limited series
           </label>
         </div>
+
+        {children}
 
         {error && <p className="modal-error">{error}</p>}
 

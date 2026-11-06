@@ -480,6 +480,20 @@ export function openDb(dbPath: string): Db {
   // same bargain series_name makes.
   if (!editionCols.includes('limited')) db.exec('ALTER TABLE edition ADD COLUMN limited INTEGER NOT NULL DEFAULT 0')
 
+  // The other Comic Vine volumes this run's issues are filed under. Thor (2025) is
+  // #1-6 and #800 up on its own volume, and #7-13 on a second one called Mortal Thor,
+  // because the indicia changed for seven issues. One run, two volumes.
+  //
+  // On the edition rather than in a table of their own because a rename recreates the
+  // edition row and carries its columns across - a separate table would be left
+  // pointing at a row that no longer exists. JSON because each is a short list that is
+  // written and read whole. The same confirmed-and-declined split as collects: a
+  // suggestion moves nothing, and a No is not asked again.
+  if (!editionCols.includes('cv_parts')) db.exec('ALTER TABLE edition ADD COLUMN cv_parts TEXT')
+  if (!editionCols.includes('cv_parts_declined')) db.exec('ALTER TABLE edition ADD COLUMN cv_parts_declined TEXT')
+  if (!editionCols.includes('cv_parts_checked_at')) db.exec('ALTER TABLE edition ADD COLUMN cv_parts_checked_at TEXT')
+  if (!editionCols.includes('cv_parts_proposal')) db.exec('ALTER TABLE edition ADD COLUMN cv_parts_proposal TEXT')
+
   // An arc issue gained the id of the volume it belongs to, which is what decides where
   // a download of it lands. Arcs cached before this read back without one until their
   // next refresh; the download falls back to the volume's name meanwhile.

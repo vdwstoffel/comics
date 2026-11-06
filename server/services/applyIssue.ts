@@ -239,8 +239,12 @@ export async function applyIssueToBook(
       if (edition) {
         const patch: EditionUpdate = {}
         if (publisher && !edition.publisher) patch.publisher = publisher
-        if (volume?.name) patch.cvName = volume.name
-        if (volume?.startYear !== undefined) patch.cvStartYear = volume.startYear
+        // Not from one of the run's other volumes: Mortal Thor #7 is part of Thor (2025),
+        // and its volume's name is not what Thor (2025) is called.
+        const fromPart = meta.volumeId != null
+          && edition.cvParts.some((p) => p.volumeId === Number(meta.volumeId))
+        if (volume?.name && !fromPart) patch.cvName = volume.name
+        if (volume?.startYear !== undefined && !fromPart) patch.cvStartYear = volume.startYear
         if (meta.volumeId && !edition.comicvineId) patch.comicvineId = Number(meta.volumeId)
         if (Object.keys(patch).length > 0) updateEdition(db, book.editionId, patch)
       }
