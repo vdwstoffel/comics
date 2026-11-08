@@ -1,5 +1,5 @@
 import { useRef } from 'react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { useSearchParams } from 'react-router-dom'
 import { api } from '../api'
 import type { ApiReleaseIssue } from '../api'
@@ -11,6 +11,7 @@ import { usePublisher } from '../lib/usePublisher'
 import { writeOutDay } from '../lib/releaseWeek'
 import { useUpcoming } from '../lib/useUpcoming'
 import { useDownload } from '../lib/useDownload'
+import { useGetIssue } from '../lib/useGetIssue'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { findIssueSeed } from '../lib/findIssueSeed'
 import { useFindRelease } from '../lib/useFindRelease'
@@ -30,13 +31,20 @@ function label(issue: ApiReleaseIssue): string {
  * window. The rule still stands where it was written; this page is not a reading list.
  */
 function ReleaseIssue({ issue }: { issue: ApiReleaseIssue }) {
-  const qc = useQueryClient()
   const text = label(issue)
   const { liveByIssue } = useDownload()
 
-  const get = useMutation({
-    mutationFn: () => api.downloadRelease(issue.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['download'] }),
+  const get = useGetIssue(() => api.downloadRelease(issue.id))
+
+  // The year floor and the reason it is backed off a year live in findIssueSeed, shared
+  // with the edition and arc pages. An issue with no volume name seeds an empty query,
+  // which the dialog opens on rather than searching for nothing.
+  // Above the early return: a gap that arrives redraws in place as the comic, and a hook
+  // skipped on that render takes the whole page down.
+  const find = useFindRelease({
+    gapLabel: text,
+    seed: findIssueSeed(issue.volumeName ?? '', issue.coverDate),
+    onDownload: (indexId) => api.downloadRelease(issue.id, indexId),
   })
 
   if (issue.owned && issue.bookId != null) {
@@ -49,15 +57,6 @@ function ReleaseIssue({ issue }: { issue: ApiReleaseIssue }) {
       />
     )
   }
-
-  // The year floor and the reason it is backed off a year live in findIssueSeed, shared
-  // with the edition and arc pages. An issue with no volume name seeds an empty query,
-  // which the dialog opens on rather than searching for nothing.
-  const find = useFindRelease({
-    gapLabel: text,
-    seed: findIssueSeed(issue.volumeName ?? '', issue.coverDate),
-    onDownload: (indexId) => api.downloadRelease(issue.id, indexId),
-  })
 
   return (
     <>

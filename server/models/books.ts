@@ -77,6 +77,11 @@ export function findBookByPath(db: Db, filePath: string): Book | undefined {
   return toBook(db.prepare('SELECT * FROM book WHERE file_path = ?').get(filePath) as BookRow | undefined)
 }
 
+/** Library-wide, the same rule as `ownedIssueIds`: a Comic Vine issue is one comic wherever it is filed. */
+export function findBookByIssue(db: Db, cvIssueId: number): Book | undefined {
+  return toBook(db.prepare('SELECT * FROM book WHERE comicvine_id = ? ORDER BY id LIMIT 1').get(cvIssueId) as BookRow | undefined)
+}
+
 /**
  * A book as the library shelf needs it: the book, its progress, and the volume and series
  * holding it. Both names come from the edition rather than the book because that is where

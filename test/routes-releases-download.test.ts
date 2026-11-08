@@ -4,6 +4,7 @@ import releaseRoutes from '../server/routes/releases.js'
 import { openDb } from '../server/db.js'
 import { cacheRelease } from '../server/models/releases.js'
 import { upsertEdition, updateEdition } from '../server/models/editions.js'
+import { insertBook, updateBook } from '../server/models/books.js'
 import type { ReleaseIssue } from '../server/models/releases.js'
 import { setComicVineKey } from '../server/models/settings.js'
 import type { Config } from '../server/config.js'
@@ -143,6 +144,25 @@ test('an issue already in the queue is refused as a duplicate, and says so', asy
     expect(res.statusCode).toBe(409)
     expect(res.json().reason).toBe('duplicate')
     expect(res.json().entry.id).toBe(7)
+  } finally { await t.cleanup() }
+})
+
+// The duplicate guard only sees the queue, so a press that arrives after the first copy
+// is stored used to queue a second one: Batman #15 landed twice, as `batman_0015.cbz` and
+// `batman_0015 (2).cbz`, when a follow fetched it while the tab still offered Get. Refused
+// before the post is fetched - the default fetchPage throws.
+test('an issue already in your library is refused as owned, and nothing is fetched', async () => {
+  const t = await setup()
+  try {
+    const edition = upsertEdition(t.db, { name: 'Black Cat (2019)', folder: 'Black Cat (2019)' })
+    const book = insertBook(t.db, { editionId: edition.id, filePath: 'Black Cat (2019)/14.cbz', pageCount: 10, fileSize: 1 })!
+    updateBook(t.db, book.id, { comicvineId: ISSUE.id })
+
+    const res = await t.app.inject({ method: 'POST', url: '/api/releases/issues/1192026/download' })
+
+    expect(res.statusCode).toBe(409)
+    expect(res.json().reason).toBe('owned')
+    expect(t.enqueue).not.toHaveBeenCalled()
   } finally { await t.cleanup() }
 })
 

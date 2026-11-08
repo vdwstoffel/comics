@@ -3,6 +3,8 @@ import { createPortal } from 'react-dom'
 import { useQueryClient } from '@tanstack/react-query'
 import FindReleaseDialog from '../components/FindReleaseDialog'
 import type { IssueSeed } from './findIssueSeed'
+import { refreshLibrary } from './useDownload'
+import { isOwnedRefusal } from './useGetIssue'
 
 /**
  * Wire one gap's `Find` to the dialog that fills it.
@@ -39,9 +41,16 @@ export function useFindRelease({ gapLabel, seed, onDownload }: {
           gapLabel={gapLabel}
           seed={seed}
           onDownload={async (indexId) => {
-            const res = await onDownload(indexId)
-            qc.invalidateQueries({ queryKey: ['download'] })
-            return res
+            try {
+              const res = await onDownload(indexId)
+              qc.invalidateQueries({ queryKey: ['download'] })
+              return res
+            } catch (err) {
+              // Already here: the dialog closes as it would on success, and the gap
+              // redraws as the comic. See useGetIssue.
+              if (!isOwnedRefusal(err)) throw err
+              refreshLibrary(qc)
+            }
           }}
           onClose={() => setOpen(false)}
         />,

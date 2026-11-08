@@ -1,5 +1,6 @@
 import { findMatchForIssue } from './issueMatching.js'
 import { comicIndexById } from '../models/comicIndex.js'
+import { findBookByIssue } from '../models/books.js'
 import { parseDownloadLink } from '../lib/comicPostPage.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import type { QueueEntry } from '../models/downloadQueue.js'
@@ -29,7 +30,7 @@ export function pickedRow(body: unknown): number | undefined {
 
 export type IssueDownloadResult =
   | { ok: true; entry: QueueEntry }
-  | { ok: false; code: 404 | 409 | 502; reason: 'no-match' | 'duplicate' | 'unreadable' | 'no-link'; error: string; entry?: QueueEntry }
+  | { ok: false; code: 404 | 409 | 502; reason: 'no-match' | 'duplicate' | 'owned' | 'unreadable' | 'no-link'; error: string; entry?: QueueEntry }
 
 /**
  * What the queue calls an issue: Comic Vine's volume name and the issue number,
@@ -77,6 +78,13 @@ export async function startIssueDownload(
     fetchPage?: (url: string) => Promise<string>
   },
 ): Promise<IssueDownloadResult> {
+  // The queue's duplicate guard only sees live rows, so once the first copy is stored a
+  // second press goes straight through - and a page that missed a follow's download still
+  // shows Get. Asked first, so nothing is fetched for a comic already on disk.
+  if (findBookByIssue(app.db, issue.id)) {
+    return { ok: false, code: 409, reason: 'owned', error: 'that issue is already in your library' }
+  }
+
   // A chosen row is still looked up, so a rescrape between the dialog opening and the
   // press refuses rather than downloading whatever now holds that id.
   const chosenId = indexId ?? findMatchForIssue(app.db, volumeName, issue)?.indexId

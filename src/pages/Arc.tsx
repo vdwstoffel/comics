@@ -8,6 +8,7 @@ import CoverTile from '../components/CoverTile'
 import MissingIssueTile from '../components/MissingIssueTile'
 import LibraryRail from '../components/LibraryRail'
 import { useDownload } from '../lib/useDownload'
+import { useGetIssue } from '../lib/useGetIssue'
 import { arcIssueLabel } from '../lib/arcIssueLabel'
 import FollowButton from '../components/FollowButton'
 import ArcReorderList from '../components/ArcReorderList'
@@ -26,13 +27,20 @@ import { useFindRelease } from '../lib/useFindRelease'
  * tied in, so there is no one edition this page could name.
  */
 function ArcIssue({ issue }: { issue: ApiArcIssue }) {
-  const qc = useQueryClient()
   const { liveByIssue } = useDownload()
   const title = arcIssueLabel(issue)
 
-  const get = useMutation({
-    mutationFn: () => api.downloadArcIssue(issue.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['download'] }),
+  const get = useGetIssue(() => api.downloadArcIssue(issue.id))
+
+  // Find searches for the issue's OWN series, never the arc's name: an arc is not a series
+  // and the index holds nothing under it. The year floor and its reasoning live in
+  // findIssueSeed, shared with the edition page.
+  // Above the early return: a gap that arrives redraws in place as the comic, and a hook
+  // skipped on that render takes the whole page down.
+  const find = useFindRelease({
+    gapLabel: title,
+    seed: findIssueSeed(issue.volumeName ?? title, issue.coverDate),
+    onDownload: (indexId) => api.downloadArcIssue(issue.id, indexId),
   })
 
   if (issue.owned && issue.bookId != null) {
@@ -48,15 +56,6 @@ function ArcIssue({ issue }: { issue: ApiArcIssue }) {
       />
     )
   }
-
-  // Find searches for the issue's OWN series, never the arc's name: an arc is not a series
-  // and the index holds nothing under it. The year floor and its reasoning live in
-  // findIssueSeed, shared with the edition page.
-  const find = useFindRelease({
-    gapLabel: title,
-    seed: findIssueSeed(issue.volumeName ?? title, issue.coverDate),
-    onDownload: (indexId) => api.downloadArcIssue(issue.id, indexId),
-  })
 
   return (
     <>

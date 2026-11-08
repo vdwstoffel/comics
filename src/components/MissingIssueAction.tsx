@@ -1,6 +1,6 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import { useDownload } from '../lib/useDownload'
+import { useGetIssue } from '../lib/useGetIssue'
 import { findIssueSeed } from '../lib/findIssueSeed'
 import { useFindRelease } from '../lib/useFindRelease'
 import IssueAction from './IssueAction'
@@ -45,13 +45,9 @@ interface MissingIssueActionProps {
 export default function MissingIssueAction({
   editionId, issueId, label, match, coverDate, seriesName, editionName, offerUpload,
 }: MissingIssueActionProps) {
-  const qc = useQueryClient()
   const { liveByIssue } = useDownload()
 
-  const get = useMutation({
-    mutationFn: () => api.downloadMissingIssue(editionId, issueId),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['download'] }),
-  })
+  const get = useGetIssue(() => api.downloadMissingIssue(editionId, issueId))
 
   // The control is named "#3" because the comic is named beside it. The dialog is not
   // beside anything, so it gets the run's name too.

@@ -163,6 +163,38 @@ test('a matched missing issue offers to get it', async () => {
   expect(await screen.findByRole('button', { name: /Get Wolverine #27/ })).toBeInTheDocument()
 })
 
+// The page was drawn before the comic arrived - a follow fetched it while the tile still
+// offered Get. The server refuses a second copy, and that refusal is news, not a failure:
+// the tile should become the comic rather than say "Could not get that one".
+test('a Get refused because the comic is already here turns into the comic', async () => {
+  let arrived = false
+  const owned = {
+    ...RELEASES,
+    publishers: [{ ...RELEASES.publishers[0], issues: [
+      RELEASES.publishers[0].issues[0],
+      { ...RELEASES.publishers[0].issues[1], owned: true, bookId: 317, match: null },
+    ] }, RELEASES.publishers[1]],
+  }
+  globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (String(url).includes('/api/downloads')) {
+      return { ok: true, json: async () => ({ active: [], queue: [], history: [] }) }
+    }
+    if (init?.method === 'POST') {
+      arrived = true
+      return { ok: false, status: 409, json: async () => ({ reason: 'owned', error: 'that issue is already in your library' }) }
+    }
+    return { ok: true, json: async () => (arrived ? owned : RELEASES) }
+  }) as unknown as typeof fetch
+
+  draw()
+  fireEvent.click(await screen.findByRole('button', { name: /Get Wolverine #27/ }))
+
+  // Queried afresh each time: the missing tile links out to Comic Vine, and the comic
+  // that replaces it is a different element.
+  await waitFor(() => expect(screen.getByRole('link', { name: /Wolverine #27/ })).toHaveAttribute('href', '/book/317'))
+  expect(screen.queryByText(/Could not get that one/)).not.toBeInTheDocument()
+})
+
 test('an unmatched missing issue offers to find it', async () => {
   draw('/releases?pub=dc')
   expect(await screen.findByRole('button', { name: /Find Action Comics #1102/ })).toBeInTheDocument()

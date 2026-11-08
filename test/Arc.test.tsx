@@ -88,6 +88,29 @@ test('pressing get asks the server for that issue', async () => {
   await waitFor(() => expect(posted).toEqual(['/api/arcs/issues/1158149/download']))
 })
 
+// Drawn before a follow fetched it. The tile redraws in place as the comic, which is also
+// what proves the tile calls every hook whether or not it returns early.
+test('a Get refused because the comic is already here turns into the comic', async () => {
+  const arrived = { ...ARC, arc: { ...ARC.arc, issues: ARC.arc.issues.map((i) =>
+    i.id === 1158149 ? { ...i, owned: true, bookId: 317, match: null } : i) } }
+  const served = globalThis.fetch
+  let refused = false
+  globalThis.fetch = vi.fn(async (url: string, init?: { method?: string }) => {
+    if (init?.method === 'POST') {
+      refused = true
+      return { ok: false, status: 409, json: async () => ({ reason: 'owned', error: 'that issue is already in your library' }) }
+    }
+    if (refused && String(url).includes('/api/arcs/Death')) return { ok: true, json: async () => arrived }
+    return served(url, init as RequestInit)
+  }) as unknown as typeof fetch
+
+  draw()
+  fireEvent.click(await screen.findByRole('button', { name: 'Get Black Cat #14' }))
+
+  await waitFor(() => expect(screen.getByRole('link', { name: /Black Cat #14/ })).toHaveAttribute('href', '/book/317'))
+  expect(screen.queryByText(/Could not get that one/)).not.toBeInTheDocument()
+})
+
 // The button never guesses. Nothing scraped can be this issue, so the page sends you to
 // look by eye rather than offering a press that would refuse.
 test('a gap nothing uniquely matches offers Find instead', async () => {

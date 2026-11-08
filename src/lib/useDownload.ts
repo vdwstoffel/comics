@@ -1,12 +1,22 @@
 import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import type { QueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { DownloadsView, QueueEntry } from '../api'
 
 const POLL_MS = 500
 
-/** What a newly stored comic could show up in. */
-const LIBRARY_KEYS = [['editions'], ['series'], ['edition'], ['edition-issues']]
+/**
+ * What a newly stored comic could show up in. The last three are the pages that draw a
+ * Get from an `owned` flag of their own: missed, a tile goes from Queued back to Get once
+ * its download finishes, offering a second copy of a comic already on disk.
+ */
+const LIBRARY_KEYS = [['editions'], ['series'], ['edition'], ['edition-issues'], ['releases'], ['arc'], ['follows']]
+
+/** Redraw everything that could be showing a comic as missing when it is not. */
+export function refreshLibrary(qc: QueryClient): void {
+  for (const key of LIBRARY_KEYS) qc.invalidateQueries({ queryKey: key })
+}
 
 export interface DownloadView {
   data: DownloadsView | undefined
@@ -56,7 +66,7 @@ export function useDownload(): DownloadView {
   useEffect(() => {
     if (newestDone == null || qc.getQueryData(['download-handled']) === newestDone) return
     qc.setQueryData(['download-handled'], newestDone)
-    for (const key of LIBRARY_KEYS) qc.invalidateQueries({ queryKey: key })
+    refreshLibrary(qc)
   }, [newestDone, qc])
 
   const liveByIssue = new Map<number, QueueEntry>()

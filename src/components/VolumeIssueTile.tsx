@@ -1,7 +1,7 @@
-import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ApiVolumeIssue, ApiBook } from '../api'
 import { useDownload } from '../lib/useDownload'
+import { useGetIssue } from '../lib/useGetIssue'
 import { findIssueSeed } from '../lib/findIssueSeed'
 import { useFindRelease } from '../lib/useFindRelease'
 import CoverTile from './CoverTile'
@@ -29,14 +29,10 @@ export default function VolumeIssueTile({ issue, book, editionId, editionName, s
   editionName: string
   seriesName: string
 }) {
-  const qc = useQueryClient()
   const label = `#${issue.number ?? '?'}`
   const { liveByIssue } = useDownload()
 
-  const get = useMutation({
-    mutationFn: () => api.downloadMissingIssue(editionId, issue.id),
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['download'] }),
-  })
+  const get = useGetIssue(() => api.downloadMissingIssue(editionId, issue.id))
 
   // The tile says "#3"; the dialog floats over the page and has to say which run's #3.
   const find = useFindRelease({

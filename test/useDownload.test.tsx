@@ -71,6 +71,20 @@ test('a finished run invalidates the library so the new comic shows up', async (
   await waitFor(() => expect(qc.getQueryState(['series'])?.isInvalidated).toBe(true))
 })
 
+// Every page that draws a Get tile decides it from its own `owned` flag. Left alone, a
+// tile went from Queued back to Get once its download finished - an offer to fetch a
+// comic already on disk, which is how Batman #15 came to be stored twice.
+test('a finished run refreshes every page that draws a Get, not just the shelf', async () => {
+  served = DONE
+  qc.setQueryData(['releases'], { publishers: [] })
+  qc.setQueryData(['arc', 'Knull'], { arc: null })
+  qc.setQueryData(['follows'], { follows: [] })
+  renderHook(() => useDownload(), { wrapper })
+  await waitFor(() => expect(qc.getQueryState(['releases'])?.isInvalidated).toBe(true))
+  expect(qc.getQueryState(['arc', 'Knull'])?.isInvalidated).toBe(true)
+  expect(qc.getQueryState(['follows'])?.isInvalidated).toBe(true)
+})
+
 test('a run already dealt with is not invalidated again when the page remounts', async () => {
   served = DONE
   const first = renderHook(() => useDownload(), { wrapper })
