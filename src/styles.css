@@ -4312,6 +4312,41 @@ textarea.input:hover:not(:focus) {
   margin-top: 28px;
 }
 
+/* The title and the shelf's one control, on a line. The title's own bottom margin moves
+   to the row, or the select would centre against a box taller than the words. Wraps
+   under the title on a phone rather than squeezing it. */
+.following-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px 16px;
+  margin-bottom: 24px;
+}
+
+.library-content .following-header .page-title {
+  margin-bottom: 0;
+}
+
+.following-sort {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--muted);
+  font-size: 0.875rem;
+}
+
+/* 44px, as on the Downloads pane: a real target on the tablet. */
+.following-sort select {
+  min-height: 44px;
+  padding: 0 10px;
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  font-size: 0.875rem;
+}
+
 /* A followed run whose next issue is announced: the solicitation's own cover, dimmed to
    about a third, with the date over the middle of it. Dimming the image box rather than
    the picture inside it is what keeps the date bright - the overlay is a sibling of the

@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { sortFollows, bandOf } from '../src/lib/followOrder'
+import { sortFollows, bandOf, monthOf, oldestMonth } from '../src/lib/followOrder'
 import type { OrderableFollow } from '../src/lib/followOrder'
 import type { ApiFollow } from '../src/api'
 
@@ -135,4 +135,74 @@ test('grouping the sorted shelf by band leaves each band in its sorted order', (
   expect(band('available')).toEqual(['Venom', 'Thor'])
   expect(band('coming')).toEqual(['Iron Man'])
   expect(band('undated')).toEqual(['Avengers'])
+})
+
+// --- Sorting Available by cover date. Only that band moves: Coming soon is already in
+// date order and No date yet has none to sort on.
+
+const byDate = (items: OrderableFollow[]): string[] => sortFollows(items, 'date').map((i) => i.follow.name)
+
+test('by cover date, the oldest comic comes first', () => {
+  expect(byDate([
+    item('Avengers', 'supplied', { hasTile: true, coverDate: '2026-11' }),
+    item('Batman', 'supplied', { hasTile: true, coverDate: '2027-01' }),
+    item('Thor', 'supplied', { hasTile: true, coverDate: '2026-07' }),
+  ])).toEqual(['Thor', 'Avengers', 'Batman'])
+})
+
+// Available reads "this comic exists", so by date an issue that is out takes its place
+// among the runs by its own cover date rather than waiting behind all of them.
+test('by cover date, an issue that is out sits among the runs by its own date', () => {
+  expect(byDate([
+    item('Avengers', 'supplied', { hasTile: true, coverDate: '2026-11' }),
+    item('Thor', 'wanted', { coverDate: '2027-01' }),
+    item('Venom', 'supplied', { hasTile: true, coverDate: '2026-07' }),
+  ])).toEqual(['Venom', 'Avengers', 'Thor'])
+})
+
+test('by cover date, a month shared by two runs falls back to their names', () => {
+  expect(byDate([
+    item('venom', 'supplied', { hasTile: true, coverDate: '2026-11' }),
+    item('Avengers', 'supplied', { hasTile: true, coverDate: '2026-11' }),
+  ])).toEqual(['Avengers', 'venom'])
+})
+
+test('by cover date, a run with no date goes to the end of Available, not past it', () => {
+  expect(byDate([
+    item('Iron Man', 'caught-up', { soon: { state: 'next', week: '2026-10-28' } }),
+    item('Avengers', 'supplied', { hasTile: true }),
+    item('Venom', 'supplied', { hasTile: true, coverDate: '2026-07' }),
+  ])).toEqual(['Venom', 'Avengers', 'Iron Man'])
+})
+
+test('by cover date, the other two bands keep their own order', () => {
+  expect(byDate([
+    item('Zatanna', 'caught-up', { soon: { state: 'none' } }),
+    item('Blade', 'caught-up', { soon: { state: 'none' } }),
+    item('Thor', 'caught-up', { soon: { state: 'next', week: '2026-11-18' } }),
+    item('Daredevil', 'caught-up', { soon: { state: 'next', week: '2026-10-14' } }),
+  ])).toEqual(['Daredevil', 'Thor', 'Blade', 'Zatanna'])
+})
+
+test('by name is still the order when nothing is asked for', () => {
+  expect(names([
+    item('Venom', 'supplied', { hasTile: true, coverDate: '2027-01' }),
+    item('Avengers', 'supplied', { hasTile: true, coverDate: '2026-07' }),
+  ])).toEqual(['Avengers', 'Venom'])
+})
+
+// Comic Vine dates a want to the day and a comic's own file to the month. Compared as
+// they come, `2027-01` sorts before `2027-01-01` and the same month splits in two.
+test('a cover date is read to the month, whatever it was written to', () => {
+  expect(monthOf('2027-01-01')).toBe('2027-01')
+  expect(monthOf('2027-01')).toBe('2027-01')
+  expect(monthOf(null)).toBeUndefined()
+  expect(monthOf('')).toBeUndefined()
+})
+
+// The oldest unread comic is the one on the run's cover and the one you would open next,
+// so it is the date the run is sorted on.
+test('a run is dated by its oldest comic', () => {
+  expect(oldestMonth(['2027-01-15', null, '2026-07-01', '2026-11'])).toBe('2026-07')
+  expect(oldestMonth([null, undefined])).toBeUndefined()
 })

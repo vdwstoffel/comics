@@ -4,7 +4,9 @@ import type { ApiFollow, ApiLibraryBook, ApiUpcoming } from '../api'
 import { groupByVolume, groupByArc } from '../lib/volumeGroups'
 import type { FollowSoon } from '../lib/followStatus'
 import { useUpcoming } from '../lib/useUpcoming'
-import { sortFollows, bandOf } from '../lib/followOrder'
+import { sortFollows, bandOf, monthOf, oldestMonth } from '../lib/followOrder'
+import type { FollowSort } from '../lib/followOrder'
+import { useFollowSort } from '../lib/useFollowSort'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import { upcomingForEdition } from '../lib/upcomingForEdition'
 import { writeOutShortDay } from '../lib/releaseWeek'
@@ -80,6 +82,7 @@ export default function Following() {
   // Shares a query key with the Upcoming tab and with every volume's Coming soon list, so
   // a shelf full of follows reads the calendar once - and names the same dates it does.
   const upcoming = useUpcoming()
+  const [sort, chooseSort] = useFollowSort()
 
   const unfollow = useMutation({
     mutationFn: ({ kind, refId }: { kind: 'volume' | 'arc'; refId: number }) => api.unfollow(kind, refId),
@@ -106,14 +109,28 @@ export default function Following() {
       : arcGroup
         ? <ArcGroupTile group={arcGroup} showCount={false} />
         : null
-    return { follow, tile, hasTile: tile != null, soon: soonFor(follow, upcoming.data) }
-  }))
+    // Dated by the oldest comic the tile holds - the one on its cover - or by the issue that
+    // is out when there is no tile. Only read when Available is sorted by cover date.
+    const coverDate = tile ? oldestMonth(held.map((b) => b.date)) : monthOf(follow.want?.coverDate)
+    return { follow, tile, hasTile: tile != null, soon: soonFor(follow, upcoming.data), coverDate }
+  }), sort)
 
   return (
     <>
       <LibraryRail />
       <main className="library-content">
-        <h1 className="page-title">Following</h1>
+        {/* Page-wide, though only Available moves: Coming soon is in date order already
+            and No date yet has nothing to sort on. */}
+        <div className="following-header">
+          <h1 className="page-title">Following</h1>
+          <label className="following-sort">
+            Sort
+            <select value={sort} onChange={(e) => chooseSort(e.target.value as FollowSort)}>
+              <option value="name">Name</option>
+              <option value="date">Cover date</option>
+            </select>
+          </label>
+        </div>
         {(follows.isLoading || books.isLoading) && <p>Loading…</p>}
         {follows.error && <p>Failed to load what you follow.</p>}
         {books.error && <p>Failed to load your unread comics.</p>}

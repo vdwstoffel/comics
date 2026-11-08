@@ -23,6 +23,7 @@ function show() {
 
 beforeEach(() => {
   vi.restoreAllMocks()
+  localStorage.clear()
   vi.spyOn(api, 'getLibraryBooks').mockResolvedValue({ books: [] })
   // The rail beside the shelf asks for these; stub them so nothing reaches the network.
   vi.spyOn(api, 'getPublishers').mockResolvedValue({ publishers: [] })
@@ -400,4 +401,71 @@ test('a dormant follow is not given a cover by a solicitation its tile never sho
   await screen.findByText(/finish an issue to pull the next/i)
   expect(headings()).toEqual(['No date yet'])
   expect(document.querySelector('.follow-upcoming')).toBeNull()
+})
+
+// --- Sorting Available. Two runs and an issue that is out, each with a different cover
+// month, named so that alphabetical and oldest-first disagree.
+
+function datedShelf() {
+  const run = (refId: number, name: string, date: string) => ({
+    ...BOOK, id: refId * 10, editionId: refId, editionName: name, seriesName: name, title: name,
+    shelfKey: `edition:${refId}`, shelfName: name, date,
+  })
+  vi.spyOn(api, 'getLibraryBooks').mockResolvedValue({
+    books: [run(1, 'Avengers', '2026-10'), run(2, 'Batman', '2027-01'), run(2, 'Batman', '2026-09')],
+  })
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [
+      { kind: 'volume', refId: 1, name: 'Avengers', state: 'supplied' },
+      { kind: 'volume', refId: 2, name: 'Batman', state: 'supplied' },
+      {
+        kind: 'volume', refId: 3, name: 'Thor', state: 'wanted',
+        want: { id: 2, number: '10', name: null, seriesName: 'Thor', coverDate: '2026-11-01' }, queued: false,
+      },
+    ],
+  })
+}
+
+const sortControl = () => screen.findByRole('combobox', { name: 'Sort' })
+
+test('Available starts in name order, as it always was', async () => {
+  datedShelf()
+  show()
+  expect(await sortControl()).toHaveValue('name')
+  await screen.findAllByRole('link', { name: /Batman/ })
+  expect(shelfNames()).toEqual(['Avengers', 'Batman', 'Thor'])
+})
+
+test('sorting by cover date puts the oldest comic first', async () => {
+  datedShelf()
+  show()
+  fireEvent.change(await sortControl(), { target: { value: 'date' } })
+  await screen.findAllByRole('link', { name: /Batman/ })
+  // Batman's oldest unread is 2026-09 - the comic on its cover - though it also holds a
+  // 2027-01. Avengers is 2026-10, Thor's issue is out at 2026-11.
+  expect(shelfNames()).toEqual(['Batman', 'Avengers', 'Thor'])
+})
+
+test('the sort chosen is the sort the page opens on next time', async () => {
+  datedShelf()
+  const first = show()
+  fireEvent.change(await sortControl(), { target: { value: 'date' } })
+  first.unmount()
+
+  show()
+  expect(await sortControl()).toHaveValue('date')
+  await screen.findAllByRole('link', { name: /Batman/ })
+  expect(shelfNames()).toEqual(['Batman', 'Avengers', 'Thor'])
+})
+
+// A private window, or storage the browser has blocked, throws on access. Losing the
+// remembered choice there is fine; losing the page is not.
+test('a browser that will not store the choice still sorts', async () => {
+  datedShelf()
+  vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => { throw new Error('denied') })
+  vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => { throw new Error('denied') })
+  show()
+  fireEvent.change(await sortControl(), { target: { value: 'date' } })
+  await screen.findAllByRole('link', { name: /Batman/ })
+  expect(shelfNames()).toEqual(['Batman', 'Avengers', 'Thor'])
 })
