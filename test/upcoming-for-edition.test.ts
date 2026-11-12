@@ -48,6 +48,34 @@ test('leaves out a relaunch under the same name', () => {
   expect(upcomingForEdition(weeks, CAP)).toEqual([])
 })
 
+// Comic Vine dates a volume by its first cover and Marvel by the year it went on sale, so a
+// #1 out in November under a January cover is 2027 to one and "(2026)" to the other.
+test('keeps a year that disagrees when the number carries on from what you hold', () => {
+  const weeks = [{ week: '2026-12-16', issues: [issue('Avengers (2026) #2')] }]
+  const avengers = { name: 'Avengers (2027)', seriesName: 'Avengers', cvStartYear: 2027, lastHeldNumber: 1 }
+
+  expect(upcomingForEdition(weeks, avengers).map((i) => i.headline))
+    .toEqual(['Avengers (2026) #2'])
+})
+
+// Marvel restates the year when a run goes back to legacy numbering; Comic Vine does not.
+test('keeps a legacy-numbered run that Marvel dates as a new volume', () => {
+  const weeks = [{ week: '2026-11-25', issues: [issue('Thor (2026) #803')] }]
+  const thor = { name: 'Thor (2025)', seriesName: 'Thor', cvStartYear: 2025, lastHeldNumber: 802 }
+
+  expect(upcomingForEdition(weeks, thor).map((i) => i.headline))
+    .toEqual(['Thor (2026) #803'])
+})
+
+test('a relaunch numbered from the start again stays out, whatever you hold', () => {
+  const weeks = [{
+    week: '2027-01-06',
+    issues: [issue('Captain America (2027) #1'), issue('Captain America (2027) #2')],
+  }]
+
+  expect(upcomingForEdition(weeks, { ...CAP, lastHeldNumber: 17 })).toEqual([])
+})
+
 test('keeps an issue whose headline states no year', () => {
   const weeks = [{ week: '2026-10-28', issues: [issue('Captain America Annual #1')] }]
   const annuals = { ...CAP, seriesName: 'Captain America Annual' }

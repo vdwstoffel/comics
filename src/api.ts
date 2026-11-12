@@ -426,12 +426,14 @@ export interface ApiFollow {
   /** Only on a `wanted` follow: whether that issue is already in the download queue. */
   queued?: boolean
   /** Only on a volume follow: every name its run answers to, for matching the solicitation
-   *  calendar. `cvStartYear` is what tells a relaunch from the run before it. */
+   *  calendar. `cvStartYear` is what tells a relaunch from the run before it, and
+   *  `lastHeldNumber` what overrules it when the calendar dates the volume differently. */
   edition?: {
     name: string
     seriesName: string | null
     cvName: string | null
     cvStartYear: number | null
+    lastHeldNumber?: number | null
   }
 }
 

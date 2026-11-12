@@ -9,7 +9,7 @@ import { statusFrom, STATUS_LABELS } from '../lib/readStatus'
 import CoverTile from '../components/CoverTile'
 import { tileLabel } from '../lib/tileLabel'
 import { useUpcoming } from '../lib/useUpcoming'
-import { upcomingForEdition } from '../lib/upcomingForEdition'
+import { upcomingForEdition, highestPlainNumber } from '../lib/upcomingForEdition'
 import { volumeEntries } from '../lib/volumeEntries'
 import EditionEditDialog from '../components/EditionEditDialog'
 import CollectsBanner, { volumeHref, volumeLabel } from '../components/CollectsBanner'
@@ -258,6 +258,7 @@ export default function Edition() {
       seriesName: data.edition.seriesName,
       cvName: data.edition.cvName,
       cvStartYear: data.edition.cvStartYear,
+      lastHeldNumber: highestPlainNumber(data.books.map((b) => b.number)),
     },
   )
 

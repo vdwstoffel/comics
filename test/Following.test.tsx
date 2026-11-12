@@ -228,6 +228,15 @@ test('a relaunch solicited under the same title is not this run', async () => {
   expect(await screen.findByText('Waiting on the next issue — no further details')).toBeInTheDocument()
 })
 
+test('a run the calendar dates a year off is still this run when its number carries on', async () => {
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [{ ...CAUGHT_UP, edition: { ...CAUGHT_UP.edition, lastHeldNumber: 15 } }],
+  })
+  vi.spyOn(api, 'getUpcoming').mockResolvedValue(solicited('Iron Man (2019) #16', '2026-10-28'))
+  show()
+  expect(await screen.findByText('Next: 28 Oct 2026')).toBeInTheDocument()
+})
+
 test('an arc follow has no calendar to consult and says so', async () => {
   vi.spyOn(api, 'getFollows').mockResolvedValue({
     follows: [{ kind: 'arc', refId: 77, name: 'Dark Reign', state: 'caught-up' }],

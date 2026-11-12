@@ -174,8 +174,23 @@ test('a volume follow carries the names the solicitation calendar matches on', a
     const res = await t.app.inject({ method: 'GET', url: '/api/follows' })
 
     expect(res.json().follows[0].edition).toEqual({
-      name: 'Iron Man', seriesName: 'Iron Man', cvName: 'Iron Man', cvStartYear: 2020,
+      name: 'Iron Man', seriesName: 'Iron Man', cvName: 'Iron Man', cvStartYear: 2020, lastHeldNumber: null,
     })
+  } finally { await t.cleanup() }
+})
+
+test('a volume follow carries the highest plain issue number held, skipping annuals', async () => {
+  const t = await setup()
+  try {
+    for (const number of ['801', '802', 'Annual 1', '13']) {
+      const b = insertBook(t.db, { editionId: t.edition.id, filePath: `Iron Man/${number}.cbz`, pageCount: 10, fileSize: 1 })!
+      updateBook(t.db, b.id, { number })
+    }
+    addFollow(t.db, 'volume', t.edition.id, 'Iron Man')
+
+    const res = await t.app.inject({ method: 'GET', url: '/api/follows' })
+
+    expect(res.json().follows[0].edition.lastHeldNumber).toBe(802)
   } finally { await t.cleanup() }
 })
 

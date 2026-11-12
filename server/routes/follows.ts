@@ -2,6 +2,7 @@ import { createComicVine } from '../lib/comicvine.js'
 import { addFollow, listFollows, removeFollow } from '../models/follows.js'
 import type { Follow, FollowKind } from '../models/follows.js'
 import { getEdition } from '../models/editions.js'
+import { listBooksByEdition } from '../models/books.js'
 import { getComicVineKey } from '../models/settings.js'
 import { findLiveByIssue } from '../models/downloadQueue.js'
 import { resolveArcId } from '../services/arcIdentity.js'
@@ -19,6 +20,19 @@ export interface FollowRouteOpts {
 
 const KINDS: FollowKind[] = ['volume', 'arc']
 const isKind = (v: unknown): v is FollowKind => KINDS.includes(v as FollowKind)
+
+/**
+ * The highest plain issue number held in an edition, or null when it holds none. The same
+ * rule as `plainNumber` in src/lib/upcomingForEdition.ts, which reads what this returns:
+ * "Annual 1" and "7.LR" are not places in a count.
+ */
+function lastHeldNumber(app: App, editionId: number): number | null {
+  const plain = listBooksByEdition(app.db, editionId)
+    .map((book) => book.number?.trim() ?? '')
+    .filter((n) => /^\d+(\.\d+)?$/.test(n))
+    .map(Number)
+  return plain.length ? Math.max(...plain) : null
+}
 
 export default async function followRoutes(app: App, opts: FollowRouteOpts = {}) {
   const { fetchPage = fetchSourcePage } = opts
@@ -38,9 +52,10 @@ export default async function followRoutes(app: App, opts: FollowRouteOpts = {})
         continue
       }
       // The names the solicitation calendar matches a run on - `cvStartYear` above all,
-      // which is what tells a relaunch from the run before it. The shelf does the matching
-      // itself, against a calendar only the browser has; the server's part is to say which
-      // volume this follow is, in every name that volume answers to.
+      // which is what tells a relaunch from the run before it, and the last issue you hold,
+      // which is what overrules it when the calendar dates the volume differently. The shelf
+      // does the matching itself, against a calendar only the browser has; the server's part
+      // is to say which volume this follow is, in every name that volume answers to.
       const edition = follow.kind === 'volume' ? getEdition(app.db, follow.refId) : undefined
 
       views.push({
@@ -55,6 +70,7 @@ export default async function followRoutes(app: App, opts: FollowRouteOpts = {})
                 seriesName: edition.seriesName,
                 cvName: edition.cvName,
                 cvStartYear: edition.cvStartYear,
+                lastHeldNumber: lastHeldNumber(app, edition.id),
               },
             }
           : {}),

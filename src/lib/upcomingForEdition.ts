@@ -24,6 +24,14 @@ export interface EditionNames {
   cvName?: string | null
   /** The year the run began, when Comic Vine has told us. */
   cvStartYear?: number | null
+  /**
+   * The highest plain issue number you hold in this run.
+   *
+   * What you hold rather than what Comic Vine lists, because Comic Vine files issues ahead
+   * of their Wednesday and every one of those is a row this would otherwise hide. A comic
+   * on your shelf is out by definition.
+   */
+  lastHeldNumber?: number | null
 }
 
 export interface UpcomingIssueForEdition {
@@ -84,6 +92,21 @@ function statedYear(headline: string): number | null {
   return year ? Number(year) : null
 }
 
+/**
+ * An issue number as a number, or null for anything that is not plainly one: `Annual 1`,
+ * `1.MU`, `½`. Those are not places in a count, so they cannot say they come after one.
+ */
+export function plainNumber(n: string | null | undefined): number | null {
+  const digits = n?.trim().replace(/^#\s*/, '')
+  return digits && /^\d+(\.\d+)?$/.test(digits) ? Number(digits) : null
+}
+
+/** The highest of these issue numbers that is a plain number, or null when none is. */
+export function highestPlainNumber(numbers: Array<string | null | undefined>): number | null {
+  const plain = numbers.map(plainNumber).filter((n): n is number => n !== null)
+  return plain.length ? Math.max(...plain) : null
+}
+
 export function upcomingForEdition(
   weeks: UpcomingWeekLike[],
   edition: EditionNames,
@@ -101,10 +124,19 @@ export function upcomingForEdition(
   // every few years, and "Captain America (2027) #1" on the page for the 2025 volume is
   // not a comic you are waiting for. Requiring a year outright would be worse: it would
   // drop every annual and special, which state none.
+  //
+  // And a disagreement is not the last word. The two sources date a volume differently -
+  // Comic Vine by its first cover, Marvel by the year it went on sale, and Marvel restates
+  // the year when a run goes back to legacy numbering - so a run you are reading can be
+  // "(2026)" on the calendar and 2027 or 2025 on Comic Vine. What a relaunch cannot do is
+  // carry on the count: it starts again at #1, below anything you hold of the old run.
   const startYear = edition.cvStartYear
+  const lastHeld = edition.lastHeldNumber
   const sameRun = (headline: string): boolean => {
     const year = statedYear(headline)
-    return year === null || startYear == null || year === startYear
+    if (year === null || startYear == null || year === startYear) return true
+    const number = plainNumber(labelOf(headline))
+    return lastHeld != null && number !== null && number > lastHeld
   }
 
   return weeks
