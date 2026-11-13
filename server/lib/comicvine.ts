@@ -19,6 +19,7 @@ const STORY_ARC_FIELDS = 'id,name,deck,publisher,image,site_detail_url,issues'
 // The arc response names its issues and nothing else. These are the fields that put them
 // in order and give a tile something to say beyond "Issue 1182995".
 const ARC_ISSUE_FIELDS = 'id,issue_number,cover_date,store_date,volume'
+const LISTED_ISSUE_FIELDS = 'id,issue_number,name,cover_date,store_date,volume,image,site_detail_url'
 const VOLUME_ISSUE_FIELDS = 'id,issue_number,name,cover_date,site_detail_url'
 // What a candidate row under a search heading shows, and nothing more. The volume's own
 // description is deliberately absent: a search returns ten of these, and the reading of a
@@ -189,6 +190,12 @@ export interface CvArcIssue {
   /** The day it reached shops. Runs about two months behind the cover date. */
   storeDate?: string
 }
+/** An issue read by id, with what a reading list entry is copied from. */
+export interface CvListedIssue extends CvArcIssue {
+  /** The cover, for a reading list's shelf tile. */
+  imageUrl?: string
+}
+
 export interface CvStoryArc {
   id?: number
   name?: string
@@ -274,6 +281,9 @@ export interface ComicVineClient {
   getStoryArc(id: number | string): Promise<CvStoryArc>
   listIssuesOnSale(day: string): Promise<CvReleaseIssue[]>
   getVolumePublishers(ids: number[]): Promise<Map<number, string | undefined>>
+  /** Many issues by id, a hundred to a request, in the order asked; an id Comic Vine does
+   *  not know is left out rather than failing the rest. */
+  listIssuesByIds(ids: number[]): Promise<CvListedIssue[]>
   /** Resolves when Comic Vine accepts the key; throws carrying its reason when it does not. */
   verifyKey(): Promise<void>
 }
@@ -604,6 +614,24 @@ export function createComicVine({ apiKey, fetchImpl = fetch, now = () => Date.no
       }
 
       return issues
+    },
+    async listIssuesByIds(ids) {
+      const found = await byIds('/issues/', LISTED_ISSUE_FIELDS, ids)
+      return ids.flatMap((id) => {
+        const r = found.get(id)
+        if (!r) return []
+        return [{
+          id,
+          number: r.issue_number,
+          name: r.name ?? undefined,
+          volumeName: r.volume?.name,
+          volumeId: r.volume?.id,
+          coverDate: r.cover_date,
+          storeDate: r.store_date,
+          siteUrl: r.site_detail_url,
+          imageUrl: r.image?.medium_url || r.image?.original_url,
+        }]
+      })
     },
     async getVolumePublishers(ids) {
       const rows = await byIds('/volumes/', VOLUME_PUBLISHER_FIELDS, ids)

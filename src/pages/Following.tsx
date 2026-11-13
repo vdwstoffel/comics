@@ -1,6 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import type { ApiFollow, ApiLibraryBook, ApiUpcoming } from '../api'
+import type { ApiFollow, ApiLibraryBook, ApiUpcoming, FollowKind } from '../api'
 import { groupByVolume, groupByArc } from '../lib/volumeGroups'
 import type { FollowSoon } from '../lib/followStatus'
 import { useUpcoming } from '../lib/useUpcoming'
@@ -61,12 +61,19 @@ function soonFor(follow: ApiFollow, upcoming: ApiUpcoming | undefined): FollowSo
   }
 }
 
-/** The unread comics this follow holds: its edition's, or its arc's. */
+/** The unread comics this follow holds: its edition's, its arc's, or its reading list's. */
 function booksFor(follow: ApiFollow, books: ApiLibraryBook[]): ApiLibraryBook[] {
-  return follow.kind === 'volume'
-    ? books.filter((b) => b.editionId === follow.refId)
-    : books.filter((b) => b.arcs.includes(follow.name))
+  if (follow.kind === 'volume') return books.filter((b) => b.editionId === follow.refId)
+  if (follow.kind === 'arc') return books.filter((b) => b.arcs.includes(follow.name))
+  // In the order the list reads rather than the shelf's, so the cover is the next one up.
+  const order = new Map((follow.list?.issueIds ?? []).map((id, i) => [id, i]))
+  return books
+    .filter((b) => b.comicvineId != null && order.has(b.comicvineId))
+    .sort((a, b) => order.get(a.comicvineId!)! - order.get(b.comicvineId!)!)
 }
+
+/** How the unfollow button names what it unfollows. */
+const KIND_NAMES: Record<FollowKind, string> = { volume: 'run', arc: 'story arc', list: 'reading list' }
 
 export default function Following() {
   useDocumentTitle('Following')
@@ -85,7 +92,7 @@ export default function Following() {
   const [sort, chooseSort] = useFollowSort()
 
   const unfollow = useMutation({
-    mutationFn: ({ kind, refId }: { kind: 'volume' | 'arc'; refId: number }) => api.unfollow(kind, refId),
+    mutationFn: ({ kind, refId }: { kind: FollowKind; refId: number }) => api.unfollow(kind, refId),
     onSuccess: () => { void queryClient.invalidateQueries({ queryKey: ['follows'] }) },
   })
 
@@ -104,11 +111,18 @@ export default function Following() {
       ? groupByArc(held).arcs.find((a) => a.name === follow.name)
       : undefined
     const volumeGroup = follow.kind === 'volume' ? groupByVolume(held)[0] : undefined
+    // A list crosses series the way an arc does, so it is drawn as one: the deck of what
+    // you hold, opening the list rather than a comic.
+    const listGroup = follow.kind === 'list' && follow.list && held.length > 0
+      ? { name: follow.name, books: held, seriesCount: new Set(held.map((b) => b.editionId)).size }
+      : undefined
     const tile = volumeGroup
       ? <VolumeGroupTile group={volumeGroup} showCount={false} />
       : arcGroup
         ? <ArcGroupTile group={arcGroup} showCount={false} />
-        : null
+        : listGroup
+          ? <ArcGroupTile group={listGroup} showCount={false} to={`/lists/${encodeURIComponent(follow.list!.slug)}`} />
+          : null
     // Dated by the oldest comic the tile holds - the one on its cover - or by the issue that
     // is out when there is no tile. Only read when Available is sorted by cover date.
     const coverDate = tile ? oldestMonth(held.map((b) => b.date)) : monthOf(follow.want?.coverDate)
@@ -135,7 +149,7 @@ export default function Following() {
         {follows.error && <p>Failed to load what you follow.</p>}
         {books.error && <p>Failed to load your unread comics.</p>}
         {follows.data && books.data && all.length === 0 && (
-          <p>Not following anything yet. Open a run or a story arc and press Follow.</p>
+          <p>Not following anything yet. Open a run, a story arc or a reading list and press Follow.</p>
         )}
         {/* Held-or-waiting is only decidable once the unread books have arrived. Before
             that every follow would look empty, and the waiting tile would state - falsely -
@@ -181,7 +195,7 @@ export default function Following() {
                       <button
                         type="button"
                         className="follow-item__unfollow"
-                        aria-label={`Unfollow ${follow.name} (${follow.kind === 'arc' ? 'story arc' : 'run'})`}
+                        aria-label={`Unfollow ${follow.name} (${KIND_NAMES[follow.kind]})`}
                         onClick={() => unfollow.mutate({ kind: follow.kind, refId: follow.refId })}
                       >
                         Unfollow

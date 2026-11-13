@@ -137,6 +137,27 @@ test('an arc follow draws its own arc even when a tie-in lists another first', a
   expect(screen.queryByRole('link', { name: /Maximum Carnage/ })).not.toBeInTheDocument()
 })
 
+// A list crosses series the way an arc does, so it is drawn as one - but opens the list,
+// with the next comic in the list's own order on the cover.
+test('a reading-list follow draws its unread comics as one tile that opens the list', async () => {
+  vi.spyOn(api, 'getLibraryBooks').mockResolvedValue({ books: [
+    { ...BOOK, id: 21, comicvineId: 102, number: '2', title: 'Avengers' },
+    { ...BOOK, id: 20, comicvineId: 101, number: '1', title: 'Avengers' },
+    { ...BOOK, id: 30, comicvineId: 555, number: '9' },
+  ] })
+  vi.spyOn(api, 'getFollows').mockResolvedValue({
+    follows: [{
+      kind: 'list', refId: 1, name: "Hickman's Avengers", state: 'supplied',
+      list: { slug: 'hickmans-avengers', issueIds: [101, 102, 103] },
+    }],
+  })
+  show()
+  const tile = await screen.findByRole('link', { name: /Hickman's Avengers/ })
+  expect(tile).toHaveAttribute('href', '/lists/hickmans-avengers')
+  expect(tile.querySelector('img')).toHaveAttribute('src', '/api/books/20/thumbnail')
+  expect(screen.getByRole('button', { name: "Unfollow Hickman's Avengers (reading list)" })).toBeInTheDocument()
+})
+
 test('a volume follow ignores unread books from another edition', async () => {
   vi.spyOn(api, 'getLibraryBooks').mockResolvedValue({ books: [{ ...BOOK, editionId: 2 }] })
   vi.spyOn(api, 'getFollows').mockResolvedValue({

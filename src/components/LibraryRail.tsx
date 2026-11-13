@@ -31,11 +31,13 @@ export default function LibraryRail({
   const { pathname } = useLocation()
   const onArcs = pathname.startsWith('/arcs')
   const onFollowing = pathname.startsWith('/following')
+  const onLists = pathname.startsWith('/lists')
   const { data: publishersData } = useQuery({ queryKey: ['publishers'], queryFn: api.getPublishers })
   const { data: allEditionsData } = useQuery({ queryKey: ['editions', null], queryFn: () => api.getEditions() })
   const { data: readStateData } = useQuery({ queryKey: ['read-states'], queryFn: api.getReadStates })
   const { data: arcsData } = useQuery({ queryKey: ['arcs'], queryFn: api.getArcs })
   const { data: followsData } = useQuery({ queryKey: ['follows'], queryFn: api.getFollows })
+  const { data: listsData } = useQuery({ queryKey: ['reading-lists'], queryFn: api.getReadingLists })
 
   const publishers = publishersData?.publishers ?? []
   const items: { key: string; label: string }[] = publishers.map((p) => ({ key: p.name, label: p.name }))
@@ -46,6 +48,7 @@ export default function LibraryRail({
 
   const arcs = arcsData?.arcs ?? []
   const following = followsData?.follows ?? []
+  const lists = listsData?.lists ?? []
 
   return (
     <nav className="library-rail">
@@ -72,7 +75,7 @@ export default function LibraryRail({
           rail has exactly one visual language - a titled group of tight rows - and two
           lone untitled links floating under Status read as neither a group nor a filter.
           Each keeps its own labelled region so it is still announced as its own thing. */}
-      {(arcs.length > 0 || following.length > 0) && (
+      {(arcs.length > 0 || lists.length > 0 || following.length > 0) && (
         <div className="filter-sidebar">
           <div className="filter-sidebar__title">Shelves</div>
           {arcs.length > 0 && (
@@ -83,6 +86,17 @@ export default function LibraryRail({
                 <li>
                   <Link to="/arcs" className={`filter-sidebar__item${onArcs ? ' filter-sidebar__item--active' : ''}`}>
                     <span className="filter-sidebar__label">Story Arcs</span>
+                  </Link>
+                </li>
+              </ul>
+            </aside>
+          )}
+          {lists.length > 0 && (
+            <aside aria-label="Reading Lists">
+              <ul className="filter-sidebar__list">
+                <li>
+                  <Link to="/lists" className={`filter-sidebar__item${onLists ? ' filter-sidebar__item--active' : ''}`}>
+                    <span className="filter-sidebar__label">Reading Lists</span>
                   </Link>
                 </li>
               </ul>

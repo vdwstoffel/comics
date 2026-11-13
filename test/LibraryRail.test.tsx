@@ -23,6 +23,7 @@ beforeEach(() => {
   } as never)
   vi.spyOn(api, 'getArcs').mockResolvedValue({ arcs: [] })
   vi.spyOn(api, 'getFollows').mockResolvedValue({ follows: [] })
+  vi.spyOn(api, 'getReadingLists').mockResolvedValue({ lists: [] })
 })
 
 test('the shelf rail offers Unread and no Read', async () => {
@@ -34,4 +35,13 @@ test('the shelf rail offers Unread and no Read', async () => {
 test('a rail asked to include Read offers it', async () => {
   show(true)
   expect(await screen.findByRole('button', { name: 'Read' })).toBeInTheDocument()
+})
+
+test('the rail opens the reading lists when there are any', async () => {
+  vi.spyOn(api, 'getReadingLists').mockResolvedValue({ lists: [{
+    id: 1, slug: 'hickmans-avengers', name: "Hickman's Avengers", publisher: 'Marvel', years: null,
+    cover: null, total: 92, owned: 0,
+  }] })
+  show()
+  expect(await screen.findByRole('link', { name: 'Reading Lists' })).toHaveAttribute('href', '/lists')
 })

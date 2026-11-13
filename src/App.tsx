@@ -14,6 +14,8 @@ import SearchComics from './pages/SearchComics'
 import Arcs from './pages/Arcs'
 import Arc from './pages/Arc'
 import Following from './pages/Following'
+import ReadingLists from './pages/ReadingLists'
+import ReadingList from './pages/ReadingList'
 import LibrarySearch from './pages/LibrarySearch'
 import Releases from './pages/Releases'
 import SettingsLayout from './pages/settings/SettingsLayout'
@@ -175,6 +177,8 @@ export default function App() {
       <Route path="/" element={<LibraryLayout><Library /></LibraryLayout>} />
       <Route path="/arcs" element={<LibraryLayout><Arcs /></LibraryLayout>} />
       <Route path="/arcs/:name" element={<LibraryLayout><Arc /></LibraryLayout>} />
+      <Route path="/lists" element={<LibraryLayout><ReadingLists /></LibraryLayout>} />
+      <Route path="/lists/:slug" element={<LibraryLayout><ReadingList /></LibraryLayout>} />
       <Route path="/following" element={<LibraryLayout><Following /></LibraryLayout>} />
       <Route path="/library/search" element={<LibraryLayout><LibrarySearch /></LibraryLayout>} />
       <Route path="/series/:name" element={<Layout><Series /></Layout>} />

@@ -304,6 +304,75 @@ export interface ApiBookArc {
 }
 export interface BookArcsResponse { arcs: ApiBookArc[] }
 
+/** Core is the story; Full is the story with its tie-ins. */
+export type ListLength = 'core' | 'full'
+
+/** A reading list's tile on the shelf, counted in Core. */
+export interface ApiReadingListSummary {
+  id: number
+  slug: string
+  name: string
+  publisher: string | null
+  years: string | null
+  cover: string | null
+  /** How many issues Core holds, and how many of those are in your library. */
+  total: number
+  owned: number
+}
+
+/** One entry in a reading list: an arc issue's fields, plus whether it is a tie-in. */
+export interface ApiListIssue extends ApiArcIssue {
+  /** Read in Full only. */
+  extra: boolean
+}
+
+/** A stretch of a phase the guide names on its own. A phase the guide does not split is
+ *  one section with no name. */
+export interface ApiListSection {
+  name: string | null
+  note: string | null
+  issues: ApiListIssue[]
+}
+
+export interface ApiListPhase {
+  name: string
+  note: string | null
+  sections: ApiListSection[]
+}
+
+export interface ReadingListsResponse { lists: ApiReadingListSummary[] }
+
+/**
+ * A whole list, in Full, every tie-in marked - the page leaves them out itself in Core.
+ * `next` is where you are in each length, by Comic Vine id, worked out by the server with
+ * the rule a follow uses so the two never disagree; null once you have read it all.
+ */
+export interface ReadingListResponse {
+  list: {
+    id: number
+    slug: string
+    name: string
+    publisher: string | null
+    years: string | null
+    description: string | null
+    cover: string | null
+  }
+  length: ListLength
+  hasExtras: boolean
+  next: { core: number | null; full: number | null }
+  phases: ApiListPhase[]
+}
+
+/** Where one issue falls in a reading list holding it - the "47 of 92" on its page. */
+export interface ApiBookReadingList {
+  slug: string
+  name: string
+  /** Absent for a tie-in while the list reads in Core. */
+  position?: number
+  total: number
+  tieIn?: true
+}
+
 export interface ApiReleaseIssue {
   id: number
   number?: string
@@ -414,9 +483,11 @@ export type FilterState = 'unread' | 'read'
 
 export type FollowState = 'wanted' | 'supplied' | 'dormant' | 'caught-up'
 
+export type FollowKind = 'volume' | 'arc' | 'list'
+
 export interface ApiFollow {
-  kind: 'volume' | 'arc'
-  /** The edition id for a volume; Comic Vine's arc id for an arc. */
+  kind: FollowKind
+  /** The edition id for a volume; Comic Vine's arc id for an arc; the file's id for a list. */
   refId: number
   name: string
   state: FollowState
@@ -442,13 +513,16 @@ export interface ApiFollow {
     cvStartYear: number | null
     lastHeldNumber?: number | null
   }
+  /** Only on a reading-list follow: where its page is, and its comics in reading order -
+   *  in the length it is read in - for finding them among your unread ones. */
+  list?: { slug: string; issueIds: number[] }
 }
 
 /** What POST /api/follows returns: the stored row, not the computed state. Callers refetch with
  *  getFollows() rather than reading state from this response, so the shelf always reflects the
  *  server's live computation. */
 export interface ApiFollowRef {
-  kind: 'volume' | 'arc'
+  kind: FollowKind
   refId: number
   name: string
   createdAt: string
@@ -511,6 +585,8 @@ export interface BookResponse {
   progress: ApiProgress
   credits?: ApiCredit[]
   tags?: ApiTag[]
+  /** Every reading list holding this issue. Only GET /api/books/:id sends it. */
+  readingLists?: ApiBookReadingList[]
   /** What an apply actually moved, so a Refresh can say what changed. Absent elsewhere. */
   changed?: string[]
   /**
@@ -822,6 +898,17 @@ export const api = {
    *  so there is no one edition the press can name. */
   downloadArcIssue: (cvIssueId: number, indexId?: number) =>
     json<QueuedResponse>(`/api/arcs/issues/${cvIssueId}/download`, pickedRowPost(indexId)),
+
+  getReadingLists: () => json<ReadingListsResponse>('/api/lists'),
+  getReadingList: (slug: string) => json<ReadingListResponse>(`/api/lists/${encodeURIComponent(slug)}`),
+  /** Read a list in Core or Full. Saved on the server, because Follow reads it too. */
+  setReadingListLength: (slug: string, length: ListLength) =>
+    json<{ length: ListLength }>(`/api/lists/${encodeURIComponent(slug)}/length`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ length }),
+    }),
+  /** A gap in a reading list. Where it lands is the server's decision, as for an arc. */
+  downloadListIssue: (cvIssueId: number, indexId?: number) =>
+    json<QueuedResponse>(`/api/lists/issues/${cvIssueId}/download`, pickedRowPost(indexId)),
   getCharacter: (bookId: string | number, name: string) =>
     json<CharacterResponse>(`/api/books/${bookId}/character?name=${encodeURIComponent(name)}`),
   cvSearch: (q: string, type: string) =>
@@ -964,6 +1051,13 @@ export const api = {
       body: JSON.stringify({ kind: 'arc', name }),
     }),
 
-  unfollow: (kind: 'volume' | 'arc', refId: number) =>
+  /** A reading list is followed by the id its file declares. */
+  followList: (listId: number) =>
+    json<{ follow: ApiFollowRef }>('/api/follows', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ kind: 'list', listId }),
+    }),
+
+  unfollow: (kind: FollowKind, refId: number) =>
     json<{ unfollowed: boolean }>(`/api/follows/${kind}/${refId}`, { method: 'DELETE' }),
 }

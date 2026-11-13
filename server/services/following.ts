@@ -13,6 +13,7 @@ import { cacheArc, getCachedArc, ARC_CACHE_MAX_AGE_MS } from '../models/arcCache
 import { getArcOrder } from '../models/arcOrder.js'
 import { applySavedOrder } from '../lib/arcOrder.js'
 import { ownedIssueIds } from '../models/arcs.js'
+import { getReadingListById, getListLength, issuesIn, listsHolding } from '../models/readingLists.js'
 import type { CvArcIssue, CvVolumeIssue } from '../lib/comicvine.js'
 import { startIssueDownload, issueLabel } from './issueDownload.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
@@ -21,8 +22,9 @@ import type { App, Book, Db } from '../types.js'
 /**
  * What a follow is waiting for, named by spec §3.1 and carried unchanged all the way to
  * the tile. `unresolved` is the fifth: a volume follow whose edition has been deleted or
- * was never matched to Comic Vine. It is what the list route prunes on. Arc follows never
- * come back `unresolved`; an arc with no cached issues is `caught-up`.
+ * was never matched to Comic Vine, or a reading-list follow whose list has been taken out
+ * of the code. It is what the list route prunes on. Arc follows never come back
+ * `unresolved`; an arc with no cached issues is `caught-up`.
  */
 export type FollowOutcome =
   | {
@@ -46,7 +48,8 @@ export type FollowOutcome =
  * because that is the only state a fresher list could change.
  */
 export function nextWantedIssue(db: Db, follow: Follow): FollowOutcome {
-  return follow.kind === 'volume' ? volumeOutcome(db, follow) : arcOutcome(db, follow)
+  if (follow.kind === 'volume') return volumeOutcome(db, follow)
+  return follow.kind === 'arc' ? arcOutcome(db, follow) : listOutcome(db, follow)
 }
 
 function volumeOutcome(db: Db, follow: Follow): FollowOutcome {
@@ -124,6 +127,36 @@ function arcOutcome(db: Db, follow: Follow): FollowOutcome {
   }
 }
 
+/**
+ * The arc rule, walked over a reading list in whichever length it is read in - the page
+ * and the follow read the same saved length, so the next issue queued is the next one the
+ * page shows. A list carries everything a download needs, so this never waits on a cache.
+ */
+function listOutcome(db: Db, follow: Follow): FollowOutcome {
+  const list = getReadingListById(follow.refId)
+  if (!list) return { state: 'unresolved' }
+
+  const issues = issuesIn(list, getListLength(db, list.id))
+  const at = lastFinishedIndex(issues.map((i) => ({ id: i.cv })), finishedIssueIds(db))
+  if (at === -1) return { state: 'dormant' }
+
+  const next = issues[at + 1]
+  if (!next) return { state: 'caught-up' }
+  if (ownedIssueIds(db).has(next.cv)) return { state: 'supplied' }
+
+  return {
+    state: 'wanted',
+    issue: {
+      id: next.cv,
+      number: next.number,
+      ...(next.title == null ? {} : { name: next.title }),
+      ...(next.coverDate == null ? {} : { coverDate: next.coverDate }),
+    },
+    volumeName: next.volume,
+    editionName: getEditionByComicvineId(db, next.volumeId)?.name ?? next.volume,
+  }
+}
+
 /** Where a part of an arc lands: its volume's edition if we hold one, else its own name. */
 function editionNameFor(db: Db, issue: CvArcIssue): string | undefined {
   const edition = issue.volumeId == null ? undefined : getEditionByComicvineId(db, issue.volumeId)
@@ -176,9 +209,10 @@ export async function attemptFollow(
 }
 
 /**
- * Attempt every follow this comic belongs to: the run it sits in, and any arc it carries
- * a tag for. Arcs are matched on the tag's Comic Vine id rather than its name - an arc
- * follow is stored under that id, and names get restated by re-matching.
+ * Attempt every follow this comic belongs to: the run it sits in, any arc it carries a tag
+ * for, and any reading list holding it. Arcs are matched on the tag's Comic Vine id rather
+ * than its name - an arc follow is stored under that id, and names get restated by
+ * re-matching.
  *
  * Each attempt is wrapped. One follow failing must never stop the next.
  */
@@ -197,9 +231,12 @@ export async function attemptFollowsForBook(
       .filter((t) => t.kind === 'story_arc' && t.extId != null)
       .map((t) => t.extId as number),
   )
-  if (arcIds.size > 0) {
+  // A list holds an issue by its Comic Vine id, so a comic never matched has no list to be in.
+  const listIds = new Set(book.comicvineId == null ? [] : listsHolding(book.comicvineId).map((l) => l.id))
+  if (arcIds.size > 0 || listIds.size > 0) {
     for (const follow of listFollows(app.db)) {
       if (follow.kind === 'arc' && arcIds.has(follow.refId)) due.push(follow)
+      if (follow.kind === 'list' && listIds.has(follow.refId)) due.push(follow)
     }
   }
 
@@ -305,7 +342,9 @@ async function refreshCaughtUp(app: App, follows: Follow[], limit: number): Prom
           spent++
           cacheVolumeIssues(app.db, volumeId, await cv.listVolumeIssues(volumeId))
         }
-      } else {
+      } else if (follow.kind === 'arc') {
+        // A reading list falls through untouched: it only changes when its file does, so
+        // Comic Vine has nothing fresher to say about it.
         if (getCachedArc(app.db, follow.refId, ARC_CACHE_MAX_AGE_MS)) continue
         spent++
         cacheArc(app.db, follow.refId, await cv.getStoryArc(follow.refId))

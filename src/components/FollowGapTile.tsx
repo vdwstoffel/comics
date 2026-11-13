@@ -36,11 +36,13 @@ export default function FollowGapTile({ follow, soon }: FollowGapTileProps) {
     gapLabel: label,
     seed: findIssueSeed(series, want?.coverDate ?? undefined),
     // Each kind goes to the route that reads the cache its want came from: a volume
-    // follow's refId is the edition id, and an arc's gap is found by issue id alone
-    // because the tie-in belongs to some other run entirely.
+    // follow's refId is the edition id, and an arc's or a list's gap is found by issue id
+    // alone because the tie-in belongs to some other run entirely.
     onDownload: (indexId) => (follow.kind === 'arc'
       ? api.downloadArcIssue(want!.id, indexId)
-      : api.downloadMissingIssue(follow.refId, want!.id, indexId)),
+      : follow.kind === 'list'
+        ? api.downloadListIssue(want!.id, indexId)
+        : api.downloadMissingIssue(follow.refId, want!.id, indexId)),
   })
 
   return (

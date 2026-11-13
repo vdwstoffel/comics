@@ -4255,6 +4255,219 @@ textarea.input:hover:not(:focus) {
   font-weight: 600;
 }
 
+/* ============================================================
+   Reading lists
+   ============================================================ */
+
+/* Wraps on a phone: the switch, Continue and Follow are three controls of different
+   widths, and a row that cannot wrap pushes Follow off the side of the screen. */
+.list-detail__actions {
+  flex-wrap: wrap;
+}
+
+/* Core and Full as one control with two halves, because they are two answers to one
+   question - how much of the story - rather than two actions. The pressed half is filled. */
+.length-switch {
+  display: inline-flex;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.length-switch__option {
+  background: none;
+  border: none;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  padding: 7px 14px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+}
+
+.length-switch__option + .length-switch__option {
+  border-left: 1px solid var(--border);
+}
+
+.length-switch__option:hover {
+  color: var(--text);
+}
+
+.length-switch__option[aria-pressed="true"] {
+  background: var(--elevated);
+  color: var(--text);
+}
+
+.length-switch__option:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.length-switch__count {
+  color: var(--muted);
+  font-weight: 500;
+  margin-left: 2px;
+}
+
+/* A phase folded is one line of progress; open, it carries the run underneath. */
+.list-phase {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  margin-bottom: 10px;
+}
+
+.list-phase__bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  background: none;
+  border: none;
+  border-radius: var(--radius);
+  color: var(--text);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.list-phase__bar:hover .list-phase__name {
+  color: var(--accent-hover);
+}
+
+.list-phase__bar:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.list-phase__chevron {
+  color: var(--muted);
+  width: 12px;
+  flex: none;
+}
+
+.list-phase__name {
+  font-weight: 700;
+  font-size: 0.9375rem;
+  transition: color 0.15s;
+}
+
+.list-phase__here {
+  flex: none;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #fff;
+  background: var(--accent);
+  border-radius: 4px;
+  padding: 2px 6px;
+}
+
+.list-phase__count,
+.list-phase__read {
+  flex: none;
+  color: var(--muted);
+  font-size: 0.8125rem;
+}
+
+/* Pushed to the right edge with what it measures, so every bar's progress lines up down
+   the page and the phases compare at a glance. */
+.list-phase__count {
+  margin-left: auto;
+}
+
+.list-phase__progress {
+  flex: none;
+  width: 140px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--elevated);
+  overflow: hidden;
+}
+
+.list-phase__progress-fill {
+  display: block;
+  height: 100%;
+  background: var(--accent);
+}
+
+.list-phase__read {
+  min-width: 52px;
+  text-align: right;
+}
+
+.list-phase__body {
+  padding: 4px 16px 20px;
+}
+
+.list-phase__note {
+  color: var(--muted);
+  font-style: italic;
+  line-height: 1.6;
+  max-width: 62ch;
+  margin-bottom: 16px;
+}
+
+/* A stretch of a phase the guide names on its own, drawn in Full only. Spaced apart, since
+   each is a run of tiles of its own and the headings are how you find your place. */
+.list-section + .list-section {
+  margin-top: 28px;
+}
+
+.list-section__name {
+  font-size: 0.875rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+
+/* The grid cell is the wrapper, so the tag can sit under whichever tile it marks - a cover
+   or a gap - without either of them knowing tie-ins exist. */
+.list-issue {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.list-issue__tie-in {
+  align-self: start;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  padding: 1px 6px;
+}
+
+/* On a phone the bar has room for the name and where you are, not for a bar chart: the
+   progress and the issue count drop, and "N read" carries the progress on its own. */
+@media (max-width: 640px) {
+  .list-phase__bar {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .list-phase__count,
+  .list-phase__progress {
+    display: none;
+  }
+
+  .list-phase__read {
+    margin-left: auto;
+  }
+
+  .list-phase__body {
+    padding: 4px 12px 16px;
+  }
+}
+
 /* A followed run with nothing to show: exactly the footprint of the cover beside it, so a
    row of follows reads as one shelf rather than two sizes of tile. That means subtracting
    the deck gutter as well as matching the aspect - a cover's height follows its width, so

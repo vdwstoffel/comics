@@ -5,6 +5,7 @@ import { getEdition } from '../models/editions.js'
 import { shelfVolumeIdsByEdition } from '../models/shelves.js'
 import { getProgress, setProgress, deriveReadState } from '../models/progress.js'
 import { getBookCredits, getBookTags } from '../models/metadata.js'
+import { bookReadingLists } from '../models/readingLists.js'
 import { readPage } from '../lib/cbz.js'
 import { moveBookToEdition, removeBook } from '../services/library.js'
 import { attemptFollowsForBook } from '../services/following.js'
@@ -54,6 +55,9 @@ export default async function booksRoutes(app: App) {
       progress: getProgress(app.db, book.id),
       credits: getBookCredits(app.db, book.id),
       tags: getBookTags(app.db, book.id),
+      // Unlike an arc's "Part 2 of 6", this needs nothing from Comic Vine - the lists are
+      // in code - so it rides along with the comic instead of costing a request of its own.
+      readingLists: bookReadingLists(app.db, book.comicvineId),
     }
   })
 

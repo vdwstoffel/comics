@@ -11,6 +11,9 @@ interface ArcGroupTileProps {
    *  series. Off on the Following shelf for the same reason a run's count is: that page
    *  is about which stories you keep up with, not how far behind you are on them. */
   showCount?: boolean
+  /** Where the tile leads. The arc's own page unless said otherwise - a reading list is
+   *  drawn as an arc is, but opens its own page. */
+  to?: string
 }
 
 /**
@@ -27,7 +30,7 @@ interface ArcGroupTileProps {
  * The cover is the first unread comic rather than Comic Vine's artwork for the arc. The
  * shelf has to draw before Comic Vine answers, and without a key at all.
  */
-export default function ArcGroupTile({ group, showCount = true }: ArcGroupTileProps) {
+export default function ArcGroupTile({ group, showCount = true, to }: ArcGroupTileProps) {
   const back = useBackOrigin()
   const next = group.books[0]
 
@@ -38,7 +41,7 @@ export default function ArcGroupTile({ group, showCount = true }: ArcGroupTilePr
 
   return (
     <div className="volume-tile">
-      <Link className="arc-tile__link" to={`/arcs/${encodeURIComponent(group.name)}`} state={back}>
+      <Link className="arc-tile__link" to={to ?? `/arcs/${encodeURIComponent(group.name)}`} state={back}>
         <span className="volume-tile__deck">
           {plates.map((step) => (
             <span

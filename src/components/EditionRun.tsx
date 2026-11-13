@@ -234,6 +234,7 @@ export default function EditionRun({
             editionId={current.bookId != null ? (current.editionId ?? Number(editionId)) : undefined}
             editionName={current.bookId != null ? (current.editionName ?? editionName) : undefined}
             arcs={arcsData?.arcs}
+            readingLists={detail?.readingLists}
           />
         </div>
       </div>

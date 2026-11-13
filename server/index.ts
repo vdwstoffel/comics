@@ -13,6 +13,7 @@ import booksRoutes from './routes/books.js'
 import uploadRoutes from './routes/upload.js'
 import comicvineRoutes from './routes/comicvine.js'
 import arcRoutes from './routes/arcs.js'
+import readingListRoutes from './routes/readingLists.js'
 import comicIndexRoutes from './routes/comicIndex.js'
 import downloadRoutes from './routes/downloads.js'
 import libraryRoutes from './routes/library.js'
@@ -74,6 +75,7 @@ export async function buildServer(): Promise<App> {
   await app.register(uploadRoutes)
   await app.register(comicvineRoutes)
   await app.register(arcRoutes)
+  await app.register(readingListRoutes)
   await app.register(comicIndexRoutes)
   await app.register(libraryRoutes)
   await app.register(downloadRoutes)

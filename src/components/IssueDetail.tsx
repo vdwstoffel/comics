@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
 import { Link } from 'react-router-dom'
-import type { ApiBookArc, ApiCredit, ApiTag } from '../api'
+import type { ApiBookArc, ApiBookReadingList, ApiCredit, ApiTag } from '../api'
 import CharacterDialog from './CharacterDialog'
 import { useBackOrigin } from '../lib/backOrigin'
 
@@ -21,6 +21,8 @@ interface IssueDetailProps {
   editionName?: string
   /** Where the issue falls in each arc it belongs to, when Comic Vine has said. */
   arcs?: ApiBookArc[]
+  /** Where the issue falls in each reading list holding it. */
+  readingLists?: ApiBookReadingList[]
 }
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
@@ -57,7 +59,7 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
  */
 export default function IssueDetail({
   bookId, credits = [], tags = [], summary, writer, penciller, date,
-  editionId, editionName, arcs = [],
+  editionId, editionName, arcs = [], readingLists = [],
 }: IssueDetailProps) {
   // Folded by default, so the stylesheet is free to clamp it where there is no room. On
   // any screen with the height for it the clamp never applies and this does nothing.
@@ -99,7 +101,7 @@ export default function IssueDetail({
   // An issue Comic Vine has never been asked about carries none of this, and a column of
   // headings with nothing under them says less than no column at all.
   const empty = roles.length === 0 && tags.length === 0 && arcs.length === 0
-    && details.length === 0 && !summary
+    && readingLists.length === 0 && details.length === 0 && !summary
   if (empty) return null
 
   return (
@@ -140,6 +142,21 @@ export default function IssueDetail({
               {arc.position != null && arc.total != null && (
                 <span className="arc-position__part">Part {arc.position} of {arc.total}</span>
               )}
+            </Link>
+          ))}
+        </Section>
+      )}
+
+      {/* The way back from a comic to the story it was read for. A tie-in while the list
+          reads in Core has no place in that run, so it says what it is instead. */}
+      {readingLists.length > 0 && (
+        <Section title={readingLists.length > 1 ? 'Reading lists' : 'Reading list'}>
+          {readingLists.map((list) => (
+            <Link key={list.slug} to={`/lists/${encodeURIComponent(list.slug)}`} state={back} className="arc-position">
+              <span className="arc-position__name">{list.name}</span>
+              <span className="arc-position__part">
+                {list.position != null ? `${list.position} of ${list.total}` : 'Tie-in'}
+              </span>
             </Link>
           ))}
         </Section>

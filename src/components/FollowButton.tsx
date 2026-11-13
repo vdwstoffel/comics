@@ -4,11 +4,12 @@ import { api } from '../api'
 
 interface FollowButtonProps {
   /** How to start following, which is how each kind is addressed by the api. */
-  target: { kind: 'volume'; editionId: number } | { kind: 'arc'; name: string }
+  target: { kind: 'volume'; editionId: number } | { kind: 'arc'; name: string } | { kind: 'list'; listId: number }
   /**
    * The id the follow is stored under - the edition id for a volume, Comic Vine's arc id
-   * for an arc - or null when the page does not know it yet. Null means the button can
-   * offer to follow but cannot claim the thing is already followed.
+   * for an arc, the file's id for a reading list - or null when the page does not know it
+   * yet. Null means the button can offer to follow but cannot claim the thing is already
+   * followed.
    */
   refId: number | null
   /** Why following is impossible here, when it is. Disables the button and explains it. */
@@ -38,7 +39,9 @@ export default function FollowButton({ target, refId, unavailable }: FollowButto
   const start = useMutation({
     mutationFn: () => (target.kind === 'volume'
       ? api.followVolume(target.editionId)
-      : api.followArc(target.name)),
+      : target.kind === 'arc'
+        ? api.followArc(target.name)
+        : api.followList(target.listId)),
     onSettled: refresh,
   })
   const stop = useMutation({

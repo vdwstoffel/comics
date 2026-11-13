@@ -4,7 +4,8 @@ dist/
 build/
 .env
 .superpowers/
-.claude/
+.claude/*
+!.claude/skills/
 .venv/
 __pycache__/
 *.pyc

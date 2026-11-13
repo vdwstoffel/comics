@@ -1,0 +1,2549 @@
+{
+ "id": 1,
+ "slug": "hickmans-avengers",
+ "name": "Hickman's Avengers",
+ "exportName": "hickmansAvengers",
+ "publisher": "Marvel",
+ "years": "2012–2016",
+ "description": "Jonathan Hickman's Avengers and New Avengers, through Infinity and Time Runs Out, to the end of the universe in Secret Wars.",
+ "phases": [
+  {
+   "name": "Everything Dies & Avengers World",
+   "note": "Hickman opens both books at once: the Illuminati find the incursions in New Avengers while Avengers grows the team. In Full, Thanos Rising and Guardians of the Galaxy set up Thanos for Infinity.",
+   "issues": [
+    {
+     "cv": 376665,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "1"
+    },
+    {
+     "cv": 380355,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "2"
+    },
+    {
+     "cv": 384960,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "3"
+    },
+    {
+     "cv": 371103,
+     "extra": false,
+     "series": "Avengers",
+     "number": "1"
+    },
+    {
+     "cv": 373217,
+     "extra": false,
+     "series": "Avengers",
+     "number": "2"
+    },
+    {
+     "cv": 381411,
+     "extra": false,
+     "series": "Avengers",
+     "number": "3"
+    },
+    {
+     "cv": 382803,
+     "extra": false,
+     "series": "Avengers",
+     "number": "4"
+    },
+    {
+     "cv": 384953,
+     "extra": false,
+     "series": "Avengers",
+     "number": "5"
+    },
+    {
+     "cv": 394709,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "4"
+    },
+    {
+     "cv": 398990,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "5"
+    },
+    {
+     "cv": 406978,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "6"
+    },
+    {
+     "cv": 387252,
+     "extra": false,
+     "series": "Avengers",
+     "number": "6"
+    },
+    {
+     "cv": 390444,
+     "extra": false,
+     "series": "Avengers",
+     "number": "7"
+    },
+    {
+     "cv": 394701,
+     "extra": false,
+     "series": "Avengers",
+     "number": "8"
+    },
+    {
+     "cv": 396422,
+     "extra": false,
+     "series": "Avengers",
+     "number": "9"
+    },
+    {
+     "cv": 398979,
+     "extra": false,
+     "series": "Avengers",
+     "number": "10"
+    },
+    {
+     "cv": 401202,
+     "extra": false,
+     "series": "Avengers",
+     "number": "11"
+    },
+    {
+     "cv": 395705,
+     "extra": true,
+     "series": "Thanos Rising",
+     "number": "1"
+    },
+    {
+     "cv": 400153,
+     "extra": true,
+     "series": "Thanos Rising",
+     "number": "2"
+    },
+    {
+     "cv": 409000,
+     "extra": true,
+     "series": "Thanos Rising",
+     "number": "3"
+    },
+    {
+     "cv": 417844,
+     "extra": true,
+     "series": "Thanos Rising",
+     "number": "4"
+    },
+    {
+     "cv": 423680,
+     "extra": true,
+     "series": "Thanos Rising",
+     "number": "5"
+    },
+    {
+     "cv": 388557,
+     "extra": true,
+     "series": "Guardians of the Galaxy",
+     "number": "0.1"
+    },
+    {
+     "cv": 395250,
+     "extra": true,
+     "series": "Guardians of the Galaxy",
+     "number": "1"
+    },
+    {
+     "cv": 398986,
+     "extra": true,
+     "series": "Guardians of the Galaxy",
+     "number": "2"
+    },
+    {
+     "cv": 410320,
+     "extra": true,
+     "series": "Guardians of the Galaxy",
+     "number": "3"
+    },
+    {
+     "cv": 413659,
+     "extra": true,
+     "series": "Guardians of the Galaxy",
+     "number": "4"
+    },
+    {
+     "cv": 404693,
+     "extra": false,
+     "series": "Avengers",
+     "number": "12"
+    },
+    {
+     "cv": 408990,
+     "extra": false,
+     "series": "Avengers",
+     "number": "13"
+    },
+    {
+     "cv": 419969,
+     "extra": true,
+     "series": "Guardians of the Galaxy",
+     "number": "5"
+    },
+    {
+     "cv": 426876,
+     "extra": true,
+     "series": "Guardians of the Galaxy",
+     "number": "6"
+    },
+    {
+     "cv": 428859,
+     "extra": true,
+     "series": "Guardians of the Galaxy",
+     "number": "7"
+    },
+    {
+     "cv": 411831,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "7"
+    }
+   ]
+  },
+  {
+   "name": "Infinity",
+   "note": "During this event, the issues weave together tightly to tell one continuous war story across Earth and deep space. Full adds the guide's Infinity tie-ins.",
+   "issues": [
+    {
+     "cv": 411825,
+     "extra": false,
+     "series": "Avengers",
+     "number": "14"
+    },
+    {
+     "cv": 415233,
+     "extra": false,
+     "series": "Avengers",
+     "number": "15"
+    },
+    {
+     "cv": 417831,
+     "extra": false,
+     "series": "Avengers",
+     "number": "16"
+    },
+    {
+     "cv": 420634,
+     "extra": false,
+     "series": "Avengers",
+     "number": "17"
+    },
+    {
+     "cv": 421691,
+     "extra": false,
+     "series": "Infinity",
+     "number": "1"
+    },
+    {
+     "cv": 421892,
+     "extra": true,
+     "series": "Infinity: Against the Tide",
+     "number": "1"
+    },
+    {
+     "cv": 426123,
+     "extra": true,
+     "series": "Infinity: Against the Tide",
+     "number": "2"
+    },
+    {
+     "cv": 422502,
+     "extra": true,
+     "series": "Thunderbolts",
+     "number": "14"
+    },
+    {
+     "cv": 426879,
+     "extra": true,
+     "series": "Nova",
+     "number": "8"
+    },
+    {
+     "cv": 430759,
+     "extra": true,
+     "series": "Nova",
+     "number": "9"
+    },
+    {
+     "cv": 425029,
+     "extra": true,
+     "series": "Infinity: The Hunt",
+     "number": "1"
+    },
+    {
+     "cv": 427688,
+     "extra": true,
+     "series": "Infinity: The Hunt",
+     "number": "2"
+    },
+    {
+     "cv": 418821,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "8"
+    },
+    {
+     "cv": 423677,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "9"
+    },
+    {
+     "cv": 425942,
+     "extra": true,
+     "series": "Thunderbolts",
+     "number": "15"
+    },
+    {
+     "cv": 427696,
+     "extra": true,
+     "series": "Thunderbolts",
+     "number": "16"
+    },
+    {
+     "cv": 425032,
+     "extra": true,
+     "series": "Mighty Avengers",
+     "number": "1"
+    },
+    {
+     "cv": 427692,
+     "extra": true,
+     "series": "Mighty Avengers",
+     "number": "2"
+    },
+    {
+     "cv": 432335,
+     "extra": true,
+     "series": "Mighty Avengers",
+     "number": "3"
+    },
+    {
+     "cv": 422493,
+     "extra": false,
+     "series": "Avengers",
+     "number": "18"
+    },
+    {
+     "cv": 422494,
+     "extra": true,
+     "series": "Avengers Assemble",
+     "number": "18"
+    },
+    {
+     "cv": 423672,
+     "extra": true,
+     "series": "Captain Marvel",
+     "number": "15"
+    },
+    {
+     "cv": 424535,
+     "extra": false,
+     "series": "Infinity",
+     "number": "2"
+    },
+    {
+     "cv": 425935,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "10"
+    },
+    {
+     "cv": 425022,
+     "extra": false,
+     "series": "Avengers",
+     "number": "19"
+    },
+    {
+     "cv": 425933,
+     "extra": false,
+     "series": "Infinity",
+     "number": "3"
+    },
+    {
+     "cv": 426877,
+     "extra": true,
+     "series": "Infinity: Heist",
+     "number": "1"
+    },
+    {
+     "cv": 430756,
+     "extra": true,
+     "series": "Infinity: The Hunt",
+     "number": "3"
+    },
+    {
+     "cv": 425931,
+     "extra": true,
+     "series": "Captain Marvel",
+     "number": "16"
+    },
+    {
+     "cv": 426872,
+     "extra": true,
+     "series": "Avengers Assemble",
+     "number": "19"
+    },
+    {
+     "cv": 426871,
+     "extra": false,
+     "series": "Avengers",
+     "number": "20"
+    },
+    {
+     "cv": 428297,
+     "extra": false,
+     "series": "Infinity",
+     "number": "4"
+    },
+    {
+     "cv": 428855,
+     "extra": false,
+     "series": "Avengers",
+     "number": "21"
+    },
+    {
+     "cv": 428865,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "11"
+    },
+    {
+     "cv": 430755,
+     "extra": true,
+     "series": "Infinity: Heist",
+     "number": "2"
+    },
+    {
+     "cv": 426882,
+     "extra": true,
+     "series": "Superior Spider-Man Team-Up",
+     "number": "3"
+    },
+    {
+     "cv": 428299,
+     "extra": true,
+     "series": "Superior Spider-Man Team-Up",
+     "number": "4"
+    },
+    {
+     "cv": 428296,
+     "extra": true,
+     "series": "Fearless Defenders",
+     "number": "10"
+    },
+    {
+     "cv": 431441,
+     "extra": false,
+     "series": "Infinity",
+     "number": "5"
+    },
+    {
+     "cv": 431435,
+     "extra": false,
+     "series": "Avengers",
+     "number": "22"
+    },
+    {
+     "cv": 435056,
+     "extra": true,
+     "series": "Infinity: Heist",
+     "number": "3"
+    },
+    {
+     "cv": 441414,
+     "extra": true,
+     "series": "Infinity: Heist",
+     "number": "4"
+    },
+    {
+     "cv": 430761,
+     "extra": true,
+     "series": "Secret Avengers",
+     "number": "10"
+    },
+    {
+     "cv": 433848,
+     "extra": true,
+     "series": "Secret Avengers",
+     "number": "11"
+    },
+    {
+     "cv": 428856,
+     "extra": true,
+     "series": "Avengers Assemble",
+     "number": "20"
+    },
+    {
+     "cv": 430764,
+     "extra": true,
+     "series": "Thunderbolts",
+     "number": "17"
+    },
+    {
+     "cv": 433851,
+     "extra": true,
+     "series": "Thunderbolts",
+     "number": "18"
+    },
+    {
+     "cv": 435057,
+     "extra": true,
+     "series": "Infinity: The Hunt",
+     "number": "4"
+    },
+    {
+     "cv": 433840,
+     "extra": false,
+     "series": "Avengers",
+     "number": "23"
+    },
+    {
+     "cv": 431440,
+     "extra": true,
+     "series": "Guardians of the Galaxy",
+     "number": "8"
+    },
+    {
+     "cv": 435580,
+     "extra": true,
+     "series": "Guardians of the Galaxy",
+     "number": "9"
+    },
+    {
+     "cv": 435055,
+     "extra": false,
+     "series": "Infinity",
+     "number": "6"
+    },
+    {
+     "cv": 435060,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "12"
+    },
+    {
+     "cv": 435070,
+     "extra": true,
+     "series": "Wolverine & the X-Men Annual",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "The Road to Time Runs Out",
+   "note": "The incursions close in on both teams. Full adds Original Sin #3.1–3.4 and New Avengers Annual #1.",
+   "issues": [
+    {
+     "cv": 438378,
+     "extra": false,
+     "series": "Avengers",
+     "number": "24"
+    },
+    {
+     "cv": 440250,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "13"
+    },
+    {
+     "cv": 444535,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "14"
+    },
+    {
+     "cv": 447999,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "15"
+    },
+    {
+     "cv": 457647,
+     "extra": true,
+     "series": "Original Sin",
+     "number": "3.1"
+    },
+    {
+     "cv": 459676,
+     "extra": true,
+     "series": "Original Sin",
+     "number": "3.2"
+    },
+    {
+     "cv": 460970,
+     "extra": true,
+     "series": "Original Sin",
+     "number": "3.3"
+    },
+    {
+     "cv": 461733,
+     "extra": true,
+     "series": "Original Sin",
+     "number": "3.4"
+    },
+    {
+     "cv": 442913,
+     "extra": false,
+     "series": "Avengers",
+     "number": "25"
+    },
+    {
+     "cv": 445176,
+     "extra": false,
+     "series": "Avengers",
+     "number": "26"
+    },
+    {
+     "cv": 448962,
+     "extra": false,
+     "series": "Avengers",
+     "number": "27"
+    },
+    {
+     "cv": 451765,
+     "extra": false,
+     "series": "Avengers",
+     "number": "28"
+    },
+    {
+     "cv": 448973,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "16"
+    },
+    {
+     "cv": 451770,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "17"
+    },
+    {
+     "cv": 452846,
+     "extra": false,
+     "series": "Avengers",
+     "number": "29"
+    },
+    {
+     "cv": 454094,
+     "extra": false,
+     "series": "Avengers",
+     "number": "30"
+    },
+    {
+     "cv": 456544,
+     "extra": false,
+     "series": "Avengers",
+     "number": "31"
+    },
+    {
+     "cv": 459164,
+     "extra": false,
+     "series": "Avengers",
+     "number": "32"
+    },
+    {
+     "cv": 460962,
+     "extra": false,
+     "series": "Avengers",
+     "number": "33"
+    },
+    {
+     "cv": 463478,
+     "extra": false,
+     "series": "Avengers",
+     "number": "34"
+    },
+    {
+     "cv": 452855,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "18"
+    },
+    {
+     "cv": 456026,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "19"
+    },
+    {
+     "cv": 457644,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "20"
+    },
+    {
+     "cv": 460969,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "21"
+    },
+    {
+     "cv": 461731,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "22"
+    },
+    {
+     "cv": 462896,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "23"
+    },
+    {
+     "cv": 457645,
+     "extra": true,
+     "series": "New Avengers Annual",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "Interlude: Before Time Runs Out",
+   "note": "All tie-ins. Hickman's Ultimates, where the Ultimate Reed Richards becomes the Maker, and the status quo Time Runs Out picks up: Avengers #34.1–34.2, Sam Wilson's Captain America, Superior Iron Man and the new Thor.",
+   "issues": [
+    {
+     "cv": 237470,
+     "extra": true,
+     "series": "Ultimate Thor",
+     "number": "1"
+    },
+    {
+     "cv": 242576,
+     "extra": true,
+     "series": "Ultimate Thor",
+     "number": "2"
+    },
+    {
+     "cv": 253823,
+     "extra": true,
+     "series": "Ultimate Thor",
+     "number": "3"
+    },
+    {
+     "cv": 259997,
+     "extra": true,
+     "series": "Ultimate Thor",
+     "number": "4"
+    },
+    {
+     "cv": 278807,
+     "extra": true,
+     "series": "Ultimate Fallout",
+     "number": "1"
+    },
+    {
+     "cv": 280828,
+     "extra": true,
+     "series": "Ultimate Fallout",
+     "number": "2"
+    },
+    {
+     "cv": 281840,
+     "extra": true,
+     "series": "Ultimate Fallout",
+     "number": "3"
+    },
+    {
+     "cv": 283008,
+     "extra": true,
+     "series": "Ultimate Fallout",
+     "number": "4"
+    },
+    {
+     "cv": 285563,
+     "extra": true,
+     "series": "Ultimate Fallout",
+     "number": "5"
+    },
+    {
+     "cv": 286936,
+     "extra": true,
+     "series": "Ultimate Fallout",
+     "number": "6"
+    },
+    {
+     "cv": 288885,
+     "extra": true,
+     "series": "Ultimate Comics Ultimates",
+     "number": "1"
+    },
+    {
+     "cv": 293533,
+     "extra": true,
+     "series": "Ultimate Comics Ultimates",
+     "number": "2"
+    },
+    {
+     "cv": 290126,
+     "extra": true,
+     "series": "Ultimate Comics Hawkeye",
+     "number": "1"
+    },
+    {
+     "cv": 293390,
+     "extra": true,
+     "series": "Ultimate Comics Hawkeye",
+     "number": "2"
+    },
+    {
+     "cv": 297459,
+     "extra": true,
+     "series": "Ultimate Comics Hawkeye",
+     "number": "3"
+    },
+    {
+     "cv": 303731,
+     "extra": true,
+     "series": "Ultimate Comics Hawkeye",
+     "number": "4"
+    },
+    {
+     "cv": 299760,
+     "extra": true,
+     "series": "Ultimate Comics Ultimates",
+     "number": "3"
+    },
+    {
+     "cv": 304546,
+     "extra": true,
+     "series": "Ultimate Comics Ultimates",
+     "number": "4"
+    },
+    {
+     "cv": 308919,
+     "extra": true,
+     "series": "Ultimate Comics Ultimates",
+     "number": "5"
+    },
+    {
+     "cv": 312895,
+     "extra": true,
+     "series": "Ultimate Comics Ultimates",
+     "number": "6"
+    },
+    {
+     "cv": 317967,
+     "extra": true,
+     "series": "Ultimate Comics Ultimates",
+     "number": "7"
+    },
+    {
+     "cv": 325099,
+     "extra": true,
+     "series": "Ultimate Comics Ultimates",
+     "number": "8"
+    },
+    {
+     "cv": 333428,
+     "extra": true,
+     "series": "Ultimate Comics Ultimates",
+     "number": "9"
+    },
+    {
+     "cv": 335268,
+     "extra": true,
+     "series": "Ultimate Comics Ultimates",
+     "number": "10"
+    },
+    {
+     "cv": 337516,
+     "extra": true,
+     "series": "Ultimate Comics Ultimates",
+     "number": "11"
+    },
+    {
+     "cv": 342844,
+     "extra": true,
+     "series": "Ultimate Comics Ultimates",
+     "number": "12"
+    },
+    {
+     "cv": 464974,
+     "extra": true,
+     "series": "Avengers",
+     "number": "34.1"
+    },
+    {
+     "cv": 475931,
+     "extra": true,
+     "series": "Avengers",
+     "number": "34.2"
+    },
+    {
+     "cv": 428294,
+     "extra": true,
+     "series": "Captain America",
+     "number": "12"
+    },
+    {
+     "cv": 432323,
+     "extra": true,
+     "series": "Captain America",
+     "number": "13"
+    },
+    {
+     "cv": 436194,
+     "extra": true,
+     "series": "Captain America",
+     "number": "14"
+    },
+    {
+     "cv": 442917,
+     "extra": true,
+     "series": "Captain America",
+     "number": "15"
+    },
+    {
+     "cv": 445810,
+     "extra": true,
+     "series": "Captain America",
+     "number": "17"
+    },
+    {
+     "cv": 446990,
+     "extra": true,
+     "series": "Captain America",
+     "number": "18"
+    },
+    {
+     "cv": 449589,
+     "extra": true,
+     "series": "Captain America",
+     "number": "19"
+    },
+    {
+     "cv": 452848,
+     "extra": true,
+     "series": "Captain America",
+     "number": "20"
+    },
+    {
+     "cv": 455485,
+     "extra": true,
+     "series": "Captain America",
+     "number": "21"
+    },
+    {
+     "cv": 468910,
+     "extra": true,
+     "series": "Inhuman",
+     "number": "7"
+    },
+    {
+     "cv": 470429,
+     "extra": true,
+     "series": "Inhuman",
+     "number": "8"
+    },
+    {
+     "cv": 469843,
+     "extra": true,
+     "series": "Superior Iron Man",
+     "number": "1"
+    },
+    {
+     "cv": 471325,
+     "extra": true,
+     "series": "Superior Iron Man",
+     "number": "2"
+    },
+    {
+     "cv": 474636,
+     "extra": true,
+     "series": "Superior Iron Man",
+     "number": "3"
+    },
+    {
+     "cv": 466966,
+     "extra": true,
+     "series": "Thor",
+     "number": "1"
+    },
+    {
+     "cv": 469844,
+     "extra": true,
+     "series": "Thor",
+     "number": "2"
+    },
+    {
+     "cv": 472913,
+     "extra": true,
+     "series": "Thor",
+     "number": "3"
+    },
+    {
+     "cv": 477856,
+     "extra": true,
+     "series": "Thor",
+     "number": "4"
+    }
+   ]
+  },
+  {
+   "name": "Time Runs Out",
+   "note": "At this point, the story jumps forward eight months and both series merge into a single countdown toward the end of the universe.",
+   "issues": [
+    {
+     "cv": 465837,
+     "extra": false,
+     "series": "Avengers",
+     "number": "35"
+    },
+    {
+     "cv": 466332,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "24"
+    },
+    {
+     "cv": 467647,
+     "extra": false,
+     "series": "Avengers",
+     "number": "36"
+    },
+    {
+     "cv": 468084,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "25"
+    },
+    {
+     "cv": 468457,
+     "extra": false,
+     "series": "Avengers",
+     "number": "37"
+    },
+    {
+     "cv": 470433,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "26"
+    },
+    {
+     "cv": 470417,
+     "extra": false,
+     "series": "Avengers",
+     "number": "38"
+    },
+    {
+     "cv": 471318,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "27"
+    },
+    {
+     "cv": 472900,
+     "extra": false,
+     "series": "Avengers",
+     "number": "39"
+    },
+    {
+     "cv": 474632,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "28"
+    },
+    {
+     "cv": 475932,
+     "extra": false,
+     "series": "Avengers",
+     "number": "40"
+    },
+    {
+     "cv": 477851,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "29"
+    },
+    {
+     "cv": 478606,
+     "extra": false,
+     "series": "Avengers",
+     "number": "41"
+    },
+    {
+     "cv": 480676,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "30"
+    },
+    {
+     "cv": 481605,
+     "extra": false,
+     "series": "Avengers",
+     "number": "42"
+    },
+    {
+     "cv": 482160,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "31"
+    },
+    {
+     "cv": 483355,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "32"
+    },
+    {
+     "cv": 484889,
+     "extra": false,
+     "series": "Avengers",
+     "number": "43"
+    },
+    {
+     "cv": 482158,
+     "extra": true,
+     "series": "Miles Morales: Ultimate Spider-Man",
+     "number": "11"
+    },
+    {
+     "cv": 485517,
+     "extra": true,
+     "series": "Miles Morales: Ultimate Spider-Man",
+     "number": "12"
+    },
+    {
+     "cv": 487208,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "33"
+    },
+    {
+     "cv": 487201,
+     "extra": false,
+     "series": "Avengers",
+     "number": "44"
+    }
+   ]
+  },
+  {
+   "name": "Secret Wars (The Finale)",
+   "note": "The end of everything: Secret Wars #1–9. In Full, the tie-ins in the sections Marvel Guides reads them in - the last days of the old universes, then Doom's Battleworld and its domains.",
+   "sections": [
+    {
+     "name": "Last Days",
+     "note": "Secret Wars #1, and the last issues of the ongoing series as the final incursion ends the 616 and Ultimate universes.",
+     "issues": [
+      {
+       "cv": 487501,
+       "extra": true,
+       "series": "Free Comic Book Day 2015 (Secret Wars)",
+       "number": "0"
+      },
+      {
+       "cv": 487843,
+       "extra": false,
+       "series": "Secret Wars",
+       "number": "1"
+      },
+      {
+       "cv": 493038,
+       "extra": true,
+       "series": "Black Widow",
+       "number": "19"
+      },
+      {
+       "cv": 496386,
+       "extra": true,
+       "series": "Black Widow",
+       "number": "20"
+      },
+      {
+       "cv": 491510,
+       "extra": true,
+       "series": "Captain America & the Mighty Avengers",
+       "number": "9"
+      },
+      {
+       "cv": 492221,
+       "extra": true,
+       "series": "Ms. Marvel",
+       "number": "16"
+      },
+      {
+       "cv": 496886,
+       "extra": true,
+       "series": "Ms. Marvel",
+       "number": "17"
+      },
+      {
+       "cv": 499749,
+       "extra": true,
+       "series": "Ms. Marvel",
+       "number": "18"
+      },
+      {
+       "cv": 502870,
+       "extra": true,
+       "series": "Ms. Marvel",
+       "number": "19"
+      },
+      {
+       "cv": 488650,
+       "extra": true,
+       "series": "Magneto",
+       "number": "18"
+      },
+      {
+       "cv": 492219,
+       "extra": true,
+       "series": "Magneto",
+       "number": "19"
+      },
+      {
+       "cv": 495802,
+       "extra": true,
+       "series": "Magneto",
+       "number": "20"
+      },
+      {
+       "cv": 498390,
+       "extra": true,
+       "series": "Magneto",
+       "number": "21"
+      },
+      {
+       "cv": 493050,
+       "extra": true,
+       "series": "The Punisher",
+       "number": "19"
+      },
+      {
+       "cv": 495805,
+       "extra": true,
+       "series": "The Punisher",
+       "number": "20"
+      },
+      {
+       "cv": 498382,
+       "extra": true,
+       "series": "Ant-Man: Last Days",
+       "number": "1"
+      },
+      {
+       "cv": 499043,
+       "extra": true,
+       "series": "Silk",
+       "number": "7"
+      },
+      {
+       "cv": 495279,
+       "extra": true,
+       "series": "Silver Surfer",
+       "number": "13"
+      },
+      {
+       "cv": 499044,
+       "extra": true,
+       "series": "Silver Surfer",
+       "number": "14"
+      },
+      {
+       "cv": 495801,
+       "extra": true,
+       "series": "Loki: Agent of Asgard",
+       "number": "16"
+      },
+      {
+       "cv": 497948,
+       "extra": true,
+       "series": "Loki: Agent of Asgard",
+       "number": "17"
+      }
+     ]
+    },
+    {
+     "name": "Welcome to Battleworld",
+     "note": "Doom's Battleworld: Secret Wars #2–3 with the Journal and Battleworld anthologies.",
+     "issues": [
+      {
+       "cv": 488656,
+       "extra": false,
+       "series": "Secret Wars",
+       "number": "2"
+      },
+      {
+       "cv": 489912,
+       "extra": true,
+       "series": "Secret Wars Journal",
+       "number": "1"
+      },
+      {
+       "cv": 491525,
+       "extra": true,
+       "series": "Secret Wars Journal",
+       "number": "2"
+      },
+      {
+       "cv": 493799,
+       "extra": true,
+       "series": "Secret Wars Journal",
+       "number": "3"
+      },
+      {
+       "cv": 497956,
+       "extra": true,
+       "series": "Secret Wars Journal",
+       "number": "4"
+      },
+      {
+       "cv": 500306,
+       "extra": true,
+       "series": "Secret Wars Journal",
+       "number": "5"
+      },
+      {
+       "cv": 489326,
+       "extra": true,
+       "series": "Secret Wars: Battleworld",
+       "number": "1"
+      },
+      {
+       "cv": 490888,
+       "extra": true,
+       "series": "Secret Wars: Battleworld",
+       "number": "2"
+      },
+      {
+       "cv": 495277,
+       "extra": true,
+       "series": "Secret Wars: Battleworld",
+       "number": "3"
+      },
+      {
+       "cv": 497399,
+       "extra": true,
+       "series": "Secret Wars: Battleworld",
+       "number": "4"
+      },
+      {
+       "cv": 489910,
+       "extra": true,
+       "series": "Old Man Logan",
+       "number": "1"
+      },
+      {
+       "cv": 490887,
+       "extra": false,
+       "series": "Secret Wars",
+       "number": "3"
+      },
+      {
+       "cv": 491519,
+       "extra": true,
+       "series": "Marvel Zombies",
+       "number": "1"
+      },
+      {
+       "cv": 495803,
+       "extra": true,
+       "series": "Marvel Zombies",
+       "number": "2"
+      },
+      {
+       "cv": 498393,
+       "extra": true,
+       "series": "Marvel Zombies",
+       "number": "3"
+      },
+      {
+       "cv": 502869,
+       "extra": true,
+       "series": "Marvel Zombies",
+       "number": "4"
+      },
+      {
+       "cv": 489321,
+       "extra": true,
+       "series": "Master of Kung Fu",
+       "number": "1"
+      },
+      {
+       "cv": 490885,
+       "extra": true,
+       "series": "Master of Kung Fu",
+       "number": "2"
+      },
+      {
+       "cv": 494324,
+       "extra": true,
+       "series": "Master of Kung Fu",
+       "number": "3"
+      },
+      {
+       "cv": 497392,
+       "extra": true,
+       "series": "Master of Kung Fu",
+       "number": "4"
+      },
+      {
+       "cv": 492223,
+       "extra": true,
+       "series": "Runaways",
+       "number": "1"
+      },
+      {
+       "cv": 494327,
+       "extra": true,
+       "series": "Runaways",
+       "number": "2"
+      },
+      {
+       "cv": 497955,
+       "extra": true,
+       "series": "Runaways",
+       "number": "3"
+      },
+      {
+       "cv": 501029,
+       "extra": true,
+       "series": "Runaways",
+       "number": "4"
+      }
+     ]
+    },
+    {
+     "name": "Warzones, Part 1",
+     "note": "All tie-ins: one mini-series per Battleworld domain, in any order (the guide lists them alphabetically).",
+     "issues": [
+      {
+       "cv": 491508,
+       "extra": true,
+       "series": "1602 Witch Hunter Angela",
+       "number": "1"
+      },
+      {
+       "cv": 496384,
+       "extra": true,
+       "series": "1602 Witch Hunter Angela",
+       "number": "2"
+      },
+      {
+       "cv": 499737,
+       "extra": true,
+       "series": "1602 Witch Hunter Angela",
+       "number": "3"
+      },
+      {
+       "cv": 502106,
+       "extra": true,
+       "series": "1602 Witch Hunter Angela",
+       "number": "4"
+      },
+      {
+       "cv": 494314,
+       "extra": true,
+       "series": "1872",
+       "number": "1"
+      },
+      {
+       "cv": 497933,
+       "extra": true,
+       "series": "1872",
+       "number": "2"
+      },
+      {
+       "cv": 501014,
+       "extra": true,
+       "series": "1872",
+       "number": "3"
+      },
+      {
+       "cv": 503551,
+       "extra": true,
+       "series": "1872",
+       "number": "4"
+      },
+      {
+       "cv": 489311,
+       "extra": true,
+       "series": "A-Force",
+       "number": "1"
+      },
+      {
+       "cv": 493787,
+       "extra": true,
+       "series": "A-Force",
+       "number": "2"
+      },
+      {
+       "cv": 497383,
+       "extra": true,
+       "series": "A-Force",
+       "number": "3"
+      },
+      {
+       "cv": 499738,
+       "extra": true,
+       "series": "A-Force",
+       "number": "4"
+      },
+      {
+       "cv": 490876,
+       "extra": true,
+       "series": "Amazing Spider-Man: Renew Your Vows",
+       "number": "1"
+      },
+      {
+       "cv": 494316,
+       "extra": true,
+       "series": "Amazing Spider-Man: Renew Your Vows",
+       "number": "2"
+      },
+      {
+       "cv": 496873,
+       "extra": true,
+       "series": "Amazing Spider-Man: Renew Your Vows",
+       "number": "3"
+      },
+      {
+       "cv": 497935,
+       "extra": true,
+       "series": "Amazing Spider-Man: Renew Your Vows",
+       "number": "4"
+      },
+      {
+       "cv": 499739,
+       "extra": true,
+       "series": "Amazing Spider-Man: Renew Your Vows",
+       "number": "5"
+      },
+      {
+       "cv": 487582,
+       "extra": true,
+       "series": "Secret Wars: Armor Wars",
+       "number": "½"
+      },
+      {
+       "cv": 490877,
+       "extra": true,
+       "series": "Armor Wars",
+       "number": "1"
+      },
+      {
+       "cv": 492209,
+       "extra": true,
+       "series": "Armor Wars",
+       "number": "2"
+      },
+      {
+       "cv": 495265,
+       "extra": true,
+       "series": "Armor Wars",
+       "number": "3"
+      },
+      {
+       "cv": 497936,
+       "extra": true,
+       "series": "Armor Wars",
+       "number": "4"
+      },
+      {
+       "cv": 500299,
+       "extra": true,
+       "series": "Armor Wars",
+       "number": "5"
+      },
+      {
+       "cv": 491511,
+       "extra": true,
+       "series": "Captain Marvel & The Carol Corps",
+       "number": "1"
+      },
+      {
+       "cv": 495267,
+       "extra": true,
+       "series": "Captain Marvel & The Carol Corps",
+       "number": "2"
+      },
+      {
+       "cv": 498383,
+       "extra": true,
+       "series": "Captain Marvel & The Carol Corps",
+       "number": "3"
+      },
+      {
+       "cv": 501017,
+       "extra": true,
+       "series": "Captain Marvel & The Carol Corps",
+       "number": "4"
+      },
+      {
+       "cv": 490880,
+       "extra": true,
+       "series": "Future Imperfect",
+       "number": "1"
+      },
+      {
+       "cv": 493790,
+       "extra": true,
+       "series": "Future Imperfect",
+       "number": "2"
+      },
+      {
+       "cv": 495798,
+       "extra": true,
+       "series": "Future Imperfect",
+       "number": "3"
+      },
+      {
+       "cv": 496879,
+       "extra": true,
+       "series": "Future Imperfect",
+       "number": "4"
+      },
+      {
+       "cv": 490881,
+       "extra": true,
+       "series": "Giant Size Little Marvel: AvX",
+       "number": "1"
+      },
+      {
+       "cv": 493791,
+       "extra": true,
+       "series": "Giant Size Little Marvel: AvX",
+       "number": "2"
+      },
+      {
+       "cv": 496880,
+       "extra": true,
+       "series": "Giant Size Little Marvel: AvX",
+       "number": "3"
+      },
+      {
+       "cv": 499743,
+       "extra": true,
+       "series": "Giant Size Little Marvel: AvX",
+       "number": "4"
+      },
+      {
+       "cv": 489901,
+       "extra": true,
+       "series": "Inferno",
+       "number": "1"
+      },
+      {
+       "cv": 491514,
+       "extra": true,
+       "series": "Inferno",
+       "number": "2"
+      },
+      {
+       "cv": 494319,
+       "extra": true,
+       "series": "Inferno",
+       "number": "3"
+      },
+      {
+       "cv": 497946,
+       "extra": true,
+       "series": "Inferno",
+       "number": "4"
+      },
+      {
+       "cv": 501614,
+       "extra": true,
+       "series": "Inferno",
+       "number": "5"
+      },
+      {
+       "cv": 489902,
+       "extra": true,
+       "series": "The Infinity Gauntlet",
+       "number": "1"
+      },
+      {
+       "cv": 493043,
+       "extra": true,
+       "series": "The Infinity Gauntlet",
+       "number": "2"
+      },
+      {
+       "cv": 496884,
+       "extra": true,
+       "series": "The Infinity Gauntlet",
+       "number": "3"
+      },
+      {
+       "cv": 500304,
+       "extra": true,
+       "series": "The Infinity Gauntlet",
+       "number": "4"
+      },
+      {
+       "cv": 505520,
+       "extra": true,
+       "series": "The Infinity Gauntlet",
+       "number": "5"
+      },
+      {
+       "cv": 489906,
+       "extra": true,
+       "series": "M.O.D.O.K. Assassin",
+       "number": "1"
+      },
+      {
+       "cv": 493048,
+       "extra": true,
+       "series": "M.O.D.O.K. Assassin",
+       "number": "2"
+      },
+      {
+       "cv": 496396,
+       "extra": true,
+       "series": "M.O.D.O.K. Assassin",
+       "number": "3"
+      },
+      {
+       "cv": 498394,
+       "extra": true,
+       "series": "M.O.D.O.K. Assassin",
+       "number": "4"
+      },
+      {
+       "cv": 501616,
+       "extra": true,
+       "series": "M.O.D.O.K. Assassin",
+       "number": "5"
+      },
+      {
+       "cv": 491522,
+       "extra": true,
+       "series": "Mrs. Deadpool and the Howling Commandos",
+       "number": "1"
+      },
+      {
+       "cv": 494326,
+       "extra": true,
+       "series": "Mrs. Deadpool and the Howling Commandos",
+       "number": "2"
+      },
+      {
+       "cv": 497394,
+       "extra": true,
+       "series": "Mrs. Deadpool and the Howling Commandos",
+       "number": "3"
+      },
+      {
+       "cv": 499748,
+       "extra": true,
+       "series": "Mrs. Deadpool and the Howling Commandos",
+       "number": "4"
+      }
+     ]
+    },
+    {
+     "name": "Warzones, Part 2",
+     "note": "More domains, read in any order, then Secret Wars #4.",
+     "issues": [
+      {
+       "cv": 489323,
+       "extra": true,
+       "series": "Planet Hulk",
+       "number": "1"
+      },
+      {
+       "cv": 493049,
+       "extra": true,
+       "series": "Planet Hulk",
+       "number": "2"
+      },
+      {
+       "cv": 495276,
+       "extra": true,
+       "series": "Planet Hulk",
+       "number": "3"
+      },
+      {
+       "cv": 497396,
+       "extra": true,
+       "series": "Planet Hulk",
+       "number": "4"
+      },
+      {
+       "cv": 499750,
+       "extra": true,
+       "series": "Planet Hulk",
+       "number": "5"
+      },
+      {
+       "cv": 489911,
+       "extra": true,
+       "series": "Secret Wars 2099",
+       "number": "1"
+      },
+      {
+       "cv": 491524,
+       "extra": true,
+       "series": "Secret Wars 2099",
+       "number": "2"
+      },
+      {
+       "cv": 494328,
+       "extra": true,
+       "series": "Secret Wars 2099",
+       "number": "3"
+      },
+      {
+       "cv": 497398,
+       "extra": true,
+       "series": "Secret Wars 2099",
+       "number": "4"
+      },
+      {
+       "cv": 499753,
+       "extra": true,
+       "series": "Secret Wars 2099",
+       "number": "5"
+      },
+      {
+       "cv": 489327,
+       "extra": true,
+       "series": "Spider-Verse",
+       "number": "1"
+      },
+      {
+       "cv": 491530,
+       "extra": true,
+       "series": "Spider-Verse",
+       "number": "2"
+      },
+      {
+       "cv": 494330,
+       "extra": true,
+       "series": "Spider-Verse",
+       "number": "3"
+      },
+      {
+       "cv": 497959,
+       "extra": true,
+       "series": "Spider-Verse",
+       "number": "4"
+      },
+      {
+       "cv": 500308,
+       "extra": true,
+       "series": "Spider-Verse",
+       "number": "5"
+      },
+      {
+       "cv": 489916,
+       "extra": true,
+       "series": "Where Monsters Dwell",
+       "number": "1"
+      },
+      {
+       "cv": 493054,
+       "extra": true,
+       "series": "Where Monsters Dwell",
+       "number": "2"
+      },
+      {
+       "cv": 495280,
+       "extra": true,
+       "series": "Where Monsters Dwell",
+       "number": "3"
+      },
+      {
+       "cv": 498401,
+       "extra": true,
+       "series": "Where Monsters Dwell",
+       "number": "4"
+      },
+      {
+       "cv": 504349,
+       "extra": true,
+       "series": "Where Monsters Dwell",
+       "number": "5"
+      },
+      {
+       "cv": 493055,
+       "extra": true,
+       "series": "X-Men '92",
+       "number": "1"
+      },
+      {
+       "cv": 496401,
+       "extra": true,
+       "series": "X-Men '92",
+       "number": "2"
+      },
+      {
+       "cv": 498402,
+       "extra": true,
+       "series": "X-Men '92",
+       "number": "3"
+      },
+      {
+       "cv": 501620,
+       "extra": true,
+       "series": "X-Men '92",
+       "number": "4"
+      },
+      {
+       "cv": 490897,
+       "extra": true,
+       "series": "X-Tinction Agenda",
+       "number": "1"
+      },
+      {
+       "cv": 493805,
+       "extra": true,
+       "series": "X-Tinction Agenda",
+       "number": "2"
+      },
+      {
+       "cv": 497966,
+       "extra": true,
+       "series": "X-Tinction Agenda",
+       "number": "3"
+      },
+      {
+       "cv": 501032,
+       "extra": true,
+       "series": "X-Tinction Agenda",
+       "number": "4"
+      },
+      {
+       "cv": 490898,
+       "extra": true,
+       "series": "Years of Future Past",
+       "number": "1"
+      },
+      {
+       "cv": 493806,
+       "extra": true,
+       "series": "Years of Future Past",
+       "number": "2"
+      },
+      {
+       "cv": 495283,
+       "extra": true,
+       "series": "Years of Future Past",
+       "number": "3"
+      },
+      {
+       "cv": 497403,
+       "extra": true,
+       "series": "Years of Future Past",
+       "number": "4"
+      },
+      {
+       "cv": 501033,
+       "extra": true,
+       "series": "Years of Future Past",
+       "number": "5"
+      },
+      {
+       "cv": 491532,
+       "extra": true,
+       "series": "Weirdworld",
+       "number": "1"
+      },
+      {
+       "cv": 495811,
+       "extra": true,
+       "series": "Weirdworld",
+       "number": "2"
+      },
+      {
+       "cv": 497963,
+       "extra": true,
+       "series": "Weirdworld",
+       "number": "3"
+      },
+      {
+       "cv": 501031,
+       "extra": true,
+       "series": "Weirdworld",
+       "number": "4"
+      },
+      {
+       "cv": 492222,
+       "extra": true,
+       "series": "Old Man Logan",
+       "number": "2"
+      },
+      {
+       "cv": 493040,
+       "extra": true,
+       "series": "E Is For Extinction",
+       "number": "1"
+      },
+      {
+       "cv": 495797,
+       "extra": true,
+       "series": "E Is For Extinction",
+       "number": "2"
+      },
+      {
+       "cv": 498386,
+       "extra": true,
+       "series": "E Is For Extinction",
+       "number": "3"
+      },
+      {
+       "cv": 501609,
+       "extra": true,
+       "series": "E Is For Extinction",
+       "number": "4"
+      },
+      {
+       "cv": 493044,
+       "extra": true,
+       "series": "Korvac Saga",
+       "number": "1"
+      },
+      {
+       "cv": 495274,
+       "extra": true,
+       "series": "Korvac Saga",
+       "number": "2"
+      },
+      {
+       "cv": 497390,
+       "extra": true,
+       "series": "Korvac Saga",
+       "number": "3"
+      },
+      {
+       "cv": 499745,
+       "extra": true,
+       "series": "Korvac Saga",
+       "number": "4"
+      },
+      {
+       "cv": 492225,
+       "extra": true,
+       "series": "Squadron Sinister",
+       "number": "1"
+      },
+      {
+       "cv": 494331,
+       "extra": true,
+       "series": "Squadron Sinister",
+       "number": "2"
+      },
+      {
+       "cv": 499046,
+       "extra": true,
+       "series": "Squadron Sinister",
+       "number": "3"
+      },
+      {
+       "cv": 505525,
+       "extra": true,
+       "series": "Squadron Sinister",
+       "number": "4"
+      },
+      {
+       "cv": 493798,
+       "extra": false,
+       "series": "Secret Wars",
+       "number": "4"
+      }
+     ]
+    },
+    {
+     "name": "World of War",
+     "note": "All tie-ins, read after Secret Wars #4.",
+     "issues": [
+      {
+       "cv": 493032,
+       "extra": true,
+       "series": "Age of Ultron vs. Marvel Zombies",
+       "number": "1"
+      },
+      {
+       "cv": 496385,
+       "extra": true,
+       "series": "Age of Ultron vs. Marvel Zombies",
+       "number": "2"
+      },
+      {
+       "cv": 497934,
+       "extra": true,
+       "series": "Age of Ultron vs. Marvel Zombies",
+       "number": "3"
+      },
+      {
+       "cv": 499030,
+       "extra": true,
+       "series": "Age of Ultron vs. Marvel Zombies",
+       "number": "4"
+      },
+      {
+       "cv": 491447,
+       "extra": true,
+       "series": "Ghost Racers",
+       "number": "1"
+      },
+      {
+       "cv": 494318,
+       "extra": true,
+       "series": "Ghost Racers",
+       "number": "2"
+      },
+      {
+       "cv": 497387,
+       "extra": true,
+       "series": "Ghost Racers",
+       "number": "3"
+      },
+      {
+       "cv": 501610,
+       "extra": true,
+       "series": "Ghost Racers",
+       "number": "4"
+      },
+      {
+       "cv": 489903,
+       "extra": true,
+       "series": "Inhumans: Attilan Rising",
+       "number": "1"
+      },
+      {
+       "cv": 491515,
+       "extra": true,
+       "series": "Inhumans: Attilan Rising",
+       "number": "2"
+      },
+      {
+       "cv": 495273,
+       "extra": true,
+       "series": "Inhumans: Attilan Rising",
+       "number": "3"
+      },
+      {
+       "cv": 497389,
+       "extra": true,
+       "series": "Inhumans: Attilan Rising",
+       "number": "4"
+      },
+      {
+       "cv": 501024,
+       "extra": true,
+       "series": "Inhumans: Attilan Rising",
+       "number": "5"
+      },
+      {
+       "cv": 493796,
+       "extra": true,
+       "series": "Red Skull",
+       "number": "1"
+      },
+      {
+       "cv": 496888,
+       "extra": true,
+       "series": "Red Skull",
+       "number": "2"
+      },
+      {
+       "cv": 499752,
+       "extra": true,
+       "series": "Red Skull",
+       "number": "3"
+      },
+      {
+       "cv": 495809,
+       "extra": true,
+       "series": "Star-Lord & Kitty Pryde",
+       "number": "1"
+      },
+      {
+       "cv": 497401,
+       "extra": true,
+       "series": "Star-Lord & Kitty Pryde",
+       "number": "2"
+      },
+      {
+       "cv": 499047,
+       "extra": true,
+       "series": "Star-Lord & Kitty Pryde",
+       "number": "3"
+      },
+      {
+       "cv": 499037,
+       "extra": true,
+       "series": "Future Imperfect",
+       "number": "5"
+      },
+      {
+       "cv": 497957,
+       "extra": true,
+       "series": "Secret Wars: Secret Love",
+       "number": "1"
+      },
+      {
+       "cv": 492227,
+       "extra": true,
+       "series": "Thors",
+       "number": "1"
+      },
+      {
+       "cv": 496400,
+       "extra": true,
+       "series": "Thors",
+       "number": "2"
+      },
+      {
+       "cv": 499048,
+       "extra": true,
+       "series": "Thors",
+       "number": "3"
+      },
+      {
+       "cv": 495804,
+       "extra": true,
+       "series": "Old Man Logan",
+       "number": "3"
+      },
+      {
+       "cv": 489329,
+       "extra": true,
+       "series": "Ultimate End",
+       "number": "1"
+      },
+      {
+       "cv": 491531,
+       "extra": true,
+       "series": "Ultimate End",
+       "number": "2"
+      },
+      {
+       "cv": 493803,
+       "extra": true,
+       "series": "Ultimate End",
+       "number": "3"
+      },
+      {
+       "cv": 496891,
+       "extra": true,
+       "series": "Ultimate End",
+       "number": "4"
+      }
+     ]
+    },
+    {
+     "name": "Warzones, Part 3",
+     "note": "The last wave of domains, then Secret Wars #5.",
+     "issues": [
+      {
+       "cv": 494315,
+       "extra": true,
+       "series": "Age of Apocalypse",
+       "number": "1"
+      },
+      {
+       "cv": 496872,
+       "extra": true,
+       "series": "Age of Apocalypse",
+       "number": "2"
+      },
+      {
+       "cv": 499029,
+       "extra": true,
+       "series": "Age of Apocalypse",
+       "number": "3"
+      },
+      {
+       "cv": 500296,
+       "extra": true,
+       "series": "Age of Apocalypse",
+       "number": "4"
+      },
+      {
+       "cv": 503553,
+       "extra": true,
+       "series": "Age of Apocalypse",
+       "number": "5"
+      },
+      {
+       "cv": 495266,
+       "extra": true,
+       "series": "Captain Britain and the Mighty Defenders",
+       "number": "1"
+      },
+      {
+       "cv": 497937,
+       "extra": true,
+       "series": "Captain Britain and the Mighty Defenders",
+       "number": "2"
+      },
+      {
+       "cv": 494317,
+       "extra": true,
+       "series": "Civil War",
+       "number": "1"
+      },
+      {
+       "cv": 496877,
+       "extra": true,
+       "series": "Civil War",
+       "number": "2"
+      },
+      {
+       "cv": 498384,
+       "extra": true,
+       "series": "Civil War",
+       "number": "3"
+      },
+      {
+       "cv": 499740,
+       "extra": true,
+       "series": "Civil War",
+       "number": "4"
+      },
+      {
+       "cv": 502858,
+       "extra": true,
+       "series": "Civil War",
+       "number": "5"
+      },
+      {
+       "cv": 495270,
+       "extra": true,
+       "series": "Guardians of Knowhere",
+       "number": "1"
+      },
+      {
+       "cv": 496882,
+       "extra": true,
+       "series": "Guardians of Knowhere",
+       "number": "2"
+      },
+      {
+       "cv": 497942,
+       "extra": true,
+       "series": "Guardians of Knowhere",
+       "number": "3"
+      },
+      {
+       "cv": 500301,
+       "extra": true,
+       "series": "Guardians of Knowhere",
+       "number": "4"
+      },
+      {
+       "cv": 495271,
+       "extra": true,
+       "series": "Hail Hydra",
+       "number": "1"
+      },
+      {
+       "cv": 499039,
+       "extra": true,
+       "series": "Hail Hydra",
+       "number": "2"
+      },
+      {
+       "cv": 501613,
+       "extra": true,
+       "series": "Hail Hydra",
+       "number": "3"
+      },
+      {
+       "cv": 506655,
+       "extra": true,
+       "series": "Hail Hydra",
+       "number": "4"
+      },
+      {
+       "cv": 497944,
+       "extra": true,
+       "series": "House of M",
+       "number": "1"
+      },
+      {
+       "cv": 499040,
+       "extra": true,
+       "series": "House of M",
+       "number": "2"
+      },
+      {
+       "cv": 500302,
+       "extra": true,
+       "series": "House of M",
+       "number": "3"
+      },
+      {
+       "cv": 504340,
+       "extra": true,
+       "series": "House of M",
+       "number": "4"
+      },
+      {
+       "cv": 497945,
+       "extra": true,
+       "series": "Howard the Human",
+       "number": "1"
+      },
+      {
+       "cv": 494329,
+       "extra": true,
+       "series": "Spider-Island",
+       "number": "1"
+      },
+      {
+       "cv": 496890,
+       "extra": true,
+       "series": "Spider-Island",
+       "number": "2"
+      },
+      {
+       "cv": 499045,
+       "extra": true,
+       "series": "Spider-Island",
+       "number": "3"
+      },
+      {
+       "cv": 500307,
+       "extra": true,
+       "series": "Spider-Island",
+       "number": "4"
+      },
+      {
+       "cv": 502132,
+       "extra": true,
+       "series": "Spider-Island",
+       "number": "5"
+      },
+      {
+       "cv": 497397,
+       "extra": false,
+       "series": "Secret Wars",
+       "number": "5"
+      }
+     ]
+    },
+    {
+     "name": "Cracks in the Wall",
+     "note": "Battleworld starts to break: Siege, and Secret Wars #6.",
+     "issues": [
+      {
+       "cv": 495278,
+       "extra": true,
+       "series": "Siege",
+       "number": "1"
+      },
+      {
+       "cv": 496889,
+       "extra": true,
+       "series": "Siege",
+       "number": "2"
+      },
+      {
+       "cv": 499754,
+       "extra": true,
+       "series": "Siege",
+       "number": "3"
+      },
+      {
+       "cv": 498395,
+       "extra": true,
+       "series": "Old Man Logan",
+       "number": "4"
+      },
+      {
+       "cv": 498387,
+       "extra": true,
+       "series": "Hank Johnson, Agent of Hydra",
+       "number": "1"
+      },
+      {
+       "cv": 502130,
+       "extra": false,
+       "series": "Secret Wars",
+       "number": "6"
+      },
+      {
+       "cv": 502131,
+       "extra": true,
+       "series": "Siege",
+       "number": "4"
+      },
+      {
+       "cv": 503552,
+       "extra": true,
+       "series": "Secret Wars: Agents of Atlas",
+       "number": "1"
+      },
+      {
+       "cv": 505528,
+       "extra": true,
+       "series": "Thors",
+       "number": "4"
+      }
+     ]
+    },
+    {
+     "name": "Everything Dies",
+     "note": "Secret Wars #7–9, and the tie-ins that end with it.",
+     "issues": [
+      {
+       "cv": 505522,
+       "extra": false,
+       "series": "Secret Wars",
+       "number": "7"
+      },
+      {
+       "cv": 507780,
+       "extra": false,
+       "series": "Secret Wars",
+       "number": "8"
+      },
+      {
+       "cv": 510951,
+       "extra": false,
+       "series": "Secret Wars",
+       "number": "9"
+      },
+      {
+       "cv": 502853,
+       "extra": true,
+       "series": "A-Force",
+       "number": "5"
+      },
+      {
+       "cv": 502127,
+       "extra": true,
+       "series": "Old Man Logan",
+       "number": "5"
+      },
+      {
+       "cv": 508440,
+       "extra": true,
+       "series": "Ultimate End",
+       "number": "5"
+      },
+      {
+       "cv": 503567,
+       "extra": true,
+       "series": "Weirdworld",
+       "number": "5"
+      },
+      {
+       "cv": 506663,
+       "extra": true,
+       "series": "Silver Surfer",
+       "number": "15"
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

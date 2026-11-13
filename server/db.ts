@@ -280,12 +280,12 @@ CREATE TABLE IF NOT EXISTS setting (
   value TEXT NOT NULL
 );
 
--- The runs and arcs you are keeping up with. \`ref_id\` is edition.id for a volume and
--- Comic Vine's own arc id for an arc: a download has to land in an edition's folder, so
--- the edition is the thing a volume follow must name, and an arc has no local row at all
--- to name instead. Polymorphic, so it carries no foreign key - the edition delete route
--- drops a volume follow with its edition, and the follow list prunes anything else that
--- stops resolving.
+-- The runs, arcs and reading lists you are keeping up with. \`ref_id\` is edition.id for a
+-- volume, Comic Vine's own arc id for an arc, and the id a list file declares for a reading
+-- list: a download has to land in an edition's folder, so the edition is the thing a volume
+-- follow must name, and neither an arc nor a list has a local row to name instead.
+-- Polymorphic, so it carries no foreign key - the edition delete route drops a volume
+-- follow with its edition, and the follow list prunes anything else that stops resolving.
 CREATE TABLE IF NOT EXISTS follow (
   kind       TEXT NOT NULL,
   ref_id     INTEGER NOT NULL,
@@ -363,6 +363,15 @@ CREATE TABLE IF NOT EXISTS last_scrape (
   error        TEXT,
   started_at   TEXT NOT NULL,
   finished_at  TEXT NOT NULL
+);
+
+-- Whether a reading list is read in Core or Full. In the database rather than the browser
+-- because Follow runs here: the next issue it queues has to come from the same length the
+-- page shows. Lists live in code (server/readingLists), so list_id is the id a list file
+-- declares and there is nothing to reference. No row reads as Core.
+CREATE TABLE IF NOT EXISTS reading_list_length (
+  list_id INTEGER PRIMARY KEY,
+  length  TEXT NOT NULL CHECK (length IN ('core', 'full'))
 );
 `
 

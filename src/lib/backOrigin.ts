@@ -28,6 +28,7 @@ export interface BackOrigin {
 export function labelForPath(pathname: string): string {
   if (pathname === '/following') return 'Following'
   if (pathname === '/arcs') return 'All story arcs'
+  if (pathname === '/lists') return 'All reading lists'
   const arc = /^\/arcs\/(.+)$/.exec(pathname)
   if (arc) return decodeURIComponent(arc[1])
   // Before the series pattern: an annuals url is a series url with a tail, so the looser

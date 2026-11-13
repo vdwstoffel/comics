@@ -6,11 +6,12 @@ import { listBooksByEdition } from '../models/books.js'
 import { getComicVineKey } from '../models/settings.js'
 import { findLiveByIssue } from '../models/downloadQueue.js'
 import { resolveArcId } from '../services/arcIdentity.js'
+import { getReadingListById, getListLength, issuesIn } from '../models/readingLists.js'
 import { nextWantedIssue, attemptFollow } from '../services/following.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
 import type { App } from '../types.js'
 
-interface FollowBody { kind?: string; editionId?: number; name?: string }
+interface FollowBody { kind?: string; editionId?: number; name?: string; listId?: number }
 interface FollowParams { kind: string; refId: string }
 
 export interface FollowRouteOpts {
@@ -18,7 +19,7 @@ export interface FollowRouteOpts {
   fetchPage?: (url: string) => Promise<string>
 }
 
-const KINDS: FollowKind[] = ['volume', 'arc']
+const KINDS: FollowKind[] = ['volume', 'arc', 'list']
 const isKind = (v: unknown): v is FollowKind => KINDS.includes(v as FollowKind)
 
 /**
@@ -41,7 +42,8 @@ export default async function followRoutes(app: App, opts: FollowRouteOpts = {})
   /**
    * What each follow is waiting for. A volume follow whose edition has gone, or was never
    * matched to Comic Vine, is dropped here rather than drawn as a tile that can never do
-   * anything. Arc follows are never dropped: an unknown arc reads as caught up.
+   * anything - and so is a list follow whose list has left the code. Arc follows are never
+   * dropped: an unknown arc reads as caught up.
    */
   app.get('/api/follows', async () => {
     const views = []
@@ -57,6 +59,10 @@ export default async function followRoutes(app: App, opts: FollowRouteOpts = {})
       // does the matching itself, against a calendar only the browser has; the server's part
       // is to say which volume this follow is, in every name that volume answers to.
       const edition = follow.kind === 'volume' ? getEdition(app.db, follow.refId) : undefined
+      // A list's comics are known only by Comic Vine id, and the shelf has to find them
+      // among your unread ones to draw the tile - in the order the list reads, so the
+      // cover is the next one up. `unresolved` above already dropped a list that is gone.
+      const list = follow.kind === 'list' ? getReadingListById(follow.refId) : undefined
 
       views.push({
         kind: follow.kind,
@@ -73,6 +79,9 @@ export default async function followRoutes(app: App, opts: FollowRouteOpts = {})
                 lastHeldNumber: lastHeldNumber(app, edition.id),
               },
             }
+          : {}),
+        ...(list
+          ? { list: { slug: list.slug, issueIds: issuesIn(list, getListLength(app.db, list.id)).map((i) => i.cv) } }
           : {}),
         ...(outcome.state === 'wanted'
           ? {
@@ -98,8 +107,9 @@ export default async function followRoutes(app: App, opts: FollowRouteOpts = {})
   })
 
   /**
-   * Follow a run or an arc, each addressed the way it is addressed everywhere else: a
-   * volume by its edition id, an arc by the name its page is reached under.
+   * Follow a run, an arc or a reading list, each addressed the way it is addressed
+   * everywhere else: a volume by its edition id, an arc by the name its page is reached
+   * under, a list by the id its file declares.
    *
    * Attempts once on the way out. Following a run you are already part-way through
    * should do the obvious thing immediately rather than making you re-read an issue to
@@ -107,7 +117,7 @@ export default async function followRoutes(app: App, opts: FollowRouteOpts = {})
    */
   app.post<{ Body: FollowBody }>('/api/follows', async (req, reply) => {
     const body = req.body || {}
-    if (!isKind(body.kind)) return reply.code(400).send({ error: 'follow a volume or an arc' })
+    if (!isKind(body.kind)) return reply.code(400).send({ error: 'follow a volume, an arc or a reading list' })
 
     let follow: Follow
     if (body.kind === 'volume') {
@@ -120,6 +130,10 @@ export default async function followRoutes(app: App, opts: FollowRouteOpts = {})
         return reply.code(409).send({ error: 'match this volume to Comic Vine before following it' })
       }
       follow = addFollow(app.db, 'volume', edition.id, edition.cvName || edition.name)
+    } else if (body.kind === 'list') {
+      const list = getReadingListById(Number(body.listId))
+      if (!list) return reply.code(404).send({ error: 'no such reading list' })
+      follow = addFollow(app.db, 'list', list.id, list.name)
     } else {
       const name = (body.name ?? '').trim()
       if (!name) return reply.code(400).send({ error: 'which arc?' })
@@ -140,7 +154,7 @@ export default async function followRoutes(app: App, opts: FollowRouteOpts = {})
 
   app.delete<{ Params: FollowParams }>('/api/follows/:kind/:refId', async (req, reply) => {
     const { kind, refId } = req.params
-    if (!isKind(kind)) return reply.code(400).send({ error: 'follow a volume or an arc' })
+    if (!isKind(kind)) return reply.code(400).send({ error: 'follow a volume, an arc or a reading list' })
     if (!removeFollow(app.db, kind, Number(refId))) {
       return reply.code(404).send({ error: 'not following that' })
     }

@@ -129,3 +129,27 @@ test('nothing known means nothing drawn', () => {
   const { container } = draw({ credits: [], tags: [], summary: null, bookId: undefined })
   expect(container).toBeEmptyDOMElement()
 })
+
+/* ── reading lists ───────────────────────────────────────────────────────── */
+
+// The way back from a comic to the story it was read for.
+test('an issue in a reading list links back to it, with its place', () => {
+  draw({ readingLists: [{ slug: 'hickmans-avengers', name: "Hickman's Avengers", position: 47, total: 92 }] })
+  expect(screen.getByRole('heading', { name: 'Reading list' })).toBeInTheDocument()
+  const link = screen.getByRole('link', { name: /Hickman's Avengers/ })
+  expect(link).toHaveAttribute('href', '/lists/hickmans-avengers')
+  expect(within(link).getByText('47 of 92')).toBeInTheDocument()
+})
+
+test('a tie-in while its list reads in Core says so instead of a place', () => {
+  draw({ readingLists: [{ slug: 'hickmans-avengers', name: "Hickman's Avengers", tieIn: true, total: 92 }] })
+  expect(within(screen.getByRole('link', { name: /Hickman's Avengers/ })).getByText('Tie-in')).toBeInTheDocument()
+})
+
+test('an issue in two lists names both', () => {
+  draw({ readingLists: [
+    { slug: 'a', name: 'First', position: 1, total: 2 },
+    { slug: 'b', name: 'Second', position: 2, total: 9 },
+  ] })
+  expect(screen.getByRole('heading', { name: 'Reading lists' })).toBeInTheDocument()
+})

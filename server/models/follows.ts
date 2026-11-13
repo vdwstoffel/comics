@@ -1,10 +1,10 @@
 import type { Db } from '../types.js'
 
-export type FollowKind = 'volume' | 'arc'
+export type FollowKind = 'volume' | 'arc' | 'list'
 
 export interface Follow {
   kind: FollowKind
-  /** edition.id for a volume; Comic Vine's arc id for an arc. See db.ts. */
+  /** edition.id for a volume; Comic Vine's arc id for an arc; the list file's id for a list. See db.ts. */
   refId: number
   name: string
   createdAt: string
