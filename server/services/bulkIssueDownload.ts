@@ -73,7 +73,8 @@ export function queueMissingIssues(
       try {
         await startIssueDownload(app, {
           volumeName,
-          editionName: edition.name,
+          // An annual lands in its own annual edition, never in the run's.
+          editionName: issue.editionName ?? edition.name,
           issue,
           label: issueLabel(volumeName, issue.number),
           fetchPage,

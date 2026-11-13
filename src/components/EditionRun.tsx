@@ -153,7 +153,7 @@ export default function EditionRun({
   const fill = (entry: VolumeEntry, offerUpload = false) => (
     <MissingIssueAction
       editionId={editionId}
-      editionName={editionName}
+      editionName={entry.fileInto ?? editionName}
       issueId={entry.issueId!}
       label={entry.label}
       match={entry.match}

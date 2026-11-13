@@ -494,6 +494,12 @@ export function openDb(dbPath: string): Db {
   if (!editionCols.includes('cv_parts_checked_at')) db.exec('ALTER TABLE edition ADD COLUMN cv_parts_checked_at TEXT')
   if (!editionCols.includes('cv_parts_proposal')) db.exec('ALTER TABLE edition ADD COLUMN cv_parts_proposal TEXT')
 
+  // The run's annual volumes - Batman Annual (2012) for Batman (2011) - found by name and
+  // date and kept beside the parts rather than among them: an annual is read into the run,
+  // but it is filed in an edition of its own, and a part is filed in the run.
+  if (!editionCols.includes('cv_annuals')) db.exec('ALTER TABLE edition ADD COLUMN cv_annuals TEXT')
+  if (!editionCols.includes('cv_annuals_checked_at')) db.exec('ALTER TABLE edition ADD COLUMN cv_annuals_checked_at TEXT')
+
   // An arc issue gained the id of the volume it belongs to, which is what decides where
   // a download of it lands. Arcs cached before this read back without one until their
   // next refresh; the download falls back to the volume's name meanwhile.

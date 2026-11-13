@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { volumeEntries } from '../src/lib/volumeEntries'
+import { volumeEntries, annualEditionsOf } from '../src/lib/volumeEntries'
 import type { ApiBook } from '../src/api'
 
 function book(id: number, over: Partial<ApiBook> = {}): ApiBook {
@@ -231,4 +231,32 @@ test('an issue of the run takes the edition from the book behind it', () => {
     editions: [{ id: 16, name: 'The Amazing Spider-Man (2025)' }],
   })
   expect(entry.editionName).toBe('The Amazing Spider-Man (2025)')
+})
+
+// Among the run's own issues, a bare "#1" would read as the run's #1.
+test('an annual is named as one, and its gap files into its own edition', () => {
+  const entries = volumeEntries({
+    issues: [{ id: 900, number: '1', owned: false, annual: true, editionName: 'Batman Annual (2012)' }],
+    extras: [],
+    books: [],
+  })
+
+  expect(entries[0]).toMatchObject({ label: 'Annual #1', fileInto: 'Batman Annual (2012)' })
+})
+
+test('an annual you have names the edition it is actually in', () => {
+  const annualBooks = [{ ...book(300, { editionId: 40, title: 'First Snow' }), editionName: 'Batman Annual (2012)' }]
+  const entries = volumeEntries({
+    issues: [{ id: 900, number: '1', owned: true, bookId: 300, annual: true }],
+    extras: [],
+    books: annualBooks,
+    editions: annualEditionsOf(annualBooks),
+  })
+
+  expect(entries[0]).toMatchObject({ editionId: 40, editionName: 'Batman Annual (2012)', title: 'First Snow' })
+})
+
+test('a run with no annuals of yours names no other editions', () => {
+  expect(annualEditionsOf(undefined)).toBeUndefined()
+  expect(annualEditionsOf([])).toBeUndefined()
 })

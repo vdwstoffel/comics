@@ -168,6 +168,10 @@ export interface ApiVolumeIssue {
   /** Present only on an issue filed under another of the run's volumes: that volume's
    *  name, which is what its release posts - and so a search for it - go by. */
   volumeName?: string
+  /** One of the run's annuals, read in where it came out from a volume of its own. */
+  annual?: boolean
+  /** Where a copy of this annual is filed - its own annual edition, never the run's. */
+  editionName?: string
 }
 
 /** Why a comic turned up in a search. Mirrors server/models/books.ts: src/ imports nothing
@@ -233,6 +237,9 @@ export interface ApiEditionIssues {
   extras: ApiEditionExtra[]
   owned: number
   total: number
+  /** The annuals you have. They live in editions of their own, so the page's books do
+   *  not hold them, and a tile needs its comic. */
+  annualBooks?: Array<ApiBook & { editionName: string | null }>
   unavailable?: boolean
   /** When this run was last read from Comic Vine. */
   fetchedAt?: string

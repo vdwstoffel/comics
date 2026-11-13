@@ -2,6 +2,7 @@ import { getEdition } from '../models/editions.js'
 import { listBooksByEdition } from '../models/books.js'
 import { volumeRefFromDescription, collectingLineFromIssue } from '../lib/collectsRef.js'
 import { seriesMatchKey } from '../lib/seriesName.js'
+import { isAnnualName } from '../lib/runAnnuals.js'
 import type { ComicVineClient } from '../lib/comicvine.js'
 import type { Db } from '../types.js'
 
@@ -37,6 +38,10 @@ export async function detectCollects(
 ): Promise<CollectsProposal | null> {
   const edition = getEdition(db, editionId)
   if (!edition?.comicvineId) return null
+  // An annual is new comics, read inside its run, and reprints nothing. Its description
+  // names the run it belongs to, which read as a collecting line shelved the annual as a
+  // trade of its own run.
+  if (isAnnualName(edition.cvName ?? edition.name)) return null
 
   const volumeId = await fromVolume(cv, edition.comicvineId)
     ?? await fromFirstBook(db, cv, editionId)

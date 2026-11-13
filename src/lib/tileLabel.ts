@@ -1,4 +1,13 @@
-import type { ApiBook } from '../api'
+import type { ApiBook, ApiVolumeIssue } from '../api'
+
+/**
+ * What an issue of the run is called on its tile: "#12", or "Annual #1" for one of the
+ * run's annuals. Never a bare number for an annual - it sits among the run's own issues,
+ * and "#1" there reads as the run's #1.
+ */
+export function runIssueLabel(issue: Pick<ApiVolumeIssue, 'number' | 'annual'>): string {
+  return `${issue.annual ? 'Annual ' : ''}#${issue.number ?? '?'}`
+}
 
 /**
  * What to call a comic on a tile. A comic that has not been matched yet has neither a

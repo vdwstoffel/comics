@@ -1,5 +1,5 @@
 import type { ApiBook, ApiEditionExtra, ApiVolumeIssue } from '../api'
-import { tileLabel } from './tileLabel'
+import { tileLabel, runIssueLabel } from './tileLabel'
 
 /**
  * One issue of the run as the volume page shows it, whichever of three places it came
@@ -49,6 +49,9 @@ export interface VolumeEntry {
   /** The volume a gap is filed under, when that is one of the run's others - the name a
    *  search for it has to use. */
   volumeName?: string
+  /** Where a gap's comic goes when it is filled, when that is not the run's edition: an
+   *  annual's own. */
+  fileInto?: string
 }
 
 interface VolumeEntriesInput {
@@ -57,6 +60,18 @@ interface VolumeEntriesInput {
   books: ApiBook[]
   /** Names for the editions the books are in. Absent on a page that holds only one. */
   editions?: Array<{ id: number; name: string }>
+}
+
+/**
+ * The editions a run's annuals are in, for naming them: an annual is the one comic on an
+ * edition page that lives in a different edition. Absent when there are none, so a page
+ * of one edition still reads its own name for every comic.
+ */
+export function annualEditionsOf(
+  annualBooks: Array<{ editionId: number; editionName: string | null }> | undefined,
+): Array<{ id: number; name: string }> | undefined {
+  const named = (annualBooks ?? []).flatMap((b) => (b.editionName ? [{ id: b.editionId, name: b.editionName }] : []))
+  return named.length ? named : undefined
 }
 
 /** The fields an entry takes from a book, when there is a book to take them from. */
@@ -98,13 +113,14 @@ export function volumeEntries({ issues, extras, books, editions }: VolumeEntries
     const book = issue.bookId != null ? byId.get(issue.bookId) : undefined
     return {
       key: `issue-${issue.id}`,
-      label: `#${issue.number ?? '?'}`,
+      label: runIssueLabel(issue),
       owned: issue.owned,
       issueId: issue.id,
       siteUrl: issue.siteUrl,
       coverDate: issue.coverDate,
       match: issue.match,
       ...(issue.volumeName ? { volumeName: issue.volumeName } : {}),
+      ...(issue.editionName ? { fileInto: issue.editionName } : {}),
       // Comic Vine's story title is the gap's only name; a book of your own overrides it
       // below, because what the file says it is beats what the catalogue says it is.
       title: issue.name,

@@ -7,6 +7,7 @@ import { useFindRelease } from '../lib/useFindRelease'
 import CoverTile from './CoverTile'
 import MissingIssueTile from './MissingIssueTile'
 import IssueUploadAction from './IssueUploadAction'
+import { runIssueLabel } from '../lib/tileLabel'
 
 /**
  * One issue of the run: the comic if you have it, otherwise its place in the run and a
@@ -29,14 +30,17 @@ export default function VolumeIssueTile({ issue, book, editionId, editionName, s
   editionName: string
   seriesName: string
 }) {
-  const label = `#${issue.number ?? '?'}`
+  const label = runIssueLabel(issue)
+  // An annual is filed in its own annual edition, so that is where an upload lands and
+  // what the find dialog names.
+  const fileInto = issue.editionName ?? editionName
   const { liveByIssue } = useDownload()
 
   const get = useGetIssue(() => api.downloadMissingIssue(editionId, issue.id))
 
   // The tile says "#3"; the dialog floats over the page and has to say which run's #3.
   const find = useFindRelease({
-    gapLabel: `${editionName} ${label}`,
+    gapLabel: `${fileInto} ${label}`,
     // Mortal Thor #9 is posted as Mortal Thor, whatever the run around it is called.
     seed: findIssueSeed(issue.volumeName ?? seriesName, issue.coverDate),
     onDownload: (indexId) => api.downloadMissingIssue(editionId, issue.id, indexId),
@@ -67,7 +71,7 @@ export default function VolumeIssueTile({ issue, book, editionId, editionName, s
         pending={get.isPending}
         failed={get.isError}
         queued={liveByIssue.has(issue.id)}
-        upload={<IssueUploadAction editionName={editionName} issueId={issue.id} label={label} />}
+        upload={<IssueUploadAction editionName={fileInto} issueId={issue.id} label={label} />}
       />
       {find.dialog}
     </>

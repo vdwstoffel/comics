@@ -4,7 +4,7 @@ import {
   listEditions, getEdition, listPublishers, listReadStates, updateEdition,
 } from '../models/editions.js'
 import type { EditionUpdate } from '../models/editions.js'
-import { listBooksByEdition } from '../models/books.js'
+import { listBooksByEdition, findBookByIssue } from '../models/books.js'
 import { deriveReadState } from '../models/progress.js'
 import { renameEdition, removeEdition, reorganizeLibrary } from '../services/library.js'
 import { createComicVine } from '../lib/comicvine.js'
@@ -12,6 +12,8 @@ import type { CvVolumeIssue } from '../lib/comicvine.js'
 import { mergeRun, sharesNumbers } from '../lib/runParts.js'
 import { heldRun, readVolumeIssues, detectRunPart as detectRunPartReal, spanOf } from '../services/runParts.js'
 import type { RunPartSpan } from '../services/runParts.js'
+import { readRunAnnuals, heldAnnuals } from '../services/runAnnuals.js'
+import { interleaveAnnuals } from '../lib/runAnnuals.js'
 import { getVolumeCached } from '../models/volumeRecord.js'
 import { findMatchForIssue } from '../services/issueMatching.js'
 import { startIssueDownload, issueLabel, pickedRow } from '../services/issueDownload.js'
@@ -499,10 +501,22 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
       if (held) parts.push({ name: part.name, issues: held.issues })
       if (!held || held.stale) stale = true
     }
-    const volumeIssues = mergeRun(own.issues, parts)
+    const merged = mergeRun(own.issues, parts)
     const fetchedAt = own.fetchedAt
 
-    const byCvId = new Map(books.filter((b) => b.comicvineId).map((b) => [b.comicvineId as number, b]))
+    // The run's annuals, each where it came out. A copy of one lives in its own annual
+    // edition rather than this one, so it is looked for across the library.
+    const annuals = await readRunAnnuals(app.db, cv, edition, merged, { refresh })
+    if (annuals.stale) stale = true
+    const volumeIssues = interleaveAnnuals(merged, annuals.issues)
+    const annualBooks = annuals.issues.flatMap((issue) => {
+      const book = findBookByIssue(app.db, issue.id)
+      if (!book || book.editionId === edition.id) return []
+      // Named, because the page names the edition a comic is in and knows only its own.
+      return [{ ...deriveReadState(app.db, book), editionName: getEdition(app.db, book.editionId)?.name ?? null }]
+    })
+
+    const byCvId = new Map([...annualBooks, ...books].filter((b) => b.comicvineId).map((b) => [b.comicvineId as number, b]))
     const issues = volumeIssues.map((issue) => {
       const book = byCvId.get(issue.id)
       if (book) return { ...issue, owned: true, bookId: book.id }
@@ -520,6 +534,9 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
       extras: books.filter((b) => !accounted.has(b.id)).map(extraOf),
       owned: accounted.size,
       total: issues.length,
+      // The annuals you have, which live in editions of their own: the page holds only
+      // this edition's books, and a tile needs its comic to draw a cover and a read state.
+      ...(annualBooks.length ? { annualBooks } : {}),
       fetchedAt,
       siteUrl,
       ...(stale ? { stale: true } : {}),
@@ -550,13 +567,15 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
       // Any age: a press only follows a page view that filled this cache, and a
       // published issue's number and cover date do not change.
       const held = heldRun(app.db, edition)
-      const issue = held?.issues.find((i) => i.id === Number(req.params.cvIssueId))
+      // An annual of the run is one of its gaps too, filed in its own annual edition.
+      const issue = held && [...held.issues, ...heldAnnuals(app.db, edition, held.issues)]
+        .find((i) => i.id === Number(req.params.cvIssueId))
       if (!issue) return reply.code(404).send({ error: 'issue not in this volume' })
 
       const volumeName = issue.volumeName ?? edition.cvName
       const result = await startIssueDownload(app, {
         volumeName,
-        editionName: edition.name,
+        editionName: issue.editionName ?? edition.name,
         issue,
         label: issueLabel(volumeName, issue.number),
         indexId: pickedRow(req.body),
@@ -598,7 +617,11 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
         .map((b) => b.comicvineId)
         .filter((id): id is number => id != null),
     )
-    const issues = missingMatchedIssues(app, { edition, issues: held.issues, owned })
+    // An annual you have sits in its own edition, so it is looked for across the library -
+    // or every Get all would fetch it again.
+    const annuals = heldAnnuals(app.db, edition, held.issues)
+    for (const annual of annuals) if (findBookByIssue(app.db, annual.id)) owned.add(annual.id)
+    const issues = missingMatchedIssues(app, { edition, issues: [...held.issues, ...annuals], owned })
 
     const result = queueMissingIssues(app, { edition, issues, fetchPage, delayMs: bulkDelayMs })
     if ('already' in result) {

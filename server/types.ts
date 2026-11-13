@@ -53,6 +53,11 @@ export interface Edition {
   /** What that read suggested, as JSON - held apart from `cvParts` because a suggestion
    *  nobody has agreed to must change nothing about the run. */
   cvPartsProposal: string | null
+  /** The run's annual volumes, read into it by date. Found, not confirmed: an annual is
+   *  shown where it came out and filed in an edition of its own, so it moves nothing. */
+  cvAnnuals: RunPart[]
+  /** When Comic Vine was last searched for them. */
+  cvAnnualsCheckedAt: string | null
   createdAt: string
   bookCount?: number
 }

@@ -305,6 +305,19 @@ test('accepting the name sends the series alongside it', async () => {
   })
 })
 
+// Comic Vine calls the volume "Batman Annual", but its series is Batman's: an annual is
+// filed beside its run, which is the rule the edition got when it was first made. Sending
+// the volume name as it stands made "Batman Annual" a series of its own.
+test('accepting an annual\'s name files it under its run\'s series', async () => {
+  mockFetch({ ...CV_EDITION, name: 'Unsorted', seriesName: 'Unsorted', cvName: 'Batman Annual', cvStartYear: 2012 })
+  renderPage()
+
+  fireEvent.click(await screen.findByRole('button', { name: /rename to/i }))
+
+  await waitFor(() => expect(patched).toHaveLength(1))
+  expect(patched[0].body).toEqual({ name: 'Batman Annual (2012)', seriesName: 'Batman' })
+})
+
 // The wording has to change when the target name is already taken: renaming onto it is
 // a merge on the server, not a plain rename. This needs the page to know what other
 // editions exist, so it reuses the same /api/editions list EditionCombobox draws from.
@@ -479,6 +492,40 @@ test('missing issues keep their place in the run', async () => {
   await screen.findByText('#250')
   const numbers = screen.getAllByText(/^#(250|255|259)$/).map((n) => n.textContent)
   expect(numbers).toEqual(['#250', '#255', '#259'])
+})
+
+// Venom Annual #1 came out between #250 and #255. Among the run's own issues a bare "#1"
+// would read as the run's #1, so it is named as the annual it is.
+const WITH_ANNUAL = {
+  ...VOLUME_ISSUES,
+  total: 4,
+  issues: [
+    VOLUME_ISSUES.issues[0],
+    { id: 900, number: '1', name: 'Venom Annual', siteUrl: 'https://cv/a1', owned: false, annual: true, editionName: 'Venom Annual (2025)' },
+    ...VOLUME_ISSUES.issues.slice(1),
+  ],
+}
+
+test('an annual sits in the run where it came out, named as an annual', async () => {
+  mockFetchWithIssues(WITH_ANNUAL)
+  renderGrid()
+
+  await screen.findByText('#250')
+  const labels = screen.getAllByText(/^(Annual )?#(1|250|255|259)$/).map((n) => n.textContent)
+  expect(labels).toEqual(['#250', 'Annual #1', '#255', '#259'])
+})
+
+// The annual's comic is filed in an edition of its own, so the page's books do not hold it.
+test('an annual you have shows its comic, which comes with the run', async () => {
+  mockFetchWithIssues({
+    ...WITH_ANNUAL,
+    issues: WITH_ANNUAL.issues.map((i) => (i.id === 900 ? { ...i, owned: true, bookId: 300 } : i)),
+    annualBooks: [{ id: 300, editionId: 40, editionName: 'Venom Annual (2025)', title: 'Dark Origins', number: '1', pageCount: 40, comicinfoSynced: true }],
+  })
+  renderGrid()
+
+  expect(await screen.findByText('Dark Origins')).toBeInTheDocument()
+  expect(screen.getByText('Annual #1')).toBeInTheDocument()
 })
 
 test('the header counts the whole run, not just what you have', async () => {

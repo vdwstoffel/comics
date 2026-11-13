@@ -98,7 +98,22 @@ export function listSeries(db: Db, opts?: EditionFilter): Series[] {
   // so a read-state filter narrows which volumes are listed without turning a collected
   // run back into the separate paperback lines it was gathered from.
   const all = opts ? listEditions(db) : undefined
-  for (const one of series.values()) one.shelves = shelfOrder(groupIntoShelves(one.editions, all))
+
+  // An annual one of your runs has taken in is read there, where it came out, so it is
+  // not offered a second time as a shelf of its own. Only the shelf goes: the edition is
+  // still the series', and still counted when the series is deleted. Decided on the whole
+  // library, like the shelves - a filter must not decide which run an annual is in.
+  const inRuns = new Set((all ?? [...series.values()].flatMap((s) => s.editions))
+    .flatMap((e) => e.cvAnnuals.map((a) => a.volumeId)))
+  const placed = (shelf: Shelf) => shelf.editions.every((e) => e.comicvineId != null && inRuns.has(e.comicvineId))
+
+  for (const one of series.values()) {
+    const shelves = shelfOrder(groupIntoShelves(one.editions, all))
+    const kept = shelves.filter((shelf) => !placed(shelf))
+    // A series that is nothing but annuals filed under another series' run - a series name
+    // changed by hand - would otherwise be a page with nothing on it.
+    one.shelves = kept.length ? kept : shelves
+  }
 
   return [...series.values()].sort((a, b) => {
     const byKey = seriesSortKey(a.name).localeCompare(seriesSortKey(b.name), undefined, { sensitivity: 'base' })

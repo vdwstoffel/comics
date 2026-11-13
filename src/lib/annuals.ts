@@ -41,6 +41,16 @@ export function splitAnnuals<T extends NamedEdition>(editions: T[]): { runs: T[]
 }
 
 /**
+ * The series a Comic Vine volume is filed under: its own name, or for an annual the run
+ * it is an annual of - "Batman Annual" is Batman's. The server gives a new edition the
+ * same answer through `deriveSeriesName`; this is for the one place the page names a
+ * series itself, accepting Comic Vine's name for an edition.
+ */
+export function seriesOfVolume(cvName: string): string {
+  return cvName.replace(ANNUAL, '').trim() || cvName
+}
+
+/**
  * The year an annual belongs to, from its own name.
  *
  * The year is what tells one annual from another: they are almost all issue #1, and a

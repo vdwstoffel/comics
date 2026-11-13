@@ -5,7 +5,7 @@ import type { ApiBook, ApiEdition, ApiShelf } from '../api'
 import { statusFrom, withStatus } from '../lib/readStatus'
 import { useBackLink, useBackOrigin } from '../lib/backOrigin'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
-import { volumeEntries } from '../lib/volumeEntries'
+import { volumeEntries, annualEditionsOf } from '../lib/volumeEntries'
 import CoverTile from '../components/CoverTile'
 import EditionRun from '../components/EditionRun'
 
@@ -163,8 +163,12 @@ function ShelfRun({ shelf, books }: { shelf: ApiShelf; books: ApiBook[] }) {
     // With an owner, the collections sit outside its run. Without one there is no run
     // at all, and volumeEntries falls through to the books themselves.
     extras: owner ? collected.map((b) => ({ bookId: b.id, number: b.number, title: b.title })) : [],
-    books,
-    editions: shelf.editions.map((e) => ({ id: e.id, name: e.name })),
+    // The run's annuals you have, which live in editions of their own.
+    books: [...books, ...(run?.annualBooks ?? [])],
+    editions: [
+      ...shelf.editions.map((e) => ({ id: e.id, name: e.name })),
+      ...(annualEditionsOf(run?.annualBooks) ?? []),
+    ],
   })
 
   if (!entries.length) return <p>Nothing on this shelf yet.</p>

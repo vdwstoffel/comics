@@ -62,7 +62,7 @@ export async function readVolumeIssues(
  * stale list. Detection must be able to tell "looked, and found nothing" from "could not
  * look", or a network blip would be recorded as an answer.
  */
-async function volumeIssuesOrThrow(
+export async function volumeIssuesOrThrow(
   db: Db,
   cv: Pick<ComicVineClient, 'listVolumeIssues'>,
   volumeId: number,

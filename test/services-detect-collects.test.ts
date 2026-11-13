@@ -125,3 +125,25 @@ test('an edition that collects itself is not a proposal', async () => {
   expect(await detectCollects({ db, cv }, edition.id)).toBeNull()
   db.close()
 })
+
+// Amazing Spider-Man Annual (2026)'s description names the run it belongs to, and that
+// was read as "collects The Amazing Spider-Man (2025)" - so the annual was shelved as a
+// trade of its own run and drawn after its last issue. An annual is new comics, read
+// inside its run; it reprints nothing.
+test('an annual is never proposed as a collection of its run', async () => {
+  const db = openDb(':memory:')
+  const edition = seedCollection(db, 'Amazing Spider-Man Annual (2026)', 170303)
+  updateEdition(db, edition.id, { cvName: 'Amazing Spider-Man Annual' })
+  let asked = false
+  const cv = stubCv({
+    getVolume: async () => {
+      asked = true
+      return { descriptionHtml: ZEB_WELLS_DESC, name: 'The Amazing Spider-Man' } as CvVolume
+    },
+  })
+
+  expect(await detectCollects({ db, cv }, edition.id)).toBeNull()
+  // Not even a Comic Vine read spent on finding out.
+  expect(asked).toBe(false)
+  db.close()
+})

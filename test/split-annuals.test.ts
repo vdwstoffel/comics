@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { splitAnnuals, annualYear } from '../src/lib/annuals'
+import { splitAnnuals, annualYear, seriesOfVolume } from '../src/lib/annuals'
 
 function ed(name: string, id = 1) {
   return { id, name, bookCount: 1 }
@@ -53,4 +53,12 @@ test('an annual is named by the year in its name', () => {
 
 test('an annual with no year in its name has none', () => {
   expect(annualYear('Amazing Spider-Man Annual')).toBe(null)
+})
+
+test('an annual volume is filed under the series of the run it is an annual of', () => {
+  expect(seriesOfVolume('Batman Annual')).toBe('Batman')
+  expect(seriesOfVolume('Amazing Spider-Man Annual (2026)')).toBe('Amazing Spider-Man')
+  expect(seriesOfVolume('Batman')).toBe('Batman')
+  // A volume that is nothing but the word keeps it, rather than becoming no series at all.
+  expect(seriesOfVolume('Annual')).toBe('Annual')
 })

@@ -10,7 +10,8 @@ import CoverTile from '../components/CoverTile'
 import { tileLabel } from '../lib/tileLabel'
 import { useUpcoming } from '../lib/useUpcoming'
 import { upcomingForEdition, highestPlainNumber } from '../lib/upcomingForEdition'
-import { volumeEntries } from '../lib/volumeEntries'
+import { volumeEntries, annualEditionsOf } from '../lib/volumeEntries'
+import { seriesOfVolume } from '../lib/annuals'
 import EditionEditDialog from '../components/EditionEditDialog'
 import CollectsBanner, { volumeHref, volumeLabel } from '../components/CollectsBanner'
 import RunPartsBanner, { partSpan } from '../components/RunPartsBanner'
@@ -200,7 +201,7 @@ export default function Edition() {
   })
 
   const applyName = useMutation({
-    mutationFn: () => api.renameEdition(id!, suggested!, data!.edition.cvName!),
+    mutationFn: () => api.renameEdition(id!, suggested!, seriesOfVolume(data!.edition.cvName!)),
     onSuccess: (result) => {
       qc.invalidateQueries({ queryKey: ['edition'] })
       qc.invalidateQueries({ queryKey: ['editions'] })
@@ -277,7 +278,9 @@ export default function Edition() {
   // Render the run itself only when Comic Vine actually gave us one; otherwise the page
   // falls back to the books, which is also what a volumeless edition and an unreachable
   // Comic Vine get.
-  const bookById = new Map(data.books.map((b) => [b.id, b]))
+  // The annuals you have live in editions of their own, so they come with the run.
+  const runBooks = [...data.books, ...(volume?.annualBooks ?? [])]
+  const bookById = new Map(runBooks.map((b) => [b.id, b]))
   // Defensive against a response that is not the shape we expect: a run we cannot read is
   // no reason to take the page down with it.
   // A run that has been read at all is one there is a point in reading again.
@@ -297,7 +300,12 @@ export default function Edition() {
   const showRunMeta = (showRun && canRefresh) || !!cvUrl
 
   // One flat list of the run, however much of it Comic Vine knew about.
-  const entries = volumeEntries({ issues: runIssues, extras: runExtras, books: data.books })
+  const entries = volumeEntries({
+    issues: runIssues,
+    extras: runExtras,
+    books: runBooks,
+    editions: annualEditionsOf(volume?.annualBooks),
+  })
   // A filtered page has no run at all - the run query is not even enabled under one,
   // because a placeholder has no read state to filter by - so there is nothing to walk
   // and the grid of what survived the filter is the only honest view.

@@ -13,8 +13,12 @@ import type { CvVolumeIssue } from './comicvine.js'
  * An issue of the run. `volumeName` is present only on an issue filed under one of the
  * run's other volumes, and is that volume's name - the one its release posts go by,
  * and so the one a match has to key on.
+ *
+ * `annual` marks one of the run's annuals, read in from a volume of its own, and
+ * `editionName` is where a copy of it is filed: its own annual edition, never the run's -
+ * see `server/lib/runAnnuals.ts`.
  */
-export type RunIssue = CvVolumeIssue & { volumeName?: string }
+export type RunIssue = CvVolumeIssue & { volumeName?: string; annual?: true; editionName?: string }
 
 /** Comic Vine's machine-readable reference to a volume, as it appears in its prose. */
 const VOLUME_REF = /data-ref-id="4050-(\d+)"/g
