@@ -20,6 +20,19 @@ test('a dotted suffix survives the parse', () => {
     .toEqual({ series: 'Avengers', number: '24.now' })
 })
 
+// DC's Villains Month names the issue after its number. Reading the title as part of the
+// series left these four unclaimable by Batman (2011), which lists them as 23.1 to 23.4.
+test('an issue title after the number is not part of the series', () => {
+  expect(parseComicFileName('Batman 023.1 - Featuring Joker (2013) (digital) (Minutemen-PhD).cbr'))
+    .toEqual({ series: 'Batman', number: '23.1' })
+})
+
+// The dash belongs to the series here, and the number that closes the name is the issue.
+test('a dashed series name still ends at its trailing number', () => {
+  expect(parseComicFileName('Spider-Man 2099 - Dark Genesis 001 (2023).cbz'))
+    .toEqual({ series: 'Spider-Man 2099 - Dark Genesis', number: '1' })
+})
+
 test('a collection has no trailing number', () => {
   expect(parseComicFileName('Avengers Omnibus.cbz'))
     .toEqual({ series: 'Avengers Omnibus', number: null })

@@ -143,11 +143,13 @@ test('the settings link is not one of the tabs', async () => {
 })
 
 // A page that is neither marks neither, rather than leaving the library lit while you
-// are somewhere else entirely.
+// are somewhere else entirely. Scoped to the header, because the upload page now has tabs
+// of its own that do mark the one you are on.
 test('neither tab is marked on a page that is neither', async () => {
-  renderAt('/upload')
+  const { container } = renderAt('/upload')
   await screen.findByRole('link', { name: 'Library' })
-  expect(screen.queryByRole('link', { current: 'page' })).toBeNull()
+  const header = container.querySelector('.app-header') as HTMLElement
+  expect(within(header).queryByRole('link', { current: 'page' })).toBeNull()
 })
 
 // --- the header search ----------------------------------------------------

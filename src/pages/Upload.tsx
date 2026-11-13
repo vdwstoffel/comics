@@ -6,6 +6,7 @@ import { api } from '../api'
 import type { ApiBook, CvSearchResult } from '../api'
 import EditionCombobox from '../components/EditionCombobox'
 import ComicVineMatchDialog from '../components/ComicVineMatchDialog'
+import UploadTabs from '../components/UploadTabs'
 import { cvQueryFromFileName } from '../lib/cvQuery'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 
@@ -201,9 +202,7 @@ export default function Upload() {
         <h1>Upload a comic</h1>
         {/* A whole folder is a different job: one volume search for the lot, and a table
             to check before anything moves. */}
-        <p className="upload-bulk-link">
-          Got a whole volume? <Link to="/upload/bulk">Add them in bulk</Link>.
-        </p>
+        <UploadTabs />
         <form onSubmit={submit}>
           <div className="field">
             <label className="file-label">

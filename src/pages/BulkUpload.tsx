@@ -5,12 +5,14 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ApiVolumeIssues, CvVolumeMatch } from '../api'
 import { uploadComic } from '../lib/uploadComic'
-import { buildRows, claimForVolume, assignIssue } from '../lib/bulkMatch'
+import { buildRows, claimForVolume, assignIssue, availableIssues } from '../lib/bulkMatch'
 import type { BulkIssue, BulkRow, BulkVolume } from '../lib/bulkMatch'
 import { countBatch, summarise, willUpload } from '../lib/bulkProgress'
 import type { RowProgress } from '../lib/bulkProgress'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
 import BulkVolumeGroup from '../components/BulkVolumeGroup'
+import BulkLeftoverPicker from '../components/BulkLeftoverPicker'
+import UploadTabs from '../components/UploadTabs'
 
 /**
  * Comic Vine allows about 200 requests an hour and nothing in this app counts them. A
@@ -109,6 +111,12 @@ export default function BulkUpload() {
     if (entry) setRows((rs) => assignIssue(rs, key, issue, entry.volume))
   }
 
+  // A leftover has no volume yet, so the pick names one. Assigning it moves the row into
+  // that volume's group, where it reads like any other match.
+  function placeLeftover(key: string, volume: BulkVolume, issue: BulkIssue) {
+    setRows((rs) => assignIssue(rs, key, issue, volume))
+  }
+
   function toggleReplace(key: string) {
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, replace: !r.replace } : r)))
   }
@@ -179,10 +187,12 @@ export default function BulkUpload() {
   const done = summarise(progress)
   const leftovers = rows.filter((r) => r.volumeId === null && r.state !== 'ignored')
   const ignored = rows.filter((r) => r.state === 'ignored')
+  const freeByVolume = chosen.map((c) => ({ volume: c.volume, issues: availableIssues(rows, c.volume) }))
 
   return (
     <div className="bulk-wrap">
       <h1>Bulk add</h1>
+      <UploadTabs />
       <p className="bulk-intro">
         Add a whole volume at once. Pick the folder, choose the volume, check the matches,
         then upload. Nothing is sent until you press the button, and the tab has to stay
@@ -278,8 +288,9 @@ export default function BulkUpload() {
           <header className="bulk-group__head">
             <strong>{leftovers.length} file{leftovers.length === 1 ? '' : 's'} not placed yet</strong>
             <span className="bulk-group__meta">
-              Search another volume above — annuals are a volume of their own. Anything
-              left will upload unmatched and wait on the Settings list.
+              Search another volume above — annuals are a volume of their own — or pick
+              the issue by hand. Anything left will upload unmatched and wait on the
+              Settings list.
             </span>
           </header>
           <ul className="bulk-group__rows">
@@ -287,7 +298,17 @@ export default function BulkUpload() {
               <li key={row.key} className="bulk-row bulk-row--unplaced">
                 <span className="bulk-row__file">{row.fileName}</span>
                 <span className="bulk-row__arrow">→</span>
-                <span className="bulk-row__note">no volume</span>
+                <span className="bulk-row__state">
+                  {chosen.length > 0
+                    ? (
+                      <BulkLeftoverPicker
+                        fileName={row.fileName}
+                        groups={freeByVolume}
+                        onPick={(volume, issue) => placeLeftover(row.key, volume, issue)}
+                      />
+                    )
+                    : <span className="bulk-row__note">no volume</span>}
+                </span>
               </li>
             ))}
           </ul>

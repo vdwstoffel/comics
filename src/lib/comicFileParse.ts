@@ -12,6 +12,7 @@
  *   Avengers 020 (2013) (Digital) (Zone-Empire).cbr   → Avengers, 20
  *   Avengers 024.NOW (2014) (Digital) (Zone-Empire).cbr → Avengers, 24.now
  *   Amazing Spider-Man 016.1 (2015).cbz               → Amazing Spider-Man, 16.1
+ *   Batman 023.1 - Featuring Joker (2013).cbr         → Batman, 23.1
  *   Avengers Omnibus.cbz                              → Avengers Omnibus, null
  */
 
@@ -21,6 +22,12 @@ const RELEASE_TAG_RE = /\s*(\([^)]*\)|\[[^\]]*\])\s*$/
 // A number closing the name, preceded by a space or standing alone, so the "02" of an
 // omnibus "v02" is left where it is. The dotted suffix carries 16.1 and 1.MU.
 const TRAILING_NUMBER_RE = /^(?:(.*\S)\s+)?(\d+(?:\.\w+)?)$/
+
+// The same number with the issue's own title after it - "Batman 023.1 - Featuring Joker",
+// how DC's Villains Month was released. Only tried when nothing trails the number, so a
+// series whose name carries the dash, "Spider-Man 2099 - Dark Genesis 001", is read by
+// the rule above and keeps its whole name.
+const TITLED_NUMBER_RE = /^(?:(.*\S)\s+)?(\d+(?:\.\w+)?)\s+[-–—]\s+\S.*$/
 
 // Leading zeros are a file-name padding convention, not part of the issue number.
 const PADDED_NUMBER_RE = /^(-?)0*(\d+)(\.\w+)?$/
@@ -117,7 +124,8 @@ export interface ParsedComicName {
  */
 export function parseComicFileName(fileName: string): ParsedComicName {
   const stem = fileStem(fileName)
-  const [, nameFromFile = '', numberFromFile = ''] = TRAILING_NUMBER_RE.exec(stem) ?? []
+  const [, nameFromFile = '', numberFromFile = ''] =
+    TRAILING_NUMBER_RE.exec(stem) ?? TITLED_NUMBER_RE.exec(stem) ?? []
   const number = normalizeIssueNumber(numberFromFile)
   // With no trailing number the whole stem is the name - "Avengers Omnibus" is a title,
   // not a series with a missing number.

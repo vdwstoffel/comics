@@ -4556,7 +4556,28 @@ textarea.input:hover:not(:focus) {
 .bulk-actions { display: flex; align-items: center; gap: 0.75rem; margin: 1rem 0; }
 .bulk-actions__note { color: var(--muted, #888); font-size: 0.85rem; }
 .bulk-summary { font-weight: 600; margin-top: 1rem; }
-.upload-bulk-link { font-size: 0.9rem; color: var(--muted, #888); margin-top: -0.5rem; }
+/* One comic or a whole volume. The header's tabs, smaller: underlined in the accent when
+   current, so the page you are on and the one you could switch to are told apart. */
+.upload-tabs {
+  display: flex;
+  gap: 22px;
+  border-bottom: 1px solid var(--border);
+  margin: -12px 0 24px;
+}
+.upload-tabs__tab {
+  padding: 8px 0;
+  margin-bottom: -1px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: var(--muted);
+  border-bottom: 2px solid transparent;
+  transition: color 0.15s, border-color 0.15s;
+}
+.upload-tabs__tab:hover { color: var(--text); }
+.upload-tabs__tab[aria-current='page'] {
+  color: var(--text);
+  border-bottom-color: var(--accent);
+}
 
 /* Find a release — the dialog that fills one gap from the scraped index.
    Reuses the modal frame and .cv-search-row; only the result area is its own. */

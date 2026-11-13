@@ -134,6 +134,57 @@ test('a file needing an issue is offered only that volume\'s unclaimed issues', 
   expect(offered.some((t) => t?.includes('#21'))).toBe(true)
 })
 
+// A name no volume agrees with is never claimed, and before this it had no way in at all:
+// searching again only finds volumes that agree with the name, which is the one thing
+// this file's name will not do.
+test('a file no volume claims can be placed by hand, and moves into that volume', async () => {
+  draw()
+  pick('Avengers 020 (2013).cbr', 'Mighty Avengers Special.cbr')
+  expect(await screen.findAllByText('no volume')).toHaveLength(2)
+
+  await chooseVolume(/Avengers \(2013\)/)
+  const picker = await screen.findByLabelText(/pick an issue for Mighty Avengers Special/i)
+  const offered = within(picker).getAllByRole('option').map((o) => o.textContent)
+  // #20 is taken by the file that matched it - offering it would make a collision.
+  expect(offered.some((t) => t?.includes('#20'))).toBe(false)
+  fireEvent.change(picker, { target: { value: '1004' } })
+
+  const group = screen.getByRole('region', { name: /^Avengers \(2013\)/ })
+  expect(within(group).getByText('Mighty Avengers Special.cbr')).toBeInTheDocument()
+  expect(within(group).getByText(/#26 Original Sin/)).toBeInTheDocument()
+  expect(screen.queryByRole('region', { name: /not placed yet/i })).toBeNull()
+})
+
+test('a file placed by hand uploads with the issue it was given', async () => {
+  draw()
+  pick('Mighty Avengers Special.cbr')
+  await chooseVolume(/Avengers \(2013\)/)
+  fireEvent.change(await screen.findByLabelText(/pick an issue for Mighty Avengers Special/i), {
+    target: { value: '1003' },
+  })
+  fireEvent.click(screen.getByRole('button', { name: /upload 1 comic/i }))
+
+  await waitFor(() => expect(uploadMock).toHaveBeenCalledTimes(1))
+  expect(uploadMock.mock.calls[0][0]).toMatchObject({
+    edition: 'Avengers (2013)', issueId: 1003, volumeName: 'Avengers', issueNumber: '24',
+  })
+})
+
+// Two volumes chosen: the list is headed by volume, so #1 of the annual cannot be
+// mistaken for a #1 of the run.
+test('the hand picker offers every chosen volume, headed by name', async () => {
+  draw()
+  pick('Mighty Avengers Special.cbr')
+  await chooseVolume(/Avengers \(2013\)/)
+  await screen.findByLabelText(/pick an issue for Mighty Avengers Special/i)
+  await chooseVolume(/Avengers Annual \(2014\)/)
+  await screen.findByRole('region', { name: /Avengers Annual \(2014\)/ })
+
+  const picker = screen.getByLabelText(/pick an issue for Mighty Avengers Special/i)
+  const heads = Array.from(picker.querySelectorAll('optgroup')).map((g) => g.getAttribute('label'))
+  expect(heads).toEqual(['Avengers (2013)', 'Avengers Annual (2014)'])
+})
+
 test('a copy already in this run is skipped, and one filed elsewhere replaces', async () => {
   issuesByVolume[42] = {
     ...AVENGERS,
