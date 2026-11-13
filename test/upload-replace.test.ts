@@ -6,7 +6,7 @@ import Fastify from 'fastify'
 import multipart from '@fastify/multipart'
 import { openDb } from '../server/db.js'
 import uploadRoutes from '../server/routes/upload.js'
-import { getBook, listBooksByEdition } from '../server/models/books.js'
+import { getBook, listBooksByEdition, updateBook } from '../server/models/books.js'
 import { getEditionByName } from '../server/models/editions.js'
 import { setComicVineKey } from '../server/models/settings.js'
 import { makeCbz } from './helpers/makeCbz.js'
@@ -94,13 +94,14 @@ test('the old file, thumbnail and row are gone and the new comic is in its place
 
 // The owned-elsewhere case: the stray copy is in another edition, so the replacement
 // lands in the run while the delete happens over in Unsorted.
+//
+// Seeded as an old scan matched before a match filed comics out of Unsorted: uploaded bare,
+// then given its id. Uploaded WITH the id it would be filed into the run on the way in.
 test('a copy filed in another edition is deleted and the new one lands in the run', async () => {
-  const stray = await upload(
-    { edition: 'Unsorted', issueId: '1001', volumeName: 'Avengers', issueNumber: '20' },
-    'stray.cbz',
-  )
+  const stray = await upload({ edition: 'Unsorted' }, 'stray.cbz')
   const strayId: number = stray.json().book.id
-  const strayPath = join(app.config.comicsDir, 'Unsorted', 'avengers_0020.cbz')
+  updateBook(app.db, strayId, { comicvineId: 1001 })
+  const strayPath = join(app.config.comicsDir, 'Unsorted', 'stray.cbz')
   expect(existsSync(strayPath)).toBe(true)
 
   const res = await upload({ ...NAME_PARTS, replaceBookId: String(strayId) }, 'new.cbz')
@@ -187,4 +188,17 @@ test('a replace is refused when the named book does not hold that issue', async 
   expect(res.statusCode).toBe(200)
   expect(res.json().replaced).toBeUndefined()
   expect(getBook(app.db, otherId)).toBeDefined()
+})
+
+// An upload that knows its issue knows its volume, so it is not left in Unsorted with a
+// match the edition cannot use - the same rule as matching a comic already sitting there.
+test('an upload into Unsorted that carries a match is filed into its volume\'s edition', async () => {
+  const res = await upload({ edition: 'Unsorted', issueId: '1001', volumeName: 'Avengers', issueNumber: '20' }, 'scan.cbz')
+
+  expect(res.statusCode).toBe(200)
+  expect(res.json().book.filePath).toBe(`${DIRPATH.join('/')}/avengers_0020.cbz`)
+  expect(existsSync(join(app.config.comicsDir, ...DIRPATH, 'avengers_0020.cbz'))).toBe(true)
+  expect(getEditionByName(app.db, EDITION)?.comicvineId).toBe(42)
+  // Emptied by the move, so it goes, as any edition left with nothing in it does.
+  expect(getEditionByName(app.db, 'Unsorted')).toBeUndefined()
 })

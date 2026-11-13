@@ -310,6 +310,35 @@ export function getEditionByComicvineId(db: Db, comicvineId: number): Edition | 
     .get(comicvineId) as EditionRow | undefined)
 }
 
+/**
+ * The edition a comic of this Comic Vine volume files into: the one the library already
+ * has for it, under whatever it is called, or "Name (year)" for a new one. Null when the
+ * volume has no name to give an edition.
+ *
+ * The edition you have wins over a composed name, which would otherwise file the comic
+ * into a second edition beside the one already holding the run. A start year of 0 - which
+ * the live library has - composes no year at all rather than "(0)".
+ */
+export function editionNameForVolume(
+  db: Db,
+  volumeId: number,
+  volume: { name?: string; startYear?: number } | undefined,
+): string | null {
+  const existing = getEditionByComicvineId(db, volumeId)
+  if (existing) return existing.name
+  if (!volume?.name) return null
+  const year = volume.startYear
+  return Number.isInteger(year) && year! > 0 ? `${volume.name} (${year})` : volume.name
+}
+
+/**
+ * Whether this is Unsorted, the edition a comic lands in when nothing was known about it
+ * on the way in. It describes no volume and must never be given one.
+ */
+export function isUnsorted(edition: Pick<Edition, 'name'> | undefined): boolean {
+  return edition?.name === 'Unsorted'
+}
+
 export function getEditionByName(db: Db, name: string): Edition | undefined {
   return toEdition(db.prepare('SELECT * FROM edition WHERE name = ?').get(name) as EditionRow | undefined)
 }

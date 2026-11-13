@@ -1,7 +1,7 @@
 import { test, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, useLocation } from 'react-router-dom'
 import type { ComponentProps } from 'react'
 import IssueEditPanel from '../src/components/IssueEditPanel'
 import type { ApiBook } from '../src/api'
@@ -207,4 +207,39 @@ test('a mistyped id shows the server\'s message, not a generic failure', async (
   expect(await screen.findByText('Comic Vine has no issue with that id.')).toBeInTheDocument()
   // The dialog stays open so the id can be corrected.
   expect(screen.getByRole('heading', { name: /fetch from comic vine/i })).toBeInTheDocument()
+})
+
+function Where() {
+  return <span data-testid="where">{`${useLocation().pathname}${useLocation().search}`}</span>
+}
+
+function drawWithLocation(book: ApiBook) {
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={['/edition/16?view=carousel']}>
+        <Where />
+        <IssueEditPanel book={book} onClose={() => {}} />
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
+}
+
+// Matched out of Unsorted, the comic is filed into its volume's edition - and Unsorted is
+// gone once its last comic leaves - so the page goes where the comic went.
+test('a match that filed the comic into another edition follows it there', async () => {
+  postReply = { ok: true, json: async () => ({ book: { ...BOUND, editionId: 40 }, changed: [] }) }
+  drawWithLocation(BOUND)
+  fireEvent.click(screen.getByRole('button', { name: REFRESH }))
+
+  await waitFor(() => expect(screen.getByTestId('where')).toHaveTextContent('/edition/40?view=carousel&issue=book-19'))
+})
+
+test('a match that left the comic where it was stays on the page', async () => {
+  postReply = { ok: true, json: async () => ({ book: BOUND, changed: [] }) }
+  drawWithLocation(BOUND)
+  fireEvent.click(screen.getByRole('button', { name: REFRESH }))
+
+  await screen.findByText(/comic vine had nothing new/i)
+  expect(screen.getByTestId('where')).toHaveTextContent('/edition/16?view=carousel')
 })

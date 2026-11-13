@@ -2,7 +2,7 @@ import { createComicVine, CvApiError } from '../lib/comicvine.js'
 import { applyIssueToBook } from '../services/applyIssue.js'
 import type { CvVolume, CvVolumeIssue } from '../lib/comicvine.js'
 import { getBook, updateBook } from '../models/books.js'
-import { getEdition, updateEdition, getEditionByComicvineId } from '../models/editions.js'
+import { getEdition, updateEdition, getEditionByComicvineId, editionNameForVolume } from '../models/editions.js'
 import type { EditionUpdate } from '../models/editions.js'
 import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags, setTagIds } from '../models/metadata.js'
 import { cacheVolumeSearch, getCachedVolumeSearch } from '../models/volumeSearch.js'
@@ -203,15 +203,8 @@ export default async function comicvineRoutes(app: App) {
     // opening the screen twice does not cost two of Comic Vine's 200 requests an hour.
     const volume = await getVolumeCached(app.db, cv, volumeId)
     const existing = getEditionByComicvineId(app.db, volumeId)
-    // An edition the library already has wins, under WHATEVER it is called: composing a
-    // name unconditionally would file a batch into a second edition beside the one that
-    // already holds the run. A start year of 0 - which the live library has - would
-    // compose "... (0)" and do exactly that.
-    const year = volume?.startYear
-    const composed = volume?.name
-      ? (Number.isInteger(year) && year! > 0 ? `${volume.name} (${year})` : volume.name)
-      : null
-    const editionName = existing?.name ?? composed ?? 'Unsorted'
+    // The same rule a comic matched out of Unsorted is filed by, so the two cannot drift.
+    const editionName = editionNameForVolume(app.db, volumeId, volume) ?? 'Unsorted'
 
     const decorate = (issue: CvVolumeIssue) => {
       const hit = owned.get(issue.id)

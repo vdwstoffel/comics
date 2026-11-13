@@ -3,7 +3,8 @@ import type { CvIssue, CvVolume } from '../lib/comicvine.js'
 import { upsertManualEntry, recordManualCheck } from '../models/cvManualEntry.js'
 import { getBook, updateBook } from '../models/books.js'
 import type { BookUpdate } from '../models/books.js'
-import { getEdition, updateEdition } from '../models/editions.js'
+import { getEdition, updateEdition, editionNameForVolume, isUnsorted } from '../models/editions.js'
+import { moveBookToEdition } from './library.js'
 import type { EditionUpdate } from '../models/editions.js'
 import { replaceBookCredits, replaceBookTagsOfKind, getBookCredits, getBookTags } from '../models/metadata.js'
 import { syncComicInfoFile } from './comicinfoSync.js'
@@ -159,6 +160,31 @@ export async function applyIssueToBook(
   const publisher = volume?.publisher
 
   /**
+   * A comic in Unsorted is there because nothing was known about it when it arrived, and
+   * this is the moment that changes: the issue belongs to exactly one volume, so the comic
+   * goes to that volume's edition - the one you already have, or a new one named after it.
+   *
+   * Moved before the metadata is written, so the volume's identity below lands on the
+   * edition the comic now sits in. And only once Comic Vine has confirmed the issue
+   * exists: a mistyped id has already thrown above, and must leave the comic where it was.
+   *
+   * Only Unsorted. A comic in a real edition whose match points at another volume is more
+   * likely a wrong match than a wrong edition, and moving it would hide the mistake.
+   */
+  let editionId = book.editionId
+  if (isUnsorted(getEdition(db, book.editionId)) && meta.volumeId) {
+    const target = editionNameForVolume(db, Number(meta.volumeId), volume)
+    if (target && !isUnsorted({ name: target })) {
+      try {
+        editionId = (await moveBookToEdition(ctx, book.id, target)).book.editionId
+      } catch {
+        // Left in Unsorted. The metadata is still worth having, and the edit panel's move
+        // is still there to finish the job by hand.
+      }
+    }
+  }
+
+  /**
    * Built by LEAVING KEYS OUT, which is the whole point of this function and must not be
    * "simplified" back into one object literal of `?? null`.
    *
@@ -234,9 +260,11 @@ export async function applyIssueToBook(
     // Propagate the volume to the edition: publisher and Comic Vine identity if it has
     // none, and the volume's own name/year, which is what the edition should be called.
     // The name is only recorded here — applying it is a rename, and a rename moves files.
-    if (book.editionId && (publisher || volume)) {
-      const edition = getEdition(db, book.editionId)
-      if (edition) {
+    if (editionId && (publisher || volume)) {
+      const edition = getEdition(db, editionId)
+      // Never Unsorted: it describes no volume, and once it carried one it offered to rename
+      // itself after it - taking every other comic in it along.
+      if (edition && !isUnsorted(edition)) {
         const patch: EditionUpdate = {}
         if (publisher && !edition.publisher) patch.publisher = publisher
         // Not from one of the run's other volumes: Mortal Thor #7 is part of Thor (2025),
@@ -246,7 +274,7 @@ export async function applyIssueToBook(
         if (volume?.name && !fromPart) patch.cvName = volume.name
         if (volume?.startYear !== undefined && !fromPart) patch.cvStartYear = volume.startYear
         if (meta.volumeId && !edition.comicvineId) patch.comicvineId = Number(meta.volumeId)
-        if (Object.keys(patch).length > 0) updateEdition(db, book.editionId, patch)
+        if (Object.keys(patch).length > 0) updateEdition(db, editionId, patch)
       }
     }
 

@@ -1,7 +1,8 @@
 import { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import type { ApiBook } from '../api'
+import type { ApiBook, BookResponse } from '../api'
 import { buildCvQuery } from '../lib/cvQuery'
 import MetadataEditor from './MetadataEditor'
 import ComicVineMatchDialog from './ComicVineMatchDialog'
@@ -23,6 +24,7 @@ interface IssueEditPanelProps {
  */
 export default function IssueEditPanel({ book, onClose }: IssueEditPanelProps) {
   const qc = useQueryClient()
+  const navigate = useNavigate()
   const [matching, setMatching] = useState(false)
   const [moveTarget, setMoveTarget] = useState<string | null>(null)
 
@@ -45,10 +47,20 @@ export default function IssueEditPanel({ book, onClose }: IssueEditPanelProps) {
     onSuccess: () => { settled(); onClose() },
   })
 
+  // A comic matched out of Unsorted is filed into its volume's edition on the server, so
+  // the page follows it there: the edition it was in no longer holds it, and Unsorted is
+  // gone altogether once its last comic leaves.
+  const followIfMoved = (res: BookResponse) => {
+    if (res.book.editionId === book.editionId) return
+    qc.invalidateQueries({ queryKey: ['editions'] })
+    qc.invalidateQueries({ queryKey: ['series'] })
+    navigate(`/edition/${res.book.editionId}?view=carousel&issue=book-${book.id}`)
+  }
+
   const apply = useMutation({
     mutationFn: ({ issueId, manual }: { issueId: number; manual?: boolean }) =>
       api.applyIssue(book.id, issueId, manual),
-    onSuccess: () => { settled(); setMatching(false) },
+    onSuccess: (res) => { settled(); setMatching(false); followIfMoved(res) },
   })
 
   // Opening the dialog clears the last apply's failure with it. The dialog unmounts on
@@ -67,7 +79,7 @@ export default function IssueEditPanel({ book, onClose }: IssueEditPanelProps) {
   // flag: that is for a hand-typed id, and on a refresh it would re-stamp the reminder.
   const refresh = useMutation({
     mutationFn: (issueId: number) => api.applyIssue(book.id, issueId),
-    onSuccess: settled,
+    onSuccess: (res) => { settled(); followIfMoved(res) },
   })
 
   const move = useMutation({
