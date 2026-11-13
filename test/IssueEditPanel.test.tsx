@@ -243,3 +243,27 @@ test('a match that left the comic where it was stays on the page', async () => {
   await screen.findByText(/comic vine had nothing new/i)
   expect(screen.getByTestId('where')).toHaveTextContent('/edition/16?view=carousel')
 })
+
+// The two things this panel is opened for most, as buttons at its head: under the title
+// they were quiet links, and too easily missed.
+test('offers to mark an unread comic read, ahead of its metadata', () => {
+  const onToggleRead = vi.fn()
+  draw({ readState: 'unread', onToggleRead })
+  const mark = screen.getByRole('button', { name: /^mark as read$/i })
+  const heading = screen.getByRole('heading', { name: /^metadata$/i })
+  expect(mark.compareDocumentPosition(heading) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  fireEvent.click(mark)
+  expect(onToggleRead).toHaveBeenCalledTimes(1)
+})
+
+test('a read comic is offered the way back to unread', () => {
+  draw({ readState: 'read', onToggleRead: () => {} })
+  expect(screen.getByRole('button', { name: /^mark as unread$/i })).toBeInTheDocument()
+})
+
+test('offers to remove the comic', () => {
+  const onRemove = vi.fn()
+  draw({ onRemove })
+  fireEvent.click(screen.getByRole('button', { name: /^remove issue$/i }))
+  expect(onRemove).toHaveBeenCalledTimes(1)
+})

@@ -18,8 +18,6 @@ interface IssueIdentityProps {
   onEdit?: () => void
   /** Whatever the page offers for this issue - for a gap, the way to fill it. */
   action?: ReactNode
-  /** Take the comic off the disk. Absent for a gap, which is an absence already. */
-  onRemove?: () => void
 }
 
 /**
@@ -33,7 +31,7 @@ interface IssueIdentityProps {
  */
 export default function IssueIdentity({
   label, title, date, year, publisher, pageCount, comicinfoSynced,
-  readState, percent, onEdit, action, onRemove,
+  readState, percent, onEdit, action,
 }: IssueIdentityProps) {
   // The same subline the issue's own page carries, in the same order: when it came out,
   // who published it, how long it is, and whether the file holds all of that itself.
@@ -53,12 +51,12 @@ export default function IssueIdentity({
         <span className="issue-identity__number">{label}</span>
         {title && <span className="issue-identity__title">{title}</span>}
         {/* Beside the name, as it was beside the name on the comic's own page. What is
-            behind it - matching the comic on Comic Vine, fetching it again, moving it to
-            another edition - is the rarest thing anyone does here, so it is a pencil
+            behind it - marking the comic read, removing it, matching it on Comic Vine,
+            moving it to another edition - is the rarest thing anyone does here, so it is a pencil
             rather than a row of buttons. */}
         {onEdit && (
           <button className="btn-icon" onClick={onEdit}
-            title="Metadata and edition" aria-label="Metadata and edition">
+            title="Edit comic" aria-label="Edit comic">
             ✏
           </button>
         )}
@@ -81,20 +79,7 @@ export default function IssueIdentity({
         </p>
       )}
 
-      {(action || onRemove) && (
-        <p className="issue-identity__actions">
-          {action}
-          {/* Last, and quiet. It deletes a file from disk, so it should never be the thing
-              the eye lands on next to a row of arrows - but it asks before it does. Named
-              as the issue's own page names it: on a volume page a bare "Remove" would sit
-              a few inches from "Remove edition" and mean something very different. */}
-          {onRemove && (
-            <button type="button" className="issue-identity__remove" onClick={onRemove}>
-              Remove issue
-            </button>
-          )}
-        </p>
-      )}
+      {action && <p className="issue-identity__actions">{action}</p>}
     </div>
   )
 }

@@ -12,6 +12,7 @@ import EditionSidebar from './EditionSidebar'
 import MissingIssueAction from './MissingIssueAction'
 import ConfirmDeleteDialog from './ConfirmDeleteDialog'
 import IssueEditPanel from './IssueEditPanel'
+import { invalidateReadState } from '../lib/readStateQueries'
 
 interface EditionRunProps {
   editionId: string
@@ -115,6 +116,14 @@ export default function EditionRun({
   // away afterwards because it has nowhere else to be; here the issue keeps its place and
   // turns back into a gap, with the way to fill it again - which is what you want in front
   // of you if you removed the wrong one.
+  // Read is the last page, as finishing it in the reader leaves it; unread is the cover.
+  const toggleRead = useMutation({
+    mutationFn: (entry: VolumeEntry) => api.putProgress(entry.bookId!, entry.readState === 'read'
+      ? { lastPage: 0, completed: false }
+      : { lastPage: Math.max((entry.pageCount ?? 1) - 1, 0), completed: true }),
+    onSuccess: () => invalidateReadState(qc),
+  })
+
   const remove = useMutation({
     mutationFn: (bookId: number) => api.deleteBook(bookId),
     onSuccess: (result) => {
@@ -194,14 +203,19 @@ export default function EditionRun({
             readState={current.readState}
             percent={current.percent}
             onEdit={current.bookId != null ? () => setEditing(true) : undefined}
-            onRemove={current.bookId != null ? () => setConfirmRemove(true) : undefined}
           />
         </div>
 
         {/* The comic's own page is gone, so what it could do to a comic is done here.
             Only once the comic itself has arrived: the editor is filled from it. */}
         {editing && detail?.book && (
-          <IssueEditPanel book={detail.book} onClose={() => setEditing(false)} />
+          <IssueEditPanel
+            book={detail.book}
+            onClose={() => setEditing(false)}
+            readState={current.readState}
+            onToggleRead={() => { if (!toggleRead.isPending) toggleRead.mutate(current) }}
+            onRemove={() => setConfirmRemove(true)}
+          />
         )}
 
         <div className="edition-run__detail">

@@ -787,6 +787,11 @@ export const api = {
     json<ProgressResponse>(`/api/books/${id}/progress`, {
       method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
     }),
+  /** Every comic in an edition read, or unread - its own comics, not the annuals drawn in it. */
+  putEditionProgress: (id: string | number, completed: boolean) =>
+    json<{ marked: number }>(`/api/editions/${id}/progress`, {
+      method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ completed }),
+    }),
   getArcs: () => json<ArcsListResponse>('/api/arcs'),
   /** `refresh` bypasses the server's day cache — see the Refresh button on an arc page. */
   getArc: (name: string, refresh = false) =>

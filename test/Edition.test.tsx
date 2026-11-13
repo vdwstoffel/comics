@@ -469,6 +469,10 @@ function mockFetchWithIssues(
         : { ok: false, status: 409, json: async () => ({ error: 'no unique match for that issue' }) }
     }
     if (String(url).includes('/issues')) return { ok: true, json: async () => issuesBody }
+    // One comic, as the pencil's panel asks for it before it draws.
+    const one = /\/api\/books\/(\d+)$/.exec(String(url))
+    const book = one ? (books as Array<{ id: number }>).find((b) => b.id === Number(one[1])) : undefined
+    if (book) return { ok: true, json: async () => ({ book, progress: { lastPage: 0, completed: false }, credits: [], tags: [] }) }
     if (init?.method === 'PATCH') return { ok: true, json: async () => ({ edition }) }
     if (String(url).includes('/api/editions?') || String(url).endsWith('/api/editions')) {
       return { ok: true, json: async () => ({ editions: [] }) }
@@ -1131,12 +1135,18 @@ test('walking the run does not pile up history', async () => {
 
 /* ── Removing an issue without leaving the run ────────────────────────────── */
 
+/** The pencil beside the issue's name, which holds what is done to the comic itself. */
+async function openComicPanel() {
+  fireEvent.click(within(screen.getByTestId('issue-identity')).getByRole('button', { name: /edit comic/i }))
+}
+
 test('an issue can be removed from the run itself, and asks first', async () => {
   mockFetchWithIssues(PART_READ, EDITION, PART_READ_BOOKS)
   renderPage()
 
   await screen.findByTestId('carousel-current')
-  fireEvent.click(within(screen.getByTestId('issue-identity')).getByRole('button', { name: /remove issue/i }))
+  await openComicPanel()
+  fireEvent.click(await screen.findByRole('button', { name: /^remove issue$/i }))
 
   // Named by its story title, as the issue's own page names it, falling back to its
   // number for the many issues that have none.
@@ -1149,7 +1159,8 @@ test('confirming deletes that comic', async () => {
   renderPage()
 
   await screen.findByTestId('carousel-current')
-  fireEvent.click(within(screen.getByTestId('issue-identity')).getByRole('button', { name: /remove issue/i }))
+  await openComicPanel()
+  fireEvent.click(await screen.findByRole('button', { name: /^remove issue$/i }))
   fireEvent.click(await screen.findByRole('button', { name: /^remove$/i }))
 
   await waitFor(() => expect(deleted).toEqual(['/api/books/13']))
@@ -1163,7 +1174,8 @@ test('removing an issue leaves you on it, and re-reads the run', async () => {
   renderPage()
 
   await screen.findByTestId('carousel-current')
-  fireEvent.click(within(screen.getByTestId('issue-identity')).getByRole('button', { name: /remove issue/i }))
+  await openComicPanel()
+  fireEvent.click(await screen.findByRole('button', { name: /^remove issue$/i }))
   fireEvent.click(await screen.findByRole('button', { name: /^remove$/i }))
 
   await waitFor(() => expect(deleted).toHaveLength(1))
@@ -1171,13 +1183,14 @@ test('removing an issue leaves you on it, and re-reads the run', async () => {
   expect(screen.getByTestId('carousel-current')).toHaveTextContent('#3')
 })
 
-// A gap is an absence already. There is no file to delete and nothing to ask about.
+// A gap is an absence already. There is no file to delete, and no pencil to find it under.
 test('a gap offers no removal', async () => {
   mockFetchWithIssues(MATCHED)
   renderPage()
 
   await screen.findByTestId('carousel-current')
-  expect(within(screen.getByTestId('issue-identity')).queryByRole('button', { name: /remove issue/i })).toBeNull()
+  expect(within(screen.getByTestId('issue-identity')).queryByRole('button', { name: /edit comic/i })).toBeNull()
+  expect(screen.queryByRole('button', { name: /remove issue/i })).toBeNull()
 })
 
 // The shelf knows a comic by its id, not by Comic Vine's id for the issue it fills, so
@@ -1407,4 +1420,56 @@ test('the edit dialog is where a volume is taken back out of the run', async () 
 
   await waitFor(() => expect((globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls
     .some(([url, init]) => String(url) === '/api/editions/9/parts/177511' && init?.method === 'DELETE')).toBe(true))
+})
+
+// --- marking read ---------------------------------------------------------------
+
+/** Every PUT the page sends, answered as the server would. Wraps whatever mock is set. */
+function capturePuts() {
+  const puts: { url: string; body: Record<string, unknown> }[] = []
+  const inner = globalThis.fetch
+  globalThis.fetch = vi.fn(async (url: string, init?: RequestInit) => {
+    if (init?.method === 'PUT') {
+      puts.push({ url: String(url), body: JSON.parse(String(init.body)) })
+      return { ok: true, json: async () => (String(url).includes('/api/editions/') ? { marked: 2 } : { progress: {} }) }
+    }
+    return (inner as unknown as (u: string, i?: RequestInit) => Promise<unknown>)(url, init)
+  }) as unknown as typeof fetch
+  return puts
+}
+
+const readBook = (id: number, readState: 'read' | 'unread', number = String(id)) =>
+  ({ id, number, title: `Issue ${number}`, pageCount: 20, comicinfoSynced: false, year: 2024, readState })
+
+// A run read as collections and since replaced by its single issues.
+test('a whole run can be marked read in one press', async () => {
+  mockFetch(EDITION, [readBook(1, 'unread'), readBook(2, 'read')])
+  const puts = capturePuts()
+  renderGrid()
+
+  fireEvent.click(await screen.findByRole('button', { name: 'Mark all read' }))
+
+  await waitFor(() => expect(puts).toHaveLength(1))
+  expect(puts[0]).toEqual({ url: '/api/editions/9/progress', body: { completed: true } })
+})
+
+test('a run already read offers to mark it unread instead', async () => {
+  mockFetch(EDITION, [readBook(1, 'read'), readBook(2, 'read')])
+  renderGrid()
+  expect(await screen.findByRole('button', { name: 'Mark all unread' })).toBeInTheDocument()
+})
+
+test('a comic in the run can be marked read on its own, on its last page', async () => {
+  mockFetchWithIssues(VOLUME_ISSUES, EDITION, [
+    { id: 77, number: '255', title: 'Death Spiral', pageCount: 20, comicinfoSynced: false, year: 2026, readState: 'unread' },
+  ])
+  const puts = capturePuts()
+  renderPage('/edition/9?issue=book-77')
+
+  await screen.findByTestId('carousel-current')
+  await openComicPanel()
+  fireEvent.click(await screen.findByRole('button', { name: 'Mark as read' }))
+
+  await waitFor(() => expect(puts).toHaveLength(1))
+  expect(puts[0]).toEqual({ url: '/api/books/77/progress', body: { lastPage: 19, completed: true } })
 })

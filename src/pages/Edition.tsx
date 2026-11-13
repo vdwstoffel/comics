@@ -12,6 +12,7 @@ import { useUpcoming } from '../lib/useUpcoming'
 import { upcomingForEdition, highestPlainNumber } from '../lib/upcomingForEdition'
 import { volumeEntries, annualEditionsOf } from '../lib/volumeEntries'
 import { seriesOfVolume } from '../lib/annuals'
+import { invalidateReadState } from '../lib/readStateQueries'
 import EditionEditDialog from '../components/EditionEditDialog'
 import CollectsBanner, { volumeHref, volumeLabel } from '../components/CollectsBanner'
 import RunPartsBanner, { partSpan } from '../components/RunPartsBanner'
@@ -215,6 +216,11 @@ export default function Edition() {
     onSuccess: () => qc.invalidateQueries({ queryKey: ['download'] }),
   })
 
+  const markAll = useMutation({
+    mutationFn: (completed: boolean) => api.putEditionProgress(id!, completed),
+    onSuccess: () => invalidateReadState(qc),
+  })
+
   const lookup = useMutation({
     mutationFn: () => api.checkComicVineVolume(id!),
     onSuccess: () => qc.invalidateQueries({ queryKey: ['edition'] }),
@@ -310,6 +316,8 @@ export default function Edition() {
   // because a placeholder has no read state to filter by - so there is nothing to walk
   // and the grid of what survived the filter is the only honest view.
   const canCarousel = status === null && entries.length > 0
+  const editionBooks = (status ? unfiltered?.books : data.books) ?? []
+  const allRead = editionBooks.length > 0 && editionBooks.every((b) => b.readState === 'read')
   const showCarousel = canCarousel && !showingCovers
 
   return (
@@ -355,6 +363,19 @@ export default function Edition() {
               onClick={() => showCovers(!showingCovers)}
             >
               {showingCovers ? 'Hide covers' : 'Show covers'}
+            </button>
+          )}
+          {/* For a run read somewhere else - as collections, say, since replaced by its single
+              issues. Its own comics only: an annual drawn in the run is another edition's.
+              Decided on the whole edition, not on what a read filter is showing. */}
+          {editionBooks.length > 0 && (
+            <button
+              type="button"
+              className="btn btn-ghost edition-header__covers"
+              disabled={markAll.isPending}
+              onClick={() => markAll.mutate(!allRead)}
+            >
+              {allRead ? 'Mark all unread' : 'Mark all read'}
             </button>
           )}
           <button className="btn-danger" onClick={() => setConfirmRemove(true)}>Remove edition</button>

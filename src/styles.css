@@ -3710,22 +3710,6 @@ textarea.input:hover:not(:focus) {
   color: var(--text);
 }
 
-/* Quiet until you reach for it. It deletes a file from disk, so it must not compete with
-   Details for the eye - but it must not hide from a hand looking for it either. */
-.issue-identity__remove {
-  background: none;
-  border: none;
-  padding: 0;
-  font: inherit;
-  font-size: 0.875rem;
-  color: var(--muted);
-  cursor: pointer;
-}
-
-.issue-identity__remove:hover {
-  color: var(--accent);
-}
-
 /* ---- credits, cast and summary ---- */
 .issue-detail {
   max-width: 640px;
@@ -4718,4 +4702,9 @@ textarea.input:hover:not(:focus) {
 
 .find-release__files-as strong {
   color: var(--text);
+}
+
+/* What is done to the comic itself, above what is known about it. */
+.issue-edit__comic {
+  margin-bottom: 20px;
 }

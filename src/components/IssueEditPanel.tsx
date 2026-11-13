@@ -9,6 +9,11 @@ import ComicVineMatchDialog from './ComicVineMatchDialog'
 interface IssueEditPanelProps {
   book: ApiBook
   onClose: () => void
+  /** Whether the comic is read, which is what the read button offers to change. */
+  readState?: 'unread' | 'reading' | 'read'
+  onToggleRead?: () => void
+  /** Take the comic off the disk. The run asks before it does. */
+  onRemove?: () => void
 }
 
 /**
@@ -26,7 +31,7 @@ interface IssueEditPanelProps {
  * it rather than beside it: they are the rarest things on the page and the line under the
  * cover is already carrying what you came for.
  */
-export default function IssueEditPanel({ book, onClose }: IssueEditPanelProps) {
+export default function IssueEditPanel({ book, onClose, readState, onToggleRead, onRemove }: IssueEditPanelProps) {
   const qc = useQueryClient()
   const navigate = useNavigate()
   const [matching, setMatching] = useState(false)
@@ -123,6 +128,21 @@ export default function IssueEditPanel({ book, onClose }: IssueEditPanelProps) {
 
   return (
     <div className="metadata-section issue-edit">
+      {/* What is done to the comic itself, ahead of what is known about it: these are the
+          two this panel is opened for most. Buttons, not the quiet links they once were
+          under the title, where they were too easily missed. */}
+      {(onToggleRead || onRemove) && (
+        <div className="btn-row issue-edit__comic">
+          {onToggleRead && (
+            <button type="button" className="btn btn-ghost" onClick={onToggleRead}>
+              {readState === 'read' ? 'Mark as unread' : 'Mark as read'}
+            </button>
+          )}
+          {onRemove && (
+            <button type="button" className="btn-danger" onClick={onRemove}>Remove issue</button>
+          )}
+        </div>
+      )}
       <div className="issue-edit__head">
         <h3 className="metadata-section__heading">Metadata</h3>
         <button type="button" className="btn btn-ghost" onClick={openMatch}>

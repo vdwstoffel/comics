@@ -5,7 +5,8 @@ import {
 } from '../models/editions.js'
 import type { EditionUpdate } from '../models/editions.js'
 import { listBooksByEdition, findBookByIssue } from '../models/books.js'
-import { deriveReadState } from '../models/progress.js'
+import { deriveReadState, getProgress, setProgress } from '../models/progress.js'
+import { attemptFollowsForBook } from '../services/following.js'
 import { renameEdition, removeEdition, reorganizeLibrary } from '../services/library.js'
 import { createComicVine } from '../lib/comicvine.js'
 import type { CvVolumeIssue } from '../lib/comicvine.js'
@@ -628,6 +629,42 @@ export default async function editionRoutes(app: App, opts: EditionRouteOpts = {
       return reply.code(409).send({ error: 'this volume is already being queued' })
     }
     return reply.code(202).send(result)
+  })
+
+  /**
+   * Mark every comic in this edition read, or unread - a run read as collections and then
+   * replaced by its single issues is read already, and marking it a comic at a time is a
+   * chore.
+   *
+   * This edition's own comics only. An annual is drawn inside its run but filed in an
+   * edition of its own, and having read a run says nothing about having read its annuals.
+   *
+   * Read is the last page, as finishing a comic in the reader leaves it; unread is the
+   * start, so a comic opened afterwards begins at its cover. Finishing a run counts as
+   * finishing its last comic for the follows, once - not once per comic marked.
+   */
+  app.put<{ Params: IdParams; Body: { completed?: unknown } }>('/api/editions/:id/progress', async (req, reply) => {
+    const edition = getEdition(app.db, Number(req.params.id))
+    if (!edition) return reply.code(404).send({ error: 'edition not found' })
+    const completed = req.body?.completed
+    // Strictly a boolean: anything looser would reset the place you were at in every comic.
+    if (typeof completed !== 'boolean') return reply.code(400).send({ error: 'completed must be true or false' })
+
+    const books = listBooksByEdition(app.db, edition.id)
+    const newlyRead = books.filter((b) => completed && !getProgress(app.db, b.id).completed)
+    app.db.transaction(() => {
+      for (const book of books) {
+        setProgress(app.db, book.id, { lastPage: completed ? Math.max(book.pageCount - 1, 0) : 0, completed })
+      }
+    })()
+
+    const last = newlyRead.at(-1)
+    if (last) {
+      void attemptFollowsForBook(app, last).catch((err) => {
+        app.log.warn({ err, editionId: edition.id }, 'follow attempt after marking a run read failed')
+      })
+    }
+    return { marked: books.length }
   })
 
   app.delete<{ Params: IdParams }>('/api/editions/:id', async (req, reply) => {
