@@ -7,6 +7,8 @@ import { openDb } from '../server/db.js'
 import booksRoutes from '../server/routes/books.js'
 import { scanLibrary } from '../server/services/indexer.js'
 import { embedComicInfo } from '../server/lib/embed.js'
+import { updateBook } from '../server/models/books.js'
+import { syncComicInfoFile } from '../server/services/comicinfoSync.js'
 import { makeCbz } from './helpers/makeCbz.js'
 import { readZipEntry } from './helpers/readZipEntry.js'
 import type { FastifyInstance } from 'fastify'
@@ -35,15 +37,23 @@ test('embedComicInfo adds ComicInfo.xml while preserving pages', async () => {
   expect(p1).not.toBeNull()
 })
 
-test('saving metadata writes it into the file and marks it synced', async () => {
-  const res = await app.inject({
-    method: 'PATCH', url: `/api/books/${bookId}/metadata`, payload: { title: 'Year One', number: '1' },
-  })
-  expect(res.statusCode).toBe(200)
-  expect(res.json().book.comicinfoSynced).toBe(true)
+// What a match does once Comic Vine's record is on the book: the file carries it too.
+test('syncing writes the book\'s metadata into the file and marks it synced', async () => {
+  updateBook(app.db, bookId, { title: 'Year One', number: '1' })
+  const synced = await syncComicInfoFile({ db: app.db, config: app.config }, bookId)
+  expect(synced?.comicinfoSynced).toBe(true)
   const cbz = join(dir, 'comics', 'Batman', '001.cbz')
   const xml = await readZipEntry(cbz, 'ComicInfo.xml')
   expect(xml).toContain('<Title>Year One</Title>')
+})
+
+// What the library knows about a comic is Comic Vine's record of it. A title typed over
+// that record drifts from it, and the run, its annuals and the follows all read Comic Vine.
+test('there is no route to type metadata in by hand', async () => {
+  const res = await app.inject({
+    method: 'PATCH', url: `/api/books/${bookId}/metadata`, payload: { title: 'Year One' },
+  })
+  expect(res.statusCode).toBe(404)
 })
 
 test('there is no manual embed endpoint any more', async () => {
@@ -51,12 +61,10 @@ test('there is no manual embed endpoint any more', async () => {
   expect(res.statusCode).toBe(404)
 })
 
-test('a save whose file cannot be written still saves, leaving it unsynced', async () => {
+test('a file that cannot be written keeps the metadata, leaving the book unsynced', async () => {
   rmSync(join(dir, 'comics', 'Batman', '001.cbz'))
-  const res = await app.inject({
-    method: 'PATCH', url: `/api/books/${bookId}/metadata`, payload: { title: 'Year One' },
-  })
-  expect(res.statusCode).toBe(200)
-  expect(res.json().book.title).toBe('Year One')
-  expect(res.json().book.comicinfoSynced).toBe(false)
+  updateBook(app.db, bookId, { title: 'Year One' })
+  const synced = await syncComicInfoFile({ db: app.db, config: app.config }, bookId)
+  expect(synced?.title).toBe('Year One')
+  expect(synced?.comicinfoSynced).toBe(false)
 })

@@ -787,10 +787,6 @@ export const api = {
     json<ProgressResponse>(`/api/books/${id}/progress`, {
       method: 'PUT', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
     }),
-  patchMetadata: (id: string | number, body: Record<string, unknown>) =>
-    json<BookResponse>(`/api/books/${id}/metadata`, {
-      method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
-    }),
   getArcs: () => json<ArcsListResponse>('/api/arcs'),
   /** `refresh` bypasses the server's day cache — see the Refresh button on an arc page. */
   getArc: (name: string, refresh = false) =>

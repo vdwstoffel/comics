@@ -4,7 +4,6 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type { ApiBook, BookResponse } from '../api'
 import { buildCvQuery } from '../lib/cvQuery'
-import MetadataEditor from './MetadataEditor'
 import ComicVineMatchDialog from './ComicVineMatchDialog'
 
 interface IssueEditPanelProps {
@@ -13,9 +12,14 @@ interface IssueEditPanelProps {
 }
 
 /**
- * Everything that can be done to a comic rather than said about it: correcting what is
- * known about it by hand, matching it against Comic Vine again, and moving it into another
- * edition when it landed in the wrong one.
+ * Everything that can be done to a comic rather than said about it: matching it against
+ * Comic Vine, reading its record again, and moving it into another edition when it landed
+ * in the wrong one.
+ *
+ * There is no typing metadata in by hand. What the library knows about a comic is Comic
+ * Vine's record of it, and a title or number typed over it drifts from that record - the
+ * run's issue list, the annuals and the follows all read Comic Vine, and stop agreeing
+ * with a comic that says something else. A wrong record is fixed by matching the right one.
  *
  * These were the comic's own page, which is gone - the run says everything that page said,
  * under the cover - so they live here, behind the pencil beside the issue's name. Behind
@@ -41,11 +45,6 @@ export default function IssueEditPanel({ book, onClose }: IssueEditPanelProps) {
     qc.invalidateQueries({ queryKey: ['edition'] })
     qc.invalidateQueries({ queryKey: ['edition-issues'] })
   }
-
-  const save = useMutation({
-    mutationFn: (form: Record<string, unknown>) => api.patchMetadata(book.id, form),
-    onSuccess: () => { settled(); onClose() },
-  })
 
   // A comic matched out of Unsorted is filed into its volume's edition on the server, so
   // the page follows it there: the edition it was in no longer holds it, and Unsorted is
@@ -125,7 +124,7 @@ export default function IssueEditPanel({ book, onClose }: IssueEditPanelProps) {
   return (
     <div className="metadata-section issue-edit">
       <div className="issue-edit__head">
-        <h3 className="metadata-section__heading">Edit metadata</h3>
+        <h3 className="metadata-section__heading">Metadata</h3>
         <button type="button" className="btn btn-ghost" onClick={openMatch}>
           Fetch metadata
         </button>
@@ -164,13 +163,10 @@ export default function IssueEditPanel({ book, onClose }: IssueEditPanelProps) {
         </p>
       )}
 
-      <MetadataEditor
-        book={book}
-        onSave={(form) => save.mutate(form)}
-        onCancel={onClose}
-      >
-        {editionField}
-      </MetadataEditor>
+      {editionField}
+      <div className="btn-row metadata-section__actions">
+        <button type="button" className="btn-ghost" onClick={onClose}>Done</button>
+      </div>
 
       {matching && (
         <ComicVineMatchDialog

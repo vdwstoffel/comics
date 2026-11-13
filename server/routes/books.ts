@@ -1,6 +1,6 @@
 import { createReadStream, existsSync } from 'node:fs'
 import { join, extname } from 'node:path'
-import { getBook, updateBook, listLibraryBooks } from '../models/books.js'
+import { getBook, listLibraryBooks } from '../models/books.js'
 import { getEdition } from '../models/editions.js'
 import { shelfVolumeIdsByEdition } from '../models/shelves.js'
 import { getProgress, setProgress, deriveReadState } from '../models/progress.js'
@@ -8,7 +8,6 @@ import { getBookCredits, getBookTags } from '../models/metadata.js'
 import { readPage } from '../lib/cbz.js'
 import { moveBookToEdition, removeBook } from '../services/library.js'
 import { attemptFollowsForBook } from '../services/following.js'
-import { syncComicInfoFile } from '../services/comicinfoSync.js'
 import { readStateOf } from './filters.js'
 import type { App, Book } from '../types.js'
 
@@ -21,7 +20,6 @@ function absCbz(app: App, book: Book): string {
 interface IdParams { id: string }
 interface PageParams { id: string; n: string }
 interface ProgressBody { lastPage?: number; completed?: boolean }
-type MetadataBody = Record<string, unknown>
 interface MoveEditionBody { name?: string }
 interface ContinueQuery { limit?: string; publisher?: string }
 
@@ -96,24 +94,6 @@ export default async function booksRoutes(app: App) {
       })
     }
     return { progress }
-  })
-
-  const EDITABLE = ['title', 'number', 'writer', 'penciller', 'summary', 'date'] as const
-
-  app.patch<{ Params: IdParams; Body: MetadataBody }>('/api/books/:id/metadata', async (req, reply) => {
-    const book = getBook(app.db, Number(req.params.id))
-    if (!book) return reply.code(404).send({ error: 'book not found' })
-    const body = req.body || {}
-    const fields: Record<string, unknown> = {}
-    for (const k of EDITABLE) if (k in body) fields[k] = body[k]
-    const updatedBook = updateBook(app.db, book.id, fields)
-    // The file carries the metadata too, so a save is not finished until it is written.
-    const synced = await syncComicInfoFile({ db: app.db, config: app.config }, book.id)
-    return {
-      book: synced ?? updatedBook,
-      credits: getBookCredits(app.db, book.id),
-      tags: getBookTags(app.db, book.id),
-    }
   })
 
   app.delete<{ Params: IdParams }>('/api/books/:id', async (req, reply) => {

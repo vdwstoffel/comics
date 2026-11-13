@@ -72,12 +72,12 @@ test('draws whatever action the page gives it', () => {
 // The comic's own page is gone, so what it could do to a comic is reached from here.
 test('offers to edit what is known about the comic', () => {
   draw({ onEdit: () => {} })
-  expect(screen.getByRole('button', { name: /edit metadata/i })).toBeInTheDocument()
+  expect(screen.getByRole('button', { name: /metadata and edition/i })).toBeInTheDocument()
 })
 
 test('a gap has no metadata to edit', () => {
   draw()
-  expect(screen.queryByRole('button', { name: /edit metadata/i })).toBeNull()
+  expect(screen.queryByRole('button', { name: /metadata and edition/i })).toBeNull()
 })
 
 // Removing a comic deletes a file from disk, so the control is offered only where there

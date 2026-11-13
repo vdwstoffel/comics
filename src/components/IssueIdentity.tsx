@@ -53,12 +53,12 @@ export default function IssueIdentity({
         <span className="issue-identity__number">{label}</span>
         {title && <span className="issue-identity__title">{title}</span>}
         {/* Beside the name, as it was beside the name on the comic's own page. What is
-            behind it - correcting the metadata, fetching it again, moving the comic to
+            behind it - matching the comic on Comic Vine, fetching it again, moving it to
             another edition - is the rarest thing anyone does here, so it is a pencil
             rather than a row of buttons. */}
         {onEdit && (
           <button className="btn-icon" onClick={onEdit}
-            title="Edit metadata" aria-label="Edit metadata">
+            title="Metadata and edition" aria-label="Metadata and edition">
             ✏
           </button>
         )}

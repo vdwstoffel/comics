@@ -59,15 +59,15 @@ function draw(props: Partial<ComponentProps<typeof IssueEditPanel>> = {}) {
   )
 }
 
-// Everything the comic's own page could do to a comic, now that there is no such page.
-test('edits the metadata by hand', async () => {
+// What the library knows about a comic is Comic Vine's record of it. A field typed over
+// that record drifts from it; a wrong record is fixed by matching the right one.
+test('offers nothing to type metadata into, only Comic Vine', () => {
   draw()
-  fireEvent.change(screen.getByLabelText(/^writer$/i), { target: { value: 'Dan Slott' } })
-  fireEvent.click(screen.getByRole('button', { name: /save metadata/i }))
-
-  await waitFor(() => expect(patched).toHaveLength(1))
-  expect(patched[0].url).toContain('/api/books/19')
-  expect(patched[0].body).toMatchObject({ writer: 'Dan Slott' })
+  for (const field of [/^title$/i, /^number$/i, /^writer$/i, /^penciller$/i, /^date$/i, /^summary$/i]) {
+    expect(screen.queryByLabelText(field)).toBeNull()
+  }
+  expect(screen.queryByRole('button', { name: /save metadata/i })).toBeNull()
+  expect(screen.getByRole('button', { name: /fetch metadata/i })).toBeInTheDocument()
 })
 
 test('moves the comic to another edition', async () => {
@@ -89,7 +89,7 @@ test('offers to match the comic against Comic Vine', async () => {
 test('closes without saving anything', () => {
   const onClose = vi.fn()
   draw({ onClose })
-  fireEvent.click(screen.getByRole('button', { name: /^cancel$/i }))
+  fireEvent.click(screen.getByRole('button', { name: /^done$/i }))
   expect(onClose).toHaveBeenCalledTimes(1)
   expect(patched).toEqual([])
 })
