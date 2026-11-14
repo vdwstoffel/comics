@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import { uploadComic } from '../lib/uploadComic'
+import { uploadComic, stageCollection } from '../lib/uploadComic'
 import type { QueueEntry } from '../api'
 
 export interface BlockedHandoffProps {
@@ -45,12 +46,16 @@ export default function BlockedHandoff({ entry }: BlockedHandoffProps) {
 
   const upload = useMutation({
     mutationFn: async (file: File) => {
-      const result = await uploadComic({
-        file,
-        edition: entry.edition,
-        issueId: entry.cvIssueId,
-        onProgress: setPercent,
-      })
+      // A part of a run joins the collection its other parts are in; anything else goes
+      // through the upload a download would have taken.
+      const result = entry.collectionId != null
+        ? await stageCollection({ file, collectionId: entry.collectionId, onProgress: setPercent })
+        : await uploadComic({
+          file,
+          edition: entry.edition,
+          issueId: entry.cvIssueId,
+          onProgress: setPercent,
+        })
       // Only once the comic is actually stored. Dismissing first would lose the one row
       // that remembers which issue this file is for, and a failed upload would leave
       // nothing to try again from.
@@ -90,7 +95,7 @@ export default function BlockedHandoff({ entry }: BlockedHandoffProps) {
         {text}
         <input
           type="file"
-          accept=".cbz,.cbr"
+          accept=".cbz,.cbr,.zip"
           className="volume-issue__file"
           aria-label={busy ? `Adding ${name}` : `Add the file for ${name}`}
           disabled={busy}
@@ -106,7 +111,7 @@ export default function BlockedHandoff({ entry }: BlockedHandoffProps) {
       >Dismiss</button>
 
       {upload.isError && <span className="queue-list__error">Could not add that one.</span>}
-      {upload.data?.metadataApplied === false && (
+      {upload.data && 'metadataApplied' in upload.data && upload.data.metadataApplied === false && (
         <span className="queue-list__error">Added, but the metadata could not be applied.</span>
       )}
     </li>

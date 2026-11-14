@@ -3,7 +3,7 @@ import type { FormEvent } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import type { ApiBook, CvSearchResult } from '../api'
+import type { ApiBook, CvSearchResult, StagedCollection } from '../api'
 import EditionCombobox from '../components/EditionCombobox'
 import ComicVineMatchDialog from '../components/ComicVineMatchDialog'
 import UploadTabs from '../components/UploadTabs'
@@ -29,6 +29,8 @@ export default function Upload() {
   const [manual, setManual] = useState(false)
   const [matching, setMatching] = useState(false)
   const [uploaded, setUploaded] = useState<ApiBook | null>(null)
+  // The file was a zip of several comics: none was stored, and they wait for review.
+  const [staged, setStaged] = useState<StagedCollection | null>(null)
   // Whether metadata was successfully applied to the uploaded book. An id is recorded
   // even when the metadata read fails, so the id no longer tells you whether there is
   // anything to retry.
@@ -150,6 +152,7 @@ export default function Upload() {
     setUploaded(null)
     setMetadataApplied(null)
     setMsg(null)
+    setStaged(null)
     const form = new FormData()
     if (edition) form.set('edition', edition)
     if (match) form.set('issueId', String(match.id))
@@ -162,9 +165,16 @@ export default function Upload() {
     xhr.onload = () => {
       setPct(null)
       if (xhr.status !== 200) { setMsg(`Error: ${xhr.status}`); return }
-      let body: { book?: ApiBook; metadataApplied?: boolean; issueNotFound?: boolean } = {}
+      let body: { book?: ApiBook; metadataApplied?: boolean; issueNotFound?: boolean; collection?: StagedCollection } = {}
       // A body we cannot read still means the file landed; it only costs the shortcut.
       try { body = JSON.parse(xhr.responseText) } catch { /* keep the empty body */ }
+      // A zip of a whole run is not one comic, so nothing was stored and no match applies.
+      if (body.collection) {
+        setStaged(body.collection)
+        setMatch(null)
+        setManual(false)
+        return
+      }
       // A typed id that does not exist still stores the comic (a 200), so this has to be
       // said outright or a typo looks like success and the comic stays unmatched.
       setMsg(body.issueNotFound
@@ -206,11 +216,11 @@ export default function Upload() {
         <form onSubmit={submit}>
           <div className="field">
             <label className="file-label">
-              Comic file (.cbz or .cbr)
+              Comic file (.cbz, .cbr, or a .zip it came in)
               <input
                 className="file-input"
                 type="file"
-                accept=".cbz,.cbr"
+                accept=".cbz,.cbr,.zip"
                 onChange={(e) => {
                   setFile(e.target.files?.[0] ?? null)
                   // A new file makes any held match the wrong one.
@@ -278,6 +288,12 @@ export default function Upload() {
 
         {pct !== null && <p className="upload-progress">Uploading… {pct}%</p>}
         {msg && <p className="upload-msg">{msg}</p>}
+        {staged && (
+          <p className="upload-msg">
+            That zip holds {staged.fileCount} comics, so none was filed yet.{' '}
+            <Link to={`/upload/bulk?collection=${staged.id}`}>Review them as a volume</Link>.
+          </p>
+        )}
 
         {uploaded && (
           <div className="upload-done">

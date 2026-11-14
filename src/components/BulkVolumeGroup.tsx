@@ -37,7 +37,10 @@ function StateCell({ row }: { row: BulkRow }) {
 
 function ProgressCell({ at }: { at: RowProgress | undefined }) {
   if (!at || at.status === 'pending') return null
-  if (at.status === 'uploading') return <span className="bulk-row__pct">Uploading… {at.percent ?? 0}%</span>
+  // No percent is a comic already on the server, being filed where it sits.
+  if (at.status === 'uploading') {
+    return <span className="bulk-row__pct">{at.percent == null ? 'Filing…' : `Uploading… ${at.percent}%`}</span>
+  }
   if (at.status === 'done') return <span className="bulk-row__ok">✓ added</span>
   if (at.status === 'bare') return <span className="bulk-row__warn">landed without metadata</span>
   if (at.status === 'failed') return <span className="bulk-row__error">failed — {at.error}</span>

@@ -205,3 +205,25 @@ test('dismiss calls the delete route', async () => {
   fireEvent.click(await screen.findByRole('button', { name: /dismiss/i }))
   await waitFor(() => expect(posted).toEqual(['DELETE /api/metadata-followups/7']))
 })
+
+// ---- the catch-up working through this list on its own
+
+function serveWithCatchup(catchup: unknown) {
+  globalThis.fetch = vi.fn(async (url: string) => ({
+    ok: true,
+    json: async () => (url === '/api/metadata-followups' ? { followups: [FOLLOWUP], catchup } : SETTINGS),
+  })) as unknown as typeof fetch
+}
+
+test('the list says the comics on it will fill in on their own, and roughly when', async () => {
+  serveWithCatchup({ due: 495, perHour: 180, pausedUntil: null, reason: null })
+  draw()
+  expect(await screen.findByText(/Filling these in on its own: 495 comics to read from Comic Vine, about 2 h 45 min at 180 an hour/))
+    .toBeInTheDocument()
+})
+
+test('while Comic Vine refuses, the list says it is waiting and why', async () => {
+  serveWithCatchup({ due: 495, perHour: 180, pausedUntil: '2026-11-14T21:15:00Z', reason: 'Comic Vine error 107: Rate limit exceeded' })
+  draw()
+  expect(await screen.findByText(/Comic Vine is refusing requests for now/)).toHaveTextContent(/Rate limit exceeded/)
+})

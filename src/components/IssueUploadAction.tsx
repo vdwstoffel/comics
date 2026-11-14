@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import type { ChangeEvent } from 'react'
+import { Link } from 'react-router-dom'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { uploadComic } from '../lib/uploadComic'
 
@@ -74,7 +75,8 @@ export default function IssueUploadAction({ editionName, issueId, label }: Issue
         {text}
         <input
           type="file"
-          accept=".cbz,.cbr"
+          // A .zip too: a single issue so often arrives in one, and the server unwraps it.
+          accept=".cbz,.cbr,.zip"
           className="volume-issue__file"
           aria-label={busy ? `Uploading ${label}` : `Upload ${label}`}
           disabled={busy}
@@ -84,6 +86,13 @@ export default function IssueUploadAction({ editionName, issueId, label }: Issue
       {upload.isError && <span className="volume-issue__error">Could not upload that one.</span>}
       {upload.data?.metadataApplied === false && (
         <span className="volume-issue__error">Uploaded, but the metadata could not be applied.</span>
+      )}
+      {/* Nothing was filed into this gap: the zip held a whole run, which waits for review. */}
+      {upload.data?.collection && (
+        <span className="volume-issue__error">
+          That zip holds {upload.data.collection.fileCount} comics.{' '}
+          <Link to={`/upload/bulk?collection=${upload.data.collection.id}`}>Review them</Link>
+        </span>
       )}
     </>
   )

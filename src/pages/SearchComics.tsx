@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
 import type {
-  ComicIndexGroup, ComicIndexQuery, CvVolumeMatch, IssueRun, ReleaseKind, ScrapeStatus,
+  ComicIndexGroup, ComicIndexQuery, CvVolumeMatch, IssueRun, PostDownloads, PostPart, ReleaseKind, ScrapeStatus,
 } from '../api'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
+import PostPartsDialog from '../components/PostPartsDialog'
 
 const PAGE_SIZE = 50
 const DEBOUNCE_MS = 250
@@ -98,12 +99,38 @@ export default function SearchComics() {
   // result you clicked rather than floating at the top of the page.
   const [linkError, setLinkError] = useState<{ id: number; message: string } | null>(null)
 
+  // A post that splits a run into parts, open as a choice of which to take.
+  const [post, setPost] = useState<PostDownloads | null>(null)
+  const [queuedNote, setQueuedNote] = useState<string | null>(null)
+  const queueParts = useMutation({
+    mutationFn: ({ from, parts }: { from: PostDownloads; parts: PostPart[] }) => api.downloadParts({
+      label: from.title ?? undefined, postUrl: from.postUrl, parts,
+    }),
+    onSuccess: (d) => {
+      setPost(null)
+      const { parts, label } = d.collection
+      setQueuedNote(parts === 1 ? `Downloading ${label}.` : `Downloading ${parts} parts of ${label}.`)
+      queryClient.invalidateQueries({ queryKey: ['download'] })
+    },
+  })
+
   // A post page is only read when you ask for it: the index stores where a comic lives,
-  // not the link behind its download button. Finding it here rather than on the upload
+  // not the links behind its download buttons. Finding them here rather than on the upload
   // page keeps the wait and any failure on the button that was actually clicked.
+  //
+  // Several downloads are the parts of a run, offered together so the whole run lands in
+  // one collection to review. One download that is a bundle - "Carnage #1 – 5", a run in a
+  // single zip - goes the same way with nothing to choose. Anything else is one comic, an
+  // issue or a collected edition, and goes to the upload page to be matched as it always did.
   const getLink = useMutation({
-    mutationFn: (id: number) => api.getComicIndexDownloadLink(id),
-    onSuccess: (d) => navigate(`/upload?url=${encodeURIComponent(d.url)}`),
+    mutationFn: (id: number) => api.getComicIndexDownloads(id),
+    onSuccess: (d) => {
+      setQueuedNote(null)
+      queueParts.reset()
+      if (d.parts.length > 1) setPost(d)
+      else if (d.kind === 'bundle') queueParts.mutate({ from: d, parts: d.parts })
+      else navigate(`/upload?url=${encodeURIComponent(d.parts[0]!.url)}`)
+    },
     onError: (err: Error, id) => setLinkError({
       id,
       message: (err as Error & { status?: number }).status === 404
@@ -192,6 +219,23 @@ export default function SearchComics() {
       <p className="page-subtitle">
         {indexed ? `${indexed.toLocaleString()} titles indexed` : 'Nothing indexed yet'}
       </p>
+
+      {queuedNote && (
+        <p className="bulk-note">
+          {queuedNote} It will be under <Link to="/settings/downloads">Ready to review</Link> once
+          it has landed.
+        </p>
+      )}
+
+      {post && (
+        <PostPartsDialog
+          post={post}
+          pending={queueParts.isPending}
+          error={queueParts.isError ? 'Could not queue those parts.' : null}
+          onDownload={(parts) => queueParts.mutate({ from: post, parts })}
+          onClose={() => setPost(null)}
+        />
+      )}
 
       <div className="search-comics__scrape">
         <button

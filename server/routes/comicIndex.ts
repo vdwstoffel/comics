@@ -1,9 +1,10 @@
 import {
   searchComicIndex, groupComicIndex, comicIndexCategories, comicIndexTotal, comicIndexById,
 } from '../models/comicIndex.js'
+import { releaseKind } from '../lib/comicGrouping.js'
 import type { ReleaseKind } from '../lib/comicGrouping.js'
 import { fetchSourcePage } from '../lib/comicIndexSource.js'
-import { parseDownloadLink } from '../lib/comicPostPage.js'
+import { parseDownloadLink, parsePostDownloads } from '../lib/comicPostPage.js'
 import type { ScrapeMode } from '../services/comicIndexScraper.js'
 import { scrapeAndSweep } from '../services/scrapeSchedule.js'
 import { nextSlot } from '../lib/scrapeSchedule.js'
@@ -79,6 +80,31 @@ export default async function comicIndexRoutes(app: App, opts: ComicIndexRouteOp
     const url = parseDownloadLink(html, row.url)
     if (!url) return reply.code(404).send({ error: 'that post has no direct download link' })
     return { url }
+  })
+
+  // Every main-server download a post offers, each under its heading - what the search page
+  // asks before deciding whether one click downloads or a choice of parts is shown. Keyed
+  // by row id for the same reason as the route above: only an indexed post can be read.
+  app.get<{ Params: { id: string } }>('/api/comic-index/:id/downloads', async (req, reply) => {
+    const id = Number(req.params.id)
+    if (!Number.isInteger(id) || id <= 0) return reply.code(400).send({ error: 'id must be a number' })
+
+    const row = comicIndexById(app.db, id)
+    if (!row) return reply.code(404).send({ error: 'not found' })
+
+    let html: string
+    try {
+      html = await fetchPage(row.url)
+    } catch (err) {
+      const why = err instanceof Error ? err.message : String(err)
+      return reply.code(502).send({ error: `could not read that post: ${why}` })
+    }
+
+    const post = parsePostDownloads(html, row.url)
+    if (post.parts.length === 0) return reply.code(404).send({ error: 'that post has no direct download link' })
+    // The kind says what one download is: a bundle is a run in a zip, to be reviewed as a
+    // volume, where an issue or a collected edition is one comic for the upload page.
+    return { postUrl: row.url, ...post, title: post.title ?? row.title, kind: releaseKind(row.title) }
   })
 
   // Two shapes, one route. Bare, it answers with one entry per series - which is what

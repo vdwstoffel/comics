@@ -101,7 +101,14 @@ export default async function comicvineRoutes(app: App) {
   // Comics whose metadata is incomplete, whatever matched them: no cover date, no summary
   // or no credits. Derived from the books, so a thin record matched from search counts
   // exactly as a hand-typed one does - the point of the list is the hole, not the route in.
-  app.get('/api/metadata-followups', async () => ({ followups: listMetadataFollowups(app.db) }))
+  //
+  // The catch-up rides along: it is working through this very list, and the list is where
+  // you would look to see whether the comics on it are going to fill in on their own. A
+  // server built without one (the route tests) simply has nothing to say about it.
+  app.get('/api/metadata-followups', async () => ({
+    followups: listMetadataFollowups(app.db),
+    ...(app.hasDecorator('catchup') ? { catchup: app.catchup.status() } : {}),
+  }))
 
   // Dismissal is the user saying they are done with a note. It writes one row in its own
   // table and touches nothing else: the comic keeps its Comic Vine id, its metadata, its

@@ -216,3 +216,17 @@ test('migrating an old library twice is a no-op the second time', async () => {
   expect(rows).toEqual([{ name: 'Batman Vol. 2', series_name: 'Batman' }])
   db.close()
 })
+
+// A database that met the collection table before it counted parts still has to open.
+test('openDb adds parts to a collection table made without it', () => {
+  const path = makeTempDb()
+  const early = openDb(path)
+  early.exec('DROP TABLE collection')
+  early.exec('CREATE TABLE collection (id INTEGER PRIMARY KEY, label TEXT NOT NULL, dir TEXT NOT NULL UNIQUE, file_count INTEGER NOT NULL, created_at TEXT NOT NULL)')
+  early.prepare("INSERT INTO collection (label, dir, file_count, created_at) VALUES ('Venom', 'd', 3, 'now')").run()
+  early.close()
+
+  const db = openDb(path)
+  expect(db.prepare('SELECT parts FROM collection').get()).toEqual({ parts: 1 })
+  db.close()
+})

@@ -54,3 +54,16 @@ test('a server that cannot say leaves the rest of the pane alone', async () => {
   await new Promise((r) => setTimeout(r, 0))
   expect(screen.queryByText(/free of/)).toBeNull()
 })
+
+// A collection waiting for review can be a whole run, and is counted while it waits.
+test('collections waiting for review are listed only while there are some', async () => {
+  draw()
+  await screen.findByText('Comics')
+  expect(screen.queryByText('Waiting for review')).toBeNull()
+  cleanup()
+
+  globalThis.fetch = vi.fn(async () => ({ ok: true, json: async () => ({ ...VIEW, review: 2_300_000_000 }) })) as unknown as typeof fetch
+  draw()
+  expect(await screen.findByText('Waiting for review')).toBeInTheDocument()
+  expect(screen.getByText('2.3 GB')).toBeInTheDocument()
+})

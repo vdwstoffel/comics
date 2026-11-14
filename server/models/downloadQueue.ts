@@ -37,6 +37,8 @@ export interface QueueEntry {
   attempts: number
   fileName?: string
   bookId?: number
+  /** The download was a zip of several comics, now waiting in this collection for review. */
+  collectionId?: number
   error?: string
   queuedAt: string
   startedAt?: string
@@ -50,18 +52,21 @@ export interface EnqueueRequest {
   label?: string
   manual?: boolean
   postUrl?: string
+  /** One part of a post that splits a run across several zips: where it unpacks to. */
+  collectionId?: number
 }
 
 interface Row {
   id: number; position: number; state: QueueState; url: string
   edition: string | null; cv_issue_id: number | null; label: string | null
   manual: number; post_url: string | null
-  attempts: number; file_name: string | null; book_id: number | null; error: string | null
+  attempts: number; file_name: string | null; book_id: number | null; collection_id: number | null
+  error: string | null
   queued_at: string; started_at: string | null; finished_at: string | null
 }
 
 const COLS = `id, position, state, url, edition, cv_issue_id, label, manual, post_url,
-              attempts, file_name, book_id, error, queued_at, started_at, finished_at`
+              attempts, file_name, book_id, collection_id, error, queued_at, started_at, finished_at`
 
 function toEntry(r: Row): QueueEntry {
   return {
@@ -75,6 +80,7 @@ function toEntry(r: Row): QueueEntry {
     ...(r.post_url == null ? {} : { postUrl: r.post_url }),
     ...(r.file_name == null ? {} : { fileName: r.file_name }),
     ...(r.book_id == null ? {} : { bookId: r.book_id }),
+    ...(r.collection_id == null ? {} : { collectionId: r.collection_id }),
     ...(r.error == null ? {} : { error: r.error }),
     ...(r.started_at == null ? {} : { startedAt: r.started_at }),
     ...(r.finished_at == null ? {} : { finishedAt: r.finished_at }),
@@ -101,9 +107,9 @@ export function enqueue(
     .get() as { p: number }).p
   try {
     const info = db
-      .prepare(`INSERT INTO download_queue (position, state, url, edition, cv_issue_id, label, manual, post_url, queued_at)
-                VALUES (?, 'queued', ?, ?, ?, ?, ?, ?, ?)`)
-      .run(next, req.url, req.edition ?? null, req.cvIssueId ?? null, req.label ?? null, req.manual === true ? 1 : 0, req.postUrl ?? null, now)
+      .prepare(`INSERT INTO download_queue (position, state, url, edition, cv_issue_id, label, manual, post_url, collection_id, queued_at)
+                VALUES (?, 'queued', ?, ?, ?, ?, ?, ?, ?, ?)`)
+      .run(next, req.url, req.edition ?? null, req.cvIssueId ?? null, req.label ?? null, req.manual === true ? 1 : 0, req.postUrl ?? null, req.collectionId ?? null, now)
     const row = db.prepare(`SELECT ${COLS} FROM download_queue WHERE id = ?`).get(info.lastInsertRowid) as Row
     return { queued: true, entry: toEntry(row) }
   } catch (err) {
@@ -135,14 +141,14 @@ export function takeNext(db: Db, now = new Date().toISOString()): QueueEntry | u
 export function finish(
   db: Db,
   id: number,
-  r: { bookId?: number; fileName?: string; error?: string },
+  r: { bookId?: number; fileName?: string; error?: string; collectionId?: number },
   now = new Date().toISOString(),
 ): void {
   db.prepare(`UPDATE download_queue
               SET state = 'done', book_id = ?, file_name = COALESCE(?, file_name),
-                  error = ?, finished_at = ?
+                  collection_id = COALESCE(?, collection_id), error = ?, finished_at = ?
               WHERE id = ?`)
-    .run(r.bookId ?? null, r.fileName ?? null, r.error ?? null, now, id)
+    .run(r.bookId ?? null, r.fileName ?? null, r.collectionId ?? null, r.error ?? null, now, id)
   pruneHistory(db)
 }
 

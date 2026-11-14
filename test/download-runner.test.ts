@@ -502,3 +502,45 @@ test('a download queued with a search-chosen id files nothing', async () => {
   expect(entry.state).toBe('done')
   expect(listManualEntries(ctx.db)).toEqual([])
 })
+
+// ---- how big one download may be
+
+// A run in one zip is ten gigabytes; the per-comic upload limit is not this one's to use.
+test('a download larger than the upload limit still lands', async () => {
+  const runner = createDownloadRunner(ctx, {
+    fetchImpl: async () => respond(cbzBytes, { url: REDIRECTED, headers: { 'content-length': String(cbzBytes.length) } }),
+  })
+  ctx.config.maxUploadBytes = 10
+  runner.enqueue({ url: OPAQUE, edition: 'ASM' })
+  await runner.idle()
+  expect(runner.status().history[0]).toMatchObject({ state: 'done' })
+})
+
+// Finding out at five gigabytes that it never fit, then again on the retry, is a whole
+// run's bandwidth thrown away twice.
+test('a download the disk has no room for is refused before a byte is fetched', async () => {
+  let read = false
+  // A high-water mark of 0, or the stream pulls a chunk on its own before anyone reads.
+  const body = new ReadableStream<Uint8Array>({ pull(c) { read = true; c.enqueue(cbzBytes); c.close() } }, { highWaterMark: 0 })
+  const runner = createDownloadRunner(ctx, {
+    fetchImpl: async () => respond(body as never, { url: REDIRECTED, headers: { 'content-length': String(9_000_000_000) } }),
+    freeBytes: async () => 10_000_000_000,
+    retryBackoffMs: 0,
+  })
+  runner.enqueue({ url: OPAQUE, edition: 'ASM' })
+  await runner.idle()
+  const [entry] = runner.status().history
+  expect(entry!.error).toMatch(/not enough room on the disk: this needs 19\.1 GB, 10\.0 GB is free/)
+  expect(read).toBe(false)
+})
+
+test('a download the server says is over the ceiling is refused before it starts', async () => {
+  const runner = createDownloadRunner(ctx, {
+    maxBytes: 1_000,
+    fetchImpl: async () => respond(cbzBytes, { url: REDIRECTED, headers: { 'content-length': '5000' } }),
+    retryBackoffMs: 0,
+  })
+  runner.enqueue({ url: OPAQUE, edition: 'ASM' })
+  await runner.idle()
+  expect(runner.status().history[0]!.error).toMatch(/too large/)
+})

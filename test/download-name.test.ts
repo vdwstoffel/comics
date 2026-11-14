@@ -29,7 +29,12 @@ test('the rfc5987 form is understood and decoded', () => {
 // Anything else is not a comic, and naming a file for it would be a lie.
 test('a name that is not a comic archive is refused', () => {
   expect(downloadFileName('https://x.test/index.html')).toBeNull()
-  expect(downloadFileName('https://x.test/file.zip')).toBeNull()
+  expect(downloadFileName('https://x.test/file.rar')).toBeNull()
+})
+
+// A single issue in a wrapper, or a whole run in one file: what is inside decides which.
+test('a .zip keeps its name', () => {
+  expect(downloadFileName('https://x.test/Venom%20v4%20(2018).zip')).toBe('Venom v4 (2018).zip')
 })
 
 test('a .cbr is a comic too', () => {

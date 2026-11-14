@@ -174,3 +174,34 @@ test('a running download keeps the bar, with the waiting count alongside', async
   expect(bar).toHaveTextContent(/Wolverine #27/)
   expect(bar).toHaveTextContent(/1 needs you/i)
 })
+
+// ---- collections waiting for review
+
+const COLLECTION = { id: 7, label: 'Daredevil Vol. 6', fileCount: 41, parts: 4, waiting: 0, failed: 0, blocked: 0, createdAt: 'c' }
+
+test('a collection that has landed keeps the bar up until it is reviewed', async () => {
+  stub({ ...view(), review: [COLLECTION] })
+  draw()
+  expect(await screen.findByRole('status')).toHaveTextContent(/Ready to review/)
+  expect(screen.getByRole('status')).toHaveTextContent(/Daredevil Vol. 6/)
+})
+
+// Half a run is not ready: the bar would send you to a table with only some of it.
+test('a collection whose parts are still coming does not ask for review', async () => {
+  stub({ ...view(), review: [{ ...COLLECTION, waiting: 2 }] })
+  draw()
+  await waitFor(() => expect(screen.queryByRole('status')).toBeNull())
+})
+
+test('while downloads run, a waiting collection is counted beside them', async () => {
+  stub({ ...view({ active: [ACTIVE], queue: [{ id: 1, state: 'running' }] }), review: [COLLECTION] })
+  draw()
+  expect(await screen.findByRole('status')).toHaveTextContent(/1 to review/)
+})
+
+// Unpacking seven hundred comics takes minutes; parked at 100% that long reads as stuck.
+test('a zip with every byte in says it is unpacking', async () => {
+  stub(view({ active: [{ ...ACTIVE, fileName: 'Amazing Spider-man (001 - 700).zip', received: 1_000_000, storing: true }], queue: [{ id: 1, state: 'running' }] }))
+  draw()
+  expect(await screen.findByRole('status')).toHaveTextContent(/Unpacking…/)
+})

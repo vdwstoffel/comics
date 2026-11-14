@@ -3,6 +3,7 @@ import type DatabaseType from 'better-sqlite3'
 import type { Config } from './config.js'
 import type { DownloadRunner } from './services/downloader.js'
 import type { ScrapeRunner } from './services/comicIndexScraper.js'
+import type { MetadataCatchup } from './services/metadataCatchup.js'
 
 export type Db = DatabaseType.Database
 
@@ -140,6 +141,7 @@ declare module 'fastify' {
     db: Db
     scraper: ScrapeRunner
     downloader: DownloadRunner
+    catchup: MetadataCatchup
   }
 }
 

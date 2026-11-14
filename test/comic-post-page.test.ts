@@ -1,5 +1,5 @@
 import { test, expect } from 'vitest'
-import { parseDownloadLink } from '../server/lib/comicPostPage.js'
+import { parseDownloadLink, parsePostDownloads } from '../server/lib/comicPostPage.js'
 
 const POST_URL = 'https://getcomics.org/marvel/knull-5-2026/'
 
@@ -66,4 +66,37 @@ test('parseDownloadLink takes the first DOWNLOAD NOW when a post repeats it', ()
   const html = button(MAIN, 'DOWNLOAD NOW', 'aio-red') +
     button('https://getcomics.org/dls/second', 'DOWNLOAD NOW', 'aio-red')
   expect(parseDownloadLink(html, POST_URL)).toBe(MAIN)
+})
+
+// --- Every main-server download a post offers, for a run split across zips.
+
+test('the older list gives one part per item, headed and sized as the post writes it', () => {
+  const html = `<h1 class="post-title">Iron Man Vol. 6 #1 &#8211; 25 + Annual</h1>
+    <section class="post-contents"><p><strong>Size :</strong> 955 MB</p><ul>
+    <li>Iron Man #1 &#8211; 13 (2020-2021) (452 MB) :<br /><strong><a href="/dls/one"><span>Main Server</span></a> | <a href="https://ufile.example/x">UFile</a></strong></li>
+    <li>Iron Man #14 &#8211; 25 + Annuals (2022) (503 MB)<strong> :</strong><br /><strong><a href="/dls/two"><span>Main Server</span></a></strong></li>
+    </ul></section>`
+  expect(parsePostDownloads(html, POST_URL)).toEqual({
+    title: 'Iron Man Vol. 6 #1 – 25 + Annual',
+    size: '955 MB',
+    parts: [
+      { heading: 'Iron Man #1 – 13 (2020-2021)', size: '452 MB', url: 'https://getcomics.org/dls/one' },
+      { heading: 'Iron Man #14 – 25 + Annuals (2022)', size: '503 MB', url: 'https://getcomics.org/dls/two' },
+    ],
+  })
+})
+
+// The markup nests the button's div in a p, which the parser closes early - so the
+// paragraph naming the download is a sibling to walk back to, past the mirror buttons.
+test('a newer button is headed by the paragraph above it', () => {
+  const html = `<h1 class="post-title">LIFE #1 &#8211; 6 (2024-2025)</h1><section class="post-contents">
+    <p style="text-align: center;"><strong>LIFE #1 &#8211; 6 (Empire)</strong><br /><strong>Language :</strong> English | <strong>Size :</strong> 175 MB</p>
+    <p style="text-align: center;">${button(MAIN, 'DOWNLOAD NOW', 'aio-red')}
+    <p style="text-align: center;">${button('https://1024terabox.com/s/x', 'TERABOX', 'aio-blue')}</section>`
+  expect(parsePostDownloads(html, POST_URL).parts).toEqual([{ heading: 'LIFE #1 – 6 (Empire)', size: '175 MB', url: MAIN }])
+})
+
+test('a post with only mirrors offers no parts', () => {
+  const html = button('https://1024terabox.com/s/x', 'TERABOX', 'aio-blue')
+  expect(parsePostDownloads(html, POST_URL).parts).toEqual([])
 })

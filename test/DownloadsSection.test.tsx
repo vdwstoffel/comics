@@ -140,3 +140,36 @@ test('what the disk holds sits above the queues', async () => {
   expect(within(storage).getByText(/546 GB free of 916 GB/)).toBeInTheDocument()
   expect(storage.compareDocumentPosition(now) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
 })
+
+// ---- collections waiting for review
+
+const READY = { id: 7, label: 'Daredevil Vol. 6', fileCount: 41, parts: 4, waiting: 0, failed: 0, blocked: 0, createdAt: 'c' }
+const FILLING = { id: 8, label: 'Iron Man Vol. 6', fileCount: 13, parts: 2, waiting: 1, failed: 0, blocked: 0, createdAt: 'c' }
+
+function withReview(review: unknown[]) {
+  globalThis.fetch = vi.fn(async (url: string, init?: { method?: string }) => {
+    if (init?.method) posted.push(`${init.method} ${url}`)
+    const body = init?.method ? {} : url.includes('/api/storage') ? STORAGE : { ...VIEW, review }
+    return { ok: true, json: async () => body }
+  }) as unknown as typeof fetch
+}
+
+test('a landed collection is offered for review, one still filling says how far it has got', async () => {
+  withReview([READY, FILLING])
+  draw()
+  const section = await screen.findByRole('region', { name: 'Ready to review' })
+  const [ready, filling] = within(section).getAllByRole('listitem')
+  expect(within(ready!).getByText('41 comics')).toBeInTheDocument()
+  expect(within(ready!).getByRole('link', { name: 'Review' })).toHaveAttribute('href', '/upload/bulk?collection=7')
+  expect(within(filling!).getByText('1 of 2 parts in')).toBeInTheDocument()
+  expect(within(filling!).queryByRole('link', { name: 'Review' })).toBeNull()
+})
+
+test('discarding a collection asks first, saying how many comics go', async () => {
+  withReview([READY])
+  draw()
+  fireEvent.click(await screen.findByRole('button', { name: 'Discard Daredevil Vol. 6' }))
+  expect(screen.getByText(/41 files will be deleted from disk/)).toBeInTheDocument()
+  fireEvent.click(screen.getByRole('button', { name: 'Remove' }))
+  await waitFor(() => expect(posted).toContain('DELETE /api/collections/7'))
+})

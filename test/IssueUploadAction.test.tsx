@@ -34,9 +34,9 @@ test('it offers to upload, named for the comic it would fill', () => {
 })
 
 // Both formats the library takes. The server turns a .cbr into a .cbz on the way in.
-test('it accepts the two archive formats the library stores', () => {
+test('it accepts the two archive formats the library stores, and the zip they come in', () => {
   draw()
-  expect(screen.getByLabelText(/^Upload #256$/)).toHaveAttribute('accept', '.cbz,.cbr')
+  expect(screen.getByLabelText(/^Upload #256$/)).toHaveAttribute('accept', '.cbz,.cbr,.zip')
 })
 
 // The reason this button exists rather than sending you to the Upload page: the run and

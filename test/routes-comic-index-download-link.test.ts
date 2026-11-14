@@ -80,3 +80,18 @@ test('answers 502 when the post page cannot be fetched', async () => {
   const res = await get(idFor('https://x.test/gone/'))
   expect(res.statusCode).toBe(502)
 })
+
+// --- Every part a post offers, for the search page's choice of parts.
+
+const getParts = (id: number | string) =>
+  app.inject({ method: 'GET', url: `/api/comic-index/${id}/downloads` })
+
+test('a post with one button is one part, named after the post when it says nothing else', async () => {
+  const res = await getParts(idFor(POST_URL))
+  expect(res.statusCode).toBe(200)
+  expect(res.json()).toMatchObject({ postUrl: POST_URL, title: 'Knull #5 (2026)', kind: 'issue', parts: [{ url: DLS }] })
+})
+
+test('a post with no main-server download has no parts to offer', async () => {
+  expect((await getParts(idFor(MIRRORS_ONLY_URL))).statusCode).toBe(404)
+})

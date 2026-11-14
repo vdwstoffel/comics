@@ -11,6 +11,8 @@ export interface StorageView {
   covers: number
   database: number
   temp: number
+  /** Collections unpacked and waiting for review - a run can hold gigabytes here. */
+  review: number
 }
 
 export interface Storage {
@@ -48,10 +50,11 @@ export function createStorage(config: Config, opts: { ttlMs?: number } = {}): St
   let cached: { at: number; view: Promise<StorageView> } | null = null
 
   async function measure(): Promise<StorageView> {
-    const [comics, covers, temp, db, wal, shm, disk] = await Promise.all([
+    const [comics, covers, temp, review, db, wal, shm, disk] = await Promise.all([
       directorySize(config.comicsDir),
       directorySize(config.thumbsDir),
       directorySize(config.tmpDir),
+      config.stagingDir ? directorySize(config.stagingDir) : 0,
       fileSize(config.dbPath),
       // sqlite keeps the write-ahead log and its index beside the database. They are the
       // database as far as the disk is concerned, and the log is not a rounding error.
@@ -70,6 +73,7 @@ export function createStorage(config: Config, opts: { ttlMs?: number } = {}): St
       covers,
       database: db + wal + shm,
       temp,
+      review,
     }
   }
 

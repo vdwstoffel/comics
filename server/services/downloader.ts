@@ -1,5 +1,5 @@
 import { createWriteStream } from 'node:fs'
-import { unlink } from 'node:fs/promises'
+import { statfs, unlink } from 'node:fs/promises'
 import { randomUUID } from 'node:crypto'
 import { extname, join } from 'node:path'
 import { Readable } from 'node:stream'
@@ -7,6 +7,7 @@ import { pipeline } from 'node:stream/promises'
 import { downloadFileName } from '../lib/downloadName.js'
 import { needsABrowser } from '../lib/botCheck.js'
 import { storeComic } from './storeComic.js'
+import { openDelivery, addToCollection } from './collections.js'
 import {
   enqueue as enqueueRow, takeNext, finish, fail, block, listQueue, listHistory, listBlocked,
   removeIfLive,
@@ -19,6 +20,24 @@ import type { Ctx } from '../types.js'
 export const RETRY_BACKOFF_MS = 30_000
 /** At most this many attempts per download: the first, and one retry. */
 const MAX_ATTEMPTS = 2
+/** The ceiling when the config names none - the tests' configs, mostly. 50 GiB. */
+const DEFAULT_MAX_DOWNLOAD = 50 * 1024 ** 3
+/** What a download must leave free on the disk, beyond its own room. */
+const RESERVE_BYTES = 1024 ** 3
+
+function gb(bytes: number): string {
+  return `${(bytes / 1e9).toFixed(1)} GB`
+}
+
+/** Room left on the disk tmp sits on, or no limit when the disk will not say. */
+async function diskFree(dir: string): Promise<number> {
+  try {
+    const disk = await statfs(dir)
+    return Number(disk.bsize) * Number(disk.bavail)
+  } catch {
+    return Infinity
+  }
+}
 
 /**
  * Thrown when the site answered with a bot check instead of the comic. A distinct type
@@ -41,6 +60,8 @@ export interface ActiveDownload {
   received: number
   total: number
   startedAt: string
+  /** Every byte is in, and it is being unpacked or filed - minutes, for a run in a zip. */
+  storing?: true
 }
 
 export interface DownloadRequest {
@@ -51,6 +72,8 @@ export interface DownloadRequest {
   manual?: boolean
   /** The post this link came off, kept so a blocked row can offer you the page. */
   postUrl?: string
+  /** A part of a run split across zips: the collection it unpacks into. */
+  collectionId?: number
 }
 
 export interface DownloadDeps {
@@ -66,6 +89,8 @@ export interface DownloadDeps {
   concurrency?: number | (() => number)
   /** How long a failed download waits before its retry is eligible. */
   retryBackoffMs?: number
+  /** Room left on the disk. Injected so tests can run out of it. */
+  freeBytes?: () => Promise<number>
 }
 
 export interface DownloadRunner {
@@ -129,8 +154,8 @@ export async function resolveDownload(
 
 export function createDownloadRunner(ctx: Ctx, deps: DownloadDeps = {}): DownloadRunner {
   const {
-    fetchImpl = fetch, maxBytes = ctx.config.maxUploadBytes, timeoutMs = HOUR,
-    concurrency, retryBackoffMs = RETRY_BACKOFF_MS,
+    fetchImpl = fetch, maxBytes = ctx.config.maxDownloadBytes ?? DEFAULT_MAX_DOWNLOAD, timeoutMs = HOUR,
+    concurrency, retryBackoffMs = RETRY_BACKOFF_MS, freeBytes = () => diskFree(ctx.config.tmpDir),
   } = deps
 
   // Normalised once. A plain number stays accepted because every existing pool test
@@ -190,6 +215,19 @@ export function createDownloadRunner(ctx: Ctx, deps: DownloadDeps = {}): Downloa
       live.fileName = fileName
       live.total = Number.isFinite(claimed) && claimed > 0 ? claimed : 0
 
+      // Asked before a byte is fetched, when the server says how big it is. A run in one
+      // zip is ten gigabytes, and finding out at five that it was never going to fit -
+      // then again on the retry - is the bandwidth of a whole run thrown away twice. Room
+      // for the zip AND what it unpacks to: both are on the disk until the zip is spent.
+      if (live.total > maxBytes) throw new Error(`file too large (${gb(live.total)})`)
+      if (live.total > 0) {
+        const free = await freeBytes()
+        const needed = live.total * 2 + RESERVE_BYTES
+        if (needed > free) {
+          throw new Error(`not enough room on the disk: this needs ${gb(needed)}, ${gb(free)} is free`)
+        }
+      }
+
       tmpPath = join(ctx.config.tmpDir, `${randomUUID()}${extname(fileName) || '.cbz'}`)
       if (!res.body) throw new Error('the response had no body')
 
@@ -203,9 +241,38 @@ export function createDownloadRunner(ctx: Ctx, deps: DownloadDeps = {}): Downloa
         }
       }
       await pipeline(counting(Readable.fromWeb(res.body as never)), createWriteStream(tmpPath))
+      live.storing = true
+
+      // One part of a run split across zips: whatever it holds joins the others, and the
+      // whole run is reviewed in one table once the last part is in.
+      if (entry.collectionId != null) {
+        const staged = tmpPath
+        tmpPath = undefined
+        const collectionId = await addToCollection(ctx, entry.collectionId, {
+          tmpPath: staged, name: fileName, label: entry.label ?? fileName,
+        })
+        finish(ctx.db, entry.id, { fileName, collectionId })
+        return
+      }
+
+      // A zip may be one comic in a wrapper or a whole run in one file, and only what is
+      // inside says which. A run is not stored at all: it waits for someone to check the
+      // matches, which a download running on its own has nobody to do.
+      const delivery = await openDelivery(ctx, {
+        tmpPath, name: fileName,
+        // A pasted link is labelled with the link itself, which says nothing; the file
+        // name the response gave is the better name for a collection then.
+        label: entry.label && entry.label !== entry.url ? entry.label : fileName.replace(/\.[^.]+$/, ''),
+      })
+      if (delivery.kind === 'empty') { tmpPath = undefined; throw new Error('the zip holds no comics') }
+      if (delivery.kind === 'collection') {
+        finish(ctx.db, entry.id, { fileName, collectionId: delivery.collection.id })
+        return
+      }
+      tmpPath = delivery.tmpPath
 
       const result = await storeComic(ctx, {
-        tmpPath, originalName: fileName, editionName: entry.edition, issueId: entry.cvIssueId,
+        tmpPath, originalName: delivery.name, editionName: entry.edition, issueId: entry.cvIssueId,
         // Whether the id was typed is only known where the form was; the queue row is how
         // that survives until this detached run, and storeComic files the reminder from it.
         manual: entry.manual,
@@ -325,7 +392,7 @@ export function createDownloadRunner(ctx: Ctx, deps: DownloadDeps = {}): Downloa
     enqueue(req) {
       const res = enqueueRow(ctx.db, {
         url: req.url, edition: req.edition, label: req.label, manual: req.manual,
-        postUrl: req.postUrl,
+        postUrl: req.postUrl, collectionId: req.collectionId,
         cvIssueId: req.issueId == null ? undefined : Number(req.issueId),
       })
       if (res.queued) wake()

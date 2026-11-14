@@ -2,11 +2,15 @@ import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
 import { formatBytes } from '../lib/bytes'
 
-/** The four kinds, in the order they matter: the library, then what indexing it costs. */
+/**
+ * The kinds, in the order they matter: the library, then what indexing it costs, then
+ * what is only passing through - a collection waiting for review can be a whole run.
+ */
 const KINDS = [
   ['Comics', 'comics'],
   ['Covers', 'covers'],
   ['Database', 'database'],
+  ['Waiting for review', 'review'],
   ['Temp files', 'temp'],
 ] as const
 
@@ -28,7 +32,7 @@ export default function StorageSummary() {
   // page every time the pane opened would cost more than the half-second it covered.
   if (!data) return null
 
-  const library = data.comics + data.covers + data.database + data.temp
+  const library = data.comics + data.covers + data.database + data.temp + (data.review ?? 0)
   // What is on the disk that is not ours. Floored at zero: `total` and `free` come from
   // the filesystem and the four sizes from a walk that takes a moment, so a download
   // landing between the two can make the parts add up to slightly more than the whole.
@@ -57,10 +61,12 @@ export default function StorageSummary() {
       </div>
 
       <dl className="storage__kinds">
-        {KINDS.map(([label, key]) => (
+        {/* Waiting for review only while something is: most of the time nothing is, and a
+            standing "0 B" would be a line about a feature rather than about the disk. */}
+        {KINDS.filter(([, key]) => key !== 'review' || (data.review ?? 0) > 0).map(([label, key]) => (
           <div key={key} className="storage__kind">
             <dt>{label}</dt>
-            <dd>{formatBytes(data[key])}</dd>
+            <dd>{formatBytes(data[key] ?? 0)}</dd>
           </div>
         ))}
       </dl>

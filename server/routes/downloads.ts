@@ -1,5 +1,6 @@
 import { resolveDownload } from '../services/downloader.js'
 import { move, retry, clearHistory, removeBlocked } from '../models/downloadQueue.js'
+import { listCollections } from '../models/collections.js'
 import type { App } from '../types.js'
 
 interface ResolveBody { url?: string }
@@ -20,7 +21,9 @@ export default async function downloadRoutes(app: App) {
     }
   })
 
-  app.get('/api/downloads', async () => app.downloader.status())
+  // Collections ride along with the queue: they are what finished downloads became, and
+  // the bar that reports the one is where you find out about the other.
+  app.get('/api/downloads', async () => ({ ...app.downloader.status(), review: listCollections(app.db) }))
 
   app.post<{ Body: StartBody }>('/api/downloads', async (req, reply) => {
     const url = req.body?.url?.trim()

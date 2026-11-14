@@ -1,7 +1,42 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Link } from 'react-router-dom'
 import { api } from '../api'
-import type { ApiMetadataFollowup } from '../api'
+import type { ApiMetadataFollowup, CatchupStatus } from '../api'
+
+/** "about 2 h 45 min", "about 12 min" - how long a catch-up has left at its pace. */
+function roughly(minutes: number): string {
+  if (minutes < 60) return `about ${Math.max(1, Math.round(minutes))} min`
+  const h = Math.floor(minutes / 60)
+  const m = Math.round(minutes % 60)
+  return m === 0 ? `about ${h} h` : `about ${h} h ${m} min`
+}
+
+/**
+ * Whether the comics below are going to fill in without anyone pressing anything.
+ *
+ * Said above the rows, because it changes what the rows ask of you: with a catch-up
+ * running, Refresh is for the one you want now rather than the five hundred you would
+ * otherwise press it for.
+ */
+function CatchupLine({ status }: { status: CatchupStatus }) {
+  if (status.due === 0) return null
+  const left = `${status.due} comic${status.due === 1 ? '' : 's'}`
+  if (status.pausedUntil) {
+    const at = new Date(status.pausedUntil).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    return (
+      <p className="settings__hint">
+        Comic Vine is refusing requests for now, so filling these in waits until {at}.
+        {' '}{left} still to read{status.reason ? ` (${status.reason})` : ''}.
+      </p>
+    )
+  }
+  return (
+    <p className="settings__hint">
+      Filling these in on its own: {left} to read from Comic Vine, {roughly((status.due / status.perHour) * 60)} at
+      {' '}{status.perHour} an hour.
+    </p>
+  )
+}
 
 /**
  * The follow-up list with its Refresh and Dismiss behaviour.
@@ -19,6 +54,9 @@ export function FollowupList() {
   // Same key as every other reader of the list, so they share one cache entry.
   const { data: followupData } = useQuery({
     queryKey: ['metadata-followups'], queryFn: api.metadataFollowups,
+    // Read again now and then while a catch-up is working through it, so the rows leave
+    // the list as they fill in rather than all at once on the next visit.
+    refetchInterval: (q) => ((q.state.data?.catchup?.due ?? 0) > 0 ? 60_000 : false),
   })
   const followups = followupData?.followups ?? []
 
@@ -59,6 +97,7 @@ export function FollowupList() {
           true of both is added here: a failed refresh writes nothing, so the comic
           is still listed and the work is not lost. During an outage this is the
           message the user sees most, and it must not read as a fault in Comix. */}
+      {followupData?.catchup && <CatchupLine status={followupData.catchup} />}
       {refreshFollowup.isError && (
         <p className="error-text">
           {(refreshFollowup.error as Error).message}{' '}

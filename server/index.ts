@@ -23,12 +23,15 @@ import followRoutes from './routes/follows.js'
 import upcomingRoutes from './routes/upcoming.js'
 import settingsRoutes from './routes/settings.js'
 import storageRoutes from './routes/storage.js'
+import collectionRoutes from './routes/collections.js'
 import { clearTmpDir } from './lib/tmpFiles.js'
 import { createDownloadRunner } from './services/downloader.js'
 import { createScrapeRunner } from './services/comicIndexScraper.js'
 import { startScrapeSchedule } from './services/scrapeSchedule.js'
 import { backfillSeriesNames } from './models/series.js'
 import { recoverRunning } from './models/downloadQueue.js'
+import { reconcileCollections } from './services/collections.js'
+import { createMetadataCatchup, startMetadataCatchup } from './services/metadataCatchup.js'
 import type { App } from './types.js'
 
 export function registerSpa(app: App, _distDir: string): void {
@@ -64,6 +67,13 @@ export async function buildServer(): Promise<App> {
   if (requeued) console.log(`requeued ${requeued} interrupted download${requeued === 1 ? '' : 's'}`)
   app.decorate('downloader', createDownloadRunner({ db, config }))
 
+  // After the requeue, so a collection whose parts were mid-download still counts them as
+  // coming and is not swept away for being empty.
+  const tidied = await reconcileCollections({ db, config })
+  if (tidied) console.log(`tidied ${tidied} leftover collection${tidied === 1 ? '' : 's'}`)
+
+  app.decorate('catchup', createMetadataCatchup({ db, config }))
+
   app.get('/api/health', async () => ({ status: 'ok' }))
 
   await app.register(multipart, { limits: { fileSize: config.maxUploadBytes } })
@@ -85,6 +95,7 @@ export async function buildServer(): Promise<App> {
   await app.register(upcomingRoutes)
   await app.register(settingsRoutes)
   await app.register(storageRoutes)
+  await app.register(collectionRoutes)
 
   const distDir = join(process.cwd(), 'dist')
   if (existsSync(distDir)) {
@@ -103,4 +114,6 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   // Here rather than in buildServer, which the tests build: a check that came due would
   // otherwise scrape someone else's site from the test suite.
   startScrapeSchedule(app)
+  // Here for the same reason: it reads Comic Vine, which the test suite must never do.
+  startMetadataCatchup(app.catchup)
 }

@@ -103,7 +103,7 @@ describe('against the real download runner', () => {
   test('the status endpoint reports progress the page can poll', async () => {
     const idle = await app.inject({ url: '/api/downloads' })
     expect(idle.statusCode).toBe(200)
-    expect(idle.json()).toEqual({ active: [], queue: [], history: [], blocked: [] })
+    expect(idle.json()).toEqual({ active: [], queue: [], history: [], blocked: [], review: [] })
 
     const config = {
       comicsDir: join(dir, 'comics'), thumbsDir: join(dir, 'thumbs'), tmpDir: join(dir, 'tmp'),

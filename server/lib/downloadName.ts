@@ -1,7 +1,11 @@
 import { basename } from 'node:path'
 
-/** The library holds comic archives; anything else is not a comic and must not be named as one. */
-const COMIC_EXT = /\.(cbz|cbr)$/i
+/**
+ * The library holds comic archives, and a .zip is how one so often arrives - a single issue
+ * in a wrapper, or a whole run in one file. Anything else is not a comic and must not be
+ * named as one.
+ */
+const COMIC_EXT = /\.(cbz|cbr|zip)$/i
 
 /** `filename*=UTF-8''name%20here` — the encoded form, which wins when both are present. */
 const EXTENDED = /filename\*\s*=\s*[^']*'[^']*'([^;]+)/i

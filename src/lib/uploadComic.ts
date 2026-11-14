@@ -1,4 +1,4 @@
-import type { ApiBook } from '../api'
+import type { ApiBook, StagedCollection } from '../api'
 
 export interface UploadComicInput {
   file: File
@@ -43,6 +43,12 @@ export interface UploadComicResult {
    * upload succeeded - this says the old copy is probably still there.
    */
   replaceFailed?: boolean
+  /**
+   * What was sent was a zip of several comics, so none was stored: they are waiting in
+   * this collection for review. Every caller that accepts a .zip has to say so, or the
+   * upload reads as done with nothing to show for it.
+   */
+  collection?: StagedCollection
 }
 
 /**
@@ -63,10 +69,53 @@ export function uploadComic({ file, edition, issueId, volumeName, issueNumber, r
   }
   if (replaceBookId != null) form.set('replaceBookId', String(replaceBookId))
   form.set('file', file, file.name)
+  return send<UploadComicResult>('/api/upload', form, onProgress)
+}
 
-  return new Promise<UploadComicResult>((resolve, reject) => {
+/**
+ * Send a zip from your own disk to be unpacked and held for review - even a zip of one
+ * comic, which /api/upload would store straight away. With `collectionId` it joins that
+ * collection instead: a part a bot check stopped, handed back by hand.
+ */
+export function stageCollection({ file, collectionId, onProgress }: {
+  file: File
+  collectionId?: number
+  onProgress?: (percent: number) => void
+}): Promise<{ collection: StagedCollection }> {
+  const form = new FormData()
+  // Ahead of the file, as every field is: the server reads the parts in order.
+  if (collectionId != null) form.set('collectionId', String(collectionId))
+  form.set('file', file, file.name)
+  return send('/api/collections', form, onProgress)
+}
+
+/**
+ * File one comic out of a collection: the fields an upload carries, naming a file already
+ * on the server instead of sending one, and answered the way an upload is.
+ */
+export async function fileStagedComic(
+  collectionId: number,
+  { file, edition, issueId, volumeName, issueNumber, replaceBookId }: Omit<UploadComicInput, 'file' | 'onProgress'> & { file: string },
+): Promise<UploadComicResult & { remaining: number }> {
+  const res = await fetch(`/api/collections/${collectionId}/file`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      file, edition, issueId,
+      ...(volumeName && issueNumber ? { volumeName, issueNumber } : {}),
+      replaceBookId,
+    }),
+  })
+  let body: (UploadComicResult & { remaining: number; error?: string }) | null = null
+  try { body = await res.json() } catch { /* an answer we cannot read */ }
+  if (!res.ok) throw new Error(body?.error || `Filing failed (${res.status})`)
+  return body ?? { remaining: -1 }
+}
+
+function send<T>(url: string, form: FormData, onProgress?: (percent: number) => void): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest()
-    xhr.open('POST', '/api/upload')
+    xhr.open('POST', url)
     xhr.upload.onprogress = (ev) => {
       // A length the browser cannot work out would report NaN%, which is worse than
       // reporting nothing.
@@ -75,10 +124,17 @@ export function uploadComic({ file, edition, issueId, volumeName, issueNumber, r
     xhr.onload = () => {
       // 413 is what the size limit answers with. Treating it as success would close the
       // gap on the page for a comic that was never stored.
-      if (xhr.status !== 200) { reject(new Error(`Upload failed (${xhr.status})`)); return }
+      if (xhr.status !== 200) {
+        // The server's own reason where it gave one - "that zip holds no comics" is the
+        // whole answer to why a zip was refused, and a bare status throws it away.
+        let reason: string | undefined
+        try { reason = (JSON.parse(xhr.responseText) as { error?: string }).error } catch { /* none */ }
+        reject(new Error(reason ? `${reason} (${xhr.status})` : `Upload failed (${xhr.status})`))
+        return
+      }
       // The file is on disk by the time the body is written, so an answer we cannot read
       // costs only what we can say about it afterwards - never the comic.
-      try { resolve(JSON.parse(xhr.responseText) as UploadComicResult) } catch { resolve({}) }
+      try { resolve(JSON.parse(xhr.responseText) as T) } catch { resolve({} as T) }
     }
     xhr.onerror = () => reject(new Error('Upload failed'))
     xhr.send(form)

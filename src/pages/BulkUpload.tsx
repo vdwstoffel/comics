@@ -1,10 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChangeEvent } from 'react'
-import { Link } from 'react-router-dom'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import type { ChangeEvent, FormEvent } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import type { ApiVolumeIssues, CvVolumeMatch } from '../api'
-import { uploadComic } from '../lib/uploadComic'
+import type { ApiVolumeIssues, CvVolumeMatch, PostDownloads, PostPart } from '../api'
+import { uploadComic, stageCollection, fileStagedComic } from '../lib/uploadComic'
 import { buildRows, claimForVolume, assignIssue, availableIssues } from '../lib/bulkMatch'
 import type { BulkIssue, BulkRow, BulkVolume } from '../lib/bulkMatch'
 import { countBatch, summarise, willUpload } from '../lib/bulkProgress'
@@ -13,6 +13,7 @@ import { useDocumentTitle } from '../lib/useDocumentTitle'
 import BulkVolumeGroup from '../components/BulkVolumeGroup'
 import BulkLeftoverPicker from '../components/BulkLeftoverPicker'
 import UploadTabs from '../components/UploadTabs'
+import PostPartsDialog from '../components/PostPartsDialog'
 
 /**
  * Comic Vine allows about 200 requests an hour and nothing in this app counts them. A
@@ -39,16 +40,57 @@ interface ChosenVolume {
  *
  * Searches are additive and claim only files no earlier search took, because a folder of
  * a run is rarely one volume: Comic Vine gives every year's annual a volume of its own.
+ *
+ * The comics come from one of two places. Picked from your disk, they are uploaded one by
+ * one. Or they are already on the server, in a collection - a zip unpacked, or every part
+ * of a post downloaded - named by `?collection=`, and each is filed where it sits. The
+ * table between is the same either way, so a run reviewed from a download is matched by
+ * exactly the rules a folder is.
  */
 export default function BulkUpload() {
+  const [params] = useSearchParams()
+  const collectionParam = Number(params.get('collection'))
+  const collectionId = Number.isInteger(collectionParam) && collectionParam > 0 ? collectionParam : null
+  // Keyed on the collection, so moving between one and another - or back to picking a
+  // folder - starts from an empty table rather than the last one's rows and results.
+  return <BulkAdd key={collectionId ?? 'disk'} collectionId={collectionId} />
+}
+
+function BulkAdd({ collectionId }: { collectionId: number | null }) {
   useDocumentTitle('Bulk add')
   const qc = useQueryClient()
+  const navigate = useNavigate()
 
-  // The picked files, by row key. Rows are rebuilt as volumes claim them, so the files
-  // cannot live on the rows themselves.
-  const filesRef = useRef(new Map<string, File>())
+  // The comics by row key: a File picked from disk, or the name of one in the collection.
+  // Rows are rebuilt as volumes claim them, so the files cannot live on the rows themselves.
+  const filesRef = useRef(new Map<string, File | string>())
   const [rows, setRows] = useState<BulkRow[]>([])
   const [chosen, setChosen] = useState<ChosenVolume[]>([])
+
+  const collection = useQuery({
+    queryKey: ['collection', collectionId],
+    queryFn: () => api.getCollection(collectionId!),
+    enabled: collectionId != null,
+    // Read once per visit: refetching under a table being matched would rebuild its rows.
+    // Dropped on leaving, so the next visit lists what is left rather than what was there.
+    staleTime: Infinity,
+    gcTime: 0,
+    retry: false,
+  })
+  const review = collection.data
+
+  // A collection's comics become the rows the moment it loads, exactly as picked files do.
+  useEffect(() => {
+    if (!review) return
+    const next = buildRows(review.files)
+    const map = new Map<string, File | string>()
+    next.forEach((row, i) => map.set(row.key, review.files[i]!))
+    filesRef.current = map
+    setRows(next)
+    setChosen([])
+    setProgress({})
+    setFinished(false)
+  }, [review])
 
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<CvVolumeMatch[] | null>(null)
@@ -58,8 +100,8 @@ export default function BulkUpload() {
   const [running, setRunning] = useState(false)
   const [finished, setFinished] = useState(false)
 
-  // The bytes come from this tab, so leaving mid-batch abandons whatever is left. Unlike
-  // the download queue there is no server-side run to come back to.
+  // Each comic is sent from this tab, so leaving mid-batch abandons whatever is left. A
+  // collection keeps what was not filed, but the run itself does not carry on without you.
   useEffect(() => {
     if (!running) return
     const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = '' }
@@ -70,7 +112,7 @@ export default function BulkUpload() {
   function choose(e: ChangeEvent<HTMLInputElement>) {
     const picked = Array.from(e.target.files ?? [])
     const next = buildRows(picked.map((f) => f.name))
-    const map = new Map<string, File>()
+    const map = new Map<string, File | string>()
     next.forEach((row, i) => map.set(row.key, picked[i]!))
     filesRef.current = map
     setRows(next)
@@ -78,6 +120,66 @@ export default function BulkUpload() {
     setProgress({})
     setFinished(false)
   }
+
+  // A zip from your disk is unpacked on the server and comes back as a collection, which
+  // this page then reviews like any other. Sending it whole is the point: the comics in it
+  // never have to be unzipped on your side first.
+  const [zipPercent, setZipPercent] = useState<number | null>(null)
+  const sendZip = useMutation({
+    mutationFn: (file: File) => stageCollection({ file, onProgress: setZipPercent }),
+    onSuccess: ({ collection: c }) => {
+      setZipPercent(null)
+      qc.invalidateQueries({ queryKey: ['download'] })
+      navigate(`/upload/bulk?collection=${c.id}`)
+    },
+    onError: () => setZipPercent(null),
+  })
+
+  function chooseZip(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (file) sendZip.mutate(file)
+  }
+
+  // A link is read before anything is queued: a post may split the run into parts, and
+  // those are yours to choose from. One part needs no choosing and goes straight in.
+  const [link, setLink] = useState('')
+  const [post, setPost] = useState<PostDownloads | null>(null)
+  const [queuedNote, setQueuedNote] = useState<string | null>(null)
+  const queueParts = useMutation({
+    mutationFn: ({ from, parts }: { from: PostDownloads; parts: PostPart[] }) => api.downloadParts({
+      label: from.title ?? undefined, postUrl: from.postUrl, parts,
+    }),
+    onSuccess: (d) => {
+      setPost(null)
+      setLink('')
+      setQueuedNote(`Downloading ${d.collection.parts} part${d.collection.parts === 1 ? '' : 's'} of ${d.collection.label}.`)
+      qc.invalidateQueries({ queryKey: ['download'] })
+    },
+  })
+  const readLink = useMutation({
+    mutationFn: (url: string) => api.readLink(url),
+    onSuccess: (d) => {
+      if (d.parts.length > 1) setPost(d)
+      else queueParts.mutate({ from: d, parts: d.parts })
+    },
+  })
+
+  function submitLink(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault()
+    setQueuedNote(null)
+    queueParts.reset()
+    if (link.trim()) readLink.mutate(link.trim())
+  }
+
+  // Throwing the rest away, once what was wanted has been filed or none of it was.
+  const discard = useMutation({
+    mutationFn: () => api.discardCollection(collectionId!),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ['download'] })
+      navigate('/upload/bulk')
+    },
+  })
 
   const search = useMutation({
     mutationFn: (series: string) => api.getComicVineVolumes(series),
@@ -145,17 +247,23 @@ export default function BulkUpload() {
         continue
       }
       const entry = chosen.find((c) => c.volume.volumeId === row.volumeId)
-      setProgress((p) => ({ ...p, [row.key]: { status: 'uploading', percent: 0 } }))
+      const fields = {
+        edition: entry?.editionName,
+        issueId: row.issue?.id,
+        volumeName: entry?.volume.name,
+        issueNumber: row.issue?.number ?? undefined,
+        replaceBookId: row.replace ? row.issue?.bookId : undefined,
+      }
+      // A comic already on the server has no bytes to count, so it reports no percent.
+      setProgress((p) => ({ ...p, [row.key]: typeof file === 'string' ? { status: 'uploading' } : { status: 'uploading', percent: 0 } }))
       try {
-        const res = await uploadComic({
-          file,
-          edition: entry?.editionName,
-          issueId: row.issue?.id,
-          volumeName: entry?.volume.name,
-          issueNumber: row.issue?.number ?? undefined,
-          replaceBookId: row.replace ? row.issue?.bookId : undefined,
-          onProgress: (percent) => setProgress((p) => ({ ...p, [row.key]: { status: 'uploading', percent } })),
-        })
+        const res = typeof file === 'string'
+          ? await fileStagedComic(collectionId!, { ...fields, file })
+          : await uploadComic({
+            ...fields,
+            file,
+            onProgress: (percent) => setProgress((p) => ({ ...p, [row.key]: { status: 'uploading', percent } })),
+          })
         // metadataApplied false is NOT a success: the comic landed, but bare. Reporting it
         // as added is how a batch that ran out of Comic Vine budget looks complete.
         setProgress((p) => ({
@@ -179,6 +287,9 @@ export default function BulkUpload() {
     for (const key of ['editions', 'series', 'edition', 'edition-issues']) {
       qc.invalidateQueries({ queryKey: [key] })
     }
+    // What is left of a collection - skipped, failed - is still waiting in the queue's
+    // review list, and the count there is now wrong.
+    if (collectionId != null) qc.invalidateQueries({ queryKey: ['download'] })
     setRunning(false)
     setFinished(true)
   }
@@ -188,36 +299,127 @@ export default function BulkUpload() {
   const leftovers = rows.filter((r) => r.volumeId === null && r.state !== 'ignored')
   const ignored = rows.filter((r) => r.state === 'ignored')
   const freeByVolume = chosen.map((c) => ({ volume: c.volume, issues: availableIssues(rows, c.volume) }))
+  const staged = collectionId != null
+  // Comics a finished run left in the collection: skipped as already yours, or failed.
+  const leftInCollection = staged && finished ? rows.filter((r) => r.state !== 'ignored').length - done.added - done.bare : 0
+  const verb = staged ? 'File' : 'Upload'
 
   return (
     <div className="bulk-wrap">
       <h1>Bulk add</h1>
       <UploadTabs />
-      <p className="bulk-intro">
-        Add a whole volume at once. Pick the folder, choose the volume, check the matches,
-        then upload. Nothing is sent until you press the button, and the tab has to stay
-        open while it runs.
-      </p>
 
-      <div className="field">
-        <label className="file-label">
-          Choose a folder or files
-          <input
-            className="file-input"
-            type="file"
-            multiple
-            // @ts-expect-error - a directory picker, which React does not type
-            webkitdirectory=""
-            directory=""
-            disabled={running}
-            onChange={choose}
-          />
-        </label>
-      </div>
+      {staged ? (
+        <div className="bulk-collection">
+          {collection.isError ? (
+            <p className="bulk-intro">
+              That collection is gone — filed, or thrown away. <Link to="/upload/bulk">Add another volume</Link>.
+            </p>
+          ) : (
+            <>
+              <p className="bulk-intro">
+                {review ? <>Reviewing <strong>{review.label}</strong>. </> : 'Opening the collection… '}
+                Choose the volume, check the matches, then file them. Nothing moves until
+                you press the button.
+              </p>
+              {review && (review.waiting > 0 || review.blocked > 0) && (
+                <p className="bulk-warn">
+                  {review.waiting > 0 && <>{review.waiting} of {review.parts} parts {review.waiting === 1 ? 'is' : 'are'} still
+                  downloading, so this is only what has landed so far. </>}
+                  {review.blocked > 0 && <>{review.blocked} part{review.blocked === 1 ? '' : 's'} stopped at a
+                  bot check and {review.blocked === 1 ? 'is' : 'are'} waiting in <Link to="/settings/downloads">Needs you</Link>.</>}
+                </p>
+              )}
+              <div className="bulk-collection__actions">
+                <button
+                  type="button" className="btn btn-ghost"
+                  disabled={running || discard.isPending || !review}
+                  onClick={() => discard.mutate()}
+                >{discard.isPending ? 'Discarding…' : 'Discard what is left'}</button>
+                <Link to="/upload/bulk" className="btn btn-ghost">Add another volume</Link>
+              </div>
+            </>
+          )}
+        </div>
+      ) : (
+        <>
+          <p className="bulk-intro">
+            Add a whole volume at once: a folder, a zip, or a link to download. Choose the
+            volume, check the matches, then add them. Nothing is filed until you press the
+            button.
+          </p>
+
+          <div className="field">
+            <label className="file-label">
+              Choose a folder or files
+              <input
+                className="file-input"
+                type="file"
+                multiple
+                // @ts-expect-error - a directory picker, which React does not type
+                webkitdirectory=""
+                directory=""
+                disabled={running}
+                onChange={choose}
+              />
+            </label>
+          </div>
+
+          <div className="field">
+            <label className="file-label">
+              …or a zip of the volume
+              <input
+                className="file-input"
+                type="file"
+                accept=".zip,.cbz,.cbr"
+                disabled={running || sendZip.isPending}
+                onChange={chooseZip}
+              />
+            </label>
+            {zipPercent !== null && <p className="bulk-row__note">Sending the zip… {zipPercent}%</p>}
+            {sendZip.isPending && zipPercent === 100 && <p className="bulk-row__note">Unpacking…</p>}
+            {sendZip.isError && <p className="bulk-error">{(sendZip.error as Error).message}</p>}
+          </div>
+
+          <form className="field bulk-link" onSubmit={submitLink}>
+            <label className="file-label">
+              …or paste a link to download it
+              <input
+                type="url"
+                className="upload-url"
+                placeholder="A getcomics post, or a direct link"
+                value={link}
+                onChange={(e) => setLink(e.target.value)}
+              />
+            </label>
+            <button type="submit" className="btn" disabled={!link.trim() || readLink.isPending || queueParts.isPending}>
+              {readLink.isPending ? 'Reading link…' : 'Download'}
+            </button>
+          </form>
+          {readLink.isError && <p className="bulk-error">{(readLink.error as Error).message}</p>}
+          {queueParts.isError && !post && <p className="bulk-error">Could not queue that download.</p>}
+          {queuedNote && (
+            <p className="bulk-note">
+              {queuedNote} It will be under <Link to="/settings/downloads">Ready to review</Link> once
+              it has landed, and you can leave this page meanwhile.
+            </p>
+          )}
+        </>
+      )}
+
+      {post && (
+        <PostPartsDialog
+          post={post}
+          pending={queueParts.isPending}
+          error={queueParts.isError ? 'Could not queue those parts.' : null}
+          onDownload={(parts) => queueParts.mutate({ from: post, parts })}
+          onClose={() => setPost(null)}
+        />
+      )}
 
       {rows.length > 0 && (
         <p className="bulk-counts">
-          {rows.length - counts.ignored} comic{rows.length - counts.ignored === 1 ? '' : 's'} picked
+          {rows.length - counts.ignored} comic{rows.length - counts.ignored === 1 ? '' : 's'} {staged ? 'in the collection' : 'picked'}
           {counts.ignored > 0 && <> · {counts.ignored} ignored</>}
         </p>
       )}
@@ -226,7 +428,8 @@ export default function BulkUpload() {
         <p className="bulk-warn">
           That is a lot in one go. Comic Vine allows about 200 requests an hour and this
           costs roughly one per comic, so the later files may land without metadata. They
-          will still land, and you can fetch the rest from Settings afterwards.
+          will still land, and fill in on their own afterwards at about 180 an hour - the{' '}
+          <Link to="/settings/metadata">Missing metadata</Link> list shows how far it has got.
         </p>
       )}
 
@@ -324,7 +527,7 @@ export default function BulkUpload() {
       {rows.length > 0 && (
         <div className="bulk-actions">
           <button type="button" className="btn" disabled={counts.toUpload === 0 || running} onClick={run}>
-            {running ? 'Uploading…' : `Upload ${counts.toUpload} comic${counts.toUpload === 1 ? '' : 's'}`}
+            {running ? (staged ? 'Filing…' : 'Uploading…') : `${verb} ${counts.toUpload} comic${counts.toUpload === 1 ? '' : 's'}`}
           </button>
           {/* What the button is about to do, which is not the same as what was picked -
               the ignored count belongs to the picked line above and saying it twice is
@@ -350,6 +553,10 @@ export default function BulkUpload() {
           )}
           {done.bare > 0 && (
             <> The bare ones are on the <Link to="/settings/metadata">metadata list</Link>.</>
+          )}
+          {leftInCollection > 0 && (
+            <> {leftInCollection} {leftInCollection === 1 ? 'is' : 'are'} still in the collection — discard
+            {leftInCollection === 1 ? ' it' : ' them'} above once you are sure.</>
           )}
         </p>
       )}

@@ -1,13 +1,11 @@
 import { createWriteStream } from 'node:fs'
-import { unlink, rename } from 'node:fs/promises'
+import { unlink } from 'node:fs/promises'
 import { pipeline } from 'node:stream/promises'
-import { join, basename, extname, dirname } from 'node:path'
+import { join, basename, extname } from 'node:path'
 import { randomUUID } from 'node:crypto'
-import { storeComic } from '../services/storeComic.js'
-import { removeBook } from '../services/library.js'
-import { getBook, setBookEdition } from '../models/books.js'
-import { renameLock } from '../lib/mutex.js'
-import { dedupeDestPath } from '../lib/paths.js'
+import { storeReplacing } from '../services/storeReplacing.js'
+import { openDelivery } from '../services/collections.js'
+import type { Delivery } from '../services/collections.js'
 import type { App } from '../types.js'
 
 export default async function uploadRoutes(app: App) {
@@ -67,95 +65,29 @@ export default async function uploadRoutes(app: App) {
       replaceId = Number(replaceBookId)
     }
 
-    const result = await storeComic({ db: app.db, config: app.config }, {
-      tmpPath, originalName, editionName, issueId, manual, volumeName, issueNumber,
-    })
-    if (!result.ok) return reply.code(400).send({ error: result.error })
-    const { wantedName } = result
-
-    /**
-     * The comic this one replaces, removed only now.
-     *
-     * The ORDER is the safety property and must not be rearranged: the new file is on
-     * disk and indexed by the time anything is deleted, so a store that failed above
-     * returned already and the old comic is still there. Deleting first would mean a
-     * failed upload costs you the comic you had.
-     *
-     * The delete lives here rather than in the client because a browser doing
-     * upload-then-DELETE can lose the race, and a tab closed between the two calls leaves
-     * exactly the duplicate this feature exists to avoid.
-     */
-    let replaced: { bookId: number; editionRemoved: boolean } | undefined
-    let replaceFailed: true | undefined
-
-    const victim = replaceId != null ? getBook(app.db, replaceId) : undefined
-    /**
-     * The named comic must be the one that holds the issue being uploaded.
-     *
-     * This is the only irreversible operation in the app, so it does not take the
-     * client's word for which comic to destroy. The page derives replaceBookId from the
-     * very issue it is uploading, so this holds for every legitimate call - and any row
-     * mix-up in the browser becomes a no-op instead of a deletion. With no issueId there
-     * is nothing to check against, and nothing is deleted.
-     */
-    const holdsThisIssue = victim != null
-      && issueId != null && issueId !== ''
-      && victim.comicvineId === Number(issueId)
-
-    if (replaceId != null && result.book && victim && holdsThisIssue) {
-      // Everything from here is housekeeping on a comic that is ALREADY in the library,
-      // so none of it may turn a successful upload into a failed request. A 500 here
-      // would have the page mark the row failed and the user upload again - which is how
-      // you end up with the duplicate this feature exists to prevent.
-      try {
-        const removal = await removeBook({ db: app.db, config: app.config }, replaceId)
-        replaced = { bookId: replaceId, editionRemoved: removal.editionRemoved }
-
-        // dedupeDestPath had to step around the comic that was still there. Now that it
-        // is gone the name it was holding is free, so the replacement takes it.
-        const stored = getBook(app.db, result.book.id)
-        if (stored && wantedName && basename(stored.filePath) !== wantedName) {
-          const relDir = dirname(stored.filePath)
-          const destDir = join(app.config.comicsDir, relDir)
-          const from = join(app.config.comicsDir, stored.filePath)
-          let claimed: string | undefined
-          try {
-            // Claim-then-rename under the shared lock, exactly as renameLibraryFiles
-            // does: the name was freed a moment ago and a download filing a comic right
-            // now must not be handed it in between.
-            claimed = await renameLock(async () => {
-              const target = dedupeDestPath(destDir, wantedName)
-              await rename(from, target)
-              return target
-            })
-            setBookEdition(app.db, stored.id, stored.editionId, `${relDir}/${basename(claimed)}`)
-          } catch (err) {
-            // The row is the only thing that can find a file again, so disk and database
-            // must not be left disagreeing. dedupeDestPath reads the filesystem and never
-            // the database, so a stale row claiming this name lets the rename succeed and
-            // the UPDATE fail its UNIQUE constraint - and by then the old comic is gone.
-            // Putting the file back is what keeps the new one reachable.
-            if (claimed) await rename(claimed, from).catch(() => {})
-            app.log.warn({ err, bookId: stored.id }, 'could not rename a replacement onto the name it freed')
-          }
-        }
-      } catch (err) {
-        // removeBook deletes the comic file before the thumbnail and rethrows anything
-        // that is not ENOENT, so a thumbnail it cannot unlink leaves the old comic
-        // half-removed. Nothing can be done about that from here, but the upload itself
-        // succeeded and the answer has to say so.
-        app.log.warn({ err, replaceId }, 'stored the replacement but could not remove the comic it replaces')
-        replaceFailed = true
-      }
+    // A zip is opened before anything is stored: it may be one comic in a wrapper, or a
+    // whole collection that has to wait for review instead.
+    const ctx = { db: app.db, config: app.config }
+    const label = originalName.replace(/\.[^.]+$/, '')
+    let delivery: Delivery
+    try {
+      delivery = await openDelivery(ctx, { tmpPath, name: originalName, label })
+    } catch (err) {
+      return reply.code(400).send({ error: err instanceof Error ? err.message : 'that zip could not be unpacked' })
+    }
+    if (delivery.kind === 'empty') return reply.code(400).send({ error: 'that zip holds no comics' })
+    if (delivery.kind === 'collection') {
+      // Not stored, and not an error: the comics are waiting for someone to check them.
+      // A replaceBookId means nothing here - nothing was stored to take that comic's place.
+      const { id, label: name, fileCount } = delivery.collection
+      return { collection: { id, label: name, fileCount } }
     }
 
-    const book = result.book ? getBook(app.db, result.book.id) ?? result.book : result.book
-    const extra = { ...(replaced ? { replaced } : {}), ...(replaceFailed ? { replaceFailed } : {}) }
-    if (result.metadataApplied === undefined) return { book, wantedName, ...extra }
-    // A typo'd id is 200, not 404: the comic was stored, and a 404 would read as "nothing
-    // happened" to a page that then offers the upload again and files a duplicate.
-    return result.issueNotFound
-      ? { book, metadataApplied: false, issueNotFound: true, wantedName, ...extra }
-      : { book, metadataApplied: result.metadataApplied, wantedName, ...extra }
+    const result = await storeReplacing(ctx, {
+      tmpPath: delivery.tmpPath, originalName: delivery.name,
+      editionName, issueId, manual, volumeName, issueNumber, replaceId,
+    }, (message, detail) => app.log.warn(detail, message))
+    if (!result.ok) return reply.code(400).send({ error: result.error })
+    return result.answer
   })
 }

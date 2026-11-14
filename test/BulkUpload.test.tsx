@@ -4,11 +4,13 @@ import { render, screen, fireEvent, waitFor, within } from '@testing-library/rea
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import BulkUpload from '../src/pages/BulkUpload'
-import { uploadComic } from '../src/lib/uploadComic'
+import { uploadComic, fileStagedComic, stageCollection } from '../src/lib/uploadComic'
 import type { ApiVolumeIssues } from '../src/api'
 
-vi.mock('../src/lib/uploadComic', () => ({ uploadComic: vi.fn() }))
+vi.mock('../src/lib/uploadComic', () => ({ uploadComic: vi.fn(), fileStagedComic: vi.fn(), stageCollection: vi.fn() }))
 const uploadMock = vi.mocked(uploadComic)
+const fileMock = vi.mocked(fileStagedComic)
+const stageMock = vi.mocked(stageCollection)
 
 const AVENGERS: ApiVolumeIssues = {
   volumeId: 42,
@@ -58,11 +60,11 @@ beforeEach(() => {
 
 afterEach(() => vi.restoreAllMocks())
 
-function draw() {
+function draw(at = '/upload/bulk') {
   const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const ui: ReactNode = (
     <QueryClientProvider client={qc}>
-      <MemoryRouter><BulkUpload /></MemoryRouter>
+      <MemoryRouter initialEntries={[at]}><BulkUpload /></MemoryRouter>
     </QueryClientProvider>
   )
   return render(ui)
@@ -369,4 +371,103 @@ test('a replace the server could not complete is called out', async () => {
   fireEvent.click(await screen.findByRole('button', { name: /upload 1 comic/i }))
 
   expect(await screen.findByText(/old copy could not be removed/i)).toBeInTheDocument()
+})
+
+
+// ---- comics already on the server: a collection to review
+
+let sent: Array<{ url: string; method?: string; body?: string }>
+
+function serveCollection(extra: (url: string, init?: { method?: string; body?: string }) => unknown = () => undefined) {
+  sent = []
+  const base = globalThis.fetch
+  globalThis.fetch = vi.fn(async (url: string, init?: { method?: string; body?: string }) => {
+    const u = String(url)
+    sent.push({ url: u, method: init?.method, body: init?.body })
+    const answer = extra(u, init)
+    if (answer !== undefined) return { ok: true, status: 200, json: async () => answer }
+    if (u === '/api/collections/7') {
+      return { ok: true, json: async () => ({ id: 7, label: 'Avengers v5', parts: 1, waiting: 0, blocked: 0, files: ['Avengers 020 (2013).cbr', 'Avengers 021 (2013).cbr'] }) }
+    }
+    return base(url, init as never)
+  }) as unknown as typeof fetch
+}
+
+test('a collection opens as the table, and each comic is filed where it sits', async () => {
+  serveCollection()
+  fileMock.mockResolvedValue({ book: { id: 3 } as never, metadataApplied: true, remaining: 0 })
+  draw('/upload/bulk?collection=7')
+  expect(await screen.findByText(/Reviewing/)).toHaveTextContent('Avengers v5')
+  expect(await screen.findByText('Avengers 020 (2013).cbr')).toBeInTheDocument()
+  // No folder to pick: the comics are already here.
+  expect(screen.queryByLabelText(/choose a folder or files/i)).toBeNull()
+
+  await chooseVolume(/Avengers \(2013\)/)
+  fireEvent.click(await screen.findByRole('button', { name: /file 2 comics/i }))
+  await waitFor(() => expect(fileMock).toHaveBeenCalledTimes(2))
+  expect(fileMock.mock.calls[0]).toEqual([7, expect.objectContaining({
+    file: 'Avengers 020 (2013).cbr', edition: 'Avengers (2013)', issueId: 1001, volumeName: 'Avengers', issueNumber: '20',
+  })])
+  expect(uploadMock).not.toHaveBeenCalled()
+  expect(await screen.findByText(/2 added/i)).toBeInTheDocument()
+})
+
+test('what is left of a collection can be discarded', async () => {
+  serveCollection((u, init) => (init?.method === 'DELETE' ? { discarded: true } : undefined))
+  draw('/upload/bulk?collection=7')
+  await screen.findByText('Avengers 020 (2013).cbr')
+  fireEvent.click(screen.getByRole('button', { name: /discard what is left/i }))
+  await waitFor(() => expect(sent).toContainEqual(expect.objectContaining({ url: '/api/collections/7', method: 'DELETE' })))
+})
+
+test('a zip from disk is sent whole and reviewed as a collection', async () => {
+  stageMock.mockResolvedValue({ collection: { id: 7, label: 'Avengers v5', fileCount: 2 } })
+  serveCollection()
+  draw()
+  fireEvent.change(screen.getByLabelText(/a zip of the volume/i), { target: { files: [file('Avengers v5.zip')] } })
+  await waitFor(() => expect(stageMock).toHaveBeenCalledTimes(1))
+  expect(await screen.findByText('Avengers 021 (2013).cbr')).toBeInTheDocument()
+})
+
+const PARTS = {
+  postUrl: 'https://getcomics.org/marvel/avengers/',
+  title: 'Avengers #1 – 44 + Annual',
+  parts: [
+    { heading: 'Avengers #1 – 20', size: '480 MB', url: 'https://getcomics.org/dls/a' },
+    { heading: 'Avengers #21 – 44 + Annual', size: '470 MB', url: 'https://getcomics.org/dls/b' },
+  ],
+}
+
+test('a post with several parts offers them before anything downloads, then queues the chosen ones together', async () => {
+  serveCollection((u) => {
+    if (u === '/api/collections/link') return PARTS
+    if (u === '/api/collections/download') return { collection: { id: 9, label: PARTS.title, parts: 1 } }
+    return undefined
+  })
+  draw()
+  fireEvent.change(screen.getByLabelText(/paste a link/i), { target: { value: PARTS.postUrl } })
+  fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
+
+  const dialog = await screen.findByRole('dialog', { name: PARTS.title })
+  fireEvent.click(within(dialog).getByRole('checkbox', { name: 'Avengers #1 – 20' }))
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Download 1 part' }))
+
+  await waitFor(() => expect(sent.some((r) => r.url === '/api/collections/download')).toBe(true))
+  const body = JSON.parse(sent.find((r) => r.url === '/api/collections/download')!.body!)
+  expect(body).toEqual({ label: PARTS.title, postUrl: PARTS.postUrl, parts: [PARTS.parts[1]] })
+  expect(await screen.findByText(/Downloading 1 part of/)).toBeInTheDocument()
+})
+
+test('a link with one download is queued without asking', async () => {
+  const one = { title: 'Avengers v5', parts: [{ heading: 'Avengers v5', url: 'https://files.example/avengers.zip' }] }
+  serveCollection((u) => {
+    if (u === '/api/collections/link') return one
+    if (u === '/api/collections/download') return { collection: { id: 9, label: 'Avengers v5', parts: 1 } }
+    return undefined
+  })
+  draw()
+  fireEvent.change(screen.getByLabelText(/paste a link/i), { target: { value: 'https://files.example/avengers.zip' } })
+  fireEvent.click(screen.getByRole('button', { name: /^download$/i }))
+  expect(await screen.findByText(/Downloading 1 part of Avengers v5/)).toBeInTheDocument()
+  expect(screen.queryByRole('dialog')).toBeNull()
 })

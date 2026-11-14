@@ -115,10 +115,53 @@ export interface QueueEntry {
   attempts: number
   fileName?: string
   bookId?: number
+  /** The download was comics to review, waiting in this collection. */
+  collectionId?: number
   error?: string
   queuedAt: string
   startedAt?: string
   finishedAt?: string
+}
+
+/** Comics that arrived together - a zip, or every part of a post - waiting for review. */
+export interface ReviewCollection {
+  id: number
+  label: string
+  /** Comics left in it. */
+  fileCount: number
+  /** Downloads queued into it: one for a single zip, several for a post split into parts. */
+  parts: number
+  /** Parts still queued or downloading. Ready for review at zero. */
+  waiting: number
+  failed: number
+  /** Parts stopped at a bot check, waiting in Needs you. */
+  blocked: number
+  createdAt: string
+}
+
+/** One download a post offers, under the heading the post gives it. */
+export interface PostPart {
+  heading: string
+  size?: string
+  url: string
+}
+
+/** What a pasted link, or an indexed post, would download. */
+export interface PostDownloads {
+  /** Present when the link was a post: kept so a blocked part can offer the page. */
+  postUrl?: string
+  title: string | null
+  size?: string
+  parts: PostPart[]
+  /** What an indexed post is. A `bundle` is a run of issues, even when it is one zip. */
+  kind?: ReleaseKind
+}
+
+/** The answer an upload gives when what it sent was comics to review, not one comic. */
+export interface StagedCollection {
+  id: number
+  label: string
+  fileCount: number
 }
 
 export interface ActiveDownload {
@@ -128,6 +171,8 @@ export interface ActiveDownload {
   received: number
   total: number
   startedAt: string
+  /** Every byte is in; it is being unpacked or filed. */
+  storing?: boolean
 }
 
 export interface DownloadsView {
@@ -135,6 +180,8 @@ export interface DownloadsView {
   queue: QueueEntry[]
   history: QueueEntry[]
   blocked: QueueEntry[]
+  /** Collections the downloads became, waiting to be checked and filed. */
+  review: ReviewCollection[]
 }
 
 export interface ApiSettings {
@@ -152,6 +199,8 @@ export interface ApiStorage {
   covers: number
   database: number
   temp: number
+  /** Collections unpacked and waiting for review. */
+  review?: number
 }
 
 export interface ApiVolumeIssue {
@@ -619,6 +668,16 @@ export interface ArcResponse {
  * are context about a hand-typed id - including `cvMissing`, what the Comic Vine RESPONSE
  * lacked at the last read, which is a different question and decides nothing.
  */
+/** The server reading Comic Vine again, on its own, for the comics on the follow-up list. */
+export interface CatchupStatus {
+  /** Comics it will read, now or once the pause ends. */
+  due: number
+  perHour: number
+  /** While Comic Vine is being left alone after refusing, when it is asked again. */
+  pausedUntil: string | null
+  reason: string | null
+}
+
 export interface ApiMetadataFollowup {
   bookId: number
   title: string | null
@@ -919,7 +978,7 @@ export const api = {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify(manual ? { issueId, manual: true } : { issueId }),
     }),
-  metadataFollowups: () => json<{ followups: ApiMetadataFollowup[] }>('/api/metadata-followups'),
+  metadataFollowups: () => json<{ followups: ApiMetadataFollowup[]; catchup?: CatchupStatus }>('/api/metadata-followups'),
   /** Takes the note down. The comic, its metadata and its file are untouched. */
   dismissFollowup: (bookId: number) =>
     json<{ dismissed: true }>(`/api/metadata-followups/${bookId}`, { method: 'DELETE' }),
@@ -1024,6 +1083,26 @@ export const api = {
   /** The link behind a post's "DOWNLOAD NOW" button; 404 when it only lists mirrors. */
   getComicIndexDownloadLink: (id: number) =>
     json<{ url: string }>(`/api/comic-index/${id}/download-link`),
+  /** Every main-server download an indexed post offers, each under its heading. */
+  getComicIndexDownloads: (id: number) =>
+    json<PostDownloads>(`/api/comic-index/${id}/downloads`),
+
+  /** What a pasted link would download: a post's parts, or the one file a link names. */
+  readLink: (url: string) =>
+    json<PostDownloads>('/api/collections/link', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ url }),
+    }),
+  /** Queue the chosen parts, all into one new collection. */
+  downloadParts: (body: { label?: string; postUrl?: string; parts: PostPart[] }) =>
+    json<{ collection: { id: number; label: string; parts: number } }>('/api/collections/download', {
+      method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
+    }),
+  getCollection: (id: number) => json<{
+    id: number; label: string; files: string[]
+    /** Parts still on their way, and parts stopped at a bot check. */
+    parts: number; waiting: number; blocked: number
+  }>(`/api/collections/${id}`),
+  discardCollection: (id: number) => json<{ discarded: true }>(`/api/collections/${id}`, { method: 'DELETE' }),
 
   getComicIndexCategories: () => json<ComicIndexCategoriesResponse>('/api/comic-index/categories'),
   getScrapeStatus: () => json<ScrapeStatus>('/api/comic-index/scrape'),

@@ -1,6 +1,6 @@
 import { test, expect, vi, beforeEach, afterEach } from 'vitest'
 import type { ReactNode } from 'react'
-import { render, screen, fireEvent, waitFor, cleanup } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor, cleanup, within } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter, useLocation } from 'react-router-dom'
 import SearchComics from '../src/pages/SearchComics'
@@ -477,14 +477,14 @@ test('downloading a result asks the server for that row\'s link', async () => {
   await openGroup()
   await screen.findByText('Batman (2016) #1')
   fireEvent.click(downloadButtons()[1])
-  await waitFor(() => expect(calls).toContain('/api/comic-index/2/download-link'))
+  await waitFor(() => expect(calls).toContain('/api/comic-index/2/downloads'))
 })
 
 test('a found link sends you to the upload page with it filled in', async () => {
   mockFetch((url) => {
     if (url.includes('/categories')) return CATEGORIES
     if (url.includes('/scrape')) return IDLE_SCRAPE
-    if (url.includes('/download-link')) return { url: DLS }
+    if (url.includes('/downloads')) return { title: 'Batman (2011) #1', parts: [{ heading: 'Batman (2011) #1', url: DLS }] }
     if (url.includes('series=')) return { results: [result(1, 'Batman (2011) #1')], total: 1 }
     return grouped([group('batman', 'Batman', 1)])
   })
@@ -501,7 +501,7 @@ test('a post with no direct link says so and stays on the search page', async ()
   calls = []
   globalThis.fetch = vi.fn(async (url: string) => {
     calls.push(String(url))
-    if (String(url).includes('/download-link')) {
+    if (String(url).includes('/downloads')) {
       // The real shape: server/routes/comicIndex.ts replies with an `error` string, not a
       // bare status - the client's 404 branch must key off the status, not this text.
       return { ok: false, status: 404, json: async () => ({ error: 'that post has no direct download link' }) }
@@ -521,6 +521,66 @@ test('a post with no direct link says so and stays on the search page', async ()
   fireEvent.click(downloadButtons()[0])
 
   expect(await screen.findByText(/no download link/i)).toBeInTheDocument()
+  expect(screen.getByTestId('loc')).toHaveTextContent('/search')
+})
+
+// A run with its annuals is posted in parts; taking the first would download a third of it.
+test('a post split into parts offers them all, and queues the chosen ones as one collection', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return IDLE_SCRAPE
+    if (url.includes('/downloads')) {
+      return {
+        postUrl: 'https://x.test/1/', title: 'Batman #1 – 52 + Annuals',
+        parts: [{ heading: 'Batman #1 – 25', url: 'https://getcomics.org/dls/a' }, { heading: 'Batman #26 – 52 + Annuals', url: 'https://getcomics.org/dls/b' }],
+      }
+    }
+    if (url.includes('/api/collections/download')) return { collection: { id: 4, label: 'Batman #1 – 52 + Annuals', parts: 2 } }
+    if (url.includes('series=')) return { results: [result(1, 'Batman #1 – 52 + Annuals')], total: 1 }
+    return grouped([group('batman', 'Batman', 1)])
+  })
+  renderWithLocation()
+  typeQuery('batman')
+  await openGroup()
+  await screen.findByText('Batman #1 – 52 + Annuals')
+  fireEvent.click(downloadButtons()[0])
+
+  const dialog = await screen.findByRole('dialog', { name: 'Batman #1 – 52 + Annuals' })
+  expect(within(dialog).getByRole('checkbox', { name: 'Batman #26 – 52 + Annuals' })).toBeChecked()
+  fireEvent.click(within(dialog).getByRole('button', { name: 'Download 2 parts' }))
+
+  await waitFor(() => expect(posted.some((p) => p.url === '/api/collections/download')).toBe(true))
+  expect(await screen.findByText(/Downloading 2 parts/)).toBeInTheDocument()
+  // Still here: nothing was sent to the upload page.
+  expect(screen.getByTestId('loc')).toHaveTextContent('/search')
+})
+
+// "Carnage #1 – 5" is five issues in one zip: one download, but not one comic, so it is
+// not the upload page's to match. It goes where a run of parts goes.
+test('a run posted as one zip is queued for review, not sent to the upload page', async () => {
+  mockFetch((url) => {
+    if (url.includes('/categories')) return CATEGORIES
+    if (url.includes('/scrape')) return IDLE_SCRAPE
+    if (url.includes('/downloads')) {
+      return {
+        postUrl: 'https://x.test/1/', title: 'Carnage #1 – 5 (2010-2011)', kind: 'bundle',
+        parts: [{ heading: 'Carnage #1 – 5', size: '94 MB', url: 'https://x.test/Carnage%20001-005.zip' }],
+      }
+    }
+    if (url.includes('/api/collections/download')) return { collection: { id: 5, label: 'Carnage #1 – 5 (2010-2011)', parts: 1 } }
+    if (url.includes('series=')) return { results: [result(1, 'Carnage #1 – 5 (2010-2011)')], total: 1 }
+    return grouped([group('carnage', 'Carnage', 1)])
+  })
+  renderWithLocation()
+  typeQuery('carnage')
+  await openGroup(/Carnage/)
+  await screen.findByText('Carnage #1 – 5 (2010-2011)')
+  fireEvent.click(downloadButtons()[0])
+
+  expect(await screen.findByText(/Downloading Carnage #1 – 5 \(2010-2011\)\./)).toBeInTheDocument()
+  const queued = posted.find((p) => p.url === '/api/collections/download')!
+  expect(JSON.parse(queued.body).parts).toEqual([{ heading: 'Carnage #1 – 5', size: '94 MB', url: 'https://x.test/Carnage%20001-005.zip' }])
+  expect(screen.queryByRole('dialog')).toBeNull()
   expect(screen.getByTestId('loc')).toHaveTextContent('/search')
 })
 

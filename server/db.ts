@@ -258,7 +258,11 @@ CREATE TABLE IF NOT EXISTS download_queue (
   -- The post the download link was parsed out of, kept rather than discarded after the
   -- parse: when the file host answers with a bot check instead of the comic, this is the
   -- page a browser can open, and without it a blocked row knows only an opaque /dls/ token.
-  post_url    TEXT
+  post_url    TEXT,
+  -- Set when the download turned out to be a zip of several comics. The row is done; the
+  -- comics wait in that collection for review. Not a foreign key: a collection is gone
+  -- once filed or discarded, and the history row outlives it.
+  collection_id INTEGER
 );
 
 -- The duplicate guard. Partial, so it covers live rows only: a comic that finished or
@@ -329,6 +333,14 @@ CREATE TABLE IF NOT EXISTS metadata_followup_dismissed (
   dismissed_at TEXT NOT NULL
 );
 
+-- When the background catch-up last read Comic Vine for a comic on the follow-up list.
+-- What keeps a record Comic Vine has not filled in yet from being read every twenty
+-- seconds: it waits its turn again after a few days. Nothing else reads it.
+CREATE TABLE IF NOT EXISTS metadata_catchup (
+  book_id  INTEGER PRIMARY KEY REFERENCES book(id) ON DELETE CASCADE,
+  tried_at TEXT NOT NULL
+);
+
 -- The volume RECORD, as distinct from volume_issue's list of its issues. Every comic in a
 -- bulk upload belongs to the same volume, and applying an issue fetches that volume for
 -- its publisher - so adding forty comics asked Comic Vine the same question forty times,
@@ -372,6 +384,22 @@ CREATE TABLE IF NOT EXISTS last_scrape (
 CREATE TABLE IF NOT EXISTS reading_list_length (
   list_id INTEGER PRIMARY KEY,
   length  TEXT NOT NULL CHECK (length IN ('core', 'full'))
+);
+
+-- Comics that arrived together - a zip of a run, or every part of a post that splits one
+-- run across several zips - waiting for someone to check the matches before anything is
+-- filed. The files themselves are the truth about what is left: \`dir\` names a folder
+-- under stagingDir, filing a comic moves it out, and \`file_count\` is only that folder's
+-- size remembered, so a glance at the queue does not list a directory twice a second.
+-- \`parts\` is how many downloads were queued into it; which of them are still coming is
+-- read off download_queue.collection_id rather than counted here twice.
+CREATE TABLE IF NOT EXISTS collection (
+  id         INTEGER PRIMARY KEY,
+  label      TEXT NOT NULL,
+  dir        TEXT NOT NULL UNIQUE,
+  file_count INTEGER NOT NULL,
+  parts      INTEGER NOT NULL DEFAULT 1,
+  created_at TEXT NOT NULL
 );
 `
 
@@ -436,6 +464,18 @@ export function openDb(dbPath: string): Db {
   // read back without one and fall back to showing the url they have.
   if (!columnsOf(db, 'download_queue').includes('post_url')) {
     db.exec('ALTER TABLE download_queue ADD COLUMN post_url TEXT')
+  }
+
+  // Additive for the same reason: which collection a download unpacked into. Rows from
+  // before it read back with none, which is true - none of them were collections.
+  if (!columnsOf(db, 'download_queue').includes('collection_id')) {
+    db.exec('ALTER TABLE download_queue ADD COLUMN collection_id INTEGER')
+  }
+
+  // A collection table made before it counted parts. Every collection then was one zip,
+  // which is what the default says.
+  if (!columnsOf(db, 'collection').includes('parts')) {
+    db.exec('ALTER TABLE collection ADD COLUMN parts INTEGER NOT NULL DEFAULT 1')
   }
 
   // Additive migration: character tags gained the Comic Vine id that says WHICH character

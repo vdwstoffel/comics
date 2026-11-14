@@ -2,7 +2,7 @@ import { useEffect } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import type { QueryClient } from '@tanstack/react-query'
 import { api } from '../api'
-import type { DownloadsView, QueueEntry } from '../api'
+import type { DownloadsView, QueueEntry, ReviewCollection } from '../api'
 
 const POLL_MS = 500
 
@@ -25,6 +25,8 @@ export interface DownloadView {
   history: QueueEntry[]
   /** Waiting on a person: the site asked for a browser rather than serving the file. */
   blocked: QueueEntry[]
+  /** Collections waiting to be checked and filed, and any whose parts are still coming. */
+  review: ReviewCollection[]
   /** Live entries by Comic Vine issue id, so a tile can say Queued instead of Get. */
   liveByIssue: Map<number, QueueEntry>
 }
@@ -55,6 +57,9 @@ export function useDownload(): DownloadView {
   // Not polled for: a blocked row is waiting on a person and changes only when one acts,
   // so it arrives on whichever poll saw the download stop and stays put until then.
   const blocked = data?.blocked ?? []
+  // Not polled for either: a collection changes when a download lands, which a poll was
+  // already running for, or when a person files or discards it.
+  const review = data?.review ?? []
 
   // Refresh the library once per completed run, wherever the reader is standing. Keyed on
   // the newest finished id so a remount does not redo one already dealt with - but id
@@ -72,5 +77,5 @@ export function useDownload(): DownloadView {
   const liveByIssue = new Map<number, QueueEntry>()
   for (const entry of queue) if (entry.cvIssueId != null) liveByIssue.set(entry.cvIssueId, entry)
 
-  return { data, active, queue, history, blocked, liveByIssue }
+  return { data, active, queue, history, blocked, review, liveByIssue }
 }
