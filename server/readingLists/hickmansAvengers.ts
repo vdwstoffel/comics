@@ -8,7 +8,7 @@ export const hickmansAvengers: ReadingList = {
   name: "Hickman's Avengers",
   publisher: 'Marvel',
   years: '2012–2016',
-  description: "Jonathan Hickman's Avengers and New Avengers, through Infinity and Time Runs Out, to the end of the universe in Secret Wars.",
+  description: "Everything dies. Other Earths are crashing into ours, and when two touch, both are destroyed, unless someone destroys one first. In secret, Marvel's smartest heroes have to decide what they are willing to do about it, while the Avengers grow into the biggest team they have ever been.",
   cover: 'https://comicvine.gamespot.com/a/uploads/scale_medium/0/40/2782836-newavn2013001_dc11_lr.jpg',
   phases: [
     {

@@ -8,7 +8,7 @@ export const kingInBlack: ReadingList = {
   name: 'King in Black',
   publisher: 'Marvel',
   years: '2020–2021',
-  description: "Donny Cates's King in Black and Venom: Knull, the god of the symbiotes, arrives on Earth with an army of symbiote dragons.",
+  description: 'Knull, the god who made the symbiotes, has left a trail of dead worlds across the galaxy, and now he has reached Earth. Eddie Brock has known for years that this day was coming. Nothing he knows is enough.',
   cover: 'https://comicvine.gamespot.com/a/uploads/scale_medium/6/67663/7678957-01.jpg',
   phases: [
     {

@@ -61,21 +61,39 @@ export interface ReadingListRouteOpts {
 export default async function readingListRoutes(app: App, opts: ReadingListRouteOpts = {}) {
   const { fetchPage = fetchSourcePage } = opts
 
-  /** The shelf: each list's tile, counted in Core whatever length it is read in. */
+  /**
+   * The shelf: each list's row. Its size in both lengths, so you can weigh what you would
+   * be starting; where you are, counted in the length you read it in, since that is the run
+   * you are working through; and the comic to open next, by the rule a follow uses.
+   */
   app.get('/api/lists', async () => {
     const owned = ownedIssueIds(app.db)
+    const finished = finishedIssueIds(app.db)
     return {
       lists: listReadingLists().map((list) => {
-        const core = issuesIn(list, 'core')
+        const length = getListLength(app.db, list.id)
+        const run = issuesIn(list, length)
+        const read = run.filter((i) => finished.has(i.cv)).length
+        const next = run[nextIssueIndex(run, finished)]
+        const nextBook = next && owned.get(next.cv)
         return {
           id: list.id,
           slug: list.slug,
           name: list.name,
           publisher: list.publisher ?? null,
           years: list.years ?? null,
+          description: list.description ?? null,
           cover: list.cover ?? null,
-          total: core.length,
-          owned: core.filter((i) => owned.has(i.cv)).length,
+          size: { core: issuesIn(list, 'core').length, full: issuesIn(list, 'full').length },
+          length,
+          total: run.length,
+          owned: run.filter((i) => owned.has(i.cv)).length,
+          read,
+          // Only once you have started - an unread list is opened, not continued - and only
+          // when it is a comic you have, as on the list's page: a gap has nothing to open.
+          next: read > 0 && next && nextBook != null
+            ? { bookId: nextBook, label: issueLabel(next.volume, next.number) ?? next.volume }
+            : null,
         }
       }),
     }

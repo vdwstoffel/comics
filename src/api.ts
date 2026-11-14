@@ -356,17 +356,25 @@ export interface BookArcsResponse { arcs: ApiBookArc[] }
 /** Core is the story; Full is the story with its tie-ins. */
 export type ListLength = 'core' | 'full'
 
-/** A reading list's tile on the shelf, counted in Core. */
+/** A reading list's row on the shelf. */
 export interface ApiReadingListSummary {
   id: number
   slug: string
   name: string
   publisher: string | null
   years: string | null
+  /** What the story is, so the shelf can say without opening the list. */
+  description: string | null
   cover: string | null
-  /** How many issues Core holds, and how many of those are in your library. */
+  /** How many issues each length holds. Full is Core's size on a list with no tie-ins. */
+  size: { core: number; full: number }
+  /** The length you read it in. The counts below are in it. */
+  length: ListLength
   total: number
   owned: number
+  read: number
+  /** The comic to open next - once you have started, and only when it is one you have. */
+  next: { bookId: number; label: string } | null
 }
 
 /** One entry in a reading list: an arc issue's fields, plus whether it is a tie-in. */

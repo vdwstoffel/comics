@@ -40,7 +40,7 @@ test('a rail asked to include Read offers it', async () => {
 test('the rail opens the reading lists when there are any', async () => {
   vi.spyOn(api, 'getReadingLists').mockResolvedValue({ lists: [{
     id: 1, slug: 'hickmans-avengers', name: "Hickman's Avengers", publisher: 'Marvel', years: null,
-    cover: null, total: 92, owned: 0,
+    description: null, cover: null, size: { core: 92, full: 92 }, length: 'core', total: 92, owned: 0, read: 0, next: null,
   }] })
   show()
   expect(await screen.findByRole('link', { name: 'Reading Lists' })).toHaveAttribute('href', '/lists')

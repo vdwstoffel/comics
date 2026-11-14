@@ -47,15 +47,41 @@ async function setup(fetchPage: (url: string) => Promise<string> = async () => {
   return { app, db, enqueue, own, cleanup: () => app.close() }
 }
 
-test('the shelf counts each list in Core', async () => {
+test('the shelf gives each list its size in both lengths, and where you are in the one you read', async () => {
   const t = await setup()
   try {
     t.own(101, false)
     const res = await t.app.inject({ url: '/api/lists' })
     expect(res.json().lists).toEqual([{
       id: 7, slug: 'test-list', name: 'Test List', publisher: 'Marvel', years: '2013',
-      cover: 'https://cv/cover.jpg', total: 3, owned: 1,
+      description: 'A story across two series.', cover: 'https://cv/cover.jpg',
+      size: { core: 3, full: 6 }, length: 'core', total: 3, owned: 1, read: 0,
+      // Not started: an unread list is opened, not continued.
+      next: null,
     }])
+  } finally { await t.cleanup() }
+})
+
+test('a started list continues at the next comic, and only when you have it', async () => {
+  const t = await setup()
+  try {
+    t.own(101, true)
+    const shelf = async () => (await t.app.inject({ url: '/api/lists' })).json().lists[0]
+    // Avengers #2 is next and missing: a gap has nothing to open.
+    expect(await shelf()).toMatchObject({ read: 1, owned: 1, next: null })
+
+    const second = t.own(102, false)
+    expect(await shelf()).toMatchObject({ read: 1, owned: 2, next: { bookId: second.id, label: 'Avengers #2' } })
+  } finally { await t.cleanup() }
+})
+
+test('the shelf counts where you are in Full once you read it in Full', async () => {
+  const t = await setup()
+  try {
+    t.own(101, true)
+    await t.app.inject({ method: 'PUT', url: '/api/lists/test-list/length', payload: { length: 'full' } })
+    const list = (await t.app.inject({ url: '/api/lists' })).json().lists[0]
+    expect(list).toMatchObject({ size: { core: 3, full: 6 }, length: 'full', total: 6, owned: 1, read: 1 })
   } finally { await t.cleanup() }
 })
 

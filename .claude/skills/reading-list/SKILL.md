@@ -55,6 +55,10 @@ the module. Never type a volume name, number or date into a list by hand.
     { "cv": 123456, "extra": false, "series": "House of X", "number": "1" } ] } ] }
 ```
 
+- `description`: a teaser, like the back of the book. It is what the shelf shows to make
+  someone pick the story up: the premise and what is at stake, two or three sentences, and
+  nothing past the opening issue. Not who wrote it or which series it runs through - the
+  user asked for "a preview of some sorts", and for the story not to be told.
 - A split phase has `"sections": [{ "name", "note", "issues" }]` in place of `"issues"`.
 - `id`: the next unused one. **Never reuse an id** - follows and the saved length key on it.
 - `series` and `number` are only checked against Comic Vine; leave them in, they catch
