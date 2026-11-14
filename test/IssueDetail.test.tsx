@@ -1,6 +1,6 @@
 import { test, expect, vi, beforeEach } from 'vitest'
 import { render, screen, fireEvent, within } from '@testing-library/react'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Routes, Route } from 'react-router-dom'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import type { ComponentProps } from 'react'
 import IssueDetail from '../src/components/IssueDetail'
@@ -72,11 +72,32 @@ test('people sharing a role share its row', () => {
 
 // The whole point of a character tag is looking the character up. Plain text was a list
 // of names you could do nothing with.
-test('a character opens its profile', () => {
-  draw()
+test('a character whose id the comic holds links straight to their page', () => {
+  draw({ tags: [{ kind: 'character', value: 'Spider-Man', extId: 1443 }] })
+  expect(screen.getByRole('link', { name: 'Spider-Man' })).toHaveAttribute('href', '/characters/1443')
+})
+
+// The rest are asked about once, on the click, and the page opens on the answer.
+test('a character with no id yet is looked up when clicked, then opened', async () => {
+  const asked: string[] = []
+  globalThis.fetch = vi.fn(async (url: string) => {
+    asked.push(String(url))
+    return { ok: true, json: async () => ({ id: 1443, verified: true }) }
+  }) as unknown as typeof fetch
+  const qc = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(
+    <QueryClientProvider client={qc}>
+      <MemoryRouter initialEntries={['/edition/3']}>
+        <Routes>
+          <Route path="/edition/3" element={<IssueDetail tags={[{ kind: 'character', value: 'Spider-Man' }]} bookId={77} />} />
+          <Route path="/characters/:id" element={<p>character page</p>} />
+        </Routes>
+      </MemoryRouter>
+    </QueryClientProvider>,
+  )
   fireEvent.click(screen.getByRole('button', { name: 'Spider-Man' }))
-  expect(screen.getByText(/Looking up Spider-Man/i)).toBeInTheDocument()
-  expect(screen.getByRole('button', { name: /close/i })).toBeInTheDocument()
+  expect(await screen.findByText('character page')).toBeInTheDocument()
+  expect(asked).toEqual(['/api/books/77/character?name=Spider-Man'])
 })
 
 test('a story arc links to the arc', () => {

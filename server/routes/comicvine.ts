@@ -4,7 +4,8 @@ import type { CvVolume, CvVolumeIssue } from '../lib/comicvine.js'
 import { getBook, updateBook } from '../models/books.js'
 import { getEdition, updateEdition, getEditionByComicvineId, editionNameForVolume } from '../models/editions.js'
 import type { EditionUpdate } from '../models/editions.js'
-import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags, setTagIds } from '../models/metadata.js'
+import { replaceBookCredits, replaceBookTags, getBookCredits, getBookTags, setTagIds, characterName, searchCharacters } from '../models/metadata.js'
+import { getCachedCharacter, cacheCharacter, CHARACTER_CACHE_MAX_AGE_MS } from '../models/characterCache.js'
 import { cacheVolumeSearch, getCachedVolumeSearch } from '../models/volumeSearch.js'
 import { cacheVolumeIssues, getCachedVolumeIssues } from '../models/volumeIssues.js'
 import { getVolumeCached } from '../models/volumeRecord.js'
@@ -264,16 +265,16 @@ export default async function comicvineRoutes(app: App) {
   })
 
   /**
-   * Who is this character? Answered live, one request per click.
+   * Which Comic Vine character a name on this comic is - the page a character chip opens.
    *
    * The name alone is not enough to identify a character — Comic Vine has four Hobgoblins,
    * and its search ranks by relevance over description text, so asking it for "Hobgoblin"
    * returns Deadpool third. The issue's own credits carry the exact id, so we resolve
    * through those wherever we can and only fall back to searching when there is no match
-   * to read them from.
+   * to read them from. Almost every chip already carries its id and never asks; this is
+   * for the rest.
    */
   app.get<{ Params: IdParams; Querystring: NameQuery }>('/api/books/:id/character', async (req, reply) => {
-    if (!getComicVineKey(app.db)) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
     const { name } = req.query
     if (!name) return reply.code(400).send({ error: 'missing name' })
 
@@ -282,23 +283,64 @@ export default async function comicvineRoutes(app: App) {
 
     const tag = getBookTags(app.db, book.id).find((t) => t.kind === 'character' && t.value === name)
     if (!tag) return reply.code(404).send({ error: 'character not on this book' })
+    if (tag.extId != null) return { id: tag.extId, verified: true }
 
-    let extId = tag.extId
+    if (!getComicVineKey(app.db)) return reply.code(400).send({ error: 'Comic Vine API key not configured' })
 
     // Tag saved before ids were captured, or read out of a ComicInfo.xml during a scan.
-    // Re-read the issue and fill in every character's id at once, so this costs two
-    // requests the first time you open any character on this issue and one after that.
-    if (extId == null && book.comicvineId) {
+    // Re-read the issue and fill in every character's id at once, so the next chip on this
+    // comic costs nothing - and so this comic is listed on each of those characters' pages.
+    if (book.comicvineId) {
       const issue = await cv.getIssue(book.comicvineId)
       setTagIds(app.db, book.id, 'character', issue.characters)
-      extId = issue.characters.find((c) => c.name === name)?.id
+      const id = issue.characters.find((c) => c.name === name)?.id
+      if (id != null) return { id, verified: true }
     }
-
-    if (extId != null) return { character: await cv.getCharacter(extId), verified: true }
 
     // Unmatched book: the name is all there is to go on, so flag the result as a guess.
     const [match] = await cv.search(name, 'character')
     if (!match?.id) return reply.code(404).send({ error: 'character not found' })
-    return { character: await cv.getCharacter(match.id), verified: false }
+    return { id: match.id, verified: false }
+  })
+
+  // The characters in your comics whose name holds the words - what the library search
+  // shows above the comics it finds. The library's own credits, so it never asks Comic Vine.
+  app.get<{ Querystring: { q?: string } }>('/api/characters', async (req) => ({
+    characters: searchCharacters(app.db, req.query.q?.trim() ?? ''),
+  }))
+
+  /**
+   * Everything the character's page says about them, from Comic Vine, kept for a week.
+   *
+   * `name` is what your comics call them, sent alongside so the page has a heading even
+   * when Comic Vine cannot be read - a stale record is served then, and with no record at
+   * all the page still lists the comics, which come from the library and not from here.
+   */
+  app.get<{ Params: IdParams }>('/api/characters/:id', async (req, reply) => {
+    const id = Number(req.params.id)
+    if (!Number.isSafeInteger(id) || id <= 0) return reply.code(400).send({ error: 'id must be a positive integer' })
+    const name = characterName(app.db, id) ?? null
+
+    const cached = getCachedCharacter(app.db, id)
+    const fresh = cached && Date.now() - Date.parse(cached.fetchedAt) < CHARACTER_CACHE_MAX_AGE_MS
+    if (fresh) return { character: cached.character, name }
+
+    if (!getComicVineKey(app.db)) {
+      return cached ? { character: cached.character, name } : { character: null, name, unavailable: 'no Comic Vine key is set' }
+    }
+    try {
+      const character = await cv.getCharacter(id)
+      // An id Comic Vine answers for with nothing is no character, and caching it would
+      // serve a blank page for a week.
+      if (character.id == null && !character.name) {
+        return cached ? { character: cached.character, name } : reply.code(404).send({ error: 'Comic Vine has no such character' })
+      }
+      cacheCharacter(app.db, id, character)
+      return { character, name }
+    } catch (err) {
+      if (cached) return { character: cached.character, name }
+      if (err instanceof CvApiError && err.cvStatus === 101) return reply.code(404).send({ error: 'Comic Vine has no such character' })
+      return { character: null, name, unavailable: 'Comic Vine could not be read' }
+    }
   })
 }

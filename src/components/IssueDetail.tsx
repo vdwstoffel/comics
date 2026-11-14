@@ -1,15 +1,16 @@
 import { useState } from 'react'
 import type { ReactNode } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
+import { useMutation } from '@tanstack/react-query'
+import { api } from '../api'
 import type { ApiBookArc, ApiBookReadingList, ApiCredit, ApiTag } from '../api'
-import CharacterDialog from './CharacterDialog'
 import { useBackOrigin } from '../lib/backOrigin'
 
 /** Past this many, the cast is longer than everything else on the page put together. */
 const CHARACTER_SHOW_THRESHOLD = 40
 
 interface IssueDetailProps {
-  /** The comic these belong to - what a character profile is looked up against. */
+  /** The comic these belong to - what a character with no id yet is looked up against. */
   bookId?: number
   credits?: ApiCredit[]
   tags?: ApiTag[]
@@ -48,8 +49,8 @@ function Row({ label, value }: { label: string; value: ReactNode }) {
  * a story, and what happens in it.
  *
  * The same things the issue's own page shows, in the same order and the same words, and
- * acting the same way: a character is a button that opens its profile and an arc is a link
- * to the arc, because a tag you cannot follow is a list of names you can do nothing with.
+ * acting the same way: a character is a link to their page and an arc is a link to the
+ * arc, because a tag you cannot follow is a list of names you can do nothing with.
  * The issue page keeps what this deliberately does not have - editing the metadata,
  * fetching it again, removing the comic - since those act on the comic rather than
  * describe it, and the identity line above links through to them.
@@ -65,10 +66,18 @@ export default function IssueDetail({
   // any screen with the height for it the clamp never applies and this does nothing.
   const [unfolded, setUnfolded] = useState(false)
   const [showAllCharacters, setShowAllCharacters] = useState(false)
-  const [character, setCharacter] = useState<string | null>(null)
   // These links are drawn inside a run, and a run's name is the one page name no url
   // carries - so it is handed over rather than read off the route.
   const back = useBackOrigin(editionName)
+  const navigate = useNavigate()
+
+  // A character whose Comic Vine id this comic does not hold yet is asked about once, on
+  // the click, and the page opens on whatever comes back. Found by name rather than from
+  // the issue's own credits, it is a guess, and the page is told so.
+  const resolve = useMutation({
+    mutationFn: (name: string) => api.resolveCharacter(bookId!, name),
+    onSuccess: (ref) => navigate(`/characters/${ref.id}`, { state: { ...back, guess: !ref.verified } }),
+  })
 
   const byRole = credits.reduce<Record<string, string[]>>((acc, c) => {
     const key = c.role.charAt(0).toUpperCase() + c.role.slice(1)
@@ -78,7 +87,7 @@ export default function IssueDetail({
   const roles = Object.entries(byRole)
 
   const valuesOf = (kind: string) => tags.filter((t) => t.kind === kind).map((t) => t.value)
-  const characters = valuesOf('character')
+  const characters = tags.filter((t) => t.kind === 'character')
   const teams = valuesOf('team')
   const storyArcs = valuesOf('story_arc')
 
@@ -165,13 +174,23 @@ export default function IssueDetail({
       {characters.length > 0 && (
         <Section title="Characters">
           <div className="chip-row">
-            {visibleCharacters.map((c) => (
-              <button key={c} type="button" className="chip chip--action"
-                onClick={() => setCharacter(c)}>
-                {c}
-              </button>
-            ))}
+            {visibleCharacters.map((c) => (c.extId != null
+              ? (
+                <Link key={c.value} to={`/characters/${c.extId}`} state={back} className="chip chip--action">
+                  {c.value}
+                </Link>
+              )
+              : (
+                <button key={c.value} type="button" className="chip chip--action"
+                  disabled={bookId == null || resolve.isPending}
+                  onClick={() => resolve.mutate(c.value)}>
+                  {resolve.isPending && resolve.variables === c.value ? `${c.value}…` : c.value}
+                </button>
+              )))}
           </div>
+          {resolve.isError && (
+            <p className="issue-detail__error">{"Couldn't find that character on Comic Vine."}</p>
+          )}
           {hasMoreCharacters && (
             <button
               type="button"
@@ -203,9 +222,6 @@ export default function IssueDetail({
         </Section>
       )}
 
-      {character && bookId != null && (
-        <CharacterDialog bookId={bookId} name={character} onClose={() => setCharacter(null)} />
-      )}
     </div>
   )
 }

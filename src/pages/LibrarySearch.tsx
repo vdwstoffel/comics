@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { api } from '../api'
@@ -7,8 +7,12 @@ import { statusFrom } from '../lib/readStatus'
 import { groupBySeries } from '../lib/volumeGroups'
 import type { SeriesGroup } from '../lib/volumeGroups'
 import { useDocumentTitle } from '../lib/useDocumentTitle'
+import { useBackOrigin } from '../lib/backOrigin'
 import LibraryRail from '../components/LibraryRail'
 import SeriesGroupTile from '../components/SeriesGroupTile'
+
+/** How many characters show before the rest are folded away. "man" finds hundreds. */
+const CHARACTERS_SHOWN = 12
 
 /**
  * How each credit role reads in a sentence.
@@ -73,6 +77,10 @@ export default function LibrarySearch() {
   const publisher = params.get('publisher')
   useDocumentTitle(q || 'Search')
   const [openSeries, setOpenSeries] = useState<string | null>(null)
+  const [allCharacters, setAllCharacters] = useState(false)
+  // A new search starts folded again: "Show all" was about the last one's list.
+  useEffect(() => setAllCharacters(false), [q])
+  const back = useBackOrigin(`Results for "${q}"`)
 
   const results = useQuery({
     queryKey: ['library-search', q, status, publisher],
@@ -89,6 +97,17 @@ export default function LibrarySearch() {
     if (merged.publisher) out.publisher = merged.publisher
     setParams(out)
   }
+
+  // The characters credited in your comics, found by the same words. Only yours: the
+  // library's own credits, so it is instant and never asks Comic Vine. The rail's filters
+  // narrow comics, not people, so they do not narrow this.
+  const characterResults = useQuery({
+    queryKey: ['character-search', q],
+    queryFn: () => api.searchCharacters(q),
+    enabled: q !== '',
+  })
+  const characters = characterResults.data?.characters ?? []
+  const shownCharacters = allCharacters ? characters : characters.slice(0, CHARACTERS_SHOWN)
 
   const books = results.data?.books ?? []
   // Grouped by series even under `?status=read`, where the Library's Read shelf draws one
@@ -112,7 +131,30 @@ export default function LibrarySearch() {
         {q === '' && <p>Type a name, an issue number or a creator in the search box.</p>}
         {results.isLoading && q !== '' && <p>Loading…</p>}
         {results.error && <p>Failed to search the library.</p>}
-        {results.data && books.length === 0 && (
+        {/* Above the comics: a name typed is as likely a person as a run, and the list is
+            short where the shelf below can run long. */}
+        {characters.length > 0 && (
+          <section className="search-characters" aria-label="Characters">
+            <h2 className="search-characters__title">Characters</h2>
+            <ul className="search-characters__list">
+              {shownCharacters.map((c) => (
+                <li key={c.id}>
+                  <Link to={`/characters/${c.id}`} state={back} className="search-characters__item">
+                    <span className="search-characters__name">{c.name}</span>
+                    <span className="search-characters__count">{c.comics} comic{c.comics === 1 ? '' : 's'}</span>
+                  </Link>
+                </li>
+              ))}
+            </ul>
+            {characters.length > CHARACTERS_SHOWN && (
+              <button type="button" className="btn-ghost search-characters__more" onClick={() => setAllCharacters((v) => !v)}>
+                {allCharacters ? 'Show fewer' : `Show all ${characters.length}`}
+              </button>
+            )}
+            {books.length > 0 && <h2 className="search-characters__title">Comics</h2>}
+          </section>
+        )}
+        {results.data && books.length === 0 && characters.length === 0 && (
           <p>
             Nothing in your library matches "{q}".{' '}
             {/* The one moment the two searches should meet: you looked for a comic you

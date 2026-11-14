@@ -648,7 +648,15 @@ export interface BookResponse {
 export interface ProgressResponse { progress: ApiProgress }
 export interface CvSearchResponse { results: CvSearchResult[] }
 /** `verified` is false when the character was resolved by name search rather than by id. */
-export interface CharacterResponse { character: ApiCharacter; verified: boolean }
+/** Which Comic Vine character a chip names. `verified` false is a guess made by name. */
+export interface CharacterRef { id: number; verified: boolean }
+/**
+ * A character's page. `name` is what your comics call them, there even when `character`
+ * is null because Comic Vine could not be read - `unavailable` then says why.
+ */
+export interface CharacterPage { character: ApiCharacter | null; name: string | null; unavailable?: string }
+/** A character credited in your comics, as the library search lists them. */
+export interface CharacterHit { id: number; name: string; comics: number }
 export interface ArcsListResponse { arcs: ApiStoryArcSummary[] }
 /**
  * `ordered` is true when the run is the one you arranged, not the one dates computed.
@@ -968,8 +976,13 @@ export const api = {
   /** A gap in a reading list. Where it lands is the server's decision, as for an arc. */
   downloadListIssue: (cvIssueId: number, indexId?: number) =>
     json<QueuedResponse>(`/api/lists/issues/${cvIssueId}/download`, pickedRowPost(indexId)),
-  getCharacter: (bookId: string | number, name: string) =>
-    json<CharacterResponse>(`/api/books/${bookId}/character?name=${encodeURIComponent(name)}`),
+  resolveCharacter: (bookId: string | number, name: string) =>
+    json<CharacterRef>(`/api/books/${bookId}/character?name=${encodeURIComponent(name)}`),
+  getCharacterPage: (id: number) => json<CharacterPage>(`/api/characters/${id}`),
+  searchCharacters: (q: string) =>
+    json<{ characters: CharacterHit[] }>(`/api/characters?q=${encodeURIComponent(q)}`),
+  /** The comics in the library a character is credited in. */
+  characterBooks: (id: number) => json<{ books: ApiLibraryBook[] }>(`/api/books?character=${id}`),
   cvSearch: (q: string, type: string) =>
     json<CvSearchResponse>(`/api/comicvine/search?q=${encodeURIComponent(q)}&type=${type}`),
   /** `manual` is for the hand-typed id input alone; Refresh and search-and-pick leave it off. */

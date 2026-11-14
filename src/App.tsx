@@ -13,6 +13,7 @@ import BulkUpload from './pages/BulkUpload'
 import SearchComics from './pages/SearchComics'
 import Arcs from './pages/Arcs'
 import Arc from './pages/Arc'
+import Character from './pages/Character'
 import Following from './pages/Following'
 import ReadingLists from './pages/ReadingLists'
 import ReadingList from './pages/ReadingList'
@@ -189,6 +190,7 @@ export default function App() {
       <Route path="/volume/:volumeId" element={<Layout><Volume /></Layout>} />
       {/* The comic's own page is gone; everything it said and did lives in the run. */}
       <Route path="/book/:id" element={<Layout><BookRedirect /></Layout>} />
+      <Route path="/characters/:id" element={<Layout><Character /></Layout>} />
       <Route path="/read/:id" element={<ReaderLayout><Reader /></ReaderLayout>} />
       <Route path="/upload" element={<Layout><Upload /></Layout>} />
       <Route path="/upload/bulk" element={<Layout><BulkUpload /></Layout>} />

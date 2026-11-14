@@ -76,3 +76,52 @@ export function getBookTags(db: Db, bookId: number): BookTag[] {
     .all(bookId) as Array<{ kind: string; value: string; ext_id: number | null }>
   return rows.map(({ kind, value, ext_id }) => ({ kind, value, extId: ext_id ?? undefined }))
 }
+
+/**
+ * What your comics call a Comic Vine character - the name their credits most often use -
+ * or undefined when none of them credit it. What the character's page is headed with when
+ * Comic Vine cannot be read: the comics underneath are still yours to list.
+ */
+export function characterName(db: Db, extId: number): string | undefined {
+  const row = db.prepare(`SELECT value FROM book_tag WHERE kind = 'character' AND ext_id = ?
+                          GROUP BY value ORDER BY COUNT(*) DESC, value LIMIT 1`).get(extId) as { value: string } | undefined
+  return row?.value
+}
+
+export interface CharacterHit {
+  /** Comic Vine's id: what the character's page is keyed on. */
+  id: number
+  /** What your comics call them, the most-used name where they differ. */
+  name: string
+  /** How many of your comics credit them. */
+  comics: number
+}
+
+/**
+ * The characters credited in your comics whose name holds every word typed, the ones in
+ * most of your comics first.
+ *
+ * Grouped by Comic Vine id, not by name, so the four Hobgoblins stay four - and only
+ * credits that carry an id are found, since a character's page is keyed on one. Words are
+ * matched literally, the way the comics search matches them: a "%" typed is a percent
+ * sign, not a wildcard.
+ */
+export function searchCharacters(db: Db, q: string, limit = 200): CharacterHit[] {
+  const terms = q.split(/\s+/).filter(Boolean).slice(0, 8)
+  if (terms.length === 0) return []
+  const like = terms.map(() => `value LIKE ? ESCAPE '\\'`).join(' AND ')
+  const rows = db.prepare(
+    `SELECT ext_id AS id, COUNT(DISTINCT book_id) AS comics
+       FROM book_tag
+      WHERE kind = 'character' AND ext_id IS NOT NULL AND ${like}
+      GROUP BY ext_id
+      ORDER BY comics DESC
+      LIMIT ?`,
+  ).all(...terms.map((t) => `%${t.replace(/[\\%_]/g, '\\$&')}%`), limit) as Array<{ id: number; comics: number }>
+
+  // Named the way the page heads them: one character can be credited under two spellings,
+  // and the one most of your comics use is the one shown.
+  return rows
+    .map((r) => ({ id: r.id, name: characterName(db, r.id) ?? '', comics: r.comics }))
+    .sort((a, b) => b.comics - a.comics || a.name.localeCompare(b.name))
+}

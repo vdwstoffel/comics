@@ -235,10 +235,22 @@ export function creditsMatching(db: Db, terms: string[]): Map<number, { name: st
  */
 export function listLibraryBooks(
   db: Db,
-  { readState, publisher, q }: { readState?: FilterState; publisher?: string; q?: string },
+  { readState, publisher, q, character }: {
+    readState?: FilterState; publisher?: string; q?: string
+    /**
+     * Only the comics this Comic Vine character is credited in. By id and never by name:
+     * Comic Vine has four Hobgoblins, and a page about one must not list the others.
+     */
+    character?: number
+  },
 ): LibraryBook[] {
   const clauses: string[] = []
   const params: unknown[] = []
+
+  if (character != null) {
+    clauses.push(`EXISTS (SELECT 1 FROM book_tag t WHERE t.book_id = b.id AND t.kind = 'character' AND t.ext_id = ?)`)
+    params.push(character)
+  }
 
   if (readState) clauses.push(BOOK_STATE_SQL[readState])
   if (publisher === '__unknown__') clauses.push('e.publisher IS NULL')

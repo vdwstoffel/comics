@@ -333,6 +333,14 @@ CREATE TABLE IF NOT EXISTS metadata_followup_dismissed (
   dismissed_at TEXT NOT NULL
 );
 
+-- What Comic Vine last said about a character, for the character's own page. Whole, as
+-- JSON: the page shows every field and nothing queries inside it.
+CREATE TABLE IF NOT EXISTS character_cache (
+  cv_id      INTEGER PRIMARY KEY,
+  data       TEXT NOT NULL,
+  fetched_at TEXT NOT NULL
+);
+
 -- When the background catch-up last read Comic Vine for a comic on the follow-up list.
 -- What keeps a record Comic Vine has not filled in yet from being read every twenty
 -- seconds: it waits its turn again after a few days. Nothing else reads it.

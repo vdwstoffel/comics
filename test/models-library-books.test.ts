@@ -551,3 +551,41 @@ test('a shelf call carries no reason at all', () => {
   expect(listLibraryBooks(db, { q: '   ' }).every((b) => b.matched === undefined)).toBe(true)
   db.close()
 })
+
+// By Comic Vine's id, never the name: Comic Vine has four Hobgoblins, and one's page must
+// not list the others' comics.
+test('a character narrows the list to the comics they are credited in, by id', () => {
+  const db = openDb(':memory:')
+  const { unreadVenom, readVenom, unreadBatman } = seed(db)
+  replaceBookTags(db, unreadVenom.id, [{ kind: 'character', value: 'Hobgoblin', extId: 7605 }])
+  replaceBookTags(db, readVenom.id, [{ kind: 'character', value: 'Hobgoblin', extId: 7605 }])
+  // Same name, a different Hobgoblin.
+  replaceBookTags(db, unreadBatman.id, [{ kind: 'character', value: 'Hobgoblin', extId: 2070 }])
+
+  expect(listLibraryBooks(db, { character: 7605 }).map((b) => b.id).sort())
+    .toEqual([unreadVenom.id, readVenom.id].sort())
+  db.close()
+})
+
+// ---- finding characters by name, among your comics' credits
+
+test('a character search finds every word in the name, most-featured first, by id', async () => {
+  const { searchCharacters } = await import('../server/models/metadata.js')
+  const db = openDb(':memory:')
+  const { unreadVenom, readingVenom, readVenom, unreadBatman } = seed(db)
+  replaceBookTags(db, unreadVenom.id, [{ kind: 'character', value: 'Venom (Eddie Brock)', extId: 1 }, { kind: 'character', value: 'Spider-Man', extId: 9 }])
+  replaceBookTags(db, readingVenom.id, [{ kind: 'character', value: 'Venom (Eddie Brock)', extId: 1 }])
+  replaceBookTags(db, readVenom.id, [{ kind: 'character', value: 'Venom (Flash Thompson)', extId: 2 }])
+  // No id: nowhere for a page to be keyed, so not found.
+  replaceBookTags(db, unreadBatman.id, [{ kind: 'character', value: 'Venom (Mac Gargan)' }])
+
+  expect(searchCharacters(db, 'venom')).toEqual([
+    { id: 1, name: 'Venom (Eddie Brock)', comics: 2 },
+    { id: 2, name: 'Venom (Flash Thompson)', comics: 1 },
+  ])
+  expect(searchCharacters(db, 'venom eddie')).toEqual([{ id: 1, name: 'Venom (Eddie Brock)', comics: 2 }])
+  // What was typed, not a pattern.
+  expect(searchCharacters(db, '%')).toEqual([])
+  expect(searchCharacters(db, '   ')).toEqual([])
+  db.close()
+})

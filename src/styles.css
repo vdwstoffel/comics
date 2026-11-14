@@ -2721,15 +2721,22 @@ textarea.input:hover:not(:focus) {
   outline-offset: 2px;
 }
 
-.character-card__head {
+/* ============================================================
+   A character's page - read top to bottom like an encyclopedia entry
+   ============================================================ */
+
+/* A reading measure for the article; the comics at the foot use the full grid width. */
+.character-page { max-width: 1100px; }
+
+.character-page__head {
   display: flex;
-  gap: 16px;
+  gap: 24px;
   align-items: flex-start;
-  margin-bottom: 16px;
+  margin-bottom: 20px;
 }
 
-.character-card__portrait {
-  width: 96px;
+.character-page__portrait {
+  width: 180px;
   aspect-ratio: 2 / 3;
   object-fit: cover;
   border-radius: var(--radius);
@@ -2738,49 +2745,44 @@ textarea.input:hover:not(:focus) {
   flex-shrink: 0;
 }
 
-.character-card__portrait--empty {
-  display: block;
-}
+.character-page__portrait--empty { display: block; }
 
-.character-card__ident {
-  min-width: 0;
-}
+.character-page__ident { min-width: 0; max-width: 68ch; }
 
-/* Overrides the 20px that .modal-panel h3 gives every dialog heading — here the name
-   sits directly above the real name it belongs with. */
-.character-card__name {
-  margin-bottom: 4px;
-}
+.character-page__name { margin-bottom: 4px; }
 
-.character-card__real-name {
+.character-page__real-name {
   color: var(--text);
-  font-size: 0.9375rem;
+  font-size: 1rem;
 }
 
-.character-card__publisher {
+.character-page__publisher {
   color: var(--muted);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   margin-top: 2px;
 }
 
-.character-card__caveat {
+.character-page__deck {
+  color: var(--text);
+  font-size: 1rem;
+  line-height: 1.6;
+  margin-top: 14px;
+}
+
+.character-page__caveat {
   color: var(--accent);
-  font-size: 0.8125rem;
+  font-size: 0.875rem;
   line-height: 1.5;
   border: 1px solid var(--accent);
   border-radius: var(--radius);
   padding: 8px 12px;
-  margin-bottom: 14px;
-}
-
-.character-card__deck {
-  color: var(--text);
-  font-size: 0.9375rem;
-  line-height: 1.6;
   margin-bottom: 16px;
+  max-width: 68ch;
 }
 
-.character-card__fact {
+.character-page__facts { margin: 0 0 12px; max-width: 68ch; }
+
+.character-page__fact {
   display: flex;
   gap: 10px;
   align-items: baseline;
@@ -2789,52 +2791,207 @@ textarea.input:hover:not(:focus) {
   line-height: 1.5;
 }
 
-.character-card__fact-label {
+.character-page__fact-label {
   font-weight: 700;
   color: var(--muted);
   flex-shrink: 0;
-  min-width: 130px;
+  min-width: 140px;
 }
 
-.character-card__fact-value {
-  color: var(--text);
-}
+.character-page__fact-value { color: var(--text); margin: 0; }
 
-.character-card__link {
-  display: inline-block;
-  margin-top: 12px;
-  color: var(--accent);
-  font-size: 0.875rem;
-}
-
-/* The full Comic Vine profile, behind an expander. ~70 blocks for a well-documented
-   character, so it scrolls in its own region rather than pushing the facts off screen. */
-.character-profile {
-  margin-top: 14px;
-  border-top: 1px solid var(--border);
-  padding-top: 12px;
-}
-
-.character-profile__toggle {
+.character-page__jump {
   padding: 0;
   border: none;
   background: none;
   color: var(--accent);
   font-size: 0.875rem;
   cursor: pointer;
+  margin-bottom: 8px;
 }
 
-.character-profile__toggle:hover {
-  color: var(--accent-hover);
+.character-page__jump:hover { color: var(--accent-hover); }
+
+.character-page__profile {
+  border-top: 1px solid var(--border);
+  margin-top: 16px;
+  padding-top: 16px;
+  max-width: 68ch;
 }
 
-.character-profile__body {
-  max-height: 40vh;
-  overflow-y: auto;
+.character-page__link {
+  display: inline-block;
   margin-top: 12px;
-  padding-right: 10px;
+  color: var(--accent);
+  font-size: 0.875rem;
 }
 
+/* Last on the page, and scrolled to by the jump line, so it keeps a gap above it. */
+.character-page__comics {
+  border-top: 1px solid var(--border);
+  margin-top: 32px;
+  padding-top: 20px;
+  scroll-margin-top: 16px;
+}
+
+.character-page__comics-title {
+  font-size: 1.125rem;
+  font-weight: 700;
+  margin-bottom: 16px;
+}
+
+.character-page__comics-count { color: var(--muted); font-weight: 400; }
+
+.issue-detail__error { color: var(--accent); font-size: 0.8125rem; margin-top: 6px; }
+
+/* The profile's contents. On a phone it sits between the facts and the article, folded;
+   from 1000px it moves beside them and stays in view while the article scrolls past.
+   Areas rather than source order, because the contents are one element that has to sit
+   in the middle of the column on a phone and down the whole side on a wide screen. */
+.character-page__body {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-areas: "intro" "contents" "reading";
+}
+.character-page__intro { grid-area: intro; }
+.character-page__reading { grid-area: reading; }
+.character-contents { grid-area: contents; margin: 8px 0 4px; }
+
+/* The headings a jump lands on clear the sticky header and download bar. */
+.character-profile__heading { scroll-margin-top: 96px; }
+
+.character-contents__toggle {
+  padding: 6px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--text);
+  font: inherit;
+  font-size: 0.875rem;
+  cursor: pointer;
+}
+
+.character-contents__title { display: none; }
+
+.character-contents__body { display: none; position: relative; margin-top: 8px; }
+.character-contents__body--open { display: block; }
+
+.character-contents__list,
+.character-contents__sublist { list-style: none; margin: 0; padding: 0; }
+
+.character-contents__sublist {
+  margin: 2px 0 6px 10px;
+  border-left: 1px solid var(--border);
+  padding-left: 8px;
+}
+
+.character-contents__item,
+.character-contents__subitem {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: none;
+  border: none;
+  border-radius: 6px;
+  padding: 5px 8px;
+  color: var(--muted);
+  font: inherit;
+  font-size: 0.875rem;
+  line-height: 1.35;
+  cursor: pointer;
+}
+
+.character-contents__subitem { font-size: 0.8125rem; padding: 3px 8px; }
+
+.character-contents__item:hover,
+.character-contents__subitem:hover { color: var(--text); background: var(--elevated); }
+
+.character-contents__item--current,
+.character-contents__subitem--current { color: var(--text); font-weight: 600; }
+
+.character-contents__item--comics { margin-top: 6px; color: var(--accent); }
+
+@media (min-width: 1000px) {
+  .character-page__body--contents {
+    grid-template-columns: minmax(0, 1fr) 260px;
+    grid-template-areas: "intro contents" "reading contents";
+    column-gap: 40px;
+  }
+
+  /* Sticky within its grid area, which runs the height of the intro and the article, so
+     it stops at the comics rather than riding over them. */
+  .character-contents {
+    position: sticky;
+    top: 80px;
+    align-self: start;
+    margin: 0;
+  }
+
+  .character-contents__toggle { display: none; }
+
+  .character-contents__title {
+    display: block;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin: 0 0 6px 8px;
+  }
+
+  .character-contents__body {
+    display: block;
+    margin-top: 0;
+    max-height: calc(100vh - 110px);
+    overflow-y: auto;
+  }
+}
+
+/* The characters a library search found, above the comics it found. A list of names
+   rather than tiles: there is no cover to show for a person, and a name with how many
+   of your comics they are in is what you choose between. */
+.search-characters { margin-bottom: 8px; }
+
+.search-characters__title {
+  font-size: 1rem;
+  font-weight: 700;
+  margin: 8px 0 10px;
+}
+
+.search-characters__list {
+  list-style: none;
+  margin: 0 0 8px;
+  padding: 0;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 4px 16px;
+}
+
+.search-characters__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 10px;
+  border-radius: var(--radius);
+  color: var(--text);
+  text-decoration: none;
+}
+
+.search-characters__item:hover { background: var(--elevated); }
+
+.search-characters__name { overflow-wrap: anywhere; }
+
+.search-characters__count { color: var(--muted); font-size: 0.8125rem; white-space: nowrap; }
+
+.search-characters__more { color: var(--accent); margin-bottom: 8px; }
+
+@media (max-width: 600px) {
+  .character-page__head { flex-direction: column; gap: 14px; }
+  .character-page__portrait { width: 140px; }
+  .character-page__fact { flex-direction: column; gap: 0; }
+}
+
+/* The profile's own blocks, as article text. */
 .character-profile__heading {
   color: var(--text);
   font-weight: 700;
@@ -2847,23 +3004,23 @@ textarea.input:hover:not(:focus) {
 }
 
 .character-profile__heading--2 {
-  font-size: 1rem;
+  font-size: 1.125rem;
   border-bottom: 1px solid var(--border);
   padding-bottom: 4px;
 }
 
 .character-profile__heading--3 {
-  font-size: 0.9375rem;
+  font-size: 1rem;
 }
 
 .character-profile__heading--4 {
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   color: var(--muted);
 }
 
 .character-profile__para {
   color: var(--text);
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   line-height: 1.65;
   margin-bottom: 10px;
 }
@@ -2876,7 +3033,7 @@ textarea.input:hover:not(:focus) {
 
 .character-profile__list li {
   color: var(--text);
-  font-size: 0.875rem;
+  font-size: 0.9375rem;
   line-height: 1.6;
 }
 

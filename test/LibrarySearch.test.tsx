@@ -18,6 +18,7 @@ const BOOK = {
 }
 
 let results: unknown[]
+let characters: unknown[]
 let requested: string[]
 
 function show(url = '/library/search?q=thanos') {
@@ -25,6 +26,7 @@ function show(url = '/library/search?q=thanos') {
   globalThis.fetch = vi.fn(async (input: string) => {
     const path = String(input)
     const body = path.startsWith('/api/books?') ? (requested.push(path), { books: results })
+      : path.startsWith('/api/characters?') ? { characters }
       : path === '/api/read-states' ? { readStates: [{ name: 'unread', count: 1 }, { name: 'read', count: 1 }] }
       : path === '/api/publishers' ? { publishers: [] }
       : path === '/api/editions' ? { editions: [] }
@@ -40,7 +42,7 @@ function show(url = '/library/search?q=thanos') {
   )
 }
 
-beforeEach(() => { results = [BOOK] })
+beforeEach(() => { results = [BOOK]; characters = [] })
 
 test('results draw on the shelves the library uses', async () => {
   // Two collected-edition lines of one run: two edition ids and names, one shelf key. Both
@@ -166,4 +168,38 @@ test('nothing matching offers the download search, carrying the query', async ()
 test('the tab is named for the search', async () => {
   show('/library/search?q=knull')
   await waitFor(() => expect(document.title).toBe('knull — Comix'))
+})
+
+
+// ---- characters, found by the same words
+
+test('characters in your comics are listed above the comics, each linking to their page', async () => {
+  characters = [{ id: 1, name: 'Thanos', comics: 12 }, { id: 2, name: 'Thanos (Earth-616 clone)', comics: 1 }]
+  show()
+  const section = await screen.findByRole('region', { name: 'Characters' })
+  expect(screen.getByRole('link', { name: /Thanos\s*12 comics/ })).toHaveAttribute('href', '/characters/1')
+  expect(screen.getByRole('link', { name: /clone\)\s*1 comic$/ })).toHaveAttribute('href', '/characters/2')
+  expect(screen.getByRole('heading', { name: 'Comics' })).toBeInTheDocument()
+  // Above the shelf of comics, not below it.
+  const grid = await waitFor(() => document.querySelector('.tile-grid')!)
+  expect(section.compareDocumentPosition(grid) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+})
+
+// "man" finds hundreds; the comics below must not be pushed off the screen by them.
+test('a long list of characters is folded after the first dozen', async () => {
+  characters = Array.from({ length: 30 }, (_, i) => ({ id: i + 1, name: `Man ${i + 1}`, comics: 30 - i }))
+  show('/library/search?q=man')
+  await screen.findByRole('region', { name: 'Characters' })
+  expect(screen.getAllByRole('link', { name: /^Man \d+/ })).toHaveLength(12)
+  fireEvent.click(screen.getByRole('button', { name: 'Show all 30' }))
+  expect(screen.getAllByRole('link', { name: /^Man \d+/ })).toHaveLength(30)
+})
+
+// A character is something found, so the page is not "nothing matches".
+test('a search that finds only a character does not say nothing matched', async () => {
+  results = []
+  characters = [{ id: 7605, name: 'Hobgoblin (Kingsley)', comics: 3 }]
+  show('/library/search?q=kingsley')
+  expect(await screen.findByRole('link', { name: /Hobgoblin \(Kingsley\)/ })).toBeInTheDocument()
+  expect(screen.queryByText(/Nothing in your library matches/)).toBeNull()
 })
