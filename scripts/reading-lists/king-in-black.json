@@ -1,0 +1,425 @@
+{
+ "id": 2,
+ "slug": "king-in-black",
+ "name": "King in Black",
+ "exportName": "kingInBlack",
+ "publisher": "Marvel",
+ "years": "2020–2021",
+ "description": "Donny Cates's King in Black and Venom: Knull, the god of the symbiotes, arrives on Earth with an army of symbiote dragons.",
+ "phases": [
+  {
+   "name": "Prologue",
+   "note": "Lead-ins before Knull lands. Symbiote Spider-Man and Namor are told in the past: Peter's black-costume days, and Namor's youth with the Black Tide. All of it is optional, so Core opens on King in Black #1.",
+   "issues": [
+    {
+     "cv": 819124,
+     "extra": true,
+     "series": "Symbiote Spider-Man: King In Black",
+     "number": "1"
+    },
+    {
+     "cv": 821501,
+     "extra": true,
+     "series": "Symbiote Spider-Man: King In Black",
+     "number": "2"
+    },
+    {
+     "cv": 824033,
+     "extra": true,
+     "series": "Symbiote Spider-Man: King In Black",
+     "number": "3"
+    },
+    {
+     "cv": 830032,
+     "extra": true,
+     "series": "Symbiote Spider-Man: King In Black",
+     "number": "4"
+    },
+    {
+     "cv": 840958,
+     "extra": true,
+     "series": "Symbiote Spider-Man: King In Black",
+     "number": "5"
+    },
+    {
+     "cv": 820746,
+     "extra": true,
+     "series": "King In Black: Namor",
+     "number": "1"
+    },
+    {
+     "cv": 823346,
+     "extra": true,
+     "series": "King In Black: Namor",
+     "number": "2"
+    },
+    {
+     "cv": 826558,
+     "extra": true,
+     "series": "King In Black: Namor",
+     "number": "3"
+    },
+    {
+     "cv": 830026,
+     "extra": true,
+     "series": "King In Black: Namor",
+     "number": "4"
+    },
+    {
+     "cv": 820017,
+     "extra": true,
+     "series": "Atlantis Attacks",
+     "number": "5"
+    },
+    {
+     "cv": 832867,
+     "extra": true,
+     "series": "King In Black: Wiccan and Hulking",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "The Dark Arrives",
+   "note": "Knull lands, tears Sentry in half and the Venom symbiote out of Eddie, and his dragons wall Earth off from the sun. In Full, the tie-ins show the invasion around the world.",
+   "issues": [
+    {
+     "cv": 820024,
+     "extra": false,
+     "series": "King In Black",
+     "number": "1"
+    },
+    {
+     "cv": 820029,
+     "extra": true,
+     "series": "The Union",
+     "number": "1"
+    },
+    {
+     "cv": 824454,
+     "extra": true,
+     "series": "The Union",
+     "number": "2"
+    },
+    {
+     "cv": 821491,
+     "extra": true,
+     "series": "Black Cat",
+     "number": "1"
+    },
+    {
+     "cv": 822352,
+     "extra": true,
+     "series": "Spider-Woman",
+     "number": "7"
+    },
+    {
+     "cv": 824032,
+     "extra": true,
+     "series": "Spider-Woman",
+     "number": "8"
+    },
+    {
+     "cv": 824025,
+     "extra": true,
+     "series": "Guardians of the Galaxy",
+     "number": "10"
+    },
+    {
+     "cv": 840954,
+     "extra": true,
+     "series": "King In Black: Ghost Rider",
+     "number": "1"
+    },
+    {
+     "cv": 827524,
+     "extra": true,
+     "series": "King In Black: Black Knight",
+     "number": "1"
+    },
+    {
+     "cv": 828193,
+     "extra": true,
+     "series": "King In Black: Black Panther",
+     "number": "1"
+    },
+    {
+     "cv": 820751,
+     "extra": false,
+     "series": "Venom",
+     "number": "31"
+    },
+    {
+     "cv": 822349,
+     "extra": false,
+     "series": "King In Black",
+     "number": "2"
+    },
+    {
+     "cv": 824035,
+     "extra": false,
+     "series": "Venom",
+     "number": "32"
+    },
+    {
+     "cv": 823345,
+     "extra": true,
+     "series": "King In Black: Iron Man/Doom",
+     "number": "1"
+    },
+    {
+     "cv": 824029,
+     "extra": true,
+     "series": "King In Black: Return of the Valkyries",
+     "number": "1"
+    },
+    {
+     "cv": 824450,
+     "extra": true,
+     "series": "King In Black: Planet of the Symbiotes",
+     "number": "1"
+    },
+    {
+     "cv": 828858,
+     "extra": true,
+     "series": "King In Black: Planet of the Symbiotes",
+     "number": "2"
+    },
+    {
+     "cv": 824451,
+     "extra": true,
+     "series": "King In Black: Thunderbolts",
+     "number": "1"
+    },
+    {
+     "cv": 828194,
+     "extra": true,
+     "series": "King In Black: Thunderbolts",
+     "number": "2"
+    },
+    {
+     "cv": 832866,
+     "extra": true,
+     "series": "King In Black: Thunderbolts",
+     "number": "3"
+    },
+    {
+     "cv": 824449,
+     "extra": true,
+     "series": "King in Black: Gwenom vs. Carnage",
+     "number": "1"
+    },
+    {
+     "cv": 827525,
+     "extra": true,
+     "series": "King in Black: Gwenom vs. Carnage",
+     "number": "2"
+    },
+    {
+     "cv": 832864,
+     "extra": true,
+     "series": "King in Black: Gwenom vs. Carnage",
+     "number": "3"
+    },
+    {
+     "cv": 821497,
+     "extra": true,
+     "series": "King In Black: Immortal Hulk",
+     "number": "1"
+    },
+    {
+     "cv": 824453,
+     "extra": true,
+     "series": "S.W.O.R.D.",
+     "number": "2"
+    },
+    {
+     "cv": 828197,
+     "extra": true,
+     "series": "S.W.O.R.D.",
+     "number": "3"
+    }
+   ]
+  },
+  {
+   "name": "Under the Dome",
+   "note": "With Eddie between life and death, Earth's heroes fight to keep Dylan out of Knull's hands.",
+   "issues": [
+    {
+     "cv": 825507,
+     "extra": false,
+     "series": "King In Black",
+     "number": "3"
+    },
+    {
+     "cv": 826554,
+     "extra": true,
+     "series": "Daredevil",
+     "number": "26"
+    },
+    {
+     "cv": 828189,
+     "extra": true,
+     "series": "Daredevil",
+     "number": "27"
+    },
+    {
+     "cv": 826555,
+     "extra": true,
+     "series": "Deadpool",
+     "number": "10"
+    },
+    {
+     "cv": 827526,
+     "extra": true,
+     "series": "King In Black: Marauders",
+     "number": "1"
+    },
+    {
+     "cv": 826561,
+     "extra": true,
+     "series": "Savage Avengers",
+     "number": "17"
+    },
+    {
+     "cv": 828863,
+     "extra": true,
+     "series": "Savage Avengers",
+     "number": "18"
+    },
+    {
+     "cv": 839798,
+     "extra": true,
+     "series": "Savage Avengers",
+     "number": "19"
+    },
+    {
+     "cv": 828862,
+     "extra": true,
+     "series": "Miles Morales: Spider-Man",
+     "number": "23"
+    },
+    {
+     "cv": 827527,
+     "extra": true,
+     "series": "King In Black: Return of the Valkyries",
+     "number": "2"
+    },
+    {
+     "cv": 830027,
+     "extra": true,
+     "series": "King In Black: Return of the Valkyries",
+     "number": "3"
+    },
+    {
+     "cv": 840956,
+     "extra": true,
+     "series": "King In Black: Return of the Valkyries",
+     "number": "4"
+    },
+    {
+     "cv": 825504,
+     "extra": true,
+     "series": "Black Cat",
+     "number": "2"
+    },
+    {
+     "cv": 830022,
+     "extra": true,
+     "series": "Black Cat",
+     "number": "3"
+    },
+    {
+     "cv": 827531,
+     "extra": false,
+     "series": "Venom",
+     "number": "33"
+    },
+    {
+     "cv": 828857,
+     "extra": false,
+     "series": "King In Black",
+     "number": "4"
+    },
+    {
+     "cv": 828192,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "29"
+    },
+    {
+     "cv": 832863,
+     "extra": true,
+     "series": "King In Black: Captain America",
+     "number": "1"
+    },
+    {
+     "cv": 839795,
+     "extra": true,
+     "series": "King In Black: Scream",
+     "number": "1"
+    },
+    {
+     "cv": 838866,
+     "extra": true,
+     "series": "King In Black: Spider-Man",
+     "number": "1"
+    },
+    {
+     "cv": 838885,
+     "extra": true,
+     "series": "S.W.O.R.D.",
+     "number": "4"
+    },
+    {
+     "cv": 842960,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "30"
+    },
+    {
+     "cv": 842208,
+     "extra": false,
+     "series": "Venom",
+     "number": "34"
+    }
+   ]
+  },
+  {
+   "name": "The New King in Black",
+   "note": "The last battle. Venom #35 is the epilogue, and Cates's last issue of Venom.",
+   "issues": [
+    {
+     "cv": 844966,
+     "extra": true,
+     "series": "Avengers",
+     "number": "45"
+    },
+    {
+     "cv": 842204,
+     "extra": false,
+     "series": "King In Black",
+     "number": "5"
+    },
+    {
+     "cv": 842964,
+     "extra": true,
+     "series": "King In Black: Namor",
+     "number": "5"
+    },
+    {
+     "cv": 842205,
+     "extra": true,
+     "series": "King In Black: Planet of the Symbiotes",
+     "number": "3"
+    },
+    {
+     "cv": 861680,
+     "extra": false,
+     "series": "Venom",
+     "number": "35"
+    }
+   ]
+  }
+ ]
+}
