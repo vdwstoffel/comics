@@ -1,0 +1,413 @@
+{
+ "id": 5,
+ "slug": "house-of-m",
+ "name": "House of M",
+ "exportName": "houseOfM",
+ "publisher": "Marvel",
+ "years": "2005",
+ "description": "Wanda Maximoff's power to rewrite reality is out of control, and Earth's heroes meet to decide what to do with her. Then the world changes. Mutants rule, Magneto's family sits on the throne, and every hero has the life they always wanted - except one, who remembers how it really was.",
+ "phases": [
+  {
+   "name": "A Perfect World",
+   "note": null,
+   "issues": [
+    {
+     "cv": 120015,
+     "extra": true,
+     "series": "Excalibur",
+     "number": "13"
+    },
+    {
+     "cv": 117978,
+     "extra": true,
+     "series": "Excalibur",
+     "number": "14"
+    },
+    {
+     "cv": 104861,
+     "extra": false,
+     "series": "House of M",
+     "number": "1"
+    },
+    {
+     "cv": 104862,
+     "extra": false,
+     "series": "House of M",
+     "number": "2"
+    },
+    {
+     "cv": 138414,
+     "extra": true,
+     "series": "House of M: Civil War",
+     "number": "1"
+    },
+    {
+     "cv": 139693,
+     "extra": true,
+     "series": "House of M: Civil War",
+     "number": "2"
+    },
+    {
+     "cv": 141552,
+     "extra": true,
+     "series": "House of M: Civil War",
+     "number": "3"
+    },
+    {
+     "cv": 145605,
+     "extra": true,
+     "series": "House of M: Civil War",
+     "number": "4"
+    },
+    {
+     "cv": 150049,
+     "extra": true,
+     "series": "House of M: Civil War",
+     "number": "5"
+    },
+    {
+     "cv": 166276,
+     "extra": true,
+     "series": "House of M: Masters of Evil",
+     "number": "1"
+    },
+    {
+     "cv": 169225,
+     "extra": true,
+     "series": "House of M: Masters of Evil",
+     "number": "2"
+    },
+    {
+     "cv": 175230,
+     "extra": true,
+     "series": "House of M: Masters of Evil",
+     "number": "3"
+    },
+    {
+     "cv": 181091,
+     "extra": true,
+     "series": "House of M: Masters of Evil",
+     "number": "4"
+    },
+    {
+     "cv": 118013,
+     "extra": true,
+     "series": "House of M: Avengers",
+     "number": "1"
+    },
+    {
+     "cv": 119712,
+     "extra": true,
+     "series": "House of M: Avengers",
+     "number": "2"
+    },
+    {
+     "cv": 120627,
+     "extra": true,
+     "series": "House of M: Avengers",
+     "number": "3"
+    },
+    {
+     "cv": 122065,
+     "extra": true,
+     "series": "House of M: Avengers",
+     "number": "4"
+    },
+    {
+     "cv": 124224,
+     "extra": true,
+     "series": "House of M: Avengers",
+     "number": "5"
+    },
+    {
+     "cv": 117046,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "83"
+    },
+    {
+     "cv": 136173,
+     "extra": true,
+     "series": "The Pulse: House of M Special",
+     "number": "1"
+    },
+    {
+     "cv": 104054,
+     "extra": true,
+     "series": "Fantastic Four: House of M",
+     "number": "1"
+    },
+    {
+     "cv": 104055,
+     "extra": true,
+     "series": "Fantastic Four: House of M",
+     "number": "2"
+    },
+    {
+     "cv": 104056,
+     "extra": true,
+     "series": "Fantastic Four: House of M",
+     "number": "3"
+    },
+    {
+     "cv": 116494,
+     "extra": true,
+     "series": "Spider-Man: House of M",
+     "number": "1"
+    },
+    {
+     "cv": 116546,
+     "extra": true,
+     "series": "Spider-Man: House of M",
+     "number": "2"
+    },
+    {
+     "cv": 116547,
+     "extra": true,
+     "series": "Spider-Man: House of M",
+     "number": "3"
+    },
+    {
+     "cv": 116549,
+     "extra": true,
+     "series": "Spider-Man: House of M",
+     "number": "4"
+    },
+    {
+     "cv": 116548,
+     "extra": true,
+     "series": "Spider-Man: House of M",
+     "number": "5"
+    },
+    {
+     "cv": 117044,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "84"
+    },
+    {
+     "cv": 117041,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "85"
+    },
+    {
+     "cv": 117039,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "86"
+    },
+    {
+     "cv": 118072,
+     "extra": true,
+     "series": "Iron Man: House of M",
+     "number": "1"
+    },
+    {
+     "cv": 131931,
+     "extra": true,
+     "series": "Iron Man: House of M",
+     "number": "2"
+    },
+    {
+     "cv": 136164,
+     "extra": true,
+     "series": "Iron Man: House of M",
+     "number": "3"
+    },
+    {
+     "cv": 136174,
+     "extra": true,
+     "series": "Mutopia X",
+     "number": "1"
+    },
+    {
+     "cv": 136175,
+     "extra": true,
+     "series": "Mutopia X",
+     "number": "2"
+    },
+    {
+     "cv": 136176,
+     "extra": true,
+     "series": "Mutopia X",
+     "number": "3"
+    },
+    {
+     "cv": 99223,
+     "extra": true,
+     "series": "New Thunderbolts",
+     "number": "11"
+    },
+    {
+     "cv": 106584,
+     "extra": true,
+     "series": "The Uncanny X-Men",
+     "number": "462"
+    },
+    {
+     "cv": 106585,
+     "extra": true,
+     "series": "The Uncanny X-Men",
+     "number": "463"
+    },
+    {
+     "cv": 106586,
+     "extra": true,
+     "series": "The Uncanny X-Men",
+     "number": "464"
+    },
+    {
+     "cv": 106587,
+     "extra": true,
+     "series": "The Uncanny X-Men",
+     "number": "465"
+    }
+   ]
+  },
+  {
+   "name": "Remembering",
+   "note": null,
+   "issues": [
+    {
+     "cv": 104863,
+     "extra": false,
+     "series": "House of M",
+     "number": "3"
+    },
+    {
+     "cv": 106293,
+     "extra": true,
+     "series": "New X-Men",
+     "number": "16"
+    },
+    {
+     "cv": 106294,
+     "extra": true,
+     "series": "New X-Men",
+     "number": "17"
+    },
+    {
+     "cv": 106295,
+     "extra": true,
+     "series": "New X-Men",
+     "number": "18"
+    },
+    {
+     "cv": 106296,
+     "extra": true,
+     "series": "New X-Men",
+     "number": "19"
+    },
+    {
+     "cv": 114511,
+     "extra": true,
+     "series": "Wolverine",
+     "number": "33"
+    },
+    {
+     "cv": 114517,
+     "extra": true,
+     "series": "Wolverine",
+     "number": "34"
+    },
+    {
+     "cv": 114518,
+     "extra": true,
+     "series": "Wolverine",
+     "number": "35"
+    },
+    {
+     "cv": 104864,
+     "extra": false,
+     "series": "House of M",
+     "number": "4"
+    },
+    {
+     "cv": 104865,
+     "extra": false,
+     "series": "House of M",
+     "number": "5"
+    },
+    {
+     "cv": 105810,
+     "extra": true,
+     "series": "The Pulse",
+     "number": "10"
+    },
+    {
+     "cv": 115271,
+     "extra": true,
+     "series": "Captain America",
+     "number": "10"
+    },
+    {
+     "cv": 126178,
+     "extra": true,
+     "series": "Black Panther",
+     "number": "7"
+    },
+    {
+     "cv": 105979,
+     "extra": true,
+     "series": "Exiles",
+     "number": "69"
+    },
+    {
+     "cv": 105980,
+     "extra": true,
+     "series": "Exiles",
+     "number": "70"
+    },
+    {
+     "cv": 105981,
+     "extra": true,
+     "series": "Exiles",
+     "number": "71"
+    },
+    {
+     "cv": 106394,
+     "extra": true,
+     "series": "Cable & Deadpool",
+     "number": "17"
+    }
+   ]
+  },
+  {
+   "name": "Genosha",
+   "note": null,
+   "issues": [
+    {
+     "cv": 104866,
+     "extra": false,
+     "series": "House of M",
+     "number": "6"
+    },
+    {
+     "cv": 104867,
+     "extra": false,
+     "series": "House of M",
+     "number": "7"
+    },
+    {
+     "cv": 136177,
+     "extra": true,
+     "series": "Mutopia X",
+     "number": "4"
+    },
+    {
+     "cv": 104868,
+     "extra": false,
+     "series": "House of M",
+     "number": "8"
+    },
+    {
+     "cv": 135114,
+     "extra": true,
+     "series": "Giant-Size Ms. Marvel",
+     "number": "1"
+    }
+   ]
+  }
+ ]
+}

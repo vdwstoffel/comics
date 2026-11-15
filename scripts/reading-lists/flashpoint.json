@@ -1,0 +1,425 @@
+{
+ "id": 22,
+ "slug": "flashpoint",
+ "name": "Flashpoint",
+ "exportName": "flashpoint",
+ "publisher": "DC Comics",
+ "years": "2011",
+ "description": "Barry Allen wakes up in a world that is wrong. He has no powers, Bruce Wayne died as a boy, and the war between Wonder Woman and Aquaman is tearing Europe apart. To put the world back, the fastest man alive first has to work out who broke it.",
+ "phases": [
+  {
+   "name": "The Road to Flashpoint",
+   "note": "The lead-in in The Flash, and the tie-ins that open this world. Optional.",
+   "issues": [
+    {
+     "cv": 252622,
+     "extra": true,
+     "series": "The Flash",
+     "number": "8"
+    },
+    {
+     "cv": 261124,
+     "extra": true,
+     "series": "The Flash",
+     "number": "9"
+    },
+    {
+     "cv": 268209,
+     "extra": true,
+     "series": "The Flash",
+     "number": "10"
+    },
+    {
+     "cv": 268970,
+     "extra": true,
+     "series": "The Flash",
+     "number": "11"
+    },
+    {
+     "cv": 269821,
+     "extra": true,
+     "series": "The Flash",
+     "number": "12"
+    },
+    {
+     "cv": 275584,
+     "extra": true,
+     "series": "Flashpoint: Reverse Flash",
+     "number": "1"
+    },
+    {
+     "cv": 276566,
+     "extra": true,
+     "series": "Flashpoint: Project Superman",
+     "number": "1"
+    },
+    {
+     "cv": 281521,
+     "extra": true,
+     "series": "Flashpoint: Project Superman",
+     "number": "2"
+    },
+    {
+     "cv": 274393,
+     "extra": true,
+     "series": "Flashpoint: Wonder Woman and the Furies",
+     "number": "1"
+    },
+    {
+     "cv": 276567,
+     "extra": true,
+     "series": "Flashpoint: Green Arrow Industries",
+     "number": "1"
+    },
+    {
+     "cv": 279958,
+     "extra": true,
+     "series": "Flashpoint: Wonder Woman and the Furies",
+     "number": "2"
+    },
+    {
+     "cv": 275587,
+     "extra": true,
+     "series": "Flashpoint: Lois Lane and the Resistance",
+     "number": "1"
+    },
+    {
+     "cv": 276571,
+     "extra": true,
+     "series": "Flashpoint: The Canterbury Cricket",
+     "number": "1"
+    },
+    {
+     "cv": 274394,
+     "extra": true,
+     "series": "Flashpoint: Deadman and the Flying Graysons",
+     "number": "1"
+    },
+    {
+     "cv": 279957,
+     "extra": true,
+     "series": "Flashpoint: Deadman and the Flying Graysons",
+     "number": "2"
+    },
+    {
+     "cv": 285171,
+     "extra": true,
+     "series": "Flashpoint: Deadman and the Flying Graysons",
+     "number": "3"
+    },
+    {
+     "cv": 274392,
+     "extra": true,
+     "series": "Flashpoint: Grodd of War",
+     "number": "1"
+    },
+    {
+     "cv": 274391,
+     "extra": true,
+     "series": "Flashpoint: The Legion of Doom",
+     "number": "1"
+    },
+    {
+     "cv": 279962,
+     "extra": true,
+     "series": "Flashpoint: The Legion of Doom",
+     "number": "2"
+    },
+    {
+     "cv": 286682,
+     "extra": true,
+     "series": "Flashpoint: The Legion of Doom",
+     "number": "3"
+    },
+    {
+     "cv": 272344,
+     "extra": true,
+     "series": "Flashpoint: Abin Sur - The Green Lantern",
+     "number": "1"
+    },
+    {
+     "cv": 276570,
+     "extra": true,
+     "series": "Flashpoint: Hal Jordan",
+     "number": "1"
+    },
+    {
+     "cv": 277427,
+     "extra": true,
+     "series": "Flashpoint: Abin Sur - The Green Lantern",
+     "number": "2"
+    },
+    {
+     "cv": 281526,
+     "extra": true,
+     "series": "Flashpoint: Hal Jordan",
+     "number": "2"
+    }
+   ]
+  },
+  {
+   "name": "Flashpoint",
+   "note": null,
+   "issues": [
+    {
+     "cv": 269827,
+     "extra": false,
+     "series": "Flashpoint",
+     "number": "1"
+    },
+    {
+     "cv": 275585,
+     "extra": true,
+     "series": "Flashpoint: The Outsider",
+     "number": "1"
+    },
+    {
+     "cv": 272348,
+     "extra": true,
+     "series": "Flashpoint: Secret Seven",
+     "number": "1"
+    },
+    {
+     "cv": 273082,
+     "extra": true,
+     "series": "Flashpoint: Citizen Cold",
+     "number": "1"
+    },
+    {
+     "cv": 277433,
+     "extra": true,
+     "series": "Flashpoint: Secret Seven",
+     "number": "2"
+    },
+    {
+     "cv": 282910,
+     "extra": true,
+     "series": "Flashpoint: Secret Seven",
+     "number": "3"
+    },
+    {
+     "cv": 278555,
+     "extra": true,
+     "series": "Flashpoint: Citizen Cold",
+     "number": "2"
+    },
+    {
+     "cv": 285179,
+     "extra": true,
+     "series": "Flashpoint: Citizen Cold",
+     "number": "3"
+    },
+    {
+     "cv": 273081,
+     "extra": true,
+     "series": "Flashpoint: Deathstroke and the Curse of the Ravager",
+     "number": "1"
+    },
+    {
+     "cv": 272411,
+     "extra": false,
+     "series": "Flashpoint",
+     "number": "2"
+    },
+    {
+     "cv": 278558,
+     "extra": true,
+     "series": "Flashpoint: Deathstroke and the Curse of the Ravager",
+     "number": "2"
+    },
+    {
+     "cv": 279960,
+     "extra": true,
+     "series": "Flashpoint: The Outsider",
+     "number": "2"
+    },
+    {
+     "cv": 272346,
+     "extra": true,
+     "series": "Flashpoint: Batman Knight of Vengeance",
+     "number": "1"
+    },
+    {
+     "cv": 277419,
+     "extra": true,
+     "series": "Flashpoint: Batman Knight of Vengeance",
+     "number": "2"
+    },
+    {
+     "cv": 282900,
+     "extra": true,
+     "series": "Flashpoint: Batman Knight of Vengeance",
+     "number": "3"
+    },
+    {
+     "cv": 282906,
+     "extra": true,
+     "series": "Flashpoint: Deathstroke and the Curse of the Ravager",
+     "number": "3"
+    },
+    {
+     "cv": 277377,
+     "extra": false,
+     "series": "Flashpoint",
+     "number": "3"
+    },
+    {
+     "cv": 281525,
+     "extra": true,
+     "series": "Flashpoint: Lois Lane and the Resistance",
+     "number": "2"
+    },
+    {
+     "cv": 270444,
+     "extra": true,
+     "series": "Booster Gold",
+     "number": "44"
+    },
+    {
+     "cv": 273079,
+     "extra": true,
+     "series": "Booster Gold",
+     "number": "45"
+    },
+    {
+     "cv": 278559,
+     "extra": true,
+     "series": "Booster Gold",
+     "number": "46"
+    },
+    {
+     "cv": 273080,
+     "extra": true,
+     "series": "Flashpoint: Frankenstein and the Creatures of the Unknown",
+     "number": "1"
+    },
+    {
+     "cv": 278557,
+     "extra": true,
+     "series": "Flashpoint: Frankenstein and the Creatures of the Unknown",
+     "number": "2"
+    },
+    {
+     "cv": 285174,
+     "extra": true,
+     "series": "Flashpoint: Frankenstein and the Creatures of the Unknown",
+     "number": "3"
+    },
+    {
+     "cv": 286679,
+     "extra": true,
+     "series": "Flashpoint: The Outsider",
+     "number": "3"
+    },
+    {
+     "cv": 272345,
+     "extra": true,
+     "series": "Flashpoint: The World of Flashpoint",
+     "number": "1"
+    },
+    {
+     "cv": 277432,
+     "extra": true,
+     "series": "Flashpoint: The World of Flashpoint",
+     "number": "2"
+    },
+    {
+     "cv": 288130,
+     "extra": true,
+     "series": "Flashpoint: Hal Jordan",
+     "number": "3"
+    },
+    {
+     "cv": 273083,
+     "extra": true,
+     "series": "Flashpoint: Emperor Aquaman",
+     "number": "1"
+    },
+    {
+     "cv": 278556,
+     "extra": true,
+     "series": "Flashpoint: Emperor Aquaman",
+     "number": "2"
+    },
+    {
+     "cv": 286681,
+     "extra": true,
+     "series": "Flashpoint: Wonder Woman and the Furies",
+     "number": "3"
+    },
+    {
+     "cv": 285172,
+     "extra": true,
+     "series": "Flashpoint: Emperor Aquaman",
+     "number": "3"
+    },
+    {
+     "cv": 286680,
+     "extra": true,
+     "series": "Flashpoint: Abin Sur - The Green Lantern",
+     "number": "3"
+    }
+   ]
+  },
+  {
+   "name": "The Final Race",
+   "note": null,
+   "issues": [
+    {
+     "cv": 282568,
+     "extra": false,
+     "series": "Flashpoint",
+     "number": "4"
+    },
+    {
+     "cv": 285340,
+     "extra": true,
+     "series": "Booster Gold",
+     "number": "47"
+    },
+    {
+     "cv": 282903,
+     "extra": true,
+     "series": "Flashpoint: The World of Flashpoint",
+     "number": "3"
+    },
+    {
+     "cv": 288131,
+     "extra": true,
+     "series": "Flashpoint: Lois Lane and the Resistance",
+     "number": "3"
+    },
+    {
+     "cv": 288129,
+     "extra": true,
+     "series": "Flashpoint: Project Superman",
+     "number": "3"
+    },
+    {
+     "cv": 275586,
+     "extra": true,
+     "series": "Flashpoint: Kid Flash Lost",
+     "number": "1"
+    },
+    {
+     "cv": 281527,
+     "extra": true,
+     "series": "Flashpoint: Kid Flash Lost",
+     "number": "2"
+    },
+    {
+     "cv": 288132,
+     "extra": true,
+     "series": "Flashpoint: Kid Flash Lost",
+     "number": "3"
+    },
+    {
+     "cv": 290102,
+     "extra": false,
+     "series": "Flashpoint",
+     "number": "5"
+    }
+   ]
+  }
+ ]
+}

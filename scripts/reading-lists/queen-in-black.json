@@ -1,0 +1,173 @@
+{
+ "id": 25,
+ "slug": "queen-in-black",
+ "name": "Queen in Black",
+ "exportName": "queenInBlack",
+ "publisher": "Marvel",
+ "years": "2026",
+ "description": "Hela, the Asgardian goddess of death, has caged Knull and taken his crown. Now the Queen in Black is coming for Earth with an army of symbiote-bonded aliens, and with Thor dead, there are no gods left to stand in her way - except, perhaps, the one she stole it from.",
+ "phases": [
+  {
+   "name": "Before the Queen",
+   "note": "Knull's own limited series, the Giveaway Day prelude and the Hela one-shot. Optional - Core starts at Queen in Black #1.",
+   "issues": [
+    {
+     "cv": 1152750,
+     "extra": true,
+     "series": "Knull",
+     "number": "1"
+    },
+    {
+     "cv": 1156293,
+     "extra": true,
+     "series": "Knull",
+     "number": "2"
+    },
+    {
+     "cv": 1160299,
+     "extra": true,
+     "series": "Knull",
+     "number": "3"
+    },
+    {
+     "cv": 1162485,
+     "extra": true,
+     "series": "Knull",
+     "number": "4"
+    },
+    {
+     "cv": 1166412,
+     "extra": true,
+     "series": "Knull",
+     "number": "5"
+    },
+    {
+     "cv": 1193222,
+     "extra": true,
+     "series": "Amazing Spider-Man 1000/Queen in Black CGD 2026",
+     "number": "1"
+    },
+    {
+     "cv": 1182997,
+     "extra": true,
+     "series": "Queen in Black: Hela",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "Invasion",
+   "note": null,
+   "issues": [
+    {
+     "cv": 1182995,
+     "extra": false,
+     "series": "Queen in Black",
+     "number": "1"
+    },
+    {
+     "cv": 1184562,
+     "extra": true,
+     "series": "Queen in Black: Venom Unchained",
+     "number": "1"
+    },
+    {
+     "cv": 1184556,
+     "extra": false,
+     "series": "Queen in Black",
+     "number": "2"
+    },
+    {
+     "cv": 1186160,
+     "extra": false,
+     "series": "Venom",
+     "number": "260"
+    },
+    {
+     "cv": 1189558,
+     "extra": true,
+     "series": "Queen in Black: Venom Unchained",
+     "number": "2"
+    }
+   ]
+  },
+  {
+   "name": "Light and Dark",
+   "note": null,
+   "issues": [
+    {
+     "cv": 1188275,
+     "extra": false,
+     "series": "Queen in Black",
+     "number": "3"
+    },
+    {
+     "cv": 1182996,
+     "extra": true,
+     "series": "Queen in Black: Defenders of Light and Dark",
+     "number": "1"
+    },
+    {
+     "cv": 1186142,
+     "extra": true,
+     "series": "Queen in Black: Thor",
+     "number": "1"
+    },
+    {
+     "cv": 1188276,
+     "extra": true,
+     "series": "Queen in Black: Defenders of Light and Dark",
+     "number": "2"
+    },
+    {
+     "cv": 1192026,
+     "extra": true,
+     "series": "Black Cat",
+     "number": "14"
+    }
+   ]
+  },
+  {
+   "name": "The War of Gods",
+   "note": null,
+   "issues": [
+    {
+     "cv": 1193085,
+     "extra": false,
+     "series": "Queen in Black",
+     "number": "4"
+    },
+    {
+     "cv": 1191061,
+     "extra": false,
+     "series": "Venom",
+     "number": "261"
+    },
+    {
+     "cv": 1193090,
+     "extra": true,
+     "series": "Queen in Black: Defenders of Light and Dark",
+     "number": "3"
+    },
+    {
+     "cv": 1195384,
+     "extra": false,
+     "series": "Queen in Black",
+     "number": "5"
+    },
+    {
+     "cv": 1195408,
+     "extra": false,
+     "series": "Venom",
+     "number": "262"
+    },
+    {
+     "cv": 1195385,
+     "extra": true,
+     "series": "Queen in Black: Venom Unchained",
+     "number": "3"
+    }
+   ]
+  }
+ ]
+}

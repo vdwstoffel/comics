@@ -1,0 +1,617 @@
+{
+ "id": 19,
+ "slug": "infinite-crisis",
+ "name": "Infinite Crisis",
+ "exportName": "infiniteCrisis",
+ "publisher": "DC Comics",
+ "years": "2005–2006",
+ "description": "Superman, Batman and Wonder Woman no longer trust each other, the Justice League is gone, and heroes are being hunted by a satellite of their own making. Watching from outside reality, the survivors of a crisis twenty years ago decide this world has gone wrong - and that they can fix it.",
+ "phases": [
+  {
+   "name": "Broken Trinity",
+   "note": null,
+   "issues": [
+    {
+     "cv": 105305,
+     "extra": false,
+     "series": "Infinite Crisis",
+     "number": "1"
+    },
+    {
+     "cv": 107004,
+     "extra": true,
+     "series": "Gotham Central",
+     "number": "37"
+    },
+    {
+     "cv": 106234,
+     "extra": true,
+     "series": "JLA",
+     "number": "124"
+    },
+    {
+     "cv": 106235,
+     "extra": true,
+     "series": "JLA",
+     "number": "125"
+    },
+    {
+     "cv": 113888,
+     "extra": true,
+     "series": "Outsiders",
+     "number": "29"
+    },
+    {
+     "cv": 113889,
+     "extra": true,
+     "series": "Outsiders",
+     "number": "30"
+    },
+    {
+     "cv": 111164,
+     "extra": true,
+     "series": "Teen Titans",
+     "number": "29"
+    },
+    {
+     "cv": 107686,
+     "extra": true,
+     "series": "Wonder Woman",
+     "number": "222"
+    },
+    {
+     "cv": 119105,
+     "extra": true,
+     "series": "Superman",
+     "number": "223"
+    },
+    {
+     "cv": 107875,
+     "extra": true,
+     "series": "Firestorm",
+     "number": "19"
+    },
+    {
+     "cv": 111165,
+     "extra": true,
+     "series": "Teen Titans",
+     "number": "30"
+    },
+    {
+     "cv": 111167,
+     "extra": true,
+     "series": "Teen Titans",
+     "number": "31"
+    },
+    {
+     "cv": 113139,
+     "extra": true,
+     "series": "Green Lantern",
+     "number": "7"
+    },
+    {
+     "cv": 113140,
+     "extra": true,
+     "series": "Green Lantern",
+     "number": "8"
+    },
+    {
+     "cv": 113522,
+     "extra": true,
+     "series": "Birds of Prey",
+     "number": "86"
+    },
+    {
+     "cv": 107876,
+     "extra": true,
+     "series": "Birds of Prey",
+     "number": "87"
+    },
+    {
+     "cv": 113523,
+     "extra": true,
+     "series": "Birds of Prey",
+     "number": "88"
+    },
+    {
+     "cv": 113524,
+     "extra": true,
+     "series": "Birds of Prey",
+     "number": "89"
+    },
+    {
+     "cv": 113578,
+     "extra": true,
+     "series": "Birds of Prey",
+     "number": "90"
+    },
+    {
+     "cv": 120728,
+     "extra": true,
+     "series": "Aquaman",
+     "number": "32"
+    },
+    {
+     "cv": 120729,
+     "extra": true,
+     "series": "Aquaman",
+     "number": "33"
+    },
+    {
+     "cv": 120730,
+     "extra": true,
+     "series": "Aquaman",
+     "number": "34"
+    },
+    {
+     "cv": 120731,
+     "extra": true,
+     "series": "Aquaman",
+     "number": "35"
+    },
+    {
+     "cv": 120732,
+     "extra": true,
+     "series": "Aquaman",
+     "number": "36"
+    },
+    {
+     "cv": 119936,
+     "extra": true,
+     "series": "Adventures of Superman",
+     "number": "646"
+    },
+    {
+     "cv": 119976,
+     "extra": true,
+     "series": "Adventures of Superman",
+     "number": "647"
+    },
+    {
+     "cv": 107005,
+     "extra": true,
+     "series": "Gotham Central",
+     "number": "38"
+    },
+    {
+     "cv": 107006,
+     "extra": true,
+     "series": "Gotham Central",
+     "number": "39"
+    },
+    {
+     "cv": 107012,
+     "extra": true,
+     "series": "Gotham Central",
+     "number": "40"
+    },
+    {
+     "cv": 119106,
+     "extra": true,
+     "series": "Superman",
+     "number": "224"
+    },
+    {
+     "cv": 107687,
+     "extra": true,
+     "series": "Wonder Woman",
+     "number": "223"
+    },
+    {
+     "cv": 111276,
+     "extra": true,
+     "series": "JSA: Classified",
+     "number": "4"
+    },
+    {
+     "cv": 107877,
+     "extra": false,
+     "series": "Infinite Crisis",
+     "number": "2"
+    },
+    {
+     "cv": 107886,
+     "extra": true,
+     "series": "Firestorm",
+     "number": "20"
+    },
+    {
+     "cv": 107882,
+     "extra": true,
+     "series": "Outsiders",
+     "number": "31"
+    },
+    {
+     "cv": 107884,
+     "extra": true,
+     "series": "Outsiders",
+     "number": "32"
+    },
+    {
+     "cv": 113893,
+     "extra": true,
+     "series": "Outsiders",
+     "number": "33"
+    },
+    {
+     "cv": 150089,
+     "extra": true,
+     "series": "Hawkman",
+     "number": "47"
+    },
+    {
+     "cv": 150090,
+     "extra": true,
+     "series": "Hawkman",
+     "number": "48"
+    },
+    {
+     "cv": 150091,
+     "extra": true,
+     "series": "Hawkman",
+     "number": "49"
+    },
+    {
+     "cv": 107883,
+     "extra": true,
+     "series": "Superman",
+     "number": "225"
+    },
+    {
+     "cv": 135755,
+     "extra": true,
+     "series": "JSA",
+     "number": "81"
+    },
+    {
+     "cv": 120733,
+     "extra": true,
+     "series": "Aquaman",
+     "number": "37"
+    },
+    {
+     "cv": 107688,
+     "extra": true,
+     "series": "Wonder Woman",
+     "number": "224"
+    }
+   ]
+  },
+  {
+   "name": "Crisis",
+   "note": null,
+   "issues": [
+    {
+     "cv": 107881,
+     "extra": false,
+     "series": "Infinite Crisis",
+     "number": "3"
+    },
+    {
+     "cv": 135756,
+     "extra": true,
+     "series": "JSA",
+     "number": "82"
+    },
+    {
+     "cv": 120742,
+     "extra": true,
+     "series": "Aquaman",
+     "number": "38"
+    },
+    {
+     "cv": 119361,
+     "extra": true,
+     "series": "Aquaman",
+     "number": "39"
+    },
+    {
+     "cv": 99210,
+     "extra": true,
+     "series": "Robin",
+     "number": "143"
+    },
+    {
+     "cv": 99211,
+     "extra": true,
+     "series": "Robin",
+     "number": "144"
+    },
+    {
+     "cv": 99212,
+     "extra": true,
+     "series": "Robin",
+     "number": "145"
+    },
+    {
+     "cv": 143052,
+     "extra": true,
+     "series": "Day of Vengeance: Infinite Crisis Special",
+     "number": "1"
+    },
+    {
+     "cv": 126503,
+     "extra": true,
+     "series": "JSA: Classified",
+     "number": "8"
+    },
+    {
+     "cv": 126505,
+     "extra": true,
+     "series": "JSA: Classified",
+     "number": "9"
+    },
+    {
+     "cv": 122357,
+     "extra": true,
+     "series": "Batman",
+     "number": "648"
+    },
+    {
+     "cv": 121731,
+     "extra": true,
+     "series": "Batman",
+     "number": "649"
+    },
+    {
+     "cv": 122055,
+     "extra": true,
+     "series": "Batman",
+     "number": "650"
+    },
+    {
+     "cv": 105306,
+     "extra": false,
+     "series": "Infinite Crisis",
+     "number": "4"
+    },
+    {
+     "cv": 120308,
+     "extra": true,
+     "series": "Nightwing",
+     "number": "116"
+    },
+    {
+     "cv": 111168,
+     "extra": true,
+     "series": "Teen Titans",
+     "number": "32"
+    },
+    {
+     "cv": 107689,
+     "extra": true,
+     "series": "Wonder Woman",
+     "number": "225"
+    },
+    {
+     "cv": 110047,
+     "extra": true,
+     "series": "Robin",
+     "number": "146"
+    },
+    {
+     "cv": 110048,
+     "extra": true,
+     "series": "Robin",
+     "number": "147"
+    },
+    {
+     "cv": 107944,
+     "extra": true,
+     "series": "Firestorm",
+     "number": "21"
+    },
+    {
+     "cv": 107945,
+     "extra": true,
+     "series": "Firestorm",
+     "number": "22"
+    },
+    {
+     "cv": 151667,
+     "extra": true,
+     "series": "Rann/Thanagar War: Infinite Crisis Special",
+     "number": "1"
+    },
+    {
+     "cv": 120018,
+     "extra": true,
+     "series": "Manhunter",
+     "number": "16"
+    },
+    {
+     "cv": 120019,
+     "extra": true,
+     "series": "Manhunter",
+     "number": "17"
+    },
+    {
+     "cv": 120020,
+     "extra": true,
+     "series": "Manhunter",
+     "number": "18"
+    },
+    {
+     "cv": 120021,
+     "extra": true,
+     "series": "Manhunter",
+     "number": "19"
+    },
+    {
+     "cv": 109243,
+     "extra": true,
+     "series": "Catwoman",
+     "number": "52"
+    },
+    {
+     "cv": 113932,
+     "extra": true,
+     "series": "Birds of Prey",
+     "number": "91"
+    },
+    {
+     "cv": 107690,
+     "extra": true,
+     "series": "Wonder Woman",
+     "number": "226"
+    },
+    {
+     "cv": 119977,
+     "extra": true,
+     "series": "Adventures of Superman",
+     "number": "648"
+    },
+    {
+     "cv": 107891,
+     "extra": true,
+     "series": "Teen Titans Annual",
+     "number": "1"
+    },
+    {
+     "cv": 120309,
+     "extra": true,
+     "series": "Nightwing",
+     "number": "117"
+    },
+    {
+     "cv": 122050,
+     "extra": false,
+     "series": "Infinite Crisis",
+     "number": "5"
+    },
+    {
+     "cv": 168698,
+     "extra": true,
+     "series": "Superman",
+     "number": "226"
+    },
+    {
+     "cv": 112154,
+     "extra": true,
+     "series": "Action Comics",
+     "number": "836"
+    },
+    {
+     "cv": 114341,
+     "extra": true,
+     "series": "Adventures of Superman",
+     "number": "649"
+    },
+    {
+     "cv": 111169,
+     "extra": true,
+     "series": "Teen Titans",
+     "number": "33"
+    },
+    {
+     "cv": 131296,
+     "extra": true,
+     "series": "Infinite Crisis Secret Files 2006",
+     "number": "1"
+    },
+    {
+     "cv": 117977,
+     "extra": true,
+     "series": "Batman Annual",
+     "number": "25"
+    },
+    {
+     "cv": 122054,
+     "extra": false,
+     "series": "Infinite Crisis",
+     "number": "6"
+    },
+    {
+     "cv": 151631,
+     "extra": true,
+     "series": "The OMAC Project: Infinite Crisis Special",
+     "number": "1"
+    },
+    {
+     "cv": 123921,
+     "extra": true,
+     "series": "Villains United: Infinite Crisis Special",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "Endgame",
+   "note": null,
+   "issues": [
+    {
+     "cv": 121466,
+     "extra": false,
+     "series": "Infinite Crisis",
+     "number": "7"
+    },
+    {
+     "cv": 135532,
+     "extra": true,
+     "series": "Green Arrow",
+     "number": "54"
+    },
+    {
+     "cv": 135534,
+     "extra": true,
+     "series": "Green Arrow",
+     "number": "55"
+    },
+    {
+     "cv": 135535,
+     "extra": true,
+     "series": "Green Arrow",
+     "number": "56"
+    },
+    {
+     "cv": 135536,
+     "extra": true,
+     "series": "Green Arrow",
+     "number": "57"
+    },
+    {
+     "cv": 135537,
+     "extra": true,
+     "series": "Green Arrow",
+     "number": "58"
+    },
+    {
+     "cv": 135538,
+     "extra": true,
+     "series": "Green Arrow",
+     "number": "59"
+    },
+    {
+     "cv": 111198,
+     "extra": true,
+     "series": "Superman/Batman",
+     "number": "26"
+    },
+    {
+     "cv": 167758,
+     "extra": true,
+     "series": "Infinite Crisis Aftermath: The Spectre",
+     "number": "1"
+    },
+    {
+     "cv": 167770,
+     "extra": true,
+     "series": "Infinite Crisis Aftermath: The Spectre",
+     "number": "2"
+    },
+    {
+     "cv": 167771,
+     "extra": true,
+     "series": "Infinite Crisis Aftermath: The Spectre",
+     "number": "3"
+    },
+    {
+     "cv": 275580,
+     "extra": true,
+     "series": "Superman",
+     "number": "712"
+    }
+   ]
+  }
+ ]
+}

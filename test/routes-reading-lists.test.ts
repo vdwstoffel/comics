@@ -55,7 +55,7 @@ test('the shelf gives each list its size in both lengths, and where you are in t
     expect(res.json().lists).toEqual([{
       id: 7, slug: 'test-list', name: 'Test List', publisher: 'Marvel', years: '2013',
       description: 'A story across two series.', cover: 'https://cv/cover.jpg',
-      size: { core: 3, full: 6 }, length: 'core', total: 3, owned: 1, read: 0,
+      size: { core: 3, full: 6 }, length: 'core', total: 3, read: 0,
       // Not started: an unread list is opened, not continued.
       next: null,
     }])
@@ -68,10 +68,10 @@ test('a started list continues at the next comic, and only when you have it', as
     t.own(101, true)
     const shelf = async () => (await t.app.inject({ url: '/api/lists' })).json().lists[0]
     // Avengers #2 is next and missing: a gap has nothing to open.
-    expect(await shelf()).toMatchObject({ read: 1, owned: 1, next: null })
+    expect(await shelf()).toMatchObject({ read: 1, next: null })
 
     const second = t.own(102, false)
-    expect(await shelf()).toMatchObject({ read: 1, owned: 2, next: { bookId: second.id, label: 'Avengers #2' } })
+    expect(await shelf()).toMatchObject({ read: 1, next: { bookId: second.id, label: 'Avengers #2' } })
   } finally { await t.cleanup() }
 })
 
@@ -81,7 +81,7 @@ test('the shelf counts where you are in Full once you read it in Full', async ()
     t.own(101, true)
     await t.app.inject({ method: 'PUT', url: '/api/lists/test-list/length', payload: { length: 'full' } })
     const list = (await t.app.inject({ url: '/api/lists' })).json().lists[0]
-    expect(list).toMatchObject({ size: { core: 3, full: 6 }, length: 'full', total: 6, owned: 1, read: 1 })
+    expect(list).toMatchObject({ size: { core: 3, full: 6 }, length: 'full', total: 6, read: 1 })
   } finally { await t.cleanup() }
 })
 
@@ -104,6 +104,8 @@ test('a list comes whole, every tie-in marked, every issue owned or matched', as
     expect(tieIn).toMatchObject({
       id: 901, volumeName: 'Mighty Avengers', owned: false, extra: true,
       match: { title: 'Mighty Avengers #1 (2013)' },
+      // What a missing tile opens.
+      siteUrl: 'https://comicvine.gamespot.com/mighty-avengers-1/4000-901/',
     })
     expect(second).toMatchObject({ id: 102, name: 'The Garden', owned: false, match: null })
   } finally { await t.cleanup() }

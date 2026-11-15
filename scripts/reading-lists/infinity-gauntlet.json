@@ -1,0 +1,335 @@
+{
+ "id": 3,
+ "slug": "infinity-gauntlet",
+ "name": "The Infinity Gauntlet",
+ "exportName": "infinityGauntlet",
+ "publisher": "Marvel",
+ "years": "1990–1991",
+ "description": "Thanos has gathered all six Infinity Gems and become, in every way that matters, God. To win the love of Death herself, he wipes out half of all life with a snap of his fingers. The heroes who are left get one chance to stop him.",
+ "phases": [
+  {
+   "name": "Thanos Returns",
+   "note": "Thanos comes back from the dead and sets out after the Infinity Gems. Optional - Silver Surfer and The Thanos Quest tell how he gets them, and Core starts once he has.",
+   "issues": [
+    {
+     "cv": 32433,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "34"
+    },
+    {
+     "cv": 32532,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "35"
+    },
+    {
+     "cv": 32645,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "36"
+    },
+    {
+     "cv": 32739,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "37"
+    },
+    {
+     "cv": 32859,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "38"
+    },
+    {
+     "cv": 32212,
+     "extra": true,
+     "series": "The Thanos Quest",
+     "number": "1"
+    },
+    {
+     "cv": 32247,
+     "extra": true,
+     "series": "The Thanos Quest",
+     "number": "2"
+    },
+    {
+     "cv": 33096,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "40"
+    },
+    {
+     "cv": 33211,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "41"
+    },
+    {
+     "cv": 110128,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "42"
+    },
+    {
+     "cv": 33441,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "43"
+    },
+    {
+     "cv": 33549,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "44"
+    },
+    {
+     "cv": 33791,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "45"
+    },
+    {
+     "cv": 132449,
+     "extra": true,
+     "series": "The Mutant Misadventures of Cloak and Dagger",
+     "number": "17"
+    },
+    {
+     "cv": 132450,
+     "extra": true,
+     "series": "The Mutant Misadventures of Cloak and Dagger",
+     "number": "18"
+    },
+    {
+     "cv": 64619,
+     "extra": true,
+     "series": "Spider-Man",
+     "number": "17"
+    },
+    {
+     "cv": 33891,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "46"
+    },
+    {
+     "cv": 34005,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "47"
+    },
+    {
+     "cv": 34109,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "48"
+    },
+    {
+     "cv": 34212,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "49"
+    },
+    {
+     "cv": 34312,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "50"
+    }
+   ]
+  },
+  {
+   "name": "The Gauntlet",
+   "note": null,
+   "issues": [
+    {
+     "cv": 34415,
+     "extra": false,
+     "series": "The Infinity Gauntlet",
+     "number": "1"
+    },
+    {
+     "cv": 52011,
+     "extra": true,
+     "series": "Sleepwalker",
+     "number": "6"
+    },
+    {
+     "cv": 34658,
+     "extra": true,
+     "series": "Quasar",
+     "number": "26"
+    },
+    {
+     "cv": 34774,
+     "extra": true,
+     "series": "Quasar",
+     "number": "27"
+    },
+    {
+     "cv": 34444,
+     "extra": true,
+     "series": "Doctor Strange, Sorcerer Supreme",
+     "number": "31"
+    },
+    {
+     "cv": 34414,
+     "extra": true,
+     "series": "The Incredible Hulk",
+     "number": "383"
+    },
+    {
+     "cv": 34428,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "51"
+    },
+    {
+     "cv": 34543,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "52"
+    },
+    {
+     "cv": 34529,
+     "extra": false,
+     "series": "The Infinity Gauntlet",
+     "number": "2"
+    },
+    {
+     "cv": 34557,
+     "extra": true,
+     "series": "Doctor Strange, Sorcerer Supreme",
+     "number": "32"
+    },
+    {
+     "cv": 34578,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "53"
+    },
+    {
+     "cv": 34660,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "54"
+    },
+    {
+     "cv": 34647,
+     "extra": false,
+     "series": "The Infinity Gauntlet",
+     "number": "3"
+    },
+    {
+     "cv": 34671,
+     "extra": true,
+     "series": "Doctor Strange, Sorcerer Supreme",
+     "number": "33"
+    },
+    {
+     "cv": 34695,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "55"
+    },
+    {
+     "cv": 34777,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "56"
+    }
+   ]
+  },
+  {
+   "name": "The Battle for the Universe",
+   "note": null,
+   "issues": [
+    {
+     "cv": 34764,
+     "extra": false,
+     "series": "The Infinity Gauntlet",
+     "number": "4"
+    },
+    {
+     "cv": 34792,
+     "extra": true,
+     "series": "Doctor Strange, Sorcerer Supreme",
+     "number": "34"
+    },
+    {
+     "cv": 34528,
+     "extra": true,
+     "series": "The Incredible Hulk",
+     "number": "384"
+    },
+    {
+     "cv": 34908,
+     "extra": true,
+     "series": "Doctor Strange, Sorcerer Supreme",
+     "number": "35"
+    },
+    {
+     "cv": 34813,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "57"
+    },
+    {
+     "cv": 34893,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "58"
+    },
+    {
+     "cv": 34880,
+     "extra": false,
+     "series": "The Infinity Gauntlet",
+     "number": "5"
+    },
+    {
+     "cv": 34934,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "59"
+    },
+    {
+     "cv": 35000,
+     "extra": false,
+     "series": "The Infinity Gauntlet",
+     "number": "6"
+    },
+    {
+     "cv": 34646,
+     "extra": true,
+     "series": "The Incredible Hulk",
+     "number": "385"
+    },
+    {
+     "cv": 52012,
+     "extra": true,
+     "series": "Sleepwalker",
+     "number": "7"
+    },
+    {
+     "cv": 35013,
+     "extra": true,
+     "series": "Silver Surfer",
+     "number": "60"
+    },
+    {
+     "cv": 35026,
+     "extra": true,
+     "series": "Doctor Strange, Sorcerer Supreme",
+     "number": "36"
+    },
+    {
+     "cv": 35385,
+     "extra": true,
+     "series": "Warlock and the Infinity Watch",
+     "number": "1"
+    }
+   ]
+  }
+ ]
+}

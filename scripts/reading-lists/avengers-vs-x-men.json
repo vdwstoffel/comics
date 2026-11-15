@@ -1,0 +1,461 @@
+{
+ "id": 11,
+ "slug": "avengers-vs-x-men",
+ "name": "Avengers vs. X-Men",
+ "exportName": "avengersVsXMen",
+ "publisher": "Marvel",
+ "years": "2012",
+ "description": "The Phoenix Force, the cosmic fire that once consumed Jean Grey, is heading for Earth, and it wants Hope Summers. Cyclops believes it will be the rebirth of mutantkind. Captain America believes it will burn the world. Neither side will back down.",
+ "phases": [
+  {
+   "name": "The Phoenix Is Coming",
+   "note": "Optional lead-in. Core starts at #0.",
+   "issues": [
+    {
+     "cv": 301659,
+     "extra": true,
+     "series": "Point One",
+     "number": "1"
+    },
+    {
+     "cv": 306478,
+     "extra": true,
+     "series": "Avengers: X-Sanction",
+     "number": "1"
+    },
+    {
+     "cv": 309396,
+     "extra": true,
+     "series": "Avengers: X-Sanction",
+     "number": "2"
+    },
+    {
+     "cv": 313883,
+     "extra": true,
+     "series": "Avengers: X-Sanction",
+     "number": "3"
+    },
+    {
+     "cv": 322751,
+     "extra": true,
+     "series": "Avengers: X-Sanction",
+     "number": "4"
+    },
+    {
+     "cv": 324946,
+     "extra": true,
+     "series": "Avengers",
+     "number": "24.1"
+    }
+   ]
+  },
+  {
+   "name": "Hope",
+   "note": null,
+   "issues": [
+    {
+     "cv": 324839,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "0"
+    },
+    {
+     "cv": 326860,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "1"
+    },
+    {
+     "cv": 332029,
+     "extra": true,
+     "series": "Wolverine & the X-Men",
+     "number": "9"
+    },
+    {
+     "cv": 329220,
+     "extra": true,
+     "series": "New Avengers",
+     "number": "24"
+    },
+    {
+     "cv": 331952,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "2"
+    },
+    {
+     "cv": 331948,
+     "extra": true,
+     "series": "Avengers",
+     "number": "25"
+    },
+    {
+     "cv": 333447,
+     "extra": true,
+     "series": "AVX: VS",
+     "number": "1"
+    },
+    {
+     "cv": 333449,
+     "extra": true,
+     "series": "Uncanny X-Men",
+     "number": "11"
+    },
+    {
+     "cv": 334169,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "3"
+    },
+    {
+     "cv": 334211,
+     "extra": true,
+     "series": "Avengers Academy",
+     "number": "29"
+    },
+    {
+     "cv": 335928,
+     "extra": true,
+     "series": "Avengers Academy",
+     "number": "30"
+    },
+    {
+     "cv": 338524,
+     "extra": true,
+     "series": "Avengers Academy",
+     "number": "31"
+    },
+    {
+     "cv": 335236,
+     "extra": true,
+     "series": "Wolverine & the X-Men",
+     "number": "10"
+    },
+    {
+     "cv": 335232,
+     "extra": true,
+     "series": "X-Men: Legacy",
+     "number": "266"
+    },
+    {
+     "cv": 337502,
+     "extra": true,
+     "series": "X-Men: Legacy",
+     "number": "267"
+    },
+    {
+     "cv": 333444,
+     "extra": true,
+     "series": "Secret Avengers",
+     "number": "26"
+    },
+    {
+     "cv": 336585,
+     "extra": true,
+     "series": "Secret Avengers",
+     "number": "27"
+    },
+    {
+     "cv": 341693,
+     "extra": true,
+     "series": "Secret Avengers",
+     "number": "28"
+    },
+    {
+     "cv": 335925,
+     "extra": true,
+     "series": "Avengers",
+     "number": "26"
+    },
+    {
+     "cv": 340392,
+     "extra": true,
+     "series": "Avengers",
+     "number": "27"
+    },
+    {
+     "cv": 336045,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "4"
+    },
+    {
+     "cv": 354184,
+     "extra": true,
+     "series": "AVX: VS",
+     "number": "5"
+    },
+    {
+     "cv": 335954,
+     "extra": true,
+     "series": "AVX: VS",
+     "number": "2"
+    },
+    {
+     "cv": 336047,
+     "extra": true,
+     "series": "Uncanny X-Men",
+     "number": "12"
+    },
+    {
+     "cv": 337499,
+     "extra": true,
+     "series": "Wolverine & the X-Men",
+     "number": "11"
+    }
+   ]
+  },
+  {
+   "name": "Fire",
+   "note": null,
+   "issues": [
+    {
+     "cv": 338525,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "5"
+    },
+    {
+     "cv": 338486,
+     "extra": true,
+     "series": "Uncanny X-Men",
+     "number": "13"
+    },
+    {
+     "cv": 340399,
+     "extra": true,
+     "series": "AVX: VS",
+     "number": "3"
+    },
+    {
+     "cv": 340395,
+     "extra": true,
+     "series": "X-Men: Legacy",
+     "number": "268"
+    },
+    {
+     "cv": 341837,
+     "extra": true,
+     "series": "Avengers Academy",
+     "number": "32"
+    },
+    {
+     "cv": 346269,
+     "extra": true,
+     "series": "Avengers Academy",
+     "number": "33"
+    },
+    {
+     "cv": 341738,
+     "extra": true,
+     "series": "Uncanny X-Men",
+     "number": "14"
+    },
+    {
+     "cv": 341749,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "6"
+    },
+    {
+     "cv": 333450,
+     "extra": true,
+     "series": "New Avengers",
+     "number": "25"
+    },
+    {
+     "cv": 335284,
+     "extra": true,
+     "series": "New Avengers",
+     "number": "26"
+    },
+    {
+     "cv": 347231,
+     "extra": true,
+     "series": "Avengers",
+     "number": "28"
+    },
+    {
+     "cv": 344115,
+     "extra": true,
+     "series": "Uncanny X-Men",
+     "number": "15"
+    },
+    {
+     "cv": 346273,
+     "extra": true,
+     "series": "Uncanny X-Men",
+     "number": "16"
+    },
+    {
+     "cv": 352641,
+     "extra": true,
+     "series": "Uncanny X-Men",
+     "number": "17"
+    },
+    {
+     "cv": 351071,
+     "extra": true,
+     "series": "Avengers",
+     "number": "29"
+    },
+    {
+     "cv": 342841,
+     "extra": true,
+     "series": "Wolverine & the X-Men",
+     "number": "12"
+    },
+    {
+     "cv": 345398,
+     "extra": true,
+     "series": "Wolverine & the X-Men",
+     "number": "13"
+    },
+    {
+     "cv": 344114,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "7"
+    },
+    {
+     "cv": 345445,
+     "extra": true,
+     "series": "AVX: VS",
+     "number": "4"
+    },
+    {
+     "cv": 345393,
+     "extra": true,
+     "series": "New Avengers",
+     "number": "28"
+    },
+    {
+     "cv": 349640,
+     "extra": true,
+     "series": "New Avengers",
+     "number": "29"
+    }
+   ]
+  },
+  {
+   "name": "Ashes",
+   "note": null,
+   "issues": [
+    {
+     "cv": 346240,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "8"
+    },
+    {
+     "cv": 341733,
+     "extra": true,
+     "series": "New Avengers",
+     "number": "27"
+    },
+    {
+     "cv": 342842,
+     "extra": true,
+     "series": "X-Men: Legacy",
+     "number": "269"
+    },
+    {
+     "cv": 347229,
+     "extra": true,
+     "series": "X-Men: Legacy",
+     "number": "270"
+    },
+    {
+     "cv": 347208,
+     "extra": true,
+     "series": "Wolverine & the X-Men",
+     "number": "14"
+    },
+    {
+     "cv": 348054,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "9"
+    },
+    {
+     "cv": 351068,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "10"
+    },
+    {
+     "cv": 354103,
+     "extra": true,
+     "series": "Wolverine & the X-Men",
+     "number": "15"
+    },
+    {
+     "cv": 356779,
+     "extra": true,
+     "series": "Wolverine & the X-Men",
+     "number": "16"
+    },
+    {
+     "cv": 356764,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "11"
+    },
+    {
+     "cv": 356777,
+     "extra": true,
+     "series": "Uncanny X-Men",
+     "number": "18"
+    },
+    {
+     "cv": 359916,
+     "extra": false,
+     "series": "Avengers Vs. X-Men",
+     "number": "12"
+    },
+    {
+     "cv": 360032,
+     "extra": true,
+     "series": "Uncanny X-Men",
+     "number": "19"
+    },
+    {
+     "cv": 360037,
+     "extra": true,
+     "series": "AVX: VS",
+     "number": "6"
+    },
+    {
+     "cv": 356773,
+     "extra": true,
+     "series": "New Avengers",
+     "number": "30"
+    },
+    {
+     "cv": 357707,
+     "extra": true,
+     "series": "Avengers",
+     "number": "30"
+    },
+    {
+     "cv": 360916,
+     "extra": true,
+     "series": "Wolverine & the X-Men",
+     "number": "18"
+    },
+    {
+     "cv": 362220,
+     "extra": true,
+     "series": "Uncanny X-Men",
+     "number": "20"
+    },
+    {
+     "cv": 362255,
+     "extra": true,
+     "series": "A-Babies vs. X-Babies",
+     "number": "1"
+    }
+   ]
+  }
+ ]
+}

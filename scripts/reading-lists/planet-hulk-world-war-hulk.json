@@ -1,0 +1,485 @@
+{
+ "id": 8,
+ "slug": "planet-hulk-world-war-hulk",
+ "name": "Planet Hulk & World War Hulk",
+ "exportName": "planetHulkWorldWarHulk",
+ "publisher": "Marvel",
+ "years": "2006–2008",
+ "description": "Earth's smartest heroes decide the Hulk is too dangerous to keep, and fire him into space. He lands on Sakaar, a savage world ruled by an Emperor, and is sold as a gladiator. Sooner or later, he is coming home.",
+ "phases": [
+  {
+   "name": "Exile",
+   "note": "Why the heroes send the Hulk away. Optional.",
+   "issues": [
+    {
+     "cv": 151579,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "533"
+    },
+    {
+     "cv": 151580,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "534"
+    },
+    {
+     "cv": 151582,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "535"
+    },
+    {
+     "cv": 106482,
+     "extra": true,
+     "series": "The New Avengers: Illuminati",
+     "number": "1"
+    },
+    {
+     "cv": 151586,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "88"
+    },
+    {
+     "cv": 151587,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "89"
+    },
+    {
+     "cv": 117037,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "90"
+    },
+    {
+     "cv": 112741,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "91"
+    }
+   ]
+  },
+  {
+   "name": "Planet Hulk",
+   "note": null,
+   "issues": [
+    {
+     "cv": 108947,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "92"
+    },
+    {
+     "cv": 113692,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "93"
+    },
+    {
+     "cv": 112742,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "94"
+    },
+    {
+     "cv": 112743,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "95"
+    },
+    {
+     "cv": 106733,
+     "extra": true,
+     "series": "Giant-Size Hulk",
+     "number": "1"
+    },
+    {
+     "cv": 112744,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "96"
+    },
+    {
+     "cv": 106736,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "97"
+    },
+    {
+     "cv": 113724,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "98"
+    },
+    {
+     "cv": 113725,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "99"
+    },
+    {
+     "cv": 112746,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "100"
+    },
+    {
+     "cv": 106399,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "101"
+    },
+    {
+     "cv": 112747,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "102"
+    },
+    {
+     "cv": 106416,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "103"
+    },
+    {
+     "cv": 106796,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "104"
+    },
+    {
+     "cv": 108001,
+     "extra": false,
+     "series": "Incredible Hulk",
+     "number": "105"
+    },
+    {
+     "cv": 108922,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "106"
+    }
+   ]
+  },
+  {
+   "name": "World War Hulk",
+   "note": null,
+   "issues": [
+    {
+     "cv": 108929,
+     "extra": true,
+     "series": "World War Hulk Prologue: World Breaker",
+     "number": "1"
+    },
+    {
+     "cv": 110435,
+     "extra": false,
+     "series": "World War Hulk",
+     "number": "1"
+    },
+    {
+     "cv": 110667,
+     "extra": true,
+     "series": "Iron Man",
+     "number": "19"
+    },
+    {
+     "cv": 110674,
+     "extra": true,
+     "series": "Heroes for Hire",
+     "number": "11"
+    },
+    {
+     "cv": 111934,
+     "extra": true,
+     "series": "Heroes for Hire",
+     "number": "12"
+    },
+    {
+     "cv": 114431,
+     "extra": true,
+     "series": "Heroes for Hire",
+     "number": "13"
+    },
+    {
+     "cv": 111374,
+     "extra": true,
+     "series": "The Irredeemable Ant-Man",
+     "number": "10"
+    },
+    {
+     "cv": 110671,
+     "extra": true,
+     "series": "Ghost Rider",
+     "number": "12"
+    },
+    {
+     "cv": 111669,
+     "extra": true,
+     "series": "Ghost Rider",
+     "number": "13"
+    },
+    {
+     "cv": 111078,
+     "extra": true,
+     "series": "World War Hulk: Front Line",
+     "number": "1"
+    },
+    {
+     "cv": 111703,
+     "extra": true,
+     "series": "World War Hulk: Gamma Corps",
+     "number": "1"
+    },
+    {
+     "cv": 113778,
+     "extra": true,
+     "series": "World War Hulk: Gamma Corps",
+     "number": "2"
+    },
+    {
+     "cv": 114667,
+     "extra": true,
+     "series": "World War Hulk: Gamma Corps",
+     "number": "3"
+    },
+    {
+     "cv": 117844,
+     "extra": true,
+     "series": "World War Hulk: Gamma Corps",
+     "number": "4"
+    },
+    {
+     "cv": 111936,
+     "extra": true,
+     "series": "Iron Man",
+     "number": "20"
+    },
+    {
+     "cv": 111036,
+     "extra": true,
+     "series": "World War Hulk: X-Men",
+     "number": "1"
+    },
+    {
+     "cv": 111708,
+     "extra": true,
+     "series": "World War Hulk: X-Men",
+     "number": "2"
+    },
+    {
+     "cv": 113957,
+     "extra": true,
+     "series": "World War Hulk: X-Men",
+     "number": "3"
+    },
+    {
+     "cv": 111670,
+     "extra": false,
+     "series": "World War Hulk",
+     "number": "2"
+    },
+    {
+     "cv": 110665,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "107"
+    },
+    {
+     "cv": 111938,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "108"
+    },
+    {
+     "cv": 111727,
+     "extra": true,
+     "series": "World War Hulk: Front Line",
+     "number": "2"
+    },
+    {
+     "cv": 115853,
+     "extra": true,
+     "series": "Punisher War Journal",
+     "number": "12"
+    },
+    {
+     "cv": 111663,
+     "extra": true,
+     "series": "Avengers: The Initiative",
+     "number": "4"
+    },
+    {
+     "cv": 113956,
+     "extra": true,
+     "series": "Avengers: The Initiative",
+     "number": "5"
+    },
+    {
+     "cv": 112958,
+     "extra": true,
+     "series": "World War Hulk: Front Line",
+     "number": "3"
+    },
+    {
+     "cv": 112280,
+     "extra": false,
+     "series": "World War Hulk",
+     "number": "3"
+    },
+    {
+     "cv": 112986,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "109"
+    },
+    {
+     "cv": 114203,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "110"
+    },
+    {
+     "cv": 115799,
+     "extra": true,
+     "series": "Heroes for Hire",
+     "number": "14"
+    },
+    {
+     "cv": 120321,
+     "extra": true,
+     "series": "Heroes for Hire",
+     "number": "15"
+    },
+    {
+     "cv": 114624,
+     "extra": false,
+     "series": "World War Hulk",
+     "number": "4"
+    },
+    {
+     "cv": 114625,
+     "extra": true,
+     "series": "World War Hulk: Front Line",
+     "number": "4"
+    },
+    {
+     "cv": 115396,
+     "extra": true,
+     "series": "World War Hulk: Front Line",
+     "number": "5"
+    },
+    {
+     "cv": 117746,
+     "extra": false,
+     "series": "World War Hulk",
+     "number": "5"
+    },
+    {
+     "cv": 118078,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "111"
+    },
+    {
+     "cv": 118696,
+     "extra": true,
+     "series": "World War Hulk: Front Line",
+     "number": "6"
+    }
+   ]
+  },
+  {
+   "name": "Aftersmash",
+   "note": null,
+   "issues": [
+    {
+     "cv": 115812,
+     "extra": true,
+     "series": "What If? Planet Hulk",
+     "number": "1"
+    },
+    {
+     "cv": 119219,
+     "extra": true,
+     "series": "World War Hulk: Aftersmash",
+     "number": "1"
+    },
+    {
+     "cv": 120238,
+     "extra": true,
+     "series": "Incredible Hulk",
+     "number": "112"
+    },
+    {
+     "cv": 123380,
+     "extra": true,
+     "series": "Incredible Hercules",
+     "number": "113"
+    },
+    {
+     "cv": 123397,
+     "extra": true,
+     "series": "Incredible Hercules",
+     "number": "114"
+    },
+    {
+     "cv": 125757,
+     "extra": true,
+     "series": "Incredible Hercules",
+     "number": "115"
+    },
+    {
+     "cv": 122005,
+     "extra": true,
+     "series": "World War Hulk Aftersmash: Damage Control",
+     "number": "1"
+    },
+    {
+     "cv": 124233,
+     "extra": true,
+     "series": "World War Hulk Aftersmash: Damage Control",
+     "number": "2"
+    },
+    {
+     "cv": 126245,
+     "extra": true,
+     "series": "World War Hulk Aftersmash: Damage Control",
+     "number": "3"
+    },
+    {
+     "cv": 120239,
+     "extra": true,
+     "series": "World War Hulk Aftersmash: Warbound",
+     "number": "1"
+    },
+    {
+     "cv": 125754,
+     "extra": true,
+     "series": "World War Hulk Aftersmash: Warbound",
+     "number": "2"
+    },
+    {
+     "cv": 125758,
+     "extra": true,
+     "series": "World War Hulk Aftersmash: Warbound",
+     "number": "3"
+    },
+    {
+     "cv": 125756,
+     "extra": true,
+     "series": "World War Hulk Aftersmash: Warbound",
+     "number": "4"
+    },
+    {
+     "cv": 156498,
+     "extra": true,
+     "series": "World War Hulk Aftersmash: Warbound",
+     "number": "5"
+    }
+   ]
+  }
+ ]
+}

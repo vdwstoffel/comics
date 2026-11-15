@@ -371,7 +371,6 @@ export interface ApiReadingListSummary {
   /** The length you read it in. The counts below are in it. */
   length: ListLength
   total: number
-  owned: number
   read: number
   /** The comic to open next - once you have started, and only when it is one you have. */
   next: { bookId: number; label: string } | null

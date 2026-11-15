@@ -1,0 +1,221 @@
+{
+ "id": 12,
+ "slug": "spider-verse",
+ "name": "Spider-Verse",
+ "exportName": "spiderVerse",
+ "publisher": "Marvel",
+ "years": "2014–2015",
+ "description": "Morlun and his family, the Inheritors, are hunting every Spider-Man, Spider-Woman and Spider-Thing across the multiverse, feeding on them one world at a time. Peter Parker has to gather the survivors into an army before there are none left.",
+ "phases": [
+  {
+   "name": "Edge of Spider-Verse",
+   "note": "Optional lead-in: the Superior Spider-Man gathers his own army, and Edge of Spider-Verse introduces new spiders - Spider-Gwen among them.",
+   "issues": [
+    {
+     "cv": 461740,
+     "extra": true,
+     "series": "Superior Spider-Man",
+     "number": "32"
+    },
+    {
+     "cv": 465850,
+     "extra": true,
+     "series": "Superior Spider-Man",
+     "number": "33"
+    },
+    {
+     "cv": 467646,
+     "extra": true,
+     "series": "The Amazing Spider-Man",
+     "number": "7"
+    },
+    {
+     "cv": 468455,
+     "extra": true,
+     "series": "The Amazing Spider-Man",
+     "number": "8"
+    },
+    {
+     "cv": 464979,
+     "extra": true,
+     "series": "Edge of Spider-Verse",
+     "number": "1"
+    },
+    {
+     "cv": 465842,
+     "extra": true,
+     "series": "Edge of Spider-Verse",
+     "number": "2"
+    },
+    {
+     "cv": 466326,
+     "extra": true,
+     "series": "Edge of Spider-Verse",
+     "number": "3"
+    },
+    {
+     "cv": 467035,
+     "extra": true,
+     "series": "Edge of Spider-Verse",
+     "number": "4"
+    },
+    {
+     "cv": 468077,
+     "extra": true,
+     "series": "Edge of Spider-Verse",
+     "number": "5"
+    },
+    {
+     "cv": 468087,
+     "extra": true,
+     "series": "Spider-Man 2099",
+     "number": "5"
+    },
+    {
+     "cv": 469497,
+     "extra": true,
+     "series": "Spider-Verse Team-Up",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "The Spider-Army",
+   "note": null,
+   "issues": [
+    {
+     "cv": 469842,
+     "extra": true,
+     "series": "Spider-Verse",
+     "number": "1"
+    },
+    {
+     "cv": 475945,
+     "extra": true,
+     "series": "Spider-Verse",
+     "number": "2"
+    },
+    {
+     "cv": 469487,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "9"
+    },
+    {
+     "cv": 470416,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "10"
+    },
+    {
+     "cv": 471323,
+     "extra": true,
+     "series": "Spider-Man 2099",
+     "number": "6"
+    },
+    {
+     "cv": 471321,
+     "extra": true,
+     "series": "Scarlet Spiders",
+     "number": "1"
+    },
+    {
+     "cv": 473654,
+     "extra": true,
+     "series": "Scarlet Spiders",
+     "number": "2"
+    },
+    {
+     "cv": 472897,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "11"
+    },
+    {
+     "cv": 472912,
+     "extra": true,
+     "series": "Spider-Verse Team-Up",
+     "number": "2"
+    },
+    {
+     "cv": 470434,
+     "extra": true,
+     "series": "Spider-Woman",
+     "number": "1"
+    },
+    {
+     "cv": 473656,
+     "extra": true,
+     "series": "Spider-Woman",
+     "number": "2"
+    }
+   ]
+  },
+  {
+   "name": "Hunting the Hunters",
+   "note": null,
+   "issues": [
+    {
+     "cv": 475450,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "12"
+    },
+    {
+     "cv": 475462,
+     "extra": true,
+     "series": "Spider-Man 2099",
+     "number": "7"
+    },
+    {
+     "cv": 476793,
+     "extra": true,
+     "series": "Scarlet Spiders",
+     "number": "3"
+    },
+    {
+     "cv": 476795,
+     "extra": true,
+     "series": "Spider-Woman",
+     "number": "3"
+    },
+    {
+     "cv": 476779,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "13"
+    },
+    {
+     "cv": 476794,
+     "extra": true,
+     "series": "Spider-Verse Team-Up",
+     "number": "3"
+    },
+    {
+     "cv": 477854,
+     "extra": true,
+     "series": "Spider-Man 2099",
+     "number": "8"
+    },
+    {
+     "cv": 479254,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "14"
+    },
+    {
+     "cv": 480668,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "15"
+    },
+    {
+     "cv": 479263,
+     "extra": true,
+     "series": "Spider-Woman",
+     "number": "4"
+    }
+   ]
+  }
+ ]
+}

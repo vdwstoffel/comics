@@ -1,0 +1,221 @@
+{
+ "id": 26,
+ "slug": "batman-bad-seeds",
+ "name": "Batman: Bad Seeds",
+ "exportName": "batmanBadSeeds",
+ "publisher": "DC Comics",
+ "years": "2026",
+ "description": "Poison Ivy is the mayor of Gotham, and Vandal Savage is at war with the Bat-family. Then, in a single night, the city starts turning green, and soon no one in it will be able to breathe. Batman and his family have until sunrise.",
+ "phases": [
+  {
+   "name": "Mayor Ivy",
+   "note": "Poison Ivy's time as mayor, and Vandal Savage's hunt for Batman, leading in. Optional.",
+   "issues": [
+    {
+     "cv": 1158147,
+     "extra": true,
+     "series": "Poison Ivy",
+     "number": "42"
+    },
+    {
+     "cv": 1161295,
+     "extra": true,
+     "series": "Poison Ivy",
+     "number": "43"
+    },
+    {
+     "cv": 1165144,
+     "extra": true,
+     "series": "Poison Ivy",
+     "number": "44"
+    },
+    {
+     "cv": 1161291,
+     "extra": true,
+     "series": "Batman",
+     "number": "8"
+    },
+    {
+     "cv": 1165113,
+     "extra": true,
+     "series": "Batman",
+     "number": "9"
+    },
+    {
+     "cv": 1169584,
+     "extra": true,
+     "series": "Batman",
+     "number": "10"
+    },
+    {
+     "cv": 1169615,
+     "extra": true,
+     "series": "Poison Ivy",
+     "number": "45"
+    },
+    {
+     "cv": 1175705,
+     "extra": true,
+     "series": "Poison Ivy",
+     "number": "46"
+    },
+    {
+     "cv": 1189552,
+     "extra": true,
+     "series": "Poison Ivy",
+     "number": "47"
+    }
+   ]
+  },
+  {
+   "name": "Sunset",
+   "note": "Everything from here to Sunrise happens in one night.",
+   "issues": [
+    {
+     "cv": 1189472,
+     "extra": false,
+     "series": "Batman: Bad Seeds - Sunset",
+     "number": "1"
+    },
+    {
+     "cv": 1191011,
+     "extra": true,
+     "series": "Batgirl",
+     "number": "23"
+    },
+    {
+     "cv": 1193032,
+     "extra": true,
+     "series": "Batwoman",
+     "number": "7"
+    },
+    {
+     "cv": 1194188,
+     "extra": true,
+     "series": "Harley Quinn",
+     "number": "66"
+    },
+    {
+     "cv": 1191012,
+     "extra": false,
+     "series": "Batman",
+     "number": "13"
+    },
+    {
+     "cv": 1193040,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "1113"
+    },
+    {
+     "cv": 1192025,
+     "extra": true,
+     "series": "Batman: Bad Seeds - Gotham Central",
+     "number": "1"
+    },
+    {
+     "cv": 1196600,
+     "extra": true,
+     "series": "Batman: Bad Seeds - Gotham Central",
+     "number": "2"
+    }
+   ]
+  },
+  {
+   "name": "The Green",
+   "note": null,
+   "issues": [
+    {
+     "cv": 1193070,
+     "extra": true,
+     "series": "Nightwing",
+     "number": "142"
+    },
+    {
+     "cv": 1193033,
+     "extra": true,
+     "series": "Catwoman",
+     "number": "91"
+    },
+    {
+     "cv": 1197238,
+     "extra": true,
+     "series": "Catwoman",
+     "number": "92"
+    },
+    {
+     "cv": 1196601,
+     "extra": true,
+     "series": "Batman: Bad Seeds - Streets of Gotham",
+     "number": "1"
+    },
+    {
+     "cv": 1195382,
+     "extra": false,
+     "series": "Poison Ivy",
+     "number": "48"
+    },
+    {
+     "cv": 1196192,
+     "extra": false,
+     "series": "Batman",
+     "number": "14"
+    },
+    {
+     "cv": 1197519,
+     "extra": true,
+     "series": "Batman: Bad Seeds - Gotham General",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "Sunrise",
+   "note": null,
+   "issues": [
+    {
+     "cv": 1197282,
+     "extra": true,
+     "series": "Nightwing",
+     "number": "143"
+    },
+    {
+     "cv": 1196191,
+     "extra": true,
+     "series": "Batgirl",
+     "number": "24"
+    },
+    {
+     "cv": 1197233,
+     "extra": true,
+     "series": "Batwoman",
+     "number": "8"
+    },
+    {
+     "cv": 1197560,
+     "extra": true,
+     "series": "Harley Quinn",
+     "number": "67"
+    },
+    {
+     "cv": 1197246,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "1114"
+    },
+    {
+     "cv": 1197580,
+     "extra": false,
+     "series": "Poison Ivy",
+     "number": "49"
+    },
+    {
+     "cv": 1197520,
+     "extra": false,
+     "series": "Batman: Bad Seeds - Sunrise",
+     "number": "1"
+    }
+   ]
+  }
+ ]
+}

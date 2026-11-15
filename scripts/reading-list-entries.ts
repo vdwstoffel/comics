@@ -127,6 +127,7 @@ function entryLine(issue: CvListedIssue, extra: boolean): string {
     `number: ${quote(issue.number ?? '')}`,
     ...(issue.coverDate ? [`coverDate: ${quote(issue.coverDate)}`] : []),
     ...(issue.name ? [`title: ${quote(issue.name)}`] : []),
+    ...(issue.siteUrl ? [`siteUrl: ${quote(issue.siteUrl)}`] : []),
     ...(extra ? ['extra: true'] : []),
   ]
   return `        { ${fields.join(', ')} },`

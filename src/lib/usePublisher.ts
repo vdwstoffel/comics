@@ -6,7 +6,7 @@ export function publisherSlug(name: string): string {
 }
 
 /**
- * Which publisher the Releases page is showing, held in the url.
+ * Which publisher the Releases page - or the reading-list shelf - is showing, held in the url.
  *
  * One `pub` for the whole page rather than one per tab: picking DC under one tab and
  * finding yourself back on Marvel under the other is the kind of small re-pick that adds

@@ -1,5 +1,5 @@
 import { test, expect, vi, beforeEach } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { MemoryRouter } from 'react-router-dom'
 import ReadingLists from '../src/pages/ReadingLists'
@@ -30,7 +30,7 @@ function summary(over: Partial<ApiReadingListSummary> = {}): ApiReadingListSumma
   return {
     id: 1, slug: 'hickmans-avengers', name: "Hickman's Avengers", publisher: 'Marvel', years: '2012–2016',
     description: 'Everything dies.', cover: 'https://cv/cover.jpg',
-    size: { core: 92, full: 409 }, length: 'core', total: 92, owned: 92, read: 0, next: null,
+    size: { core: 92, full: 409 }, length: 'core', total: 92, read: 0, next: null,
     ...over,
   }
 }
@@ -40,9 +40,10 @@ test('each list is a row that opens it, and says what it is, how big, and that y
   show()
   const row = await screen.findByRole('link', { name: "Hickman's Avengers" })
   expect(row).toHaveAttribute('href', '/lists/hickmans-avengers')
-  expect(screen.getByText('Marvel · 2012–2016 · 92 issues · 409 with tie-ins')).toBeInTheDocument()
+  // The tab says whose it is - and with one publisher there is no tab to choose.
+  expect(screen.queryByRole('tablist')).not.toBeInTheDocument()
+  expect(screen.getByText('2012–2016 · 92 issues · 409 with tie-ins')).toBeInTheDocument()
   expect(screen.getByText('Everything dies.')).toBeInTheDocument()
-  // Owning all of it is not news; only a gap is worth saying.
   expect(screen.getByText('Not started')).toBeInTheDocument()
   // An unread list is opened, not continued.
   expect(screen.queryByRole('link', { name: /Continue/ })).not.toBeInTheDocument()
@@ -56,16 +57,18 @@ test('a list without a description, years or tie-ins leaves them out, not blank'
   })] })
   show()
   await screen.findByRole('link', { name: 'Bare' })
-  expect(screen.getByText('Marvel · 4 issues')).toBeInTheDocument()
+  expect(screen.getByText('4 issues')).toBeInTheDocument()
   expect(document.querySelector('.list-shelf__deck')).toBeNull()
 })
 
-test('a list you are reading says how far, what is missing, and continues at the next comic', async () => {
+test('a list you are reading says how far, and continues at the next comic', async () => {
   vi.spyOn(api, 'getReadingLists').mockResolvedValue({ lists: [summary({
-    length: 'full', total: 409, owned: 95, read: 34, next: { bookId: 77, label: 'Avengers #12' },
+    length: 'full', total: 409, read: 34, next: { bookId: 77, label: 'Avengers #12' },
   })] })
   show()
-  expect(await screen.findByText('34 of 409 read · 314 missing')).toBeInTheDocument()
+  expect(await screen.findByText('34 of 409 read')).toBeInTheDocument()
+  // What you have of it is the list page's to say.
+  expect(screen.queryByText(/missing/)).not.toBeInTheDocument()
   expect(screen.getByRole('link', { name: 'Continue · Avengers #12' })).toHaveAttribute('href', '/read/77')
 })
 
@@ -75,15 +78,25 @@ test('a list read to the end says so', async () => {
   expect(await screen.findByText('Finished')).toBeInTheDocument()
 })
 
-test('the story you are in comes first, then the ones to start, then the ones done', async () => {
+test('each publisher has a tab, Marvel first, and opens on the stories you are in, then the order they came out, finished last', async () => {
   vi.spyOn(api, 'getReadingLists').mockResolvedValue({ lists: [
-    summary({ id: 1, slug: 'done', name: 'Done', read: 92 }),
-    summary({ id: 2, slug: 'unread', name: 'Unread', read: 0 }),
-    summary({ id: 3, slug: 'reading', name: 'Reading', read: 10 }),
+    summary({ id: 1, slug: 'done', name: 'Done', years: '1991', read: 92 }),
+    summary({ id: 2, slug: 'later', name: 'Later', years: '2012–2016' }),
+    summary({ id: 3, slug: 'earlier', name: 'Earlier', years: '2006' }),
+    summary({ id: 4, slug: 'crisis', name: 'Crisis', publisher: 'DC Comics', years: '1985' }),
+    summary({ id: 5, slug: 'reading', name: 'Reading now', years: '2020', read: 10 }),
   ] })
   show()
-  await screen.findByRole('link', { name: 'Reading' })
-  expect(screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)).toEqual(['Reading', 'Unread', 'Done'])
+  await screen.findByRole('link', { name: 'Reading now' })
+  const tabs = screen.getAllByRole('tab')
+  expect(tabs.map((t) => t.textContent)).toEqual(['Marvel', 'DC Comics'])
+  expect(tabs[0]).toHaveAttribute('aria-selected', 'true')
+  const shelf = () => screen.getAllByRole('heading', { level: 2 }).map((h) => h.textContent)
+  expect(shelf()).toEqual(['Reading now', 'Earlier', 'Later', 'Done'])
+
+  fireEvent.click(tabs[1])
+  expect(shelf()).toEqual(['Crisis'])
+  expect(screen.getByRole('tab', { name: 'DC Comics' })).toHaveAttribute('aria-selected', 'true')
 })
 
 test('no lists says so rather than drawing nothing', async () => {

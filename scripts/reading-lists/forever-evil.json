@@ -1,0 +1,491 @@
+{
+ "id": 23,
+ "slug": "forever-evil",
+ "name": "Forever Evil",
+ "exportName": "foreverEvil",
+ "publisher": "DC Comics",
+ "years": "2013–2014",
+ "description": "The Justice League is gone. In its place stands the Crime Syndicate, an evil League from another Earth, and it has freed every villain on this one. The only people left to save the world are Lex Luthor and some of the worst villains alive.",
+ "phases": [
+  {
+   "name": "The Crime Syndicate",
+   "note": "In Full, Villains Month shows how every villain spends the night.",
+   "issues": [
+    {
+     "cv": 425896,
+     "extra": true,
+     "series": "Action Comics",
+     "number": "23.3"
+    },
+    {
+     "cv": 424491,
+     "extra": false,
+     "series": "Forever Evil",
+     "number": "1"
+    },
+    {
+     "cv": 424988,
+     "extra": true,
+     "series": "Aquaman",
+     "number": "23.1"
+    },
+    {
+     "cv": 426810,
+     "extra": true,
+     "series": "Aquaman",
+     "number": "23.2"
+    },
+    {
+     "cv": 424495,
+     "extra": true,
+     "series": "Batman and Robin",
+     "number": "23.1"
+    },
+    {
+     "cv": 424494,
+     "extra": true,
+     "series": "Batman: The Dark Knight",
+     "number": "23.1"
+    },
+    {
+     "cv": 424493,
+     "extra": true,
+     "series": "Detective Comics",
+     "number": "23.1"
+    },
+    {
+     "cv": 425897,
+     "extra": true,
+     "series": "The Flash",
+     "number": "23.3"
+    },
+    {
+     "cv": 424499,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "7.1"
+    },
+    {
+     "cv": 424504,
+     "extra": true,
+     "series": "Superman",
+     "number": "23.1"
+    },
+    {
+     "cv": 425905,
+     "extra": true,
+     "series": "Wonder Woman",
+     "number": "23.1"
+    },
+    {
+     "cv": 428827,
+     "extra": true,
+     "series": "Trinity of Sin: Pandora",
+     "number": "4"
+    },
+    {
+     "cv": 433792,
+     "extra": true,
+     "series": "Trinity of Sin: Pandora",
+     "number": "5"
+    },
+    {
+     "cv": 425898,
+     "extra": true,
+     "series": "Green Lantern",
+     "number": "23.3"
+    },
+    {
+     "cv": 424992,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "7.2"
+    },
+    {
+     "cv": 427656,
+     "extra": true,
+     "series": "The Phantom Stranger",
+     "number": "12"
+    },
+    {
+     "cv": 432299,
+     "extra": true,
+     "series": "The Phantom Stranger",
+     "number": "13"
+    },
+    {
+     "cv": 426813,
+     "extra": true,
+     "series": "Justice League",
+     "number": "23.4"
+    },
+    {
+     "cv": 427649,
+     "extra": false,
+     "series": "Forever Evil",
+     "number": "2"
+    },
+    {
+     "cv": 424983,
+     "extra": true,
+     "series": "Batman",
+     "number": "23.2"
+    },
+    {
+     "cv": 426807,
+     "extra": true,
+     "series": "Detective Comics",
+     "number": "23.4"
+    },
+    {
+     "cv": 425894,
+     "extra": true,
+     "series": "Batman: The Dark Knight",
+     "number": "23.3"
+    },
+    {
+     "cv": 424985,
+     "extra": true,
+     "series": "Batman and Robin",
+     "number": "23.2"
+    },
+    {
+     "cv": 424986,
+     "extra": true,
+     "series": "Batman: The Dark Knight",
+     "number": "23.2"
+    },
+    {
+     "cv": 424984,
+     "extra": true,
+     "series": "Detective Comics",
+     "number": "23.2"
+    },
+    {
+     "cv": 428256,
+     "extra": true,
+     "series": "Suicide Squad",
+     "number": "24"
+    },
+    {
+     "cv": 433113,
+     "extra": true,
+     "series": "Suicide Squad",
+     "number": "25"
+    },
+    {
+     "cv": 436152,
+     "extra": true,
+     "series": "Suicide Squad",
+     "number": "26"
+    },
+    {
+     "cv": 424500,
+     "extra": true,
+     "series": "The Flash",
+     "number": "23.1"
+    },
+    {
+     "cv": 428825,
+     "extra": true,
+     "series": "Forever Evil: Rogues Rebellion",
+     "number": "1"
+    },
+    {
+     "cv": 426814,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "7.4"
+    },
+    {
+     "cv": 430713,
+     "extra": true,
+     "series": "Justice League",
+     "number": "24"
+    },
+    {
+     "cv": 428826,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "8"
+    },
+    {
+     "cv": 433112,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "9"
+    },
+    {
+     "cv": 431404,
+     "extra": true,
+     "series": "Forever Evil: A.R.G.U.S.",
+     "number": "1"
+    },
+    {
+     "cv": 434996,
+     "extra": true,
+     "series": "Forever Evil: A.R.G.U.S.",
+     "number": "2"
+    },
+    {
+     "cv": 436151,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "10"
+    },
+    {
+     "cv": 442113,
+     "extra": true,
+     "series": "Suicide Squad",
+     "number": "27"
+    },
+    {
+     "cv": 445145,
+     "extra": true,
+     "series": "Suicide Squad",
+     "number": "28"
+    },
+    {
+     "cv": 447954,
+     "extra": true,
+     "series": "Suicide Squad",
+     "number": "29"
+    }
+   ]
+  },
+  {
+   "name": "Resistance",
+   "note": null,
+   "issues": [
+    {
+     "cv": 432289,
+     "extra": false,
+     "series": "Forever Evil",
+     "number": "3"
+    },
+    {
+     "cv": 433790,
+     "extra": true,
+     "series": "Forever Evil: Rogues Rebellion",
+     "number": "2"
+    },
+    {
+     "cv": 437420,
+     "extra": true,
+     "series": "Forever Evil: Rogues Rebellion",
+     "number": "3"
+    },
+    {
+     "cv": 442109,
+     "extra": true,
+     "series": "Forever Evil: Rogues Rebellion",
+     "number": "4"
+    },
+    {
+     "cv": 436149,
+     "extra": true,
+     "series": "Justice League",
+     "number": "25"
+    },
+    {
+     "cv": 442112,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "11"
+    },
+    {
+     "cv": 426806,
+     "extra": true,
+     "series": "Batman and Robin",
+     "number": "23.4"
+    },
+    {
+     "cv": 425893,
+     "extra": true,
+     "series": "Batman and Robin",
+     "number": "23.3"
+    },
+    {
+     "cv": 426805,
+     "extra": true,
+     "series": "Batman",
+     "number": "23.4"
+    },
+    {
+     "cv": 425895,
+     "extra": true,
+     "series": "Detective Comics",
+     "number": "23.3"
+    },
+    {
+     "cv": 428251,
+     "extra": true,
+     "series": "Forever Evil: Arkham War",
+     "number": "1"
+    },
+    {
+     "cv": 438356,
+     "extra": false,
+     "series": "Forever Evil",
+     "number": "4"
+    },
+    {
+     "cv": 438357,
+     "extra": true,
+     "series": "Justice League",
+     "number": "26"
+    },
+    {
+     "cv": 442875,
+     "extra": true,
+     "series": "Justice League",
+     "number": "27"
+    },
+    {
+     "cv": 445768,
+     "extra": true,
+     "series": "Justice League",
+     "number": "28"
+    },
+    {
+     "cv": 445150,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "12"
+    },
+    {
+     "cv": 445148,
+     "extra": true,
+     "series": "Forever Evil: Rogues Rebellion",
+     "number": "5"
+    },
+    {
+     "cv": 448912,
+     "extra": true,
+     "series": "Forever Evil: Rogues Rebellion",
+     "number": "6"
+    },
+    {
+     "cv": 440205,
+     "extra": true,
+     "series": "Forever Evil: A.R.G.U.S.",
+     "number": "3"
+    },
+    {
+     "cv": 443949,
+     "extra": true,
+     "series": "Forever Evil: A.R.G.U.S.",
+     "number": "4"
+    },
+    {
+     "cv": 444469,
+     "extra": false,
+     "series": "Forever Evil",
+     "number": "5"
+    },
+    {
+     "cv": 433111,
+     "extra": true,
+     "series": "Forever Evil: Arkham War",
+     "number": "2"
+    },
+    {
+     "cv": 436148,
+     "extra": true,
+     "series": "Forever Evil: Arkham War",
+     "number": "3"
+    },
+    {
+     "cv": 441369,
+     "extra": true,
+     "series": "Forever Evil: Arkham War",
+     "number": "4"
+    },
+    {
+     "cv": 444471,
+     "extra": true,
+     "series": "Forever Evil: Arkham War",
+     "number": "5"
+    },
+    {
+     "cv": 446430,
+     "extra": true,
+     "series": "Forever Evil: A.R.G.U.S.",
+     "number": "5"
+    }
+   ]
+  },
+  {
+   "name": "The Fight for Earth",
+   "note": null,
+   "issues": [
+    {
+     "cv": 446948,
+     "extra": false,
+     "series": "Forever Evil",
+     "number": "6"
+    },
+    {
+     "cv": 447471,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "13"
+    },
+    {
+     "cv": 448911,
+     "extra": true,
+     "series": "Forever Evil: A.R.G.U.S.",
+     "number": "6"
+    },
+    {
+     "cv": 446949,
+     "extra": true,
+     "series": "Forever Evil: Arkham War",
+     "number": "6"
+    },
+    {
+     "cv": 450514,
+     "extra": true,
+     "series": "Justice League",
+     "number": "29"
+    },
+    {
+     "cv": 453359,
+     "extra": false,
+     "series": "Forever Evil",
+     "number": "7"
+    },
+    {
+     "cv": 453363,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "14"
+    },
+    {
+     "cv": 453364,
+     "extra": true,
+     "series": "Justice League",
+     "number": "30"
+    },
+    {
+     "cv": 454051,
+     "extra": true,
+     "series": "Suicide Squad",
+     "number": "30"
+    },
+    {
+     "cv": 451724,
+     "extra": true,
+     "series": "Forever Evil Aftermath: Batman vs. Bane",
+     "number": "1"
+    },
+    {
+     "cv": 454048,
+     "extra": true,
+     "series": "Nightwing",
+     "number": "30"
+    }
+   ]
+  }
+ ]
+}

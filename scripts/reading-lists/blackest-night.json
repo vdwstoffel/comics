@@ -1,0 +1,509 @@
+{
+ "id": 21,
+ "slug": "blackest-night",
+ "name": "Blackest Night",
+ "exportName": "blackestNight",
+ "publisher": "DC Comics",
+ "years": "2009–2010",
+ "description": "Black rings are falling from the sky, raising the dead heroes and villains of the DC universe as Black Lanterns, and they have come for the hearts of the living. Hal Jordan has to unite every color of the emotional spectrum, even his worst enemies, before everything goes dark.",
+ "phases": [
+  {
+   "name": "The Dead Rise",
+   "note": null,
+   "issues": [
+    {
+     "cv": 164031,
+     "extra": true,
+     "series": "Blackest Night: Tales of the Corps",
+     "number": "1"
+    },
+    {
+     "cv": 164776,
+     "extra": true,
+     "series": "Blackest Night: Tales of the Corps",
+     "number": "2"
+    },
+    {
+     "cv": 165440,
+     "extra": true,
+     "series": "Blackest Night: Tales of the Corps",
+     "number": "3"
+    },
+    {
+     "cv": 164060,
+     "extra": true,
+     "series": "Titans",
+     "number": "15"
+    },
+    {
+     "cv": 163297,
+     "extra": false,
+     "series": "Green Lantern",
+     "number": "43"
+    },
+    {
+     "cv": 155833,
+     "extra": false,
+     "series": "Blackest Night",
+     "number": "0"
+    },
+    {
+     "cv": 164032,
+     "extra": false,
+     "series": "Blackest Night",
+     "number": "1"
+    },
+    {
+     "cv": 169505,
+     "extra": true,
+     "series": "Solomon Grundy",
+     "number": "7"
+    },
+    {
+     "cv": 183776,
+     "extra": true,
+     "series": "Superman/Batman",
+     "number": "66"
+    },
+    {
+     "cv": 187620,
+     "extra": true,
+     "series": "Superman/Batman",
+     "number": "67"
+    },
+    {
+     "cv": 166886,
+     "extra": true,
+     "series": "Green Lantern Corps",
+     "number": "39"
+    },
+    {
+     "cv": 164775,
+     "extra": false,
+     "series": "Green Lantern",
+     "number": "44"
+    },
+    {
+     "cv": 166823,
+     "extra": false,
+     "series": "Blackest Night",
+     "number": "2"
+    },
+    {
+     "cv": 193390,
+     "extra": true,
+     "series": "The Phantom Stranger",
+     "number": "42"
+    },
+    {
+     "cv": 166829,
+     "extra": true,
+     "series": "Blackest Night: Batman",
+     "number": "1"
+    },
+    {
+     "cv": 167425,
+     "extra": true,
+     "series": "Blackest Night: Superman",
+     "number": "1"
+    },
+    {
+     "cv": 168458,
+     "extra": true,
+     "series": "Blackest Night: Titans",
+     "number": "1"
+    },
+    {
+     "cv": 168418,
+     "extra": false,
+     "series": "Green Lantern",
+     "number": "45"
+    },
+    {
+     "cv": 170632,
+     "extra": true,
+     "series": "Green Lantern Corps",
+     "number": "40"
+    },
+    {
+     "cv": 170525,
+     "extra": true,
+     "series": "Blackest Night: Batman",
+     "number": "2"
+    },
+    {
+     "cv": 176015,
+     "extra": true,
+     "series": "Blackest Night: Batman",
+     "number": "3"
+    },
+    {
+     "cv": 171404,
+     "extra": false,
+     "series": "Blackest Night",
+     "number": "3"
+    },
+    {
+     "cv": 173425,
+     "extra": true,
+     "series": "Blackest Night: Titans",
+     "number": "2"
+    },
+    {
+     "cv": 179005,
+     "extra": true,
+     "series": "Blackest Night: Titans",
+     "number": "3"
+    },
+    {
+     "cv": 183718,
+     "extra": true,
+     "series": "Adventure Comics",
+     "number": "4"
+    },
+    {
+     "cv": 186662,
+     "extra": true,
+     "series": "Adventure Comics",
+     "number": "5"
+    },
+    {
+     "cv": 177712,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "38"
+    },
+    {
+     "cv": 184828,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "39"
+    },
+    {
+     "cv": 187617,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "40"
+    },
+    {
+     "cv": 172420,
+     "extra": true,
+     "series": "Blackest Night: Superman",
+     "number": "2"
+    },
+    {
+     "cv": 177668,
+     "extra": true,
+     "series": "Blackest Night: Superman",
+     "number": "3"
+    },
+    {
+     "cv": 191315,
+     "extra": true,
+     "series": "Suicide Squad",
+     "number": "67"
+    },
+    {
+     "cv": 192446,
+     "extra": true,
+     "series": "Secret Six",
+     "number": "17"
+    },
+    {
+     "cv": 196593,
+     "extra": true,
+     "series": "Secret Six",
+     "number": "18"
+    },
+    {
+     "cv": 173866,
+     "extra": false,
+     "series": "Green Lantern",
+     "number": "46"
+    },
+    {
+     "cv": 192320,
+     "extra": true,
+     "series": "Catwoman",
+     "number": "83"
+    },
+    {
+     "cv": 176150,
+     "extra": true,
+     "series": "Green Lantern Corps",
+     "number": "41"
+    },
+    {
+     "cv": 183777,
+     "extra": true,
+     "series": "The Outsiders",
+     "number": "24"
+    },
+    {
+     "cv": 187616,
+     "extra": true,
+     "series": "The Outsiders",
+     "number": "25"
+    },
+    {
+     "cv": 179204,
+     "extra": false,
+     "series": "Green Lantern",
+     "number": "47"
+    }
+   ]
+  },
+  {
+   "name": "All Colors",
+   "note": null,
+   "issues": [
+    {
+     "cv": 179009,
+     "extra": false,
+     "series": "Blackest Night",
+     "number": "4"
+    },
+    {
+     "cv": 184967,
+     "extra": false,
+     "series": "Green Lantern",
+     "number": "48"
+    },
+    {
+     "cv": 182580,
+     "extra": true,
+     "series": "Green Lantern Corps",
+     "number": "42"
+    },
+    {
+     "cv": 185677,
+     "extra": true,
+     "series": "Blackest Night: The Flash",
+     "number": "1"
+    },
+    {
+     "cv": 182942,
+     "extra": true,
+     "series": "R.E.B.E.L.S.",
+     "number": "10"
+    },
+    {
+     "cv": 186723,
+     "extra": true,
+     "series": "R.E.B.E.L.S.",
+     "number": "11"
+    },
+    {
+     "cv": 181246,
+     "extra": true,
+     "series": "Doom Patrol",
+     "number": "4"
+    },
+    {
+     "cv": 186831,
+     "extra": true,
+     "series": "Doom Patrol",
+     "number": "5"
+    },
+    {
+     "cv": 182940,
+     "extra": true,
+     "series": "Booster Gold",
+     "number": "26"
+    },
+    {
+     "cv": 186736,
+     "extra": true,
+     "series": "Booster Gold",
+     "number": "27"
+    },
+    {
+     "cv": 184796,
+     "extra": true,
+     "series": "Teen Titans",
+     "number": "77"
+    },
+    {
+     "cv": 189489,
+     "extra": true,
+     "series": "Teen Titans",
+     "number": "78"
+    },
+    {
+     "cv": 191314,
+     "extra": true,
+     "series": "Weird Western Tales",
+     "number": "71"
+    },
+    {
+     "cv": 193366,
+     "extra": true,
+     "series": "Starman",
+     "number": "81"
+    },
+    {
+     "cv": 192298,
+     "extra": true,
+     "series": "The Power of SHAZAM!",
+     "number": "48"
+    },
+    {
+     "cv": 195384,
+     "extra": true,
+     "series": "The Question",
+     "number": "37"
+    },
+    {
+     "cv": 189478,
+     "extra": true,
+     "series": "Blackest Night: JSA",
+     "number": "1"
+    },
+    {
+     "cv": 194482,
+     "extra": true,
+     "series": "Blackest Night: JSA",
+     "number": "2"
+    },
+    {
+     "cv": 198358,
+     "extra": true,
+     "series": "Blackest Night: JSA",
+     "number": "3"
+    },
+    {
+     "cv": 185678,
+     "extra": true,
+     "series": "Blackest Night: Wonder Woman",
+     "number": "1"
+    },
+    {
+     "cv": 184885,
+     "extra": false,
+     "series": "Blackest Night",
+     "number": "5"
+    },
+    {
+     "cv": 187621,
+     "extra": true,
+     "series": "Green Lantern Corps",
+     "number": "43"
+    },
+    {
+     "cv": 193357,
+     "extra": true,
+     "series": "Green Lantern Corps",
+     "number": "44"
+    },
+    {
+     "cv": 189481,
+     "extra": false,
+     "series": "Green Lantern",
+     "number": "49"
+    },
+    {
+     "cv": 189810,
+     "extra": false,
+     "series": "Blackest Night",
+     "number": "6"
+    },
+    {
+     "cv": 196590,
+     "extra": true,
+     "series": "Adventure Comics",
+     "number": "7"
+    },
+    {
+     "cv": 200917,
+     "extra": true,
+     "series": "Green Arrow",
+     "number": "30"
+    },
+    {
+     "cv": 191204,
+     "extra": true,
+     "series": "Blackest Night: Wonder Woman",
+     "number": "2"
+    },
+    {
+     "cv": 195373,
+     "extra": true,
+     "series": "Blackest Night: Wonder Woman",
+     "number": "3"
+    },
+    {
+     "cv": 193415,
+     "extra": true,
+     "series": "Blackest Night: The Flash",
+     "number": "2"
+    },
+    {
+     "cv": 197542,
+     "extra": true,
+     "series": "Blackest Night: The Flash",
+     "number": "3"
+    },
+    {
+     "cv": 194433,
+     "extra": true,
+     "series": "The Atom & Hawkman",
+     "number": "46"
+    },
+    {
+     "cv": 197534,
+     "extra": true,
+     "series": "Green Lantern Corps",
+     "number": "45"
+    },
+    {
+     "cv": 194620,
+     "extra": false,
+     "series": "Green Lantern",
+     "number": "50"
+    },
+    {
+     "cv": 197529,
+     "extra": false,
+     "series": "Green Lantern",
+     "number": "51"
+    }
+   ]
+  },
+  {
+   "name": "Darkest Hour",
+   "note": null,
+   "issues": [
+    {
+     "cv": 198282,
+     "extra": false,
+     "series": "Blackest Night",
+     "number": "7"
+    },
+    {
+     "cv": 200763,
+     "extra": true,
+     "series": "Green Lantern Corps",
+     "number": "46"
+    },
+    {
+     "cv": 201705,
+     "extra": false,
+     "series": "Green Lantern",
+     "number": "52"
+    },
+    {
+     "cv": 202607,
+     "extra": false,
+     "series": "Blackest Night",
+     "number": "8"
+    },
+    {
+     "cv": 210667,
+     "extra": true,
+     "series": "Green Lantern Corps",
+     "number": "47"
+    }
+   ]
+  }
+ ]
+}

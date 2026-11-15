@@ -19,6 +19,8 @@ export interface ReadingListIssue {
   coverDate?: string
   /** The story title, where Comic Vine records one. */
   title?: string
+  /** Comic Vine's page for the issue - where the tile of one you do not have leads. */
+  siteUrl?: string
   /** A tie-in: read in Full, left out of Core. */
   extra?: boolean
 }

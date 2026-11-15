@@ -1,0 +1,209 @@
+{
+ "id": 14,
+ "slug": "absolute-carnage",
+ "name": "Absolute Carnage",
+ "exportName": "absoluteCarnage",
+ "publisher": "Marvel",
+ "years": "2019",
+ "description": "Cletus Kasady is back from the dead, and Carnage is hunting everyone who has ever worn a symbiote, to take what it left behind in them for his god, Knull. Eddie Brock and his son have nowhere to hide, and neither does half of New York.",
+ "phases": [
+  {
+   "name": "Lead-Ins",
+   "note": "Short one-shots before the event. Optional.",
+   "issues": [
+    {
+     "cv": 718743,
+     "extra": true,
+     "series": "Absolute Carnage: Symbiote of Vengeance",
+     "number": "1"
+    },
+    {
+     "cv": 718119,
+     "extra": true,
+     "series": "Absolute Carnage: Symbiote Spider-Man",
+     "number": "1"
+    },
+    {
+     "cv": 716348,
+     "extra": true,
+     "series": "Absolute Carnage: Separation Anxiety",
+     "number": "1"
+    },
+    {
+     "cv": 726199,
+     "extra": true,
+     "series": "Absolute Carnage: Weapon Plus",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "Carnage Rises",
+   "note": null,
+   "issues": [
+    {
+     "cv": 715296,
+     "extra": false,
+     "series": "Absolute Carnage",
+     "number": "1"
+    },
+    {
+     "cv": 717508,
+     "extra": false,
+     "series": "Absolute Carnage",
+     "number": "2"
+    },
+    {
+     "cv": 717535,
+     "extra": false,
+     "series": "Venom",
+     "number": "17"
+    },
+    {
+     "cv": 717510,
+     "extra": true,
+     "series": "Absolute Carnage: Miles Morales",
+     "number": "1"
+    },
+    {
+     "cv": 720155,
+     "extra": true,
+     "series": "Absolute Carnage: Miles Morales",
+     "number": "2"
+    },
+    {
+     "cv": 721775,
+     "extra": true,
+     "series": "Absolute Carnage: Miles Morales",
+     "number": "3"
+    },
+    {
+     "cv": 717509,
+     "extra": true,
+     "series": "Absolute Carnage: Lethal Protectors",
+     "number": "1"
+    },
+    {
+     "cv": 719431,
+     "extra": true,
+     "series": "Absolute Carnage: Lethal Protectors",
+     "number": "2"
+    },
+    {
+     "cv": 723847,
+     "extra": true,
+     "series": "Absolute Carnage: Lethal Protectors",
+     "number": "3"
+    },
+    {
+     "cv": 716950,
+     "extra": true,
+     "series": "Absolute Carnage vs. Deadpool",
+     "number": "1"
+    },
+    {
+     "cv": 718744,
+     "extra": true,
+     "series": "Absolute Carnage vs. Deadpool",
+     "number": "2"
+    },
+    {
+     "cv": 723106,
+     "extra": true,
+     "series": "Absolute Carnage vs. Deadpool",
+     "number": "3"
+    },
+    {
+     "cv": 716347,
+     "extra": true,
+     "series": "Absolute Carnage: Scream",
+     "number": "1"
+    },
+    {
+     "cv": 718118,
+     "extra": true,
+     "series": "Absolute Carnage: Scream",
+     "number": "2"
+    },
+    {
+     "cv": 723105,
+     "extra": true,
+     "series": "Absolute Carnage: Scream",
+     "number": "3"
+    },
+    {
+     "cv": 723104,
+     "extra": true,
+     "series": "Absolute Carnage: Avengers",
+     "number": "1"
+    },
+    {
+     "cv": 718771,
+     "extra": false,
+     "series": "Venom",
+     "number": "18"
+    },
+    {
+     "cv": 725261,
+     "extra": false,
+     "series": "Venom",
+     "number": "19"
+    }
+   ]
+  },
+  {
+   "name": "The Symbiote War",
+   "note": null,
+   "issues": [
+    {
+     "cv": 719430,
+     "extra": false,
+     "series": "Absolute Carnage",
+     "number": "3"
+    },
+    {
+     "cv": 721144,
+     "extra": true,
+     "series": "Absolute Carnage: Immortal Hulk",
+     "number": "1"
+    },
+    {
+     "cv": 723103,
+     "extra": false,
+     "series": "Absolute Carnage",
+     "number": "4"
+    },
+    {
+     "cv": 720156,
+     "extra": true,
+     "series": "The Amazing Spider-Man",
+     "number": "30"
+    },
+    {
+     "cv": 721778,
+     "extra": true,
+     "series": "The Amazing Spider-Man",
+     "number": "31"
+    },
+    {
+     "cv": 728410,
+     "extra": true,
+     "series": "Absolute Carnage: Captain Marvel",
+     "number": "1"
+    },
+    {
+     "cv": 728409,
+     "extra": false,
+     "series": "Absolute Carnage",
+     "number": "5"
+    },
+    {
+     "cv": 728983,
+     "extra": false,
+     "series": "Venom",
+     "number": "20"
+    }
+   ]
+  }
+ ]
+}

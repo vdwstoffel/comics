@@ -1,0 +1,227 @@
+{
+ "id": 7,
+ "slug": "annihilation",
+ "name": "Annihilation",
+ "exportName": "annihilation",
+ "publisher": "Marvel",
+ "years": "2006",
+ "description": "From the Negative Zone, Annihilus sends a wave of destruction across the universe, and the Nova Corps is wiped out in an hour. The cosmic heroes who are left, a lone Nova among them, have to turn a rout into a war.",
+ "phases": [
+  {
+   "name": "The Wave",
+   "note": "In Full, four limited series follow Nova, the Silver Surfer, the Super-Skrull and Ronan as the wave spreads.",
+   "issues": [
+    {
+     "cv": 107044,
+     "extra": true,
+     "series": "Drax the Destroyer",
+     "number": "1"
+    },
+    {
+     "cv": 107164,
+     "extra": true,
+     "series": "Drax the Destroyer",
+     "number": "2"
+    },
+    {
+     "cv": 107165,
+     "extra": true,
+     "series": "Drax the Destroyer",
+     "number": "3"
+    },
+    {
+     "cv": 107166,
+     "extra": true,
+     "series": "Drax the Destroyer",
+     "number": "4"
+    },
+    {
+     "cv": 107043,
+     "extra": false,
+     "series": "Annihilation: Prologue",
+     "number": "1"
+    },
+    {
+     "cv": 105470,
+     "extra": true,
+     "series": "Annihilation: Nova",
+     "number": "1"
+    },
+    {
+     "cv": 105476,
+     "extra": true,
+     "series": "Annihilation: Nova",
+     "number": "2"
+    },
+    {
+     "cv": 105477,
+     "extra": true,
+     "series": "Annihilation: Nova",
+     "number": "3"
+    },
+    {
+     "cv": 105478,
+     "extra": true,
+     "series": "Annihilation: Nova",
+     "number": "4"
+    },
+    {
+     "cv": 125533,
+     "extra": true,
+     "series": "Annihilation: Silver Surfer",
+     "number": "1"
+    },
+    {
+     "cv": 120431,
+     "extra": true,
+     "series": "Annihilation: Silver Surfer",
+     "number": "2"
+    },
+    {
+     "cv": 125535,
+     "extra": true,
+     "series": "Annihilation: Silver Surfer",
+     "number": "3"
+    },
+    {
+     "cv": 125591,
+     "extra": true,
+     "series": "Annihilation: Silver Surfer",
+     "number": "4"
+    },
+    {
+     "cv": 105471,
+     "extra": true,
+     "series": "Annihilation: Super-Skrull",
+     "number": "1"
+    },
+    {
+     "cv": 120428,
+     "extra": true,
+     "series": "Annihilation: Super-Skrull",
+     "number": "2"
+    },
+    {
+     "cv": 120429,
+     "extra": true,
+     "series": "Annihilation: Super-Skrull",
+     "number": "3"
+    },
+    {
+     "cv": 120430,
+     "extra": true,
+     "series": "Annihilation: Super-Skrull",
+     "number": "4"
+    },
+    {
+     "cv": 120432,
+     "extra": true,
+     "series": "Annihilation: Ronan",
+     "number": "1"
+    },
+    {
+     "cv": 125235,
+     "extra": true,
+     "series": "Annihilation: Ronan",
+     "number": "2"
+    },
+    {
+     "cv": 125236,
+     "extra": true,
+     "series": "Annihilation: Ronan",
+     "number": "3"
+    },
+    {
+     "cv": 125237,
+     "extra": true,
+     "series": "Annihilation: Ronan",
+     "number": "4"
+    }
+   ]
+  },
+  {
+   "name": "Annihilation",
+   "note": null,
+   "issues": [
+    {
+     "cv": 108532,
+     "extra": false,
+     "series": "Annihilation",
+     "number": "1"
+    },
+    {
+     "cv": 108533,
+     "extra": false,
+     "series": "Annihilation",
+     "number": "2"
+    },
+    {
+     "cv": 108534,
+     "extra": false,
+     "series": "Annihilation",
+     "number": "3"
+    },
+    {
+     "cv": 108535,
+     "extra": false,
+     "series": "Annihilation",
+     "number": "4"
+    },
+    {
+     "cv": 106256,
+     "extra": false,
+     "series": "Annihilation",
+     "number": "5"
+    },
+    {
+     "cv": 106331,
+     "extra": false,
+     "series": "Annihilation",
+     "number": "6"
+    }
+   ]
+  },
+  {
+   "name": "Aftermath",
+   "note": null,
+   "issues": [
+    {
+     "cv": 106711,
+     "extra": true,
+     "series": "Annihilation: Heralds of Galactus",
+     "number": "1"
+    },
+    {
+     "cv": 107996,
+     "extra": true,
+     "series": "Annihilation: Heralds of Galactus",
+     "number": "2"
+    },
+    {
+     "cv": 120235,
+     "extra": true,
+     "series": "What If? Annihilation",
+     "number": "1"
+    },
+    {
+     "cv": 108362,
+     "extra": true,
+     "series": "Nova",
+     "number": "1"
+    },
+    {
+     "cv": 109264,
+     "extra": true,
+     "series": "Nova",
+     "number": "2"
+    },
+    {
+     "cv": 110434,
+     "extra": true,
+     "series": "Nova",
+     "number": "3"
+    }
+   ]
+  }
+ ]
+}

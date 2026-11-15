@@ -1,0 +1,395 @@
+{
+ "id": 15,
+ "slug": "crisis-on-infinite-earths",
+ "name": "Crisis on Infinite Earths",
+ "exportName": "crisisOnInfiniteEarths",
+ "publisher": "DC Comics",
+ "years": "1985–1986",
+ "description": "A wave of antimatter is erasing the multiverse one Earth at a time, and the mysterious Monitor is gathering heroes from every world that is left to stop it. Not every world, and not every hero, will survive.",
+ "phases": [
+  {
+   "name": "Worlds Die",
+   "note": null,
+   "issues": [
+    {
+     "cv": 25335,
+     "extra": false,
+     "series": "Crisis on Infinite Earths",
+     "number": "1"
+    },
+    {
+     "cv": 25919,
+     "extra": true,
+     "series": "All-Star Squadron",
+     "number": "50"
+    },
+    {
+     "cv": 26025,
+     "extra": true,
+     "series": "All-Star Squadron",
+     "number": "51"
+    },
+    {
+     "cv": 26132,
+     "extra": true,
+     "series": "All-Star Squadron",
+     "number": "52"
+    },
+    {
+     "cv": 26035,
+     "extra": true,
+     "series": "The Fury of Firestorm",
+     "number": "41"
+    },
+    {
+     "cv": 25842,
+     "extra": true,
+     "series": "Infinity, Inc.",
+     "number": "18"
+    },
+    {
+     "cv": 25441,
+     "extra": false,
+     "series": "Crisis on Infinite Earths",
+     "number": "2"
+    },
+    {
+     "cv": 26037,
+     "extra": true,
+     "series": "Green Lantern",
+     "number": "194"
+    },
+    {
+     "cv": 25933,
+     "extra": true,
+     "series": "Infinity, Inc.",
+     "number": "19"
+    },
+    {
+     "cv": 26040,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "244"
+    },
+    {
+     "cv": 26039,
+     "extra": true,
+     "series": "Infinity, Inc.",
+     "number": "20"
+    },
+    {
+     "cv": 26028,
+     "extra": true,
+     "series": "Batman",
+     "number": "389"
+    },
+    {
+     "cv": 113011,
+     "extra": true,
+     "series": "Detective Comics",
+     "number": "556"
+    },
+    {
+     "cv": 26134,
+     "extra": true,
+     "series": "Batman",
+     "number": "390"
+    },
+    {
+     "cv": 113012,
+     "extra": true,
+     "series": "Detective Comics",
+     "number": "557"
+    },
+    {
+     "cv": 26343,
+     "extra": true,
+     "series": "Batman",
+     "number": "391"
+    },
+    {
+     "cv": 113013,
+     "extra": true,
+     "series": "Detective Comics",
+     "number": "558"
+    },
+    {
+     "cv": 25948,
+     "extra": true,
+     "series": "Vigilante",
+     "number": "22"
+    },
+    {
+     "cv": 25532,
+     "extra": false,
+     "series": "Crisis on Infinite Earths",
+     "number": "3"
+    },
+    {
+     "cv": 25927,
+     "extra": true,
+     "series": "DC Comics Presents",
+     "number": "86"
+    },
+    {
+     "cv": 261303,
+     "extra": true,
+     "series": "The Saga of Swamp Thing",
+     "number": "44"
+    },
+    {
+     "cv": 261304,
+     "extra": true,
+     "series": "The Saga of Swamp Thing",
+     "number": "45"
+    },
+    {
+     "cv": 109972,
+     "extra": true,
+     "series": "Wonder Woman",
+     "number": "328"
+    },
+    {
+     "cv": 109973,
+     "extra": true,
+     "series": "Wonder Woman",
+     "number": "329"
+    },
+    {
+     "cv": 25053,
+     "extra": true,
+     "series": "Infinity, Inc. Annual",
+     "number": "1"
+    },
+    {
+     "cv": 26144,
+     "extra": true,
+     "series": "Infinity, Inc.",
+     "number": "21"
+    },
+    {
+     "cv": 25638,
+     "extra": false,
+     "series": "Crisis on Infinite Earths",
+     "number": "4"
+    },
+    {
+     "cv": 150946,
+     "extra": true,
+     "series": "Legends of the DCU: Crisis on Infinite Earths",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "Into the Crisis",
+   "note": null,
+   "issues": [
+    {
+     "cv": 25734,
+     "extra": false,
+     "series": "Crisis on Infinite Earths",
+     "number": "5"
+    },
+    {
+     "cv": 26341,
+     "extra": true,
+     "series": "All-Star Squadron",
+     "number": "53"
+    },
+    {
+     "cv": 26444,
+     "extra": true,
+     "series": "All-Star Squadron",
+     "number": "54"
+    },
+    {
+     "cv": 26549,
+     "extra": true,
+     "series": "All-Star Squadron",
+     "number": "55"
+    },
+    {
+     "cv": 26641,
+     "extra": true,
+     "series": "All-Star Squadron",
+     "number": "56"
+    },
+    {
+     "cv": 26354,
+     "extra": true,
+     "series": "Infinity, Inc.",
+     "number": "22"
+    },
+    {
+     "cv": 26575,
+     "extra": true,
+     "series": "Swamp Thing",
+     "number": "46"
+    },
+    {
+     "cv": 25834,
+     "extra": false,
+     "series": "Crisis on Infinite Earths",
+     "number": "6"
+    },
+    {
+     "cv": 26458,
+     "extra": true,
+     "series": "Infinity, Inc.",
+     "number": "23"
+    },
+    {
+     "cv": 26142,
+     "extra": true,
+     "series": "Green Lantern",
+     "number": "195"
+    },
+    {
+     "cv": 25926,
+     "extra": false,
+     "series": "Crisis on Infinite Earths",
+     "number": "7"
+    },
+    {
+     "cv": 26564,
+     "extra": true,
+     "series": "Infinity, Inc.",
+     "number": "24"
+    },
+    {
+     "cv": 26041,
+     "extra": true,
+     "series": "Legion of Super-Heroes",
+     "number": "16"
+    },
+    {
+     "cv": 26356,
+     "extra": true,
+     "series": "Legion of Super-Heroes",
+     "number": "18"
+    },
+    {
+     "cv": 26033,
+     "extra": true,
+     "series": "DC Comics Presents",
+     "number": "87"
+    },
+    {
+     "cv": 26154,
+     "extra": true,
+     "series": "Superman",
+     "number": "414"
+    },
+    {
+     "cv": 25939,
+     "extra": true,
+     "series": "The Omega Men",
+     "number": "31"
+    },
+    {
+     "cv": 26031,
+     "extra": false,
+     "series": "Crisis on Infinite Earths",
+     "number": "8"
+    },
+    {
+     "cv": 26030,
+     "extra": true,
+     "series": "Blue Devil",
+     "number": "18"
+    },
+    {
+     "cv": 26140,
+     "extra": true,
+     "series": "DC Comics Presents",
+     "number": "88"
+    },
+    {
+     "cv": 140268,
+     "extra": true,
+     "series": "Justice League of America Annual",
+     "number": "3"
+    },
+    {
+     "cv": 26138,
+     "extra": false,
+     "series": "Crisis on Infinite Earths",
+     "number": "9"
+    },
+    {
+     "cv": 26145,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "245"
+    },
+    {
+     "cv": 26141,
+     "extra": true,
+     "series": "The Fury of Firestorm",
+     "number": "42"
+    },
+    {
+     "cv": 25938,
+     "extra": true,
+     "series": "The New Teen Titans",
+     "number": "13"
+    }
+   ]
+  },
+  {
+   "name": "The Final Battle",
+   "note": null,
+   "issues": [
+    {
+     "cv": 26347,
+     "extra": false,
+     "series": "Crisis on Infinite Earths",
+     "number": "10"
+    },
+    {
+     "cv": 26452,
+     "extra": false,
+     "series": "Crisis on Infinite Earths",
+     "number": "11"
+    },
+    {
+     "cv": 26445,
+     "extra": true,
+     "series": "Amethyst, Princess of Gemworld",
+     "number": "13"
+    },
+    {
+     "cv": 26352,
+     "extra": true,
+     "series": "Green Lantern",
+     "number": "196"
+    },
+    {
+     "cv": 26456,
+     "extra": true,
+     "series": "Green Lantern",
+     "number": "197"
+    },
+    {
+     "cv": 26556,
+     "extra": false,
+     "series": "Crisis on Infinite Earths",
+     "number": "12"
+    },
+    {
+     "cv": 26562,
+     "extra": true,
+     "series": "Green Lantern",
+     "number": "198"
+    },
+    {
+     "cv": 26366,
+     "extra": true,
+     "series": "Superman",
+     "number": "415"
+    }
+   ]
+  }
+ ]
+}

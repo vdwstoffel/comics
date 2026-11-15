@@ -1,0 +1,89 @@
+{
+ "id": 13,
+ "slug": "house-of-x-powers-of-x",
+ "name": "House of X / Powers of X",
+ "exportName": "houseOfXPowersOfX",
+ "publisher": "Marvel",
+ "years": "2019",
+ "description": "Charles Xavier has built a nation for mutants on the living island of Krakoa, and offered every mutant on Earth a home - and the world, medicines it cannot refuse. Powers of X tells mutantkind's story across a hundred and a thousand years at once. Jonathan Hickman's start to the Krakoa era.",
+ "phases": [
+  {
+   "name": "House of X and Powers of X",
+   "note": "The two series read as one, alternating, in the order they came out.",
+   "issues": [
+    {
+     "cv": 714236,
+     "extra": false,
+     "series": "House of X",
+     "number": "1"
+    },
+    {
+     "cv": 714669,
+     "extra": false,
+     "series": "Powers of X",
+     "number": "1"
+    },
+    {
+     "cv": 715306,
+     "extra": false,
+     "series": "House of X",
+     "number": "2"
+    },
+    {
+     "cv": 716371,
+     "extra": false,
+     "series": "Powers of X",
+     "number": "2"
+    },
+    {
+     "cv": 716968,
+     "extra": false,
+     "series": "Powers of X",
+     "number": "3"
+    },
+    {
+     "cv": 717519,
+     "extra": false,
+     "series": "House of X",
+     "number": "3"
+    },
+    {
+     "cv": 718128,
+     "extra": false,
+     "series": "House of X",
+     "number": "4"
+    },
+    {
+     "cv": 718763,
+     "extra": false,
+     "series": "Powers of X",
+     "number": "4"
+    },
+    {
+     "cv": 719439,
+     "extra": false,
+     "series": "House of X",
+     "number": "5"
+    },
+    {
+     "cv": 720169,
+     "extra": false,
+     "series": "Powers of X",
+     "number": "5"
+    },
+    {
+     "cv": 721154,
+     "extra": false,
+     "series": "House of X",
+     "number": "6"
+    },
+    {
+     "cv": 721789,
+     "extra": false,
+     "series": "Powers of X",
+     "number": "6"
+    }
+   ]
+  }
+ ]
+}

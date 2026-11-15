@@ -1,0 +1,395 @@
+{
+ "id": 4,
+ "slug": "age-of-apocalypse",
+ "name": "Age of Apocalypse",
+ "exportName": "ageOfApocalypse",
+ "publisher": "Marvel",
+ "years": "1995",
+ "description": "Charles Xavier died twenty years before he could found the X-Men, and Apocalypse rules North America. Magneto leads the last mutant resistance, and one survivor remembers a world that was never supposed to end. The X-Men have one chance to set time right.",
+ "phases": [
+  {
+   "name": "Legion Quest",
+   "note": "Xavier's son Legion travels back in time to kill Magneto. Core starts in the world that comes out of it.",
+   "issues": [
+    {
+     "cv": 65739,
+     "extra": true,
+     "series": "X-Men",
+     "number": "38"
+    },
+    {
+     "cv": 65689,
+     "extra": true,
+     "series": "X-Factor",
+     "number": "108"
+    },
+    {
+     "cv": 40115,
+     "extra": true,
+     "series": "The Uncanny X-Men",
+     "number": "319"
+    },
+    {
+     "cv": 65740,
+     "extra": true,
+     "series": "X-Men",
+     "number": "39"
+    },
+    {
+     "cv": 828866,
+     "extra": true,
+     "series": "X-Men Legends",
+     "number": "1"
+    },
+    {
+     "cv": 840963,
+     "extra": true,
+     "series": "X-Men Legends",
+     "number": "2"
+    },
+    {
+     "cv": 65690,
+     "extra": true,
+     "series": "X-Factor",
+     "number": "109"
+    },
+    {
+     "cv": 40358,
+     "extra": true,
+     "series": "The Uncanny X-Men",
+     "number": "320"
+    },
+    {
+     "cv": 65741,
+     "extra": true,
+     "series": "X-Men",
+     "number": "40"
+    },
+    {
+     "cv": 40487,
+     "extra": true,
+     "series": "The Uncanny X-Men",
+     "number": "321"
+    },
+    {
+     "cv": 65742,
+     "extra": true,
+     "series": "X-Men",
+     "number": "41"
+    },
+    {
+     "cv": 40492,
+     "extra": true,
+     "series": "Cable",
+     "number": "20"
+    }
+   ]
+  },
+  {
+   "name": "Tales of the Age",
+   "note": "Stories set earlier in Apocalypse's world, written later. Optional.",
+   "issues": [
+    {
+     "cv": 105613,
+     "extra": true,
+     "series": "X-Men Chronicles",
+     "number": "1"
+    },
+    {
+     "cv": 105734,
+     "extra": true,
+     "series": "Tales from the Age of Apocalypse",
+     "number": "1"
+    },
+    {
+     "cv": 105741,
+     "extra": true,
+     "series": "Tales from the Age of Apocalypse",
+     "number": "2"
+    },
+    {
+     "cv": 105648,
+     "extra": true,
+     "series": "X-Men Chronicles",
+     "number": "2"
+    },
+    {
+     "cv": 43887,
+     "extra": true,
+     "series": "X-Man",
+     "number": "-1"
+    },
+    {
+     "cv": 49461,
+     "extra": true,
+     "series": "Blink",
+     "number": "1"
+    },
+    {
+     "cv": 49462,
+     "extra": true,
+     "series": "Blink",
+     "number": "2"
+    },
+    {
+     "cv": 49463,
+     "extra": true,
+     "series": "Blink",
+     "number": "3"
+    },
+    {
+     "cv": 49464,
+     "extra": true,
+     "series": "Blink",
+     "number": "4"
+    }
+   ]
+  },
+  {
+   "name": "X-Men Alpha",
+   "note": "The X-Men titles were replaced for four months. Each round of them reads as one chapter.",
+   "issues": [
+    {
+     "cv": 105731,
+     "extra": false,
+     "series": "X-Men Alpha",
+     "number": "1"
+    },
+    {
+     "cv": 40582,
+     "extra": false,
+     "series": "Astonishing X-Men",
+     "number": "1"
+    },
+    {
+     "cv": 40600,
+     "extra": false,
+     "series": "X-Calibre",
+     "number": "1"
+    },
+    {
+     "cv": 40588,
+     "extra": false,
+     "series": "Gambit & The X-Ternals",
+     "number": "1"
+    },
+    {
+     "cv": 40589,
+     "extra": false,
+     "series": "Generation Next",
+     "number": "1"
+    },
+    {
+     "cv": 40598,
+     "extra": false,
+     "series": "Weapon X",
+     "number": "1"
+    },
+    {
+     "cv": 40581,
+     "extra": false,
+     "series": "Amazing X-Men",
+     "number": "1"
+    },
+    {
+     "cv": 40587,
+     "extra": false,
+     "series": "Factor X",
+     "number": "1"
+    },
+    {
+     "cv": 40601,
+     "extra": false,
+     "series": "X-Man",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "The War for Survival",
+   "note": null,
+   "issues": [
+    {
+     "cv": 105543,
+     "extra": false,
+     "series": "Amazing X-Men",
+     "number": "2"
+    },
+    {
+     "cv": 40726,
+     "extra": false,
+     "series": "Factor X",
+     "number": "2"
+    },
+    {
+     "cv": 40733,
+     "extra": false,
+     "series": "Weapon X",
+     "number": "2"
+    },
+    {
+     "cv": 40728,
+     "extra": false,
+     "series": "Gambit & The X-Ternals",
+     "number": "2"
+    },
+    {
+     "cv": 40735,
+     "extra": false,
+     "series": "X-Calibre",
+     "number": "2"
+    },
+    {
+     "cv": 40729,
+     "extra": false,
+     "series": "Generation Next",
+     "number": "2"
+    },
+    {
+     "cv": 40720,
+     "extra": false,
+     "series": "Astonishing X-Men",
+     "number": "2"
+    },
+    {
+     "cv": 40736,
+     "extra": false,
+     "series": "X-Man",
+     "number": "2"
+    },
+    {
+     "cv": 105758,
+     "extra": true,
+     "series": "Age of Apocalypse: The Chosen",
+     "number": "1"
+    },
+    {
+     "cv": 40850,
+     "extra": false,
+     "series": "Factor X",
+     "number": "3"
+    },
+    {
+     "cv": 40845,
+     "extra": false,
+     "series": "Astonishing X-Men",
+     "number": "3"
+    },
+    {
+     "cv": 40844,
+     "extra": false,
+     "series": "Amazing X-Men",
+     "number": "3"
+    },
+    {
+     "cv": 40861,
+     "extra": false,
+     "series": "X-Calibre",
+     "number": "3"
+    },
+    {
+     "cv": 40852,
+     "extra": false,
+     "series": "Gambit & The X-Ternals",
+     "number": "3"
+    },
+    {
+     "cv": 40853,
+     "extra": false,
+     "series": "Generation Next",
+     "number": "3"
+    },
+    {
+     "cv": 40862,
+     "extra": false,
+     "series": "X-Man",
+     "number": "3"
+    },
+    {
+     "cv": 40859,
+     "extra": false,
+     "series": "Weapon X",
+     "number": "3"
+    }
+   ]
+  },
+  {
+   "name": "X-Men Omega",
+   "note": null,
+   "issues": [
+    {
+     "cv": 40864,
+     "extra": true,
+     "series": "X-Universe",
+     "number": "1"
+    },
+    {
+     "cv": 40984,
+     "extra": false,
+     "series": "X-Calibre",
+     "number": "4"
+    },
+    {
+     "cv": 40977,
+     "extra": false,
+     "series": "Generation Next",
+     "number": "4"
+    },
+    {
+     "cv": 40968,
+     "extra": false,
+     "series": "Astonishing X-Men",
+     "number": "4"
+    },
+    {
+     "cv": 40985,
+     "extra": false,
+     "series": "X-Man",
+     "number": "4"
+    },
+    {
+     "cv": 40973,
+     "extra": false,
+     "series": "Factor X",
+     "number": "4"
+    },
+    {
+     "cv": 40982,
+     "extra": false,
+     "series": "Weapon X",
+     "number": "4"
+    },
+    {
+     "cv": 40988,
+     "extra": true,
+     "series": "X-Universe",
+     "number": "2"
+    },
+    {
+     "cv": 40976,
+     "extra": false,
+     "series": "Gambit & The X-Ternals",
+     "number": "4"
+    },
+    {
+     "cv": 40967,
+     "extra": false,
+     "series": "Amazing X-Men",
+     "number": "4"
+    },
+    {
+     "cv": 105975,
+     "extra": false,
+     "series": "X-Men Omega",
+     "number": "1"
+    },
+    {
+     "cv": 101450,
+     "extra": true,
+     "series": "X-Men: Age of Apocalypse",
+     "number": "1"
+    }
+   ]
+  }
+ ]
+}

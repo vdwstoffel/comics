@@ -1,0 +1,305 @@
+{
+ "id": 16,
+ "slug": "death-of-superman",
+ "name": "The Death of Superman",
+ "exportName": "deathOfSuperman",
+ "publisher": "DC Comics",
+ "years": "1992–1993",
+ "description": "Doomsday breaks out of his underground prison and walks toward Metropolis, destroying everything in his path. The Justice League cannot stop him. Superman is all that is left, and he will not stop fighting.",
+ "phases": [
+  {
+   "name": "The Death of Superman",
+   "note": null,
+   "issues": [
+    {
+     "cv": 36430,
+     "extra": false,
+     "series": "Superman: The Man of Steel",
+     "number": "17"
+    },
+    {
+     "cv": 68543,
+     "extra": false,
+     "series": "Superman",
+     "number": "73"
+    },
+    {
+     "cv": 36350,
+     "extra": false,
+     "series": "Adventures of Superman",
+     "number": "496"
+    },
+    {
+     "cv": 115905,
+     "extra": false,
+     "series": "Action Comics",
+     "number": "683"
+    },
+    {
+     "cv": 36544,
+     "extra": false,
+     "series": "Superman: The Man of Steel",
+     "number": "18"
+    },
+    {
+     "cv": 36485,
+     "extra": false,
+     "series": "Justice League America",
+     "number": "69"
+    },
+    {
+     "cv": 68544,
+     "extra": false,
+     "series": "Superman",
+     "number": "74"
+    },
+    {
+     "cv": 36467,
+     "extra": false,
+     "series": "Adventures of Superman",
+     "number": "497"
+    },
+    {
+     "cv": 105943,
+     "extra": false,
+     "series": "Action Comics",
+     "number": "684"
+    },
+    {
+     "cv": 36781,
+     "extra": false,
+     "series": "Superman: The Man of Steel",
+     "number": "19"
+    },
+    {
+     "cv": 68545,
+     "extra": false,
+     "series": "Superman",
+     "number": "75"
+    }
+   ]
+  },
+  {
+   "name": "Funeral for a Friend",
+   "note": "The world mourns.",
+   "issues": [
+    {
+     "cv": 36721,
+     "extra": false,
+     "series": "Justice League America",
+     "number": "70"
+    },
+    {
+     "cv": 36708,
+     "extra": false,
+     "series": "Adventures of Superman",
+     "number": "498"
+    },
+    {
+     "cv": 110934,
+     "extra": false,
+     "series": "Action Comics",
+     "number": "685"
+    },
+    {
+     "cv": 36890,
+     "extra": false,
+     "series": "Superman: The Man of Steel",
+     "number": "20"
+    },
+    {
+     "cv": 68546,
+     "extra": false,
+     "series": "Superman",
+     "number": "76"
+    },
+    {
+     "cv": 36814,
+     "extra": false,
+     "series": "Adventures of Superman",
+     "number": "499"
+    },
+    {
+     "cv": 110957,
+     "extra": false,
+     "series": "Action Comics",
+     "number": "686"
+    },
+    {
+     "cv": 37003,
+     "extra": false,
+     "series": "Superman: The Man of Steel",
+     "number": "21"
+    },
+    {
+     "cv": 68547,
+     "extra": false,
+     "series": "Superman",
+     "number": "77"
+    },
+    {
+     "cv": 199201,
+     "extra": false,
+     "series": "Superman: The Legacy of Superman",
+     "number": "1"
+    },
+    {
+     "cv": 187424,
+     "extra": false,
+     "series": "Supergirl/Lex Luthor Special",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "Reign of the Supermen",
+   "note": "Four new heroes claim to be Superman.",
+   "issues": [
+    {
+     "cv": 37303,
+     "extra": false,
+     "series": "Adventures of Superman",
+     "number": "500"
+    },
+    {
+     "cv": 108544,
+     "extra": false,
+     "series": "Action Comics",
+     "number": "687"
+    },
+    {
+     "cv": 37405,
+     "extra": false,
+     "series": "Superman: The Man of Steel",
+     "number": "22"
+    },
+    {
+     "cv": 68548,
+     "extra": false,
+     "series": "Superman",
+     "number": "78"
+    },
+    {
+     "cv": 37425,
+     "extra": false,
+     "series": "Adventures of Superman",
+     "number": "501"
+    },
+    {
+     "cv": 108545,
+     "extra": false,
+     "series": "Action Comics",
+     "number": "688"
+    },
+    {
+     "cv": 37555,
+     "extra": false,
+     "series": "Superman: The Man of Steel",
+     "number": "23"
+    },
+    {
+     "cv": 68549,
+     "extra": false,
+     "series": "Superman",
+     "number": "79"
+    },
+    {
+     "cv": 37455,
+     "extra": false,
+     "series": "Adventures of Superman",
+     "number": "502"
+    },
+    {
+     "cv": 108546,
+     "extra": false,
+     "series": "Action Comics",
+     "number": "689"
+    },
+    {
+     "cv": 37692,
+     "extra": false,
+     "series": "Superman: The Man of Steel",
+     "number": "24"
+    },
+    {
+     "cv": 68550,
+     "extra": false,
+     "series": "Superman",
+     "number": "80"
+    },
+    {
+     "cv": 37597,
+     "extra": false,
+     "series": "Adventures of Superman",
+     "number": "503"
+    },
+    {
+     "cv": 108547,
+     "extra": false,
+     "series": "Action Comics",
+     "number": "690"
+    },
+    {
+     "cv": 37833,
+     "extra": false,
+     "series": "Superman: The Man of Steel",
+     "number": "25"
+    },
+    {
+     "cv": 68551,
+     "extra": false,
+     "series": "Superman",
+     "number": "81"
+    },
+    {
+     "cv": 37733,
+     "extra": false,
+     "series": "Adventures of Superman",
+     "number": "504"
+    },
+    {
+     "cv": 116349,
+     "extra": false,
+     "series": "Action Comics",
+     "number": "691"
+    },
+    {
+     "cv": 37983,
+     "extra": false,
+     "series": "Superman: The Man of Steel",
+     "number": "26"
+    },
+    {
+     "cv": 68552,
+     "extra": false,
+     "series": "Superman",
+     "number": "82"
+    },
+    {
+     "cv": 37886,
+     "extra": false,
+     "series": "Green Lantern",
+     "number": "46"
+    },
+    {
+     "cv": 37879,
+     "extra": false,
+     "series": "Adventures of Superman",
+     "number": "505"
+    },
+    {
+     "cv": 116268,
+     "extra": false,
+     "series": "Action Comics",
+     "number": "692"
+    },
+    {
+     "cv": 68553,
+     "extra": false,
+     "series": "Superman",
+     "number": "83"
+    }
+   ]
+  }
+ ]
+}

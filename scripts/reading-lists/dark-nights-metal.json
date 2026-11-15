@@ -1,0 +1,185 @@
+{
+ "id": 24,
+ "slug": "dark-nights-metal",
+ "name": "Dark Nights: Metal",
+ "exportName": "darkNightsMetal",
+ "publisher": "DC Comics",
+ "years": "2017–2018",
+ "description": "Beneath the DC universe lies a Dark Multiverse of nightmare worlds, and Batman has just opened the door to it. Out of it come seven evil Batmen, each from a world where Bruce Wayne went wrong, led by the one who laughs.",
+ "phases": [
+  {
+   "name": "Dark Days",
+   "note": null,
+   "issues": [
+    {
+     "cv": 601758,
+     "extra": false,
+     "series": "Dark Days: The Forge",
+     "number": "1"
+    },
+    {
+     "cv": 608175,
+     "extra": false,
+     "series": "Dark Days: The Casting",
+     "number": "1"
+    },
+    {
+     "cv": 614971,
+     "extra": false,
+     "series": "Dark Nights: Metal",
+     "number": "1"
+    },
+    {
+     "cv": 621582,
+     "extra": false,
+     "series": "Dark Nights: Metal",
+     "number": "2"
+    },
+    {
+     "cv": 622873,
+     "extra": true,
+     "series": "Batman: The Red Death",
+     "number": "1"
+    },
+    {
+     "cv": 625175,
+     "extra": true,
+     "series": "Batman: The Murder Machine",
+     "number": "1"
+    },
+    {
+     "cv": 626248,
+     "extra": true,
+     "series": "Batman: The Dawnbreaker",
+     "number": "1"
+    },
+    {
+     "cv": 630486,
+     "extra": true,
+     "series": "Batman: The Drowned",
+     "number": "1"
+    },
+    {
+     "cv": 621603,
+     "extra": true,
+     "series": "Teen Titans",
+     "number": "12"
+    },
+    {
+     "cv": 622889,
+     "extra": true,
+     "series": "Nightwing",
+     "number": "29"
+    },
+    {
+     "cv": 625292,
+     "extra": true,
+     "series": "Suicide Squad",
+     "number": "26"
+    },
+    {
+     "cv": 626255,
+     "extra": true,
+     "series": "Green Arrow",
+     "number": "32"
+    },
+    {
+     "cv": 632457,
+     "extra": true,
+     "series": "Batman: The Merciless",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "The Dark Knights",
+   "note": null,
+   "issues": [
+    {
+     "cv": 628545,
+     "extra": false,
+     "series": "Dark Nights: Metal",
+     "number": "3"
+    },
+    {
+     "cv": 632461,
+     "extra": true,
+     "series": "The Flash",
+     "number": "33"
+    },
+    {
+     "cv": 634505,
+     "extra": true,
+     "series": "Batman: The Devastator",
+     "number": "1"
+    },
+    {
+     "cv": 634517,
+     "extra": true,
+     "series": "Justice League",
+     "number": "32"
+    },
+    {
+     "cv": 636345,
+     "extra": true,
+     "series": "Hal Jordan & The Green Lantern Corps",
+     "number": "32"
+    },
+    {
+     "cv": 638576,
+     "extra": true,
+     "series": "Justice League",
+     "number": "33"
+    },
+    {
+     "cv": 636338,
+     "extra": true,
+     "series": "Batman: Lost",
+     "number": "1"
+    },
+    {
+     "cv": 647910,
+     "extra": false,
+     "series": "Dark Nights: Metal",
+     "number": "4"
+    },
+    {
+     "cv": 649706,
+     "extra": true,
+     "series": "Hawkman Found",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "Into the Dark",
+   "note": null,
+   "issues": [
+    {
+     "cv": 656677,
+     "extra": false,
+     "series": "Dark Nights: Metal",
+     "number": "5"
+    },
+    {
+     "cv": 659977,
+     "extra": true,
+     "series": "Dark Knights Rising: The Wild Hunt",
+     "number": "1"
+    },
+    {
+     "cv": 694877,
+     "extra": true,
+     "series": "The Batman Who Laughs",
+     "number": "1"
+    },
+    {
+     "cv": 664258,
+     "extra": false,
+     "series": "Dark Nights: Metal",
+     "number": "6"
+    }
+   ]
+  }
+ ]
+}

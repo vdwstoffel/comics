@@ -1,0 +1,545 @@
+{
+ "id": 17,
+ "slug": "knightfall",
+ "name": "Knightfall",
+ "exportName": "knightfall",
+ "publisher": "DC Comics",
+ "years": "1993–1994",
+ "description": "Bane has studied Batman for years. He breaks open Arkham Asylum and turns every inmate loose on Gotham, then waits while Batman hunts them down one by one, for the night he is too tired to fight.",
+ "phases": [
+  {
+   "name": "Prelude",
+   "note": "Bane comes to Gotham. Optional - Core follows Batman and Detective Comics, which carry the story.",
+   "issues": [
+    {
+     "cv": 36110,
+     "extra": true,
+     "series": "Batman",
+     "number": "484"
+    },
+    {
+     "cv": 36228,
+     "extra": true,
+     "series": "Batman",
+     "number": "485"
+    },
+    {
+     "cv": 36353,
+     "extra": true,
+     "series": "Batman",
+     "number": "486"
+    },
+    {
+     "cv": 36470,
+     "extra": true,
+     "series": "Batman",
+     "number": "487"
+    },
+    {
+     "cv": 36710,
+     "extra": true,
+     "series": "Batman",
+     "number": "488"
+    },
+    {
+     "cv": 36816,
+     "extra": true,
+     "series": "Batman",
+     "number": "489"
+    },
+    {
+     "cv": 36921,
+     "extra": true,
+     "series": "Batman",
+     "number": "490"
+    },
+    {
+     "cv": 113125,
+     "extra": true,
+     "series": "Detective Comics",
+     "number": "654"
+    },
+    {
+     "cv": 113127,
+     "extra": true,
+     "series": "Detective Comics",
+     "number": "655"
+    },
+    {
+     "cv": 113128,
+     "extra": true,
+     "series": "Detective Comics",
+     "number": "656"
+    },
+    {
+     "cv": 113129,
+     "extra": true,
+     "series": "Detective Comics",
+     "number": "657"
+    },
+    {
+     "cv": 106803,
+     "extra": true,
+     "series": "Detective Comics",
+     "number": "658"
+    }
+   ]
+  },
+  {
+   "name": "Knightfall",
+   "note": null,
+   "issues": [
+    {
+     "cv": 37038,
+     "extra": false,
+     "series": "Batman",
+     "number": "491"
+    },
+    {
+     "cv": 37172,
+     "extra": false,
+     "series": "Batman",
+     "number": "492"
+    },
+    {
+     "cv": 105926,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "659"
+    },
+    {
+     "cv": 37273,
+     "extra": false,
+     "series": "Batman",
+     "number": "493"
+    },
+    {
+     "cv": 108471,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "660"
+    },
+    {
+     "cv": 37305,
+     "extra": false,
+     "series": "Batman",
+     "number": "494"
+    },
+    {
+     "cv": 108494,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "661"
+    },
+    {
+     "cv": 37419,
+     "extra": false,
+     "series": "Batman",
+     "number": "495"
+    },
+    {
+     "cv": 108495,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "662"
+    },
+    {
+     "cv": 37457,
+     "extra": false,
+     "series": "Batman",
+     "number": "496"
+    },
+    {
+     "cv": 108496,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "663"
+    },
+    {
+     "cv": 37566,
+     "extra": false,
+     "series": "Batman",
+     "number": "497"
+    },
+    {
+     "cv": 108497,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "664"
+    },
+    {
+     "cv": 107456,
+     "extra": true,
+     "series": "Showcase '93",
+     "number": "7"
+    },
+    {
+     "cv": 107494,
+     "extra": true,
+     "series": "Showcase '93",
+     "number": "8"
+    },
+    {
+     "cv": 37599,
+     "extra": false,
+     "series": "Batman",
+     "number": "498"
+    },
+    {
+     "cv": 37711,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "16"
+    },
+    {
+     "cv": 37850,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "17"
+    },
+    {
+     "cv": 37854,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "18"
+    },
+    {
+     "cv": 108498,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "665"
+    },
+    {
+     "cv": 37735,
+     "extra": false,
+     "series": "Batman",
+     "number": "499"
+    },
+    {
+     "cv": 108499,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "666"
+    },
+    {
+     "cv": 37881,
+     "extra": false,
+     "series": "Batman",
+     "number": "500"
+    }
+   ]
+  },
+  {
+   "name": "Knightquest",
+   "note": null,
+   "issues": [
+    {
+     "cv": 108519,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "667"
+    },
+    {
+     "cv": 108520,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "668"
+    },
+    {
+     "cv": 38052,
+     "extra": true,
+     "series": "Robin",
+     "number": "1"
+    },
+    {
+     "cv": 38208,
+     "extra": true,
+     "series": "Robin",
+     "number": "2"
+    },
+    {
+     "cv": 38899,
+     "extra": true,
+     "series": "Robin",
+     "number": "5"
+    },
+    {
+     "cv": 37997,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "19"
+    },
+    {
+     "cv": 38006,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "20"
+    },
+    {
+     "cv": 38033,
+     "extra": false,
+     "series": "Batman",
+     "number": "501"
+    },
+    {
+     "cv": 38191,
+     "extra": false,
+     "series": "Batman",
+     "number": "502"
+    },
+    {
+     "cv": 106823,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "669"
+    },
+    {
+     "cv": 106839,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "670"
+    },
+    {
+     "cv": 38558,
+     "extra": true,
+     "series": "Catwoman",
+     "number": "6"
+    },
+    {
+     "cv": 38440,
+     "extra": false,
+     "series": "Batman",
+     "number": "503"
+    },
+    {
+     "cv": 38591,
+     "extra": false,
+     "series": "Batman",
+     "number": "504"
+    },
+    {
+     "cv": 38595,
+     "extra": true,
+     "series": "Catwoman",
+     "number": "7"
+    },
+    {
+     "cv": 108525,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "671"
+    },
+    {
+     "cv": 108526,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "672"
+    },
+    {
+     "cv": 113130,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "673"
+    },
+    {
+     "cv": 38688,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "24"
+    },
+    {
+     "cv": 38838,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "25"
+    },
+    {
+     "cv": 38735,
+     "extra": false,
+     "series": "Batman",
+     "number": "505"
+    },
+    {
+     "cv": 38884,
+     "extra": false,
+     "series": "Batman",
+     "number": "506"
+    },
+    {
+     "cv": 39026,
+     "extra": false,
+     "series": "Batman",
+     "number": "507"
+    },
+    {
+     "cv": 38976,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "26"
+    },
+    {
+     "cv": 39122,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "27"
+    },
+    {
+     "cv": 108527,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "674"
+    },
+    {
+     "cv": 39165,
+     "extra": false,
+     "series": "Batman",
+     "number": "508"
+    },
+    {
+     "cv": 39275,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "28"
+    },
+    {
+     "cv": 108528,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "675"
+    },
+    {
+     "cv": 37894,
+     "extra": true,
+     "series": "Justice League Task Force",
+     "number": "5"
+    },
+    {
+     "cv": 38045,
+     "extra": true,
+     "series": "Justice League Task Force",
+     "number": "6"
+    },
+    {
+     "cv": 38160,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "21"
+    },
+    {
+     "cv": 38293,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "22"
+    },
+    {
+     "cv": 38549,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "23"
+    },
+    {
+     "cv": 38970,
+     "extra": true,
+     "series": "Batman: Legends of the Dark Knight",
+     "number": "59"
+    },
+    {
+     "cv": 39110,
+     "extra": true,
+     "series": "Batman: Legends of the Dark Knight",
+     "number": "60"
+    },
+    {
+     "cv": 39260,
+     "extra": true,
+     "series": "Batman: Legends of the Dark Knight",
+     "number": "61"
+    },
+    {
+     "cv": 39182,
+     "extra": true,
+     "series": "Robin",
+     "number": "7"
+    }
+   ]
+  },
+  {
+   "name": "KnightsEnd",
+   "note": null,
+   "issues": [
+    {
+     "cv": 39315,
+     "extra": false,
+     "series": "Batman",
+     "number": "509"
+    },
+    {
+     "cv": 39417,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "29"
+    },
+    {
+     "cv": 108529,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "676"
+    },
+    {
+     "cv": 39403,
+     "extra": true,
+     "series": "Batman: Legends of the Dark Knight",
+     "number": "62"
+    },
+    {
+     "cv": 39332,
+     "extra": true,
+     "series": "Robin",
+     "number": "8"
+    },
+    {
+     "cv": 39413,
+     "extra": true,
+     "series": "Catwoman",
+     "number": "12"
+    },
+    {
+     "cv": 39454,
+     "extra": false,
+     "series": "Batman",
+     "number": "510"
+    },
+    {
+     "cv": 39561,
+     "extra": true,
+     "series": "Batman: Shadow of the Bat",
+     "number": "30"
+    },
+    {
+     "cv": 108530,
+     "extra": false,
+     "series": "Detective Comics",
+     "number": "677"
+    },
+    {
+     "cv": 39545,
+     "extra": true,
+     "series": "Batman: Legends of the Dark Knight",
+     "number": "63"
+    },
+    {
+     "cv": 39471,
+     "extra": true,
+     "series": "Robin",
+     "number": "9"
+    },
+    {
+     "cv": 134775,
+     "extra": true,
+     "series": "Showcase '94",
+     "number": "10"
+    }
+   ]
+  }
+ ]
+}

@@ -24,7 +24,7 @@ export const LIST: ReadingList = {
       note: 'Where it starts.',
       issues: [
         { cv: 101, volume: 'Avengers', volumeId: 500, number: '1', coverDate: '2013-02-01' },
-        { cv: 901, volume: 'Mighty Avengers', volumeId: 900, number: '1', coverDate: '2013-11-01', extra: true },
+        { cv: 901, volume: 'Mighty Avengers', volumeId: 900, number: '1', coverDate: '2013-11-01', siteUrl: 'https://comicvine.gamespot.com/mighty-avengers-1/4000-901/', extra: true },
         { cv: 102, volume: 'Avengers', volumeId: 500, number: '2', coverDate: '2013-03-01', title: 'The Garden' },
       ],
     },

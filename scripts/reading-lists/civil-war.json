@@ -1,0 +1,827 @@
+{
+ "id": 6,
+ "slug": "civil-war",
+ "name": "Civil War",
+ "exportName": "civilWar",
+ "publisher": "Marvel",
+ "years": "2006–2007",
+ "description": "A televised fight goes wrong beside an elementary school in Stamford, and hundreds die. Now the law says every hero must unmask and work for the government, and the heroes split down the middle: Iron Man for the law, Captain America against it. Spider-Man has to pick a side.",
+ "phases": [
+  {
+   "name": "Registration",
+   "note": null,
+   "issues": [
+    {
+     "cv": 106921,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "529"
+    },
+    {
+     "cv": 113517,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "530"
+    },
+    {
+     "cv": 113518,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "531"
+    },
+    {
+     "cv": 106482,
+     "extra": false,
+     "series": "The New Avengers: Illuminati",
+     "number": "1"
+    },
+    {
+     "cv": 108475,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "536"
+    },
+    {
+     "cv": 108474,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "537"
+    },
+    {
+     "cv": 132594,
+     "extra": true,
+     "series": "Civil War: Opening Shot Sketchbook",
+     "number": "1"
+    },
+    {
+     "cv": 105525,
+     "extra": false,
+     "series": "Civil War",
+     "number": "1"
+    },
+    {
+     "cv": 106974,
+     "extra": true,
+     "series": "Wolverine",
+     "number": "42"
+    },
+    {
+     "cv": 108240,
+     "extra": true,
+     "series": "Wolverine",
+     "number": "43"
+    },
+    {
+     "cv": 109260,
+     "extra": true,
+     "series": "Wolverine",
+     "number": "44"
+    },
+    {
+     "cv": 108674,
+     "extra": true,
+     "series": "Wolverine",
+     "number": "45"
+    },
+    {
+     "cv": 107245,
+     "extra": true,
+     "series": "She-Hulk",
+     "number": "8"
+    },
+    {
+     "cv": 106097,
+     "extra": true,
+     "series": "X-Factor",
+     "number": "8"
+    },
+    {
+     "cv": 107893,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "21"
+    },
+    {
+     "cv": 107895,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "22"
+    },
+    {
+     "cv": 106345,
+     "extra": true,
+     "series": "New X-Men",
+     "number": "28"
+    },
+    {
+     "cv": 106844,
+     "extra": true,
+     "series": "Civil War: Front Line",
+     "number": "1"
+    }
+   ]
+  },
+  {
+   "name": "Choosing Sides",
+   "note": null,
+   "issues": [
+    {
+     "cv": 105570,
+     "extra": false,
+     "series": "Civil War",
+     "number": "2"
+    },
+    {
+     "cv": 108482,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "532"
+    },
+    {
+     "cv": 106137,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "533"
+    },
+    {
+     "cv": 106253,
+     "extra": true,
+     "series": "Thunderbolts",
+     "number": "103"
+    },
+    {
+     "cv": 107958,
+     "extra": true,
+     "series": "Civil War: Front Line",
+     "number": "2"
+    },
+    {
+     "cv": 113625,
+     "extra": true,
+     "series": "The Sensational Spider-Man",
+     "number": "28"
+    },
+    {
+     "cv": 110139,
+     "extra": true,
+     "series": "The Sensational Spider-Man",
+     "number": "29"
+    },
+    {
+     "cv": 113626,
+     "extra": true,
+     "series": "The Sensational Spider-Man",
+     "number": "30"
+    },
+    {
+     "cv": 113629,
+     "extra": true,
+     "series": "The Sensational Spider-Man",
+     "number": "31"
+    },
+    {
+     "cv": 107246,
+     "extra": true,
+     "series": "She-Hulk",
+     "number": "9"
+    },
+    {
+     "cv": 108473,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "538"
+    },
+    {
+     "cv": 108781,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "539"
+    },
+    {
+     "cv": 105614,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "534"
+    },
+    {
+     "cv": 107959,
+     "extra": true,
+     "series": "Civil War: Front Line",
+     "number": "3"
+    },
+    {
+     "cv": 108773,
+     "extra": true,
+     "series": "Iron Man",
+     "number": "13"
+    },
+    {
+     "cv": 108041,
+     "extra": true,
+     "series": "Ms. Marvel",
+     "number": "6"
+    },
+    {
+     "cv": 108175,
+     "extra": true,
+     "series": "Ms. Marvel",
+     "number": "7"
+    },
+    {
+     "cv": 108176,
+     "extra": true,
+     "series": "Ms. Marvel",
+     "number": "8"
+    },
+    {
+     "cv": 108214,
+     "extra": true,
+     "series": "Ms. Marvel",
+     "number": "9"
+    },
+    {
+     "cv": 108340,
+     "extra": true,
+     "series": "Ms. Marvel",
+     "number": "10"
+    },
+    {
+     "cv": 106309,
+     "extra": true,
+     "series": "Thunderbolts",
+     "number": "104"
+    },
+    {
+     "cv": 106310,
+     "extra": true,
+     "series": "Thunderbolts",
+     "number": "105"
+    },
+    {
+     "cv": 106346,
+     "extra": true,
+     "series": "New X-Men",
+     "number": "29"
+    },
+    {
+     "cv": 106357,
+     "extra": true,
+     "series": "New X-Men",
+     "number": "30"
+    },
+    {
+     "cv": 106358,
+     "extra": true,
+     "series": "New X-Men",
+     "number": "31"
+    },
+    {
+     "cv": 108675,
+     "extra": true,
+     "series": "Black Panther",
+     "number": "18"
+    },
+    {
+     "cv": 107679,
+     "extra": true,
+     "series": "Black Panther",
+     "number": "19"
+    },
+    {
+     "cv": 113821,
+     "extra": true,
+     "series": "Black Panther",
+     "number": "20"
+    },
+    {
+     "cv": 113823,
+     "extra": true,
+     "series": "Black Panther",
+     "number": "21"
+    },
+    {
+     "cv": 108784,
+     "extra": true,
+     "series": "Black Panther",
+     "number": "22"
+    },
+    {
+     "cv": 108786,
+     "extra": true,
+     "series": "Civil War: X-Men",
+     "number": "1"
+    },
+    {
+     "cv": 108695,
+     "extra": true,
+     "series": "Heroes for Hire",
+     "number": "1"
+    },
+    {
+     "cv": 105624,
+     "extra": false,
+     "series": "Civil War",
+     "number": "3"
+    },
+    {
+     "cv": 105682,
+     "extra": false,
+     "series": "Civil War",
+     "number": "4"
+    },
+    {
+     "cv": 108844,
+     "extra": true,
+     "series": "Civil War: X-Men",
+     "number": "2"
+    },
+    {
+     "cv": 108845,
+     "extra": true,
+     "series": "Civil War: X-Men",
+     "number": "3"
+    },
+    {
+     "cv": 108846,
+     "extra": true,
+     "series": "Civil War: X-Men",
+     "number": "4"
+    },
+    {
+     "cv": 108954,
+     "extra": true,
+     "series": "Black Panther",
+     "number": "23"
+    },
+    {
+     "cv": 106444,
+     "extra": true,
+     "series": "Cable & Deadpool",
+     "number": "30"
+    },
+    {
+     "cv": 106445,
+     "extra": true,
+     "series": "Cable & Deadpool",
+     "number": "31"
+    },
+    {
+     "cv": 106446,
+     "extra": true,
+     "series": "Cable & Deadpool",
+     "number": "32"
+    },
+    {
+     "cv": 105339,
+     "extra": true,
+     "series": "Civil War: Young Avengers & Runaways",
+     "number": "1"
+    },
+    {
+     "cv": 105344,
+     "extra": true,
+     "series": "Civil War: Young Avengers & Runaways",
+     "number": "2"
+    },
+    {
+     "cv": 105345,
+     "extra": true,
+     "series": "Civil War: Young Avengers & Runaways",
+     "number": "3"
+    },
+    {
+     "cv": 105346,
+     "extra": true,
+     "series": "Civil War: Young Avengers & Runaways",
+     "number": "4"
+    },
+    {
+     "cv": 218224,
+     "extra": true,
+     "series": "Daily Bugle Civil War Newspaper Special",
+     "number": "1"
+    },
+    {
+     "cv": 108347,
+     "extra": true,
+     "series": "Civil War: Front Line",
+     "number": "4"
+    },
+    {
+     "cv": 106098,
+     "extra": true,
+     "series": "X-Factor",
+     "number": "9"
+    },
+    {
+     "cv": 108696,
+     "extra": true,
+     "series": "Civil War: Front Line",
+     "number": "5"
+    },
+    {
+     "cv": 108889,
+     "extra": true,
+     "series": "Heroes for Hire",
+     "number": "2"
+    },
+    {
+     "cv": 108882,
+     "extra": true,
+     "series": "Heroes for Hire",
+     "number": "3"
+    },
+    {
+     "cv": 108038,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "23"
+    },
+    {
+     "cv": 108957,
+     "extra": true,
+     "series": "Iron Man/Captain America: Casualties of War",
+     "number": "1"
+    },
+    {
+     "cv": 108847,
+     "extra": true,
+     "series": "Civil War Files",
+     "number": "1"
+    },
+    {
+     "cv": 108678,
+     "extra": true,
+     "series": "Wolverine",
+     "number": "46"
+    },
+    {
+     "cv": 108679,
+     "extra": true,
+     "series": "Wolverine",
+     "number": "47"
+    },
+    {
+     "cv": 108673,
+     "extra": false,
+     "series": "Captain America",
+     "number": "22"
+    },
+    {
+     "cv": 108891,
+     "extra": false,
+     "series": "Captain America",
+     "number": "23"
+    },
+    {
+     "cv": 108901,
+     "extra": false,
+     "series": "Captain America",
+     "number": "24"
+    },
+    {
+     "cv": 108776,
+     "extra": true,
+     "series": "Civil War: Front Line",
+     "number": "6"
+    },
+    {
+     "cv": 108777,
+     "extra": true,
+     "series": "Civil War: Front Line",
+     "number": "7"
+    },
+    {
+     "cv": 107009,
+     "extra": true,
+     "series": "Civil War: Choosing Sides",
+     "number": "1"
+    },
+    {
+     "cv": 108039,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "24"
+    },
+    {
+     "cv": 108886,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "540"
+    },
+    {
+     "cv": 105556,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "535"
+    }
+   ]
+  },
+  {
+   "name": "The War",
+   "note": null,
+   "issues": [
+    {
+     "cv": 106999,
+     "extra": false,
+     "series": "Civil War",
+     "number": "5"
+    },
+    {
+     "cv": 106138,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "536"
+    },
+    {
+     "cv": 108549,
+     "extra": true,
+     "series": "Punisher War Journal",
+     "number": "1"
+    },
+    {
+     "cv": 110140,
+     "extra": true,
+     "series": "The Sensational Spider-Man",
+     "number": "32"
+    },
+    {
+     "cv": 113627,
+     "extra": true,
+     "series": "The Sensational Spider-Man",
+     "number": "33"
+    },
+    {
+     "cv": 113628,
+     "extra": true,
+     "series": "The Sensational Spider-Man",
+     "number": "34"
+    },
+    {
+     "cv": 108040,
+     "extra": false,
+     "series": "New Avengers",
+     "number": "25"
+    },
+    {
+     "cv": 108900,
+     "extra": true,
+     "series": "Civil War: Front Line",
+     "number": "8"
+    },
+    {
+     "cv": 108948,
+     "extra": true,
+     "series": "Civil War: Front Line",
+     "number": "9"
+    },
+    {
+     "cv": 108967,
+     "extra": true,
+     "series": "Civil War: Front Line",
+     "number": "10"
+    },
+    {
+     "cv": 108912,
+     "extra": true,
+     "series": "Wolverine",
+     "number": "48"
+    },
+    {
+     "cv": 108953,
+     "extra": true,
+     "series": "Civil War: War Crimes",
+     "number": "1"
+    },
+    {
+     "cv": 111399,
+     "extra": true,
+     "series": "Iron Man",
+     "number": "14"
+    },
+    {
+     "cv": 108906,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "541"
+    },
+    {
+     "cv": 158368,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "542"
+    },
+    {
+     "cv": 106311,
+     "extra": true,
+     "series": "Thunderbolts",
+     "number": "106"
+    },
+    {
+     "cv": 106312,
+     "extra": true,
+     "series": "Thunderbolts",
+     "number": "107"
+    },
+    {
+     "cv": 106313,
+     "extra": true,
+     "series": "Thunderbolts",
+     "number": "108"
+    },
+    {
+     "cv": 106186,
+     "extra": true,
+     "series": "Winter Soldier:  Winter Kills",
+     "number": "1"
+    },
+    {
+     "cv": 108514,
+     "extra": true,
+     "series": "Blade",
+     "number": "5"
+    },
+    {
+     "cv": 106020,
+     "extra": true,
+     "series": "Civil War: The Return",
+     "number": "1"
+    },
+    {
+     "cv": 106282,
+     "extra": true,
+     "series": "Black Panther",
+     "number": "24"
+    },
+    {
+     "cv": 106012,
+     "extra": true,
+     "series": "Moon Knight",
+     "number": "7"
+    },
+    {
+     "cv": 106904,
+     "extra": true,
+     "series": "Moon Knight",
+     "number": "8"
+    },
+    {
+     "cv": 108558,
+     "extra": true,
+     "series": "Moon Knight",
+     "number": "9"
+    },
+    {
+     "cv": 109665,
+     "extra": true,
+     "series": "Moon Knight",
+     "number": "10"
+    },
+    {
+     "cv": 110672,
+     "extra": true,
+     "series": "Moon Knight",
+     "number": "11"
+    },
+    {
+     "cv": 114432,
+     "extra": true,
+     "series": "Moon Knight",
+     "number": "12"
+    },
+    {
+     "cv": 106104,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "537"
+    },
+    {
+     "cv": 107000,
+     "extra": false,
+     "series": "Civil War",
+     "number": "6"
+    },
+    {
+     "cv": 106626,
+     "extra": false,
+     "series": "Civil War",
+     "number": "7"
+    }
+   ]
+  },
+  {
+   "name": "Aftermath",
+   "note": null,
+   "issues": [
+    {
+     "cv": 106708,
+     "extra": true,
+     "series": "Black Panther",
+     "number": "25"
+    },
+    {
+     "cv": 106627,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "538"
+    },
+    {
+     "cv": 107203,
+     "extra": false,
+     "series": "The Amazing Spider-Man",
+     "number": "539"
+    },
+    {
+     "cv": 108550,
+     "extra": true,
+     "series": "Punisher War Journal",
+     "number": "2"
+    },
+    {
+     "cv": 106327,
+     "extra": true,
+     "series": "Punisher War Journal",
+     "number": "3"
+    },
+    {
+     "cv": 106633,
+     "extra": true,
+     "series": "Punisher War Journal",
+     "number": "4"
+    },
+    {
+     "cv": 108968,
+     "extra": true,
+     "series": "Civil War: Front Line",
+     "number": "11"
+    },
+    {
+     "cv": 106788,
+     "extra": false,
+     "series": "Captain America",
+     "number": "25"
+    },
+    {
+     "cv": 106933,
+     "extra": true,
+     "series": "Punisher War Journal",
+     "number": "5"
+    },
+    {
+     "cv": 106909,
+     "extra": true,
+     "series": "Civil War: The Confession",
+     "number": "1"
+    },
+    {
+     "cv": 106789,
+     "extra": true,
+     "series": "Civil War: The Initiative",
+     "number": "1"
+    },
+    {
+     "cv": 108004,
+     "extra": true,
+     "series": "Fallen Son: The Death of Captain America",
+     "number": "1"
+    },
+    {
+     "cv": 127434,
+     "extra": true,
+     "series": "Fallen Son: The Death of Captain America",
+     "number": "2"
+    },
+    {
+     "cv": 109602,
+     "extra": true,
+     "series": "Fallen Son: The Death of Captain America",
+     "number": "3"
+    },
+    {
+     "cv": 110668,
+     "extra": true,
+     "series": "Fallen Son: The Death of Captain America",
+     "number": "4"
+    },
+    {
+     "cv": 111251,
+     "extra": true,
+     "series": "Fallen Son: The Death of Captain America",
+     "number": "5"
+    },
+    {
+     "cv": 106792,
+     "extra": true,
+     "series": "Fantastic Four",
+     "number": "543"
+    },
+    {
+     "cv": 107416,
+     "extra": true,
+     "series": "Civil War: Battle Damage Report",
+     "number": "1"
+    }
+   ]
+  }
+ ]
+}

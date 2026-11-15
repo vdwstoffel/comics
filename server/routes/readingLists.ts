@@ -30,6 +30,8 @@ function issueView(db: Db, owned: Map<number, number>, entry: ReadingListIssue) 
     volumeId: entry.volumeId,
     ...(entry.coverDate ? { coverDate: entry.coverDate } : {}),
     ...(entry.title ? { name: entry.title } : {}),
+    // A missing issue's tile opens Comic Vine, the way an arc's does.
+    ...(entry.siteUrl ? { siteUrl: entry.siteUrl } : {}),
     extra: !!entry.extra,
   }
   const bookId = owned.get(entry.cv)
@@ -87,7 +89,6 @@ export default async function readingListRoutes(app: App, opts: ReadingListRoute
           size: { core: issuesIn(list, 'core').length, full: issuesIn(list, 'full').length },
           length,
           total: run.length,
-          owned: run.filter((i) => owned.has(i.cv)).length,
           read,
           // Only once you have started - an unread list is opened, not continued - and only
           // when it is a comic you have, as on the list's page: a gap has nothing to open.

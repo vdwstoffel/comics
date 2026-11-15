@@ -1,0 +1,209 @@
+{
+ "id": 20,
+ "slug": "final-crisis",
+ "name": "Final Crisis",
+ "exportName": "finalCrisis",
+ "publisher": "DC Comics",
+ "years": "2008–2009",
+ "description": "A god has been murdered, and the New Gods' ancient war has fallen onto Earth. Darkseid has found his way into our world with the Anti-Life Equation, the power to wipe out free will, and evil is about to win.",
+ "phases": [
+  {
+   "name": "A God Is Murdered",
+   "note": null,
+   "issues": [
+    {
+     "cv": 130596,
+     "extra": true,
+     "series": "Justice League of America",
+     "number": "21"
+    },
+    {
+     "cv": 130994,
+     "extra": false,
+     "series": "Final Crisis",
+     "number": "1"
+    },
+    {
+     "cv": 132930,
+     "extra": true,
+     "series": "Final Crisis: Requiem",
+     "number": "1"
+    },
+    {
+     "cv": 131869,
+     "extra": false,
+     "series": "Final Crisis",
+     "number": "2"
+    },
+    {
+     "cv": 133674,
+     "extra": true,
+     "series": "Final Crisis: Rogues' Revenge",
+     "number": "1"
+    },
+    {
+     "cv": 136522,
+     "extra": true,
+     "series": "Final Crisis: Rogues' Revenge",
+     "number": "2"
+    },
+    {
+     "cv": 140443,
+     "extra": true,
+     "series": "Final Crisis: Rogues' Revenge",
+     "number": "3"
+    }
+   ]
+  },
+  {
+   "name": "Anti-Life",
+   "note": null,
+   "issues": [
+    {
+     "cv": 135068,
+     "extra": false,
+     "series": "Final Crisis",
+     "number": "3"
+    },
+    {
+     "cv": 136525,
+     "extra": false,
+     "series": "Final Crisis: Superman Beyond",
+     "number": "1"
+    },
+    {
+     "cv": 150506,
+     "extra": false,
+     "series": "Final Crisis: Superman Beyond",
+     "number": "2"
+    },
+    {
+     "cv": 135985,
+     "extra": true,
+     "series": "Final Crisis: Legion of Three Worlds",
+     "number": "1"
+    },
+    {
+     "cv": 140458,
+     "extra": true,
+     "series": "Final Crisis: Legion of Three Worlds",
+     "number": "2"
+    },
+    {
+     "cv": 151134,
+     "extra": true,
+     "series": "Final Crisis: Legion of Three Worlds",
+     "number": "3"
+    },
+    {
+     "cv": 156118,
+     "extra": true,
+     "series": "Final Crisis: Legion of Three Worlds",
+     "number": "4"
+    },
+    {
+     "cv": 164795,
+     "extra": true,
+     "series": "Final Crisis: Legion of Three Worlds",
+     "number": "5"
+    },
+    {
+     "cv": 135447,
+     "extra": true,
+     "series": "Final Crisis: Revelations",
+     "number": "1"
+    },
+    {
+     "cv": 138181,
+     "extra": true,
+     "series": "Final Crisis: Revelations",
+     "number": "2"
+    },
+    {
+     "cv": 140143,
+     "extra": true,
+     "series": "Final Crisis: Revelations",
+     "number": "3"
+    },
+    {
+     "cv": 145538,
+     "extra": true,
+     "series": "Final Crisis: Revelations",
+     "number": "4"
+    },
+    {
+     "cv": 150661,
+     "extra": true,
+     "series": "Final Crisis: Revelations",
+     "number": "5"
+    },
+    {
+     "cv": 149282,
+     "extra": true,
+     "series": "Final Crisis: Secret Files",
+     "number": "1"
+    },
+    {
+     "cv": 141525,
+     "extra": true,
+     "series": "Final Crisis: Resist",
+     "number": "1"
+    },
+    {
+     "cv": 140852,
+     "extra": false,
+     "series": "Final Crisis: Submit",
+     "number": "1"
+    },
+    {
+     "cv": 140850,
+     "extra": false,
+     "series": "Final Crisis",
+     "number": "4"
+    },
+    {
+     "cv": 145368,
+     "extra": false,
+     "series": "Final Crisis",
+     "number": "5"
+    },
+    {
+     "cv": 144296,
+     "extra": true,
+     "series": "Batman",
+     "number": "682"
+    },
+    {
+     "cv": 148610,
+     "extra": true,
+     "series": "Batman",
+     "number": "683"
+    }
+   ]
+  },
+  {
+   "name": "Darkness Falls",
+   "note": null,
+   "issues": [
+    {
+     "cv": 150022,
+     "extra": false,
+     "series": "Final Crisis",
+     "number": "6"
+    },
+    {
+     "cv": 150660,
+     "extra": false,
+     "series": "Final Crisis",
+     "number": "7"
+    },
+    {
+     "cv": 235381,
+     "extra": true,
+     "series": "Superman/Batman",
+     "number": "76"
+    }
+   ]
+  }
+ ]
+}

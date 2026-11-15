@@ -1,0 +1,143 @@
+{
+ "id": 18,
+ "slug": "identity-crisis",
+ "name": "Identity Crisis",
+ "exportName": "identityCrisis",
+ "publisher": "DC Comics",
+ "years": "2004–2005",
+ "description": "Sue Dibny, the Elongated Man's wife, is murdered in her own home, and no one can work out how the killer got in. As the heroes hunt for the murderer, a secret about what the Justice League once did comes back to haunt them.",
+ "phases": [
+  {
+   "name": "The Murder",
+   "note": null,
+   "issues": [
+    {
+     "cv": 108160,
+     "extra": false,
+     "series": "Identity Crisis",
+     "number": "1"
+    },
+    {
+     "cv": 131551,
+     "extra": true,
+     "series": "The Flash",
+     "number": "213"
+    },
+    {
+     "cv": 108220,
+     "extra": false,
+     "series": "Identity Crisis",
+     "number": "2"
+    },
+    {
+     "cv": 108233,
+     "extra": false,
+     "series": "Identity Crisis",
+     "number": "3"
+    },
+    {
+     "cv": 103503,
+     "extra": true,
+     "series": "Manhunter",
+     "number": "2"
+    },
+    {
+     "cv": 131552,
+     "extra": true,
+     "series": "The Flash",
+     "number": "214"
+    },
+    {
+     "cv": 108241,
+     "extra": false,
+     "series": "Identity Crisis",
+     "number": "4"
+    },
+    {
+     "cv": 103504,
+     "extra": true,
+     "series": "Manhunter",
+     "number": "3"
+    },
+    {
+     "cv": 131553,
+     "extra": true,
+     "series": "The Flash",
+     "number": "215"
+    }
+   ]
+  },
+  {
+   "name": "The Truth",
+   "note": null,
+   "issues": [
+    {
+     "cv": 110351,
+     "extra": false,
+     "series": "Identity Crisis",
+     "number": "5"
+    },
+    {
+     "cv": 103505,
+     "extra": true,
+     "series": "Manhunter",
+     "number": "4"
+    },
+    {
+     "cv": 97710,
+     "extra": true,
+     "series": "Firestorm",
+     "number": "1"
+    },
+    {
+     "cv": 97711,
+     "extra": true,
+     "series": "Firestorm",
+     "number": "2"
+    },
+    {
+     "cv": 97712,
+     "extra": true,
+     "series": "Firestorm",
+     "number": "3"
+    },
+    {
+     "cv": 92336,
+     "extra": true,
+     "series": "JSA",
+     "number": "67"
+    },
+    {
+     "cv": 98428,
+     "extra": true,
+     "series": "The Flash",
+     "number": "216"
+    },
+    {
+     "cv": 110353,
+     "extra": false,
+     "series": "Identity Crisis",
+     "number": "6"
+    },
+    {
+     "cv": 110354,
+     "extra": false,
+     "series": "Identity Crisis",
+     "number": "7"
+    },
+    {
+     "cv": 98429,
+     "extra": true,
+     "series": "The Flash",
+     "number": "217"
+    },
+    {
+     "cv": 103506,
+     "extra": true,
+     "series": "Manhunter",
+     "number": "5"
+    }
+   ]
+  }
+ ]
+}
